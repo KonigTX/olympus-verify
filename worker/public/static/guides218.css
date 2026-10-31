@@ -17,7 +17,7 @@
 .guides218-tabs{display:flex;flex-wrap:wrap;gap:8px}
 .guides218-tabs a{display:inline-flex;align-items:center;gap:6px}
 .guides218-tabs a.active,.guides218-tabs a[aria-current="page"]{outline:2px solid #bc9a52;outline-offset:1px}
-.guides218-columns{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.guides218-columns{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}
 .guides218-list{margin:0;padding-left:20px}
 .guides218-list li,.guides218-claims li{margin:4px 0}
 .guides218-claims{margin:0;padding-left:0;list-style:none}
@@ -31,7 +31,7 @@
 .guides218-sources{font-size:13px;opacity:.9}
 .guides218-note{font-size:13px}
 .guides218-status{display:inline-block;padding:0 6px;border-radius:10px;border:1px solid rgba(255,255,255,.35);font-size:12px;line-height:18px}
-.guides218-presets{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.guides218-presets{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}
 .guides218-preset{border:1px solid rgba(188,154,82,.35);border-radius:8px;padding:10px 12px;min-width:0}
 .guides218-preset h3{margin-top:0}
 .guides218-preset .btn-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}

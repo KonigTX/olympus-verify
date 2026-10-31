@@ -517,6 +517,87 @@ const directoryCoverage203 = page => {
   const attribution178 = accessibility178.app.querySelector("footer").textContent;
   check(".178 footer distinguishes client-derived portal animation and guild crest while retaining game and font notices", attribution178.includes("login portal animation is a guild-rendered derivative of the original World of Warcraft client model and textures") && attribution178.includes("static reduced-motion poster") && attribution178.includes("not a publisher-issued movie or endorsement") && attribution178.includes("Olympus crest is the guild's own logo") && attribution178.includes("remaining game interface artwork and icons") && attribution178.includes("International Typeface Corporation") && attribution178.includes("Kiwi Media/Design") && !attribution178.includes("All other interface artwork and icons"));
 
+
+  // .218: actual App/Worker fixture; only the completed read response is substituted.
+  // These checks qualify refusal presentation, not production throttling or a changed allowance.
+  {
+    const refusal218 = () => new Response(JSON.stringify({ error: "slow_down", message: "Too many pages in one minute. Wait a moment, then carry on." }), { status: 429, headers: { "Content-Type": "application/json" } });
+    const isBoardRole218 = pathname => pathname.startsWith("/api/board/");
+    const hasRefusal218 = page => page.app.querySelector(".board-results [role=alert]")?.textContent === "Applications could not be checked. Too many pages in one minute. Wait a moment, then carry on.";
+    const freshBoard218 = page => page.app.querySelector(".board-results")?.getAttribute("aria-busy") === "false" && !!page.app.querySelector(".board-results")?.dataset.boardFresh;
+    const limited218 = await openPage(MEMBER), reads218 = [];
+    limited218.before((pathname, init) => { if (pathname === "/api/board" || isBoardRole218(pathname)) reads218.push([pathname, init.method || "GET"]); return false; });
+    limited218.answer(pathname => isBoardRole218(pathname) ? refusal218() : null);
+    limited218.hold(pathname => pathname === "/api/board" ? 100 : 0);
+    await limited218.go("#/vote/office_26");
+    await waitFor(() => hasRefusal218(limited218), ".218 terminal board429");
+    const failedBoard218 = limited218.app.querySelector(".board-results");
+    check(".218 a completed board429 ends busy with one local alert and no fresh or actionable results", failedBoard218?.getAttribute("aria-busy") === "false" && !failedBoard218.dataset.boardFresh && hasRefusal218(limited218) && failedBoard218.querySelectorAll("[role=alert]").length === 1 && !failedBoard218.textContent.includes("Checking applications") && !failedBoard218.querySelector(".cand") && !limited218.app.textContent.includes("Something went wrong"));
+    await new Promise(resolve => setTimeout(resolve, 140));
+    check(".218 a late admitted summary cannot turn the refused role into a fresh board or start a retry", hasRefusal218(limited218) && !failedBoard218.dataset.boardFresh && reads218.filter(row => isBoardRole218(row[0])).length === 1 && reads218.every(row => row[1] === "GET"));
+    const chooser218 = limited218.app.querySelector(".role-pick");
+    limited218.answer(null); limited218.hold(null);
+    await limited218.go("#/vote/raid_leader_na");
+    await waitFor(() => freshBoard218(limited218), ".218 fresh manual role navigation");
+    check(".218 ordinary manual navigation permits one new admitted role read without retaining the refusal", limited218.app.querySelector(".role-pick") === chooser218 && freshBoard218(limited218) && limited218.app.querySelector(".board-results").dataset.boardFresh === "raid_leader_na" && !hasRefusal218(limited218) && reads218.filter(row => isBoardRole218(row[0])).length === 2);
+
+    const stale218 = await openPage(MEMBER);
+    stale218.answer(pathname => pathname.startsWith("/api/board/office_26?") ? refusal218() : null);
+    stale218.hold(pathname => pathname.startsWith("/api/board/office_26?") ? 100 : 0);
+    await stale218.go("#/vote/office_26");
+    await stale218.go("#/vote/raid_leader_eu");
+    await waitFor(() => freshBoard218(stale218), ".218 replacement board");
+    await new Promise(resolve => setTimeout(resolve, 140));
+    check(".218 a late prior-role429 cannot replace the newer fresh role or add a global error", freshBoard218(stale218) && stale218.app.querySelector(".board-results").dataset.boardFresh === "raid_leader_eu" && !hasRefusal218(stale218) && !stale218.app.textContent.includes("Something went wrong"));
+
+    const draft218 = await openPage(MEMBER);
+    await draft218.go("#/vote/officer"); await waitFor(() => freshBoard218(draft218) && !!draft218.app.querySelector('.board-results select'), ".218 populated filter board");
+    const nomination218 = draft218.app.querySelector('input[placeholder="Why them? (optional)"]');
+    if (!nomination218) throw Error("original admitted nomination reason fixture required");
+    nomination218.value = "PRESERVE_PENDING_NOMINATION_218"; fire(nomination218, "input");
+    draft218.answer(pathname => isBoardRole218(pathname) ? refusal218() : null);
+    fire(draft218.app.querySelector('.board-results select'), "change");
+    await waitFor(() => hasRefusal218(draft218), ".218 filter429");
+    check(".218 a refused filter read removes old candidate actions but preserves the exact unsaved nomination node", hasRefusal218(draft218) && !draft218.app.querySelector(".board-results").dataset.boardFresh && !draft218.app.querySelector(".board-results .cand") && nomination218.isConnected && draft218.app.querySelector('input[placeholder="Why them? (optional)"]') === nomination218 && nomination218.value === "PRESERVE_PENDING_NOMINATION_218");
+    await draft218.go("#/roles");
+    check(".218 board429 does not clear the existing dirty-navigation confirmation", !!draft218.document.body.querySelector("dialog") && nomination218.isConnected && nomination218.value === "PRESERVE_PENDING_NOMINATION_218");
+
+    for (const why218 of ["no_vote", "appointed"]) {
+      const closed218 = await openPage(MEMBER);
+      closed218.answer(pathname => pathname.startsWith("/api/board/officer?") ? new Response(JSON.stringify({ error: why218, appointed: "Synthetic appointed holder", message: "Current role closure" }), { status: 409, headers: { "Content-Type": "application/json" } }) : null);
+      await closed218.go("#/vote/officer");
+      await waitFor(() => !closed218.app.querySelector(".board-results"), ".218 original " + why218 + " closure");
+      check(".218 original " + why218 + " handling still replaces board and write-ins with dedicated closure", !closed218.app.querySelector(".board-results") && !closed218.app.querySelector("button.vote") && !byText(closed218.app, "button", "Save nominations") && closed218.app.textContent.includes(why218 === "appointed" ? "filled by appointment rather than by the board" : "No public vote"));
+    }
+    const session218 = await openPage(MEMBER);
+    session218.answer(pathname => isBoardRole218(pathname) ? new Response('{"error":"signed_out"}', { status: 401, headers: { "Content-Type": "application/json" } }) : null);
+    await session218.go("#/vote/officer");
+    await waitFor(() => !session218.app.querySelector(".board-results"), ".218 unchanged API401 retirement");
+    check(".218 a role401 retains the original sign-out path rather than a rate-refusal state", !session218.app.querySelector(".board-results") && !byText(session218.app.querySelector("header"), "button", "Sign out") && !session218.app.textContent.includes("Applications could not be checked"));
+    const denied218 = await openPage(MEMBER);
+    denied218.answer(pathname => pathname === "/api/board" ? new Response('{"error":"site_forbidden"}', { status: 403, headers: { "Content-Type": "application/json" } }) : null);
+    denied218.hold(pathname => isBoardRole218(pathname) ? 100 : 0);
+    await denied218.go("#/vote/officer");
+    await waitFor(() => denied218.app.querySelector(".role-pick")?.disabled, ".218 unchanged summary403");
+    await new Promise(resolve => setTimeout(resolve, 140));
+    check(".218 original summary403 still disables controls and fences its late admitted role response", denied218.app.querySelector(".role-pick")?.disabled === true && denied218.app.querySelector(".board-results")?.getAttribute("aria-busy") === "false" && !denied218.app.querySelector(".board-results .cand") && !denied218.app.textContent.includes("Applications could not be checked"));
+  }
+
+
+  // .218: pin the minimal DOM's dataset deletion contract independently of board rendering.
+  {
+    const fromDataset218 = new Element("div");
+    fromDataset218.dataset.boardFresh = "prior-admitted-role";
+    fromDataset218.dataset.boardRequest = "7";
+    const deletedDataset218 = Reflect.deleteProperty(fromDataset218.dataset, "boardFresh");
+    check(".218 minimal DOM dataset-set deletion removes both property and data attribute without touching another key", deletedDataset218 === true && fromDataset218.dataset.boardFresh === undefined && !Object.hasOwn(fromDataset218.dataset, "boardFresh") && fromDataset218.getAttribute("data-board-fresh") === null && !fromDataset218.hasAttribute("data-board-fresh") && fromDataset218.dataset.boardRequest === "7" && fromDataset218.getAttribute("data-board-request") === "7");
+    const fromAttribute218 = new Element("div");
+    fromAttribute218.setAttribute("data-board-fresh", "attribute-only-role");
+    fromAttribute218.setAttribute("data-unrelated", "keep-this-attribute");
+    const deletedAttribute218 = Reflect.deleteProperty(fromAttribute218.dataset, "boardFresh");
+    check(".218 minimal DOM attribute-set deletion removes the fallback attribute and is repeatable", deletedAttribute218 === true && fromAttribute218.dataset.boardFresh === undefined && !Object.hasOwn(fromAttribute218.dataset, "boardFresh") && fromAttribute218.getAttribute("data-board-fresh") === null && !fromAttribute218.hasAttribute("data-board-fresh") && Reflect.deleteProperty(fromAttribute218.dataset, "boardFresh") === true && fromAttribute218.getAttribute("data-unrelated") === "keep-this-attribute");
+  }
+
   console.log("\n" + ok + "/" + n + " passed");
   process.exit(ok === n ? 0 : 1);
 })().catch(error => { console.error(error); process.exit(1); });

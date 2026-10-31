@@ -9,16 +9,32 @@ const current217=source217.slice(0,cuts217[0].index),original217=current217;
 const hash217=value=>crypto217.createHash('sha256').update(value).digest('hex');
 let checks217=0;
 function check217(label,run){run();checks217++;console.log('PASS prefix217 '+label);}
-check217('exact current prefix is checked before any historical hash comparison',()=>assert217.equal(hash217(current217),'05fafa7e0989e6ef29d432c9b53d99dcc22b00ac14a9d25526a7852798f75a04'));
+check217('exact current prefix is checked before any historical hash comparison',()=>assert217.equal(hash217(current217),'a885f7f5fed706ce783adc3cee9700e8c44d8190cdfea488491194ef33531635'));
 const historical217=historicalFrontendPrefix217(current217);
-check217('exact two-line inverse restores the unchanged historical authority as data',()=>{assert217.equal(hash217(historical217),'bd05ccad75ca07e71647d20b9169636ed1d73d33ee2bbb3a7c1e763a8121c1c5');assert217.equal(Buffer.byteLength(historical217),29077);assert217.equal(current217,original217);});
+check217('exact three-line inverse restores the unchanged historical authority as data',()=>{assert217.equal(hash217(historical217),'bd05ccad75ca07e71647d20b9169636ed1d73d33ee2bbb3a7c1e763a8121c1c5');assert217.equal(Buffer.byteLength(historical217),29077);assert217.equal(current217,original217);});
 const currentLines217=current217.split('\n'),historicalLines217=historical217.split('\n');
 const edits217=currentLines217.flatMap((line,index)=>line===historicalLines217[index]?[]:[line]);
-assert217.equal(edits217.length,2);
+assert217.equal(edits217.length,3);
+// The approved dataset correction adds one exact current context; neither an old
+// executable prefix nor an edited deletion clause is silently accepted.
+const datasetCurrent218="    this.dataset = new Proxy({}, { set(t, k, v) { t[k] = String(v); el.attributes[\"data-\" + String(k).replace(/[A-Z]/g, (c) => \"-\" + c.toLowerCase())] = String(v); return true; }, get(t, k) { if (k in t) return t[k]; const a = el.attributes[\"data-\" + String(k).replace(/[A-Z]/g, (c) => \"-\" + c.toLowerCase())]; return a === undefined ? undefined : String(a); }, deleteProperty(t, k) { const deleted = Reflect.deleteProperty(t, k); if (deleted) delete el.attributes[\"data-\" + String(k).replace(/[A-Z]/g, (c) => \"-\" + c.toLowerCase())]; return deleted; } }); // data-* attributes, as a browser does (set through the proxy or as an attribute)\n";
+const datasetPrevious218="    this.dataset = new Proxy({}, { set(t, k, v) { t[k] = String(v); el.attributes[\"data-\" + String(k).replace(/[A-Z]/g, (c) => \"-\" + c.toLowerCase())] = String(v); return true; }, get(t, k) { if (k in t) return t[k]; const a = el.attributes[\"data-\" + String(k).replace(/[A-Z]/g, (c) => \"-\" + c.toLowerCase())]; return a === undefined ? undefined : String(a); } }); // data-* attributes, as a browser does (set through the proxy or as an attribute)\n";
+check217('the exact previous current prefix stays historical and cannot replace this current setup',()=>{
+ assert217.equal(current217.split(datasetCurrent218).length,2);
+ const previous=current217.replace(datasetCurrent218,datasetPrevious218);
+ assert217.equal(Buffer.byteLength(previous),29127);
+ assert217.equal(hash217(previous),'05fafa7e0989e6ef29d432c9b53d99dcc22b00ac14a9d25526a7852798f75a04');
+ assert217.throws(()=>historicalFrontendPrefix217(previous),/prefix_context_not_unique/);
+});
+check217('a byte edit inside the reviewed dataset deletion context is refused',()=>{
+ const changed=current217.replace('if (deleted) delete el.attributes[','if (deleted) delete el.attribute[');
+ assert217.notEqual(changed,current217);
+ assert217.throws(()=>historicalFrontendPrefix217(changed),/prefix_context_not_unique/);
+});
 check217('historical executable input is refused',()=>assert217.throws(()=>historicalFrontendPrefix217(historical217),/prefix_context_not_unique/));
 check217('each duplicate reviewed context is refused',()=>{for(const line of edits217)assert217.throws(()=>historicalFrontendPrefix217(current217+line+'\n'),/prefix_context_not_unique/);});
 check217('each missing reviewed context is refused',()=>{for(const line of edits217)assert217.throws(()=>historicalFrontendPrefix217(current217.replace(line+'\n','')),/prefix_context_not_unique/);});
-check217('drift outside the two reviewed lines is refused',()=>assert217.throws(()=>historicalFrontendPrefix217(current217.replace('const walk =','const walk  =')),/current_prefix_drift/));
+check217('drift outside the three reviewed lines is refused',()=>assert217.throws(()=>historicalFrontendPrefix217(current217.replace('const walk =','const walk  =')),/current_prefix_drift/));
 check217('extra bytes outside the pinned prefix are refused',()=>assert217.throws(()=>historicalFrontendPrefix217(current217+'\n// outside pinned prefix\n'),/current_prefix_drift/));
 check217('wrong input type is refused',()=>assert217.throws(()=>historicalFrontendPrefix217(Buffer.from(current217)),/prefix_type/));
 check217('full fixture body cannot replace the exact current prefix',()=>assert217.throws(()=>historicalFrontendPrefix217(source217),/current_prefix_drift/));

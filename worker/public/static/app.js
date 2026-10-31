@@ -3369,6 +3369,16 @@
       data = await api("GET", `/api/board/${encodeURIComponent(role)}?` + qs({ offset: V.offset, class: V.cls, fit: V.fit, todo: V.todo }), undefined, { live });
     } catch (err) {
       if (!live()) return;
+      // A completed read refusal is terminal, not a board that is still loading.
+      // Keep sibling nominations and their dirty-navigation guard mounted; no automatic retry.
+      if (err.status === 429) {
+        box.setAttribute("aria-busy", "false");
+        delete box.dataset.boardFresh;
+        boardRoleCounts.delete(box);
+        clear(box);
+        box.appendChild(errorLine("Applications could not be checked. " + explain(err)));
+        return;
+      }
       const why = err.data && err.data.error;
       if ((why !== "no_vote" && why !== "appointed") || !S.settings) throw err;
       // Appointed, or taken off the public vote, since this page was opened: the whole page is drawn again, without the

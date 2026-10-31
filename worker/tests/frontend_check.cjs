@@ -62,7 +62,7 @@ class Element extends Node {
     super();
     this.tagName = tag.toUpperCase(); this.attributes = {}; this.style = {}; this._value = ""; this.checked = false; this.selected = false; this.disabled = false; this.hidden = false; this.open = false;
     const el = this;
-    this.dataset = new Proxy({}, { set(t, k, v) { t[k] = String(v); el.attributes["data-" + String(k).replace(/[A-Z]/g, (c) => "-" + c.toLowerCase())] = String(v); return true; }, get(t, k) { if (k in t) return t[k]; const a = el.attributes["data-" + String(k).replace(/[A-Z]/g, (c) => "-" + c.toLowerCase())]; return a === undefined ? undefined : String(a); } }); // data-* attributes, as a browser does (set through the proxy or as an attribute)
+    this.dataset = new Proxy({}, { set(t, k, v) { t[k] = String(v); el.attributes["data-" + String(k).replace(/[A-Z]/g, (c) => "-" + c.toLowerCase())] = String(v); return true; }, get(t, k) { if (k in t) return t[k]; const a = el.attributes["data-" + String(k).replace(/[A-Z]/g, (c) => "-" + c.toLowerCase())]; return a === undefined ? undefined : String(a); }, deleteProperty(t, k) { const deleted = Reflect.deleteProperty(t, k); if (deleted) delete el.attributes["data-" + String(k).replace(/[A-Z]/g, (c) => "-" + c.toLowerCase())]; return deleted; } }); // data-* attributes, as a browser does (set through the proxy or as an attribute)
   }
   get nodeType() { return this.tagName === "#DOCUMENT" ? 9 : 1; }
   get id() { return this.attributes.id || ""; }

@@ -1,7 +1,7 @@
 'use strict';
-// Evidence-only two-line inverse. Every consumer still compiles its ACTUAL current prefix.
+// Evidence-only three-line inverse. Every consumer still compiles its ACTUAL current prefix.
 const {createHash}=require('node:crypto');
-const CURRENT217='05fafa7e0989e6ef29d432c9b53d99dcc22b00ac14a9d25526a7852798f75a04';
+const CURRENT217='a885f7f5fed706ce783adc3cee9700e8c44d8190cdfea488491194ef33531635';
 const HISTORICAL217='bd05ccad75ca07e71647d20b9169636ed1d73d33ee2bbb3a7c1e763a8121c1c5';
 const EDITS217=Object.freeze([
   {
@@ -11,6 +11,10 @@ const EDITS217=Object.freeze([
   {
     "current": "    if (m[1]) out.tag = m[1].toUpperCase(); else if (m[2]) out.id = m[2]; else if (m[3]) out.classes.push(m[3]); else out.attrs.push([m[4], m[5] === undefined && m[6] === undefined ? null : (m[5] ?? m[6]).replace(/\\\\(.)/g, \"$1\")]);\n",
     "historical": "    if (m[1]) out.tag = m[1].toUpperCase(); else if (m[2]) out.id = m[2]; else if (m[3]) out.classes.push(m[3]); else out.attrs.push([m[4], m[5] === undefined ? null : m[5].replace(/\\\\(.)/g, \"$1\")]);\n"
+  },
+  {
+    "current": "    this.dataset = new Proxy({}, { set(t, k, v) { t[k] = String(v); el.attributes[\"data-\" + String(k).replace(/[A-Z]/g, (c) => \"-\" + c.toLowerCase())] = String(v); return true; }, get(t, k) { if (k in t) return t[k]; const a = el.attributes[\"data-\" + String(k).replace(/[A-Z]/g, (c) => \"-\" + c.toLowerCase())]; return a === undefined ? undefined : String(a); }, deleteProperty(t, k) { const deleted = Reflect.deleteProperty(t, k); if (deleted) delete el.attributes[\"data-\" + String(k).replace(/[A-Z]/g, (c) => \"-\" + c.toLowerCase())]; return deleted; } }); // data-* attributes, as a browser does (set through the proxy or as an attribute)\n",
+    "historical": "    this.dataset = new Proxy({}, { set(t, k, v) { t[k] = String(v); el.attributes[\"data-\" + String(k).replace(/[A-Z]/g, (c) => \"-\" + c.toLowerCase())] = String(v); return true; }, get(t, k) { if (k in t) return t[k]; const a = el.attributes[\"data-\" + String(k).replace(/[A-Z]/g, (c) => \"-\" + c.toLowerCase())]; return a === undefined ? undefined : String(a); } }); // data-* attributes, as a browser does (set through the proxy or as an attribute)\n"
   }
 ].map(Object.freeze));
 const hash217=value=>createHash('sha256').update(value).digest('hex');
@@ -21,7 +25,7 @@ function historicalFrontendPrefix217(current){
   if(historical.split(edit.current).length!==2)throw Error('frontend217_prefix_context_not_unique');
   historical=historical.replace(edit.current,edit.historical);
  }
- if(Buffer.byteLength(current,'utf8')!==29127||hash217(current)!==CURRENT217)throw Error('frontend217_current_prefix_drift');
+ if(Buffer.byteLength(current,'utf8')!==29319||hash217(current)!==CURRENT217)throw Error('frontend217_current_prefix_drift');
  if(Buffer.byteLength(historical,'utf8')!==29077||hash217(historical)!==HISTORICAL217)throw Error('frontend217_historical_prefix_drift');
  return historical;
 }
