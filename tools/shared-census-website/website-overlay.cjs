@@ -2,7 +2,7 @@
 
 // Served only by the separate synthetic local server. Production app.js stays byte-identical.
 const { createHash } = require('node:crypto');
-const EXPECTED_SOURCE_SHA256='d5767565be0944cd190d6fc457e39de3d7964e2bbe1b70c76fc20f68fc411c5f';
+const EXPECTED_SOURCE_SHA256 = '52b792f6a35e86957b269ba211e299b690c28f7a1c80423bd367913f9a00532d';
 const LOCAL_LABEL = 'Shared census · local preview';
 
 function transformApp(source) {
