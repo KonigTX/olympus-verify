@@ -10,7 +10,6 @@ import { userOf, type Interaction } from './discord';
 import { DB_NOW } from './community-context';
 import { discordMemberFenceSql } from './community-event-buttons';
 import { destination, discord } from './community-event-delivery';
-import { captureLaneConfig } from './full-release-roles';
 import { privacyAccountIncarnation, readPrivacySubject } from './privacy-serving-authority';
 
 export interface GuildActor219 { readonly id: string; readonly birth: string; readonly version: number; readonly generation: string|null; readonly deadline: number; readonly guild: string }
@@ -52,6 +51,8 @@ export async function guildStaffNow219(env:Env,a:GuildActor219):Promise<boolean>
  * SQL proof on both sides of this await. Does not create account authority. */
 export async function guildOrganizerMemberNow219(env:Env,id:string,guild:string):Promise<boolean> {
   if(!/^[0-9]{17,20}$/.test(id)||guild!==destination(env)?.guild)return false;
+  // Keep the role lane outside the static privacy/reminder import graph.
+  const { captureLaneConfig }=await import('./full-release-roles');
   const cap=captureLaneConfig(env), roles=new Set([...officerRoles(env),env.ROLE_RAID_LEADER,...cap.staffMap.filter(row=>[0,1,2,4].includes(row.idx)).map(row=>row.role),...[0,1,2,4].map(slot=>cap.cfg?.native[slot])].filter(Boolean));
   const admins=new Set((env.SITE_ADMINS??'').split(',').map(x=>x.trim()));
   const r=await discord(env,'GET',`/guilds/${guild}/members/${id}`);
