@@ -50,7 +50,7 @@ export async function guideLookup219(env:Env,a:GuildActor219,sub:string,v:Record
  if(sub==='consumes'||sub==='buffs'){
   const rows=sub==='buffs'?guide.tools.worldBuffs:guide.tools.consumables;
   const rules=guide.tools.whatChanged.filter((row:Any219)=>sub==='buffs'?['World buffs','Raid-wide buffs'].includes(row.topic):['Consumable rules','New recipes','Alchemy and First Aid'].includes(row.topic));
-  return {title:sub==='buffs'?'World buffs & raid-wide buffs':'Raid consumable checklist',url:base+'/#/guides/tools/'+(sub==='buffs'?'world-buffs':'consumables'),description:safeDiscordText219(rules.map((row:Any219)=>row.text).join('\n\n'),1700),fields:rows.slice(0,8).map((row:Any219)=>field(row.name+' ['+row.grade+']',row.foreverStatus??row.effect)),footer:{text:evidence+' '+rows.length+' catalogue entries; open the guide for the complete checklist.'}};
+  return {title:sub==='buffs'?'World buffs & raid-wide buffs':'Raid consumable checklist',url:base+'/#/guides/tools/buffs',description:safeDiscordText219(rules.map((row:Any219)=>row.text).join('\n\n'),1700),fields:rows.slice(0,8).map((row:Any219)=>field(row.name+' ['+row.grade+']',row.foreverStatus??row.effect)),footer:{text:evidence+' '+rows.length+' catalogue entries; open the guide for the complete checklist.'}};
  }
  throw Error('Choose a guide lookup.');
 }

@@ -75,6 +75,7 @@ async function guildCommands219(){
  check('same lock also prevents website attendance mutation',webAttendance.status===409&&one('SELECT state FROM community_event_attendance WHERE event_id=? AND discord_id=?',event219.id,MEMBER).state==='present');
  for(const [name,sub,v] of [['guide','class',{class:'warrior',spec:'arms'}],['guide','talent',{build:JSON.parse(fs.readFileSync(path.join(root,'public/static/guides218.json'))).presets[0].code}],['guide','consumes',{}],['guide','buffs',{}],['guide','attunement',{raid:'onyxia'}],['guide','attunement',{raid:'mc'}],['workshop',null,{}],['treasury',null,{}],['stockades',null,{}],['council',null,{}],['branches',null,{}],['launch',null,{}]]){
   r=await send219(name,sub,v,MEMBER);check(name+' '+(sub??'reference')+' uses current source and a private no-mention response',r.initial.type===5&&r.answer?.embeds?.length===1&&r.answer.allowed_mentions.parse.length===0,r.answer?.content);
+  if(name==='guide'&&['consumes','buffs'].includes(sub))check(sub+' links to the actual registered combined checklist',r.answer.embeds[0].url.endsWith('/#/guides/tools/buffs'));
  }
  const envOther219=directEnv(over219),otherActor219=await load('./guild-command-authority219').captureGuildActor219(envOther219,{guild_id:GUILD,member:{user:{id:OTHER}}},at(),at());
  const otherRoster219=await load('./guild-calendar219').calendarRoster219(envOther219,otherActor219,event219.id);
