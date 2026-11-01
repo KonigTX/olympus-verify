@@ -2278,3 +2278,14 @@ A changing visible catalogue count needs an accessible status boundary. The shar
 ### Build .216 — unified maintenance integration (30 October 2026)
 
 Compose the independently reviewed maintenance changes with the cumulative request lifecycle, admin release, watcher boundary and website feedback improvements. Preserve existing admission/privacy controls and original test authorities; any finite current-source compatibility projection must remain exact and independently reviewed. Public summaries stay neutral. This release changes no feature activation, native acceptance or installed watcher/addon state.
+
+
+## 31 October 2026 — Build .219 original applicant editors and Discord calendar adapter
+
+The owner replaces the previous read-only treatment of open historical applications with editable, bounded JSON. Applicant content gets an exact own-view hash; the consuming save also compares every original own content field in SQL. Staff notes, reviewer and creation time remain independent and unchanged. Parent-office appointment aliases are resolved with the existing canonical appointment policy, so correcting a filled historical seat does not fabricate board consent. Named alts without optional talent codes and class-bound self-reported specialization persist inside existing answers and erase/export with the application.
+
+Editorial consolidation uses one canonical job specification. Aliases/native standing are searchable source identities and filled holder metadata, not duplicate job drawers. Distinct regional/class/officer remits and every authority boundary remain separate.
+
+Discord commands form a separate original-identity adapter; browser session/context constructors are never bypassed. Existing event-change JSON carries bounded mode/preference markers anchored to exact signup or reminder operations. Their parent retention and existing actor minimization remain unchanged. General roster views keep other members’ attendance private; a post-start lock is checked by both writers. Reminders reuse the prior one-shot public-effect custody protocol and its19-binding ceiling. A role change during an in-flight send creates unknown cleanup debt rather than a delivered claim.
+
+[Guild command operations](guild-commands219.md) distinguish private calendar creation, existing website publication, explicit public reminders, actual registration readbacks and synthetic local provider fixtures. The existing443-object schema, Native E2 account generation, identify-copy budget and dormant external integrations remain unchanged.

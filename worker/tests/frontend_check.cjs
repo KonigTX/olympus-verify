@@ -558,16 +558,16 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     associated.answer(pathname => (pathname === "/api/appointed-identities" || pathname === "/api/appointed-identities?role=treasurer") ? { scope: "qualified_community_readers", revision:'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',nextCursor:null,complete:true, identities: [identity] } : null);
     await associated.go("#/roles");
     await waitFor(() => associated.app.textContent.includes("Private Verified Fixture"), ".167 explicit appointment UI projection");
-    check(".167 masked general settings still display the fresh admitted appointment identity and verified characters", associated.app.querySelector('[data-role-key201="treasurer"]').textContent.includes("Associated display (associated.user)") && associated.app.textContent.includes("Verified characters: Private Verified Fixture") && !associated.app.textContent.includes(pointer));
+    check(".167 masked general settings still display the fresh admitted appointment identity and verified characters", associated.app.querySelector('[data-role-family203="treasurer"] .role-primary203').textContent.includes("Associated display (associated.user)") && associated.app.textContent.includes("Verified characters: Private Verified Fixture") && !associated.app.textContent.includes(pointer));
     check(".197 the single visible Treasurer record uses its exact closed-office selector", selectedOfficeRequests197.length === 1 && selectedOfficeRequests197[0] === "/api/appointed-identities?role=treasurer");
     associated.answer(pathname => (pathname === "/api/appointed-identities" || pathname === "/api/appointed-identities?role=treasurer") ? { scope: "qualified_community_readers", revision:'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',nextCursor:null,complete:true, identities: [{ ...identity, role: "co_gm", characters: [{ ...identity.characters[0], name: "UNAPPOINTED_OFFICE_CHARACTER" }] }, { ...identity, role: "officer", characters: [{ ...identity.characters[0], name: "UNSUPPORTED_OFFICE_CHARACTER" }] }] } : null);
     await associated.go("#/"); await associated.go("#/roles");
     await new Promise(resolve => setTimeout(resolve, 50));
-    check(".167 unsupported or currently unappointed office data cannot decorate another appointment", !associated.app.textContent.includes("UNAPPOINTED_OFFICE_CHARACTER") && !associated.app.textContent.includes("UNSUPPORTED_OFFICE_CHARACTER") && associated.app.querySelector('[data-role-key201="treasurer"]').textContent.includes("Filled by appointment"));
+    check(".167 unsupported or currently unappointed office data cannot decorate another appointment", !associated.app.textContent.includes("UNAPPOINTED_OFFICE_CHARACTER") && !associated.app.textContent.includes("UNSUPPORTED_OFFICE_CHARACTER") && associated.app.querySelector('[data-role-family203="treasurer"] .role-primary203').textContent.includes("Filled by appointment"));
     associated.answer(pathname => (pathname === "/api/appointed-identities" || pathname === "/api/appointed-identities?role=treasurer") ? { scope: "qualified_community_readers", revision:'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',nextCursor:null,complete:true, identities: [] } : null);
     await associated.go("#/"); await associated.go("#/roles");
     await new Promise(resolve => setTimeout(resolve, 50));
-    check(".167 an unavailable admitted identity leaves the generic closed appointment without cached private names", associated.app.querySelector('[data-role-key201="treasurer"]').textContent.includes("Filled by appointment") && !associated.app.textContent.includes("Private Verified Fixture") && !associated.app.textContent.includes("Associated display"));
+    check(".167 an unavailable admitted identity leaves the generic closed appointment without cached private names", associated.app.querySelector('[data-role-family203="treasurer"] .role-primary203').textContent.includes("Filled by appointment") && !associated.app.textContent.includes("Private Verified Fixture") && !associated.app.textContent.includes("Associated display"));
     associated.answer(pathname => (pathname === "/api/appointed-identities" || pathname === "/api/appointed-identities?role=treasurer") ? { scope: "qualified_community_readers", revision:'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',nextCursor:null,complete:true, identities: [identity] } : null);
     associated.hold(pathname => (pathname === "/api/appointed-identities" || pathname === "/api/appointed-identities?role=treasurer") ? 120 : 0);
     await associated.go("#/"); await associated.go("#/roles"); await associated.go("#/");
@@ -2265,7 +2265,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   check('.218 every one of40 exact role-specific boundary texts remains sealed', require('node:crypto').createHash('sha256').update(JSON.stringify(fullBoundarySeal218Rows)).digest('hex')===fullBoundarySeal218.specificTextSHA256);
   for(const [key,familyKey,nodeKey] of fullBoundarySeal218.placements){
     const specific=roles5.boot.meta.roleGuides201[key]?.boundaries.replaceAll(commonBoundary218,'').trim();
-    const card=roles5.app.querySelector('[data-role-family203="'+familyKey+'"]'),own=card?.querySelector('[data-role-key201="'+nodeKey+'"]');
+    const card=roles5.app.querySelector('[data-role-family203="'+familyKey+'"]'),own=card?.querySelector('[data-role-key201="'+nodeKey+'"]') || card?.querySelector('.role-primary203');
     check('.218 '+key+' keeps its sealed boundary in its own declared source scope', !!specific && roles5.boot.meta.roleDirectory203.keyToFamily[key]===familyKey && !!own && own.textContent.includes(specific));
   }
 

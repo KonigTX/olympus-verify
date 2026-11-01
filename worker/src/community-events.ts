@@ -1,3 +1,4 @@
+import { attendanceUnlocked219, rsvpPreferenceSql219 } from './guild-calendar-metadata219';
 /**
  * .59 (1 Oct 2026): the guild calendar with sign-ups, capacity and attendance, consolidation batch 3 of Codex's adapter
  * map, ported from Olympus Forever's src/events.ts and src/attendance.ts (frozen candidate manifest 296db2c8…; the CS-5
@@ -90,7 +91,7 @@ const acceptedHeld = (eventExpr: string) => `(SELECT COUNT(*) FROM community_eve
 const inCalendar = (idExpr: string) => `(EXISTS (SELECT 1 FROM community_event_signups cs WHERE cs.discord_id = ${idExpr}) OR EXISTS (SELECT 1 FROM community_event_attendance ca WHERE ca.discord_id = ${idExpr}))`;
 const calendarMembers = (limitExpr: string) => `(SELECT COUNT(*) FROM (SELECT discord_id FROM community_event_signups UNION SELECT discord_id FROM community_event_attendance LIMIT ${limitExpr}))`;
 /** True when the distinct ids of the JSON array `newcomersExpr` not yet in the calendar still fit under `limitExpr`. */
-const calendarRoom = (newcomersExpr: string, limitExpr: string) => {
+export const calendarRoom = (newcomersExpr: string, limitExpr: string) => {
   const joining = `(SELECT COUNT(*) FROM json_each(${newcomersExpr}) nj WHERE NOT ${inCalendar("nj.value")})`;
   return `(${joining} = 0 OR ${calendarMembers(limitExpr)} + ${joining} <= ${limitExpr})`;
 };
@@ -149,7 +150,7 @@ const roleTargetsText = (t: RoleTargets | null) => (t ? JSON.stringify({ tank: t
 interface EventValues { title: string; details: string; startsAt: number; durationMin: number; capacity: number | null; roleTargets: RoleTargets | null }
 const EVENT_FIELDS = ["title", "details", "startsAt", "durationMin", "capacity", "roleTargets"] as const;
 type EventField = (typeof EVENT_FIELDS)[number];
-function parseField(field: EventField, raw: unknown, at: number): EventValues[EventField] {
+export function parseField(field: EventField, raw: unknown, at: number): EventValues[EventField] {
   switch (field) {
     case "title":
       return plainText(raw, 1, EVENT_LIMITS.titleMax, "invalid_title");
@@ -490,9 +491,9 @@ export async function rsvp(request: Request, env: Env, ctx: CommunityContext): P
 }
 
 // ---------- organizer writes ----------
-const historyStatement = (env: Env, eventId: string, action: "created" | "updated" | "cancelled", actor: string, at: number, fields: string[], nonce: string) =>
+export const historyStatement = (env: Env, eventId: string, action: "created" | "updated" | "cancelled", actor: string, at: number, fields: string[], nonce: string) =>
   env.DB.prepare("INSERT INTO community_event_changes (event_id, action, actor, at, fields) SELECT ?1, ?6, ?2, ?3, ?4 WHERE EXISTS (SELECT 1 FROM community_events WHERE id = ?1 AND nonce = ?5)").bind(eventId, actor, at, JSON.stringify(fields), nonce, action);
-async function opHash(v: EventValues): Promise<string> {
+export async function opHash(v: EventValues): Promise<string> {
   const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(["event-create-v1", v.title, v.details, v.startsAt, v.durationMin, v.capacity, roleTargetsText(v.roleTargets)])));
   return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
@@ -754,7 +755,7 @@ export async function recordAttendance(request: Request, env: Env, ctx: Communit
     const member = "json_extract(j.value, '$[0]')";
     const statements: D1PreparedStatement[] = [
       // the admitted first statement: the event is open for recording, the calendar has room for every member this may add, the organizer still qualifies
-      env.DB.prepare(`UPDATE community_events SET attendance_nonce = ?2 WHERE id = ?1 AND status = 'scheduled' AND starts_at <= ${DB_NOW} AND ?3 = ?3 AND ${calendarRoom("?4", "?5")} AND ${fenceSql("confirmedGuildData", 6, 7, 8,ctx.subject!.privacyGeneration,ctx.subject!.accountIncarnation)}`).bind(eventId, nonce, t, JSON.stringify(creating), limit, me, ctx.subject!.sessionVersion, ctx.subject!.expiresAt),
+      env.DB.prepare(`UPDATE community_events SET attendance_nonce = ?2 WHERE id = ?1 AND ${attendanceUnlocked219('community_events.id')} AND status = 'scheduled' AND starts_at <= ${DB_NOW} AND ?3 = ?3 AND ${calendarRoom("?4", "?5")} AND ${fenceSql("confirmedGuildData", 6, 7, 8,ctx.subject!.privacyGeneration,ctx.subject!.accountIncarnation)}`).bind(eventId, nonce, t, JSON.stringify(creating), limit, me, ctx.subject!.sessionVersion, ctx.subject!.expiresAt),
     ];
     if (writes.length > 0) {
       statements.push(
@@ -1022,7 +1023,7 @@ registerCommunityData(
   (env, id) => ({
     // .74: a plan, run in the copy's one admitted batch
     statements: [
-      env.DB.prepare("SELECT s.event_id, e.title, e.starts_at, s.status, s.character_name, s.raid_role, s.rsvp_starts_at, s.updated_at, s.remind_mention, s.decision, s.decided_at FROM community_event_signups s LEFT JOIN community_events e ON e.id = s.event_id WHERE s.discord_id = ?1 ORDER BY e.starts_at").bind(id), // stage 2: + the reminder-mention choice and the organizer's decision for this sign-up (the decider withheld)
+      env.DB.prepare(`SELECT s.event_id, e.title, e.starts_at, s.status, s.character_name, s.raid_role, s.rsvp_starts_at, s.updated_at, s.remind_mention, s.decision, s.decided_at, ${rsvpPreferenceSql219()} AS preference219 FROM community_event_signups s LEFT JOIN community_events e ON e.id = s.event_id WHERE s.discord_id = ?1 ORDER BY e.starts_at`).bind(id), // stage 2: + the reminder-mention choice and the organizer's decision for this sign-up (the decider withheld)
       env.DB.prepare("SELECT id, title, starts_at, status,created_at,updated_at,ends_at,duration_min,capacity,CASE WHEN role_targets IS NULL THEN NULL ELSE CASE WHEN typeof(role_targets)='text' AND length(role_targets) BETWEEN 1 AND 128 AND length(CAST(role_targets AS BLOB))<=512 AND instr(role_targets,char(0))=0 THEN role_targets ELSE json_extract('privacy_event_copy_text_refused','$') END END AS role_targets,retain_until FROM community_events WHERE created_by = ?1 ORDER BY starts_at").bind(id),
       env.DB.prepare("SELECT a.event_id, e.title, e.starts_at, a.state, a.source, a.reason_code, a.recorded_at FROM community_event_attendance a LEFT JOIN community_events e ON e.id = a.event_id WHERE a.discord_id = ?1 ORDER BY e.starts_at").bind(id),
     ],

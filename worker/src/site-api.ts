@@ -1,3 +1,4 @@
+import { APPLICATION_SPECS_219 } from './application-specs219';
 import {captureBetaRoleDispatch,type BetaRoleDispatch} from './beta-reset-policy';
 import {assertOriginalSiteSessionRead,type OriginalSiteSession} from './privacy-site-session-incarnation';
 import { requestServingErasure, erasureRequestStatus, privacyBoundSiteEnv,readErasureProof } from './privacy-serving-authority';
@@ -11,6 +12,7 @@ import { requestServingErasure, erasureRequestStatus, privacyBoundSiteEnv,readEr
  * caller's own, and no count of votes of any kind.
  */
 import { errorRef } from "./log";
+import { APPLICATION_EDIT_FIELDS_219, applicationEditToken219, openApplication219 } from './application-edit219';
 import type { Env } from "./env";
 import type { RulesetSnapshot } from "./ruleset-profile";
 import { audit, now } from "./db";
@@ -296,7 +298,7 @@ export async function meData(env: Env, user: SiteUser, settings?: SiteSettings, 
     deniedText: user.denied ? DENIED_TEXT : undefined,
     settings: generalSettingsDto(s),
     meta: meta(state.ruleset),
-    application: app ? appOut(app) : null,
+    application: app ? await ownApplicationOut219(app) : null,
     votes: votes.results,
     boardVotes,
     nominatedFor: user.denied ? [] : nominated.results.map((r) => r.ballot).filter((b) => ballotOf(b) && boardOpenFor(s, b)),
@@ -310,6 +312,10 @@ export async function meData(env: Env, user: SiteUser, settings?: SiteSettings, 
 }
 
 // ---------- the application ----------
+
+async function ownApplicationOut219(a: AppRow) {
+  return { ...appOut(a), editToken: await applicationEditToken219(a) };
+}
 
 type Fail = { error: string; field: string; message: string };
 const fail = (field: string, message: string): Fail => ({ error: "invalid", field, message });
@@ -434,6 +440,10 @@ export function validateApplication(body: Record<string, unknown>, selfId: strin
   const talentBuilds = applicationTalentBuilds(raw.talentBuilds, { character, className: cls, siteHost, previous: previousTalentBuilds }, parseCharacterName);
   if (!talentBuilds) return fail("talentBuilds", "Use at most three named application characters with distinct names and current level30/60 builds matching each class. Retain an older code only unchanged on its original character.");
   if (talentBuilds.characters.length) answers.talentBuilds = talentBuilds;
+  if (raw.specialization !== undefined && raw.specialization !== "") {
+    if (typeof raw.specialization !== "string" || !APPLICATION_SPECS_219[cls]?.some(spec => spec.key === raw.specialization)) return fail("specialization", "Choose a specialization for your selected class, or leave it undecided.");
+    answers.specialization = raw.specialization;
+  }
   if (leading) {
     const hours = String(raw.hours ?? "");
     if (!HOUR_KEYS.has(hours)) return fail("hours", "Say how many hours a week you can give the role.");
@@ -506,8 +516,9 @@ export function validateApplication(body: Record<string, unknown>, selfId: strin
 async function saveApplication(env: Env, user: SiteUser, body: Record<string, unknown>): Promise<Response> {
   if (Object.hasOwn(body, 'consentOnly')) return withdrawApplicationBoardConsent(env, user, body);
   const s = await loadSettings(env);
-  if (!s.applicationsOpen) return apiJson({ error: "closed", message: "Applications are closed right now." }, 403);
-  const existing = await env.DB.prepare("SELECT status, answers FROM site_applications WHERE discord_id = ?1").bind(user.discord_id).first<{ status: string; answers: string }>();
+  const existing = await env.DB.prepare("SELECT * FROM site_applications WHERE discord_id = ?1").bind(user.discord_id).first<AppRow>();
+  const editingOpen = openApplication219(existing);
+  if (!s.applicationsOpen && !editingOpen) return apiJson({ error: "closed", message: "New applications and resubmissions are closed. Existing Submitted or Under review applications can still be edited." }, 403);
   if (existing && (existing.status === "accepted" || existing.status === "declined")) {
     return apiJson({ error: "decided", message: "Your application has already been decided, so it can no longer be changed." }, 409);
   }
@@ -518,22 +529,57 @@ async function saveApplication(env: Env, user: SiteUser, body: Record<string, un
     body.applicationTrack = previousAnswers.applicationTrack;
     body.targetOffice = previousAnswers.targetOffice;
   }
-  const reserved = reservedApplication201(body);
-  if (reserved) return apiJson(reserved, 403);
+  const retainedChoices = editingOpen && existing ? choicesOf(existing) : [];
+  const sameReservedChoices = editingOpen && existing && currentPosition(String(body.position ?? ''), String(body.region ?? '')) === currentPosition(existing.position, existing.region)
+    && (body.classLead ?? null) === existing.class_lead
+    && JSON.stringify(Array.isArray(body.backups) ? body.backups : []) === JSON.stringify([existing.backup1, existing.backup2].filter(Boolean))
+    && (body.applicationTrack ?? sentAnswers199.applicationTrack ?? null) === (previousAnswers.applicationTrack ?? null)
+    && (body.targetOffice ?? sentAnswers199.targetOffice ?? null) === (previousAnswers.targetOffice ?? null);
+  const reserved = reservedApplication201(body), retainingReserved = !!reserved && !!sameReservedChoices;
+  if (reserved && !retainingReserved) return apiJson(reserved, 403);
+  // A pre-.219 tab must reload before editing an existing record. An absent
+  // token cannot prove which answers the applicant actually opened.
+  if (existing && !Object.hasOwn(body,'editToken')) return apiJson({error:'stale_application',message:'Reload your application before editing it. Your saved answers remain unchanged.'},409);
+  if (Object.hasOwn(body, 'editToken') && (existing ? body.editToken !== await applicationEditToken219(existing) : body.editToken !== null)) {
+    return apiJson({ error: 'stale_application', message: 'Your application changed since this editor opened. Reload it before saving so another edit is not overwritten.' }, 409);
+  }
+
+  const validationAppointed = { ...s.appointed };
+  for (const [key,value] of Object.entries(s.appointed)) {
+    if (retainedChoices.some(choice => isAppointed({appointed:{[key]:value}},choice))) delete validationAppointed[key];
+  }
+  if (editingOpen && typeof previousAnswers.targetOffice === 'string') delete validationAppointed[previousAnswers.targetOffice];
+  // An existing reserved record may correct its answers without becoming a new
+  // leadership application. New/rearranged reserved requests still refuse.
+  const validationBody: Record<string, unknown> & { answers: Record<string, unknown> } = { ...body, answers: { ...sentAnswers199 } };
+  if (retainingReserved) {
+    delete validationBody.applicationTrack; delete validationBody.targetOffice;
+    delete validationBody.answers.applicationTrack; delete validationBody.answers.targetOffice;
+  }
+  // Filled retained seats are not on the current voting board. The editor
+  // must never invent new publication consent just to correct private answers.
+  const validationNoVote = [...new Set([...s.noVote, ...retainedChoices.filter(key => isAppointed(s,key))])];
   const storedTalent = previousAnswers.talentBuild;
-  const a = validateApplication(body, user.discord_id, s.appointed, s.noVote, env.SITE_HOST, typeof storedTalent === "string" ? storedTalent : undefined, previousAnswers.talentBuilds);
+  const a = validateApplication(validationBody, user.discord_id, validationAppointed, validationNoVote, env.SITE_HOST, typeof storedTalent === "string" ? storedTalent : undefined, previousAnswers.talentBuilds);
   // A page opened before a role was put to the vote hid the board box: the list it lacked comes back with the refusal,
   // so the page can show the box and the applicant tick it, without losing what they typed.
   if ("error" in a) return a.field === "board" ? apiJson({ ...a, noVote: s.noVote }, 400) : bad(a);
   const answers = JSON.parse(a.answers) as { applicationTrack?: string; targetOffice?: string | null; references?: Pick[]; professions?: string[] };
+  if (retainingReserved) {
+    if (typeof previousAnswers.applicationTrack === 'string') answers.applicationTrack = previousAnswers.applicationTrack;
+    answers.targetOffice = typeof previousAnswers.targetOffice === 'string' ? previousAnswers.targetOffice : null;
+    (answers as Record<string, unknown>).boardApplicationIntentOptIn = a.board && body.boardApplicationIntent === true;
+    a.answers = JSON.stringify(answers);
+  }
   // Recheck normalized choices as well as raw aliases. This also fails closed
   // if a later vocabulary addition introduces another leadership position.
   const resolvedReserved = reservedApplication201({ ...answers, position: a.position, backups: [a.backup1, a.backup2].filter(Boolean) });
-  if (resolvedReserved) return apiJson(resolvedReserved, 403);
-  if (isLeadership(a.position) || [a.backup1, a.backup2].some(key => key && choiceOf(key)?.leadership)) {
+  if (resolvedReserved && !retainingReserved) return apiJson(resolvedReserved, 403);
+  if (!retainingReserved && (isLeadership(a.position) || [a.backup1, a.backup2].some(key => key && choiceOf(key)?.leadership))) {
     return apiJson({ error: 'reserved_seat', field: 'position', message: 'Leadership roles are reserved seats filled by appointment. You cannot apply for them. Your existing application is unchanged.' }, 403);
   }
-  if (answers.applicationTrack === 'patron' && !s.royalWritsOn) {
+  const retainingPatron = editingOpen && previousAnswers.applicationTrack === 'patron' && answers.applicationTrack === 'patron';
+  if (answers.applicationTrack === 'patron' && !s.royalWritsOn && !retainingPatron) {
     return apiJson({ error: 'royal_writs_paused', field: 'applicationTrack', message: 'Royal Writs and Patron applications are paused. Your existing application is unchanged; other application tracks remain available.' }, 403);
   }
   let changed = false;
@@ -550,6 +596,8 @@ async function saveApplication(env: Env, user: SiteUser, body: Record<string, un
   }
   if (changed) a.answers = JSON.stringify(answers);
   const t = now();
+  const expected = (prefix = '') => APPLICATION_EDIT_FIELDS_219.map((key, index) => `${prefix}${key} IS ?${21 + index}`).join(' AND ');
+  const original = `((?40=1 AND EXISTS(SELECT 1 FROM site_applications WHERE discord_id=?1 AND ${expected()})) OR (?40=0 AND NOT EXISTS(SELECT 1 FROM site_applications WHERE discord_id=?1)))`;
   // Master QA, 28 Oct 2026: a settings pause can commit during the awaited
   // reference lookup. Admit both inserts and edits against the live switches
   // in this statement, preserving the settings parser's exact boolean rules.
@@ -557,15 +605,15 @@ async function saveApplication(env: Env, user: SiteUser, body: Record<string, un
   const saved = await env.DB.prepare(
     `INSERT INTO site_applications (discord_id, position, class_lead, backup1, backup2, fallback, character, char_key, class, role, region, avail, avail_tz, fit_na, fit_eu, board_at, answers, status, created_at, updated_at)
      SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, CASE WHEN ?16 = 1 THEN ?18 END, ?17, 'submitted', ?18, ?18
-     WHERE COALESCE((SELECT value FROM site_settings WHERE key='applicationsOpen'), '1') IN ('1', 'true')
-       AND (?19 <> 'patron' OR (SELECT value FROM site_settings WHERE key='royalWritsOn') = '1')
+     WHERE ${original} AND (EXISTS(SELECT 1 FROM site_applications WHERE discord_id=?1 AND status IN('submitted','reviewing')) OR COALESCE((SELECT value FROM site_settings WHERE key='applicationsOpen'), '1') IN ('1', 'true'))
+       AND (?19 <> 'patron' OR (SELECT value FROM site_settings WHERE key='royalWritsOn') = '1' OR ?20=1)
      ON CONFLICT(discord_id) DO UPDATE SET position = ?2, class_lead = ?3, backup1 = ?4, backup2 = ?5, fallback = ?6, character = ?7, char_key = ?8,
        class = ?9, role = ?10, region = ?11, avail = ?12, avail_tz = ?13, fit_na = ?14, fit_eu = ?15,
        board_at = CASE WHEN ?16 = 1 THEN COALESCE(site_applications.board_at, ?18) END, answers = ?17, updated_at = ?18,
        status = CASE WHEN site_applications.status = 'withdrawn' THEN 'submitted' ELSE site_applications.status END
-     WHERE site_applications.status NOT IN ('accepted','declined')`,
+     WHERE site_applications.status NOT IN ('accepted','declined') AND ${existing ? expected('site_applications.') : '0'}`,
   )
-    .bind(user.discord_id, a.position, a.class_lead, a.backup1, a.backup2, a.fallback, a.character, a.char_key, a.class, a.role, a.region, a.avail, a.avail_tz, a.fit_na, a.fit_eu, a.board ? 1 : 0, a.answers, t, answers.applicationTrack ?? '')
+    .bind(user.discord_id, a.position, a.class_lead, a.backup1, a.backup2, a.fallback, a.character, a.char_key, a.class, a.role, a.region, a.avail, a.avail_tz, a.fit_na, a.fit_eu, a.board ? 1 : 0, a.answers, t, answers.applicationTrack ?? '', retainingPatron ? 1 : 0, ...APPLICATION_EDIT_FIELDS_219.map(key => existing?.[key] ?? null), existing ? 1 : 0)
     .run();
   // .114 (Codex, log 19:56 UTC): a decision that landed while this save was being prepared (the read above, the reference
   // labels) wins: the decided application is not overwritten with answers nobody reviewed, and the member is told so.
@@ -577,6 +625,7 @@ async function saveApplication(env: Env, user: SiteUser, body: Record<string, un
       (SELECT value FROM site_settings WHERE key='royalWritsOn') AS royal_writs_on`).bind(user.discord_id)
       .first<{ status: string | null; applications_open: string; royal_writs_on: string | null }>();
     if (current?.status === 'accepted' || current?.status === 'declined') return apiJson({ error: "decided", message: "Your application has already been decided, so it can no longer be changed." }, 409);
+    if (editingOpen) return apiJson({ error: 'application_changed', message: 'Your saved application changed while this edit was pending. Reload it before saving again; your original submission and review history remain intact.' }, 409);
     if (current && !['1', 'true'].includes(current.applications_open)) return apiJson({ error: "closed", message: "Applications are closed right now. Your existing application is unchanged." }, 403);
     if (answers.applicationTrack === 'patron' && current?.royal_writs_on !== '1') return apiJson({ error: 'royal_writs_paused', field: 'applicationTrack', message: 'Royal Writs and Patron applications are paused. Your existing application is unchanged; other application tracks remain available.' }, 403);
     return apiJson({ error: 'application_changed', message: 'Application availability changed while this save was pending. Nothing was saved. Reload the page before editing again.' }, 409);
@@ -584,7 +633,7 @@ async function saveApplication(env: Env, user: SiteUser, body: Record<string, un
   forgetBoardCounts(); // this isolate's cached board counts: the applicant sees their own change at once
   await audit(env, user.discord_id, existing ? "site.application_updated" : "site.application_submitted", undefined, { position: a.position, backups: [a.backup1, a.backup2].filter(Boolean) });
   const row = await env.DB.prepare("SELECT * FROM site_applications WHERE discord_id = ?1").bind(user.discord_id).first<AppRow>();
-  return apiJson({ ok: true, application: row ? appOut(row) : null });
+  return apiJson({ ok: true, application: row ? await ownApplicationOut219(row) : null });
 }
 
 /** Master QA, 29 Oct 2026: a reserved historical application may stop sharing
@@ -616,7 +665,7 @@ async function withdrawApplicationBoardConsent(env: Env, user: SiteUser, body: R
   const withdrawn = selected.filter(([, stored]) => answers[stored] === true);
   // Repeated withdrawal neither changes the application time nor creates a new
   // audit event. Missing/legacy flags never imply permission to publish.
-  if (!withdrawn.length) return apiJson({ ok: true, application: appOut(existing) });
+  if (!withdrawn.length) return apiJson({ ok: true, application: await ownApplicationOut219(existing) });
   // Only these closed source paths enter SQL. JSON1 changes their booleans in
   // the original text; JavaScript number conversion must not rewrite private
   // historical values elsewhere in the answers. Duplicate consent keys are
@@ -637,7 +686,7 @@ async function withdrawApplicationBoardConsent(env: Env, user: SiteUser, body: R
     applicationIntent: selected.some(([field]) => field === 'boardApplicationIntent'),
   });
   const row = await env.DB.prepare('SELECT * FROM site_applications WHERE discord_id = ?1').bind(user.discord_id).first<AppRow>();
-  return apiJson({ ok: true, application: row ? appOut(row) : null });
+  return apiJson({ ok: true, application: row ? await ownApplicationOut219(row) : null });
 }
 
 async function withdrawApplication(env: Env, user: SiteUser): Promise<Response> {
@@ -650,7 +699,7 @@ async function withdrawApplication(env: Env, user: SiteUser): Promise<Response> 
   forgetBoardCounts();
   await audit(env, user.discord_id, "site.application_withdrawn");
   const row = await env.DB.prepare("SELECT * FROM site_applications WHERE discord_id = ?1").bind(user.discord_id).first<AppRow>();
-  return apiJson({ ok: true, application: row ? appOut(row) : null });
+  return apiJson({ ok: true, application: row ? await ownApplicationOut219(row) : null });
 }
 
 /**

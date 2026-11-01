@@ -1,3 +1,4 @@
+import { metadataFields219 } from './guild-calendar-metadata219';
 import {assertOriginalSiteSessionRead,type OriginalSiteSession} from './privacy-site-session-incarnation';
 import './privacy-access-data';
 import './ruleset-publication-data';
@@ -221,7 +222,9 @@ async function finishEventChanges(env: Env, s: CommunitySubject, plan: HistoryPl
         (previous && (r.at < previous.ts || (r.at === previous.ts && r.id <= previous.id)))) return null;
     let fields: unknown;
     try { fields = JSON.parse(r.fields); } catch { return null; }
-    if (!Array.isArray(fields) || fields.length > 6 || fields.some(f => typeof f !== "string" || !EVENT_CHANGE_FIELDS.has(f)) || new Set(fields).size !== fields.length ||
+    const metadata219=r.action==='updated'?metadataFields219(r.fields):null;
+    if(metadata219) fields=metadata219;
+    if (!Array.isArray(fields) || fields.length > 6 || fields.some(f => typeof f !== "string" || !EVENT_CHANGE_FIELDS.has(f) && !(metadata219?.includes(f))) || new Set(fields).size !== fields.length ||
         (r.action === "updated" ? fields.length === 0 : fields.length !== 0)) return null;
     previous = { ts: r.at, id: r.id };
     if (index < 1000) {

@@ -22,13 +22,13 @@ const body218 = String.raw`
   check('.218 every one of40 exact role-specific boundary texts remains sealed', require('node:crypto').createHash('sha256').update(JSON.stringify(boundarySeal218Rows)).digest('hex')===boundarySeal218.specificTextSHA256);
   for(const [key,familyKey,nodeKey] of boundarySeal218.placements){
     const specific=guides[key]?.boundaries.replaceAll(sharedBoundary218,'').trim();
-    const card=page.app.querySelector('[data-role-family203="'+familyKey+'"]'),own=card?.querySelector('[data-role-key201="'+nodeKey+'"]');
+    const card=page.app.querySelector('[data-role-family203="'+familyKey+'"]'),own=card?.querySelector('[data-role-key201="'+nodeKey+'"]') || card?.querySelector('.role-primary203');
     check('.218 '+key+' keeps its sealed boundary in its own declared source scope', !!specific && directory.keyToFamily[key]===familyKey && !!own && own.textContent.includes(specific));
   }
   const all = page.app.querySelectorAll('[data-role-key201]').map(node => node.getAttribute('data-role-key201')).sort();
-  check('.218 every original role/rank/title key remains reachable exactly once', all.length === 140 && new Set(all).size === 140
-    && JSON.stringify(all) === JSON.stringify(Object.keys(directory.keyToFamily).sort())
-    && page.app.querySelectorAll('[data-role-family203]').length === 70);
+  const expectedVisible = directory.families.flatMap(f => [f.primaryKey,...f.variants.filter(v=>['office','region','class'].includes(v.presentation)).map(v=>v.key)]).sort();
+  check('.219 all140 source identities remain mapped while only70 canonical guides and genuine sub-offices render', Object.keys(directory.keyToFamily).length===140 && all.length===new Set(all).size && JSON.stringify(all)===JSON.stringify(expectedVisible) && page.app.querySelectorAll('[data-role-family203]').length===70);
+  check('.219 no duplicate metadata drawers or stitched alias prose', !page.app.textContent.includes('Covered by the') && !page.app.textContent.includes('Related titles & rank details') && !page.app.textContent.includes('Also known as:') && !page.app.querySelector('[data-role-variant-group218="associations"]'));
 
   for (const family of directory.families) {
     const card = page.app.querySelector('[data-role-family203="'+family.key+'"]'), primary = card.querySelector('.role-primary203');
@@ -47,10 +47,8 @@ const body218 = String.raw`
           && guide.expectations.every(text => full.textContent.includes(text)) && full.textContent.includes(guide.commitment)
           && full.textContent.includes(guide.worksWith) && !primary.textContent.includes(guide.definition));
       } else {
-        check('.218 proven alias/rank '+variant.key+' keeps one unified specification', !!node && !node.querySelector('.role-guide201')
-          && primary.textContent.includes(guide.definition) && guide.responsibilities.every(text => primary.textContent.includes(text))
-          && guide.expectations.every(text => primary.textContent.includes(text)) && primary.textContent.includes(guide.commitment)
-          && primary.textContent.includes(guide.worksWith));
+        check('.219 alias/rank '+variant.key+' is searchable through its canonical guide without a stub drawer', !node && directory.keyToFamily[variant.key]===family.key);
+
       }
     }
     if (['leader','high_council','officer_corps'].includes(family.tier) || family.kind === 'institution') {
@@ -63,12 +61,12 @@ const body218 = String.raw`
     const card=page.app.querySelector('[data-role-family203="'+familyKey+'"]');
     check('.218 '+familyKey+' stays one job and one application choice across native aliases', card.querySelectorAll('.role-guide201').length === 1
       && card.querySelectorAll('[data-family-apply203]').length === 1 && sourceKeys.every(key => directory.keyToFamily[key] === familyKey));
-    check('.218 '+familyKey+' keeps its distinct native standing rule once inside the rank drawer', card.querySelector('[data-role-key201="rank_'+familyKey+'"]').textContent.includes(guides['rank_'+familyKey].eligibilityNote)
-      && card.querySelectorAll('.role-standing218').length === 1 && !card.querySelector('.role-primary203').textContent.includes(guides['rank_'+familyKey].eligibilityNote));
+    check('.219 '+familyKey+' native standing is metadata on the main card, without a duplicate specification', !card.querySelector('[data-role-key201="rank_'+familyKey+'"]') && card.querySelector('.role-primary203 .rank-office199').textContent.includes('Slot ') && card.querySelector('.role-primary203').querySelectorAll('.role-guide201').length===1);
+
   }
   const vice=page.app.querySelector('[data-role-key201="office_92"]'), co=page.app.querySelector('[data-role-family203="co_gm"] .role-primary203');
   check('.218 Vice-GM succession duties cannot silently become Co-GM duties', vice.querySelector('.role-guide201').textContent.includes(guides.office_92.commitment)
-    && !co.textContent.includes(guides.office_92.definition) && co.querySelectorAll('.role-reporting218').filter(node=>node.textContent==='Council portfolio: Co-Guild Master / Hand of the Sovereign').length===1 && co.querySelectorAll('p.small.muted').filter(node=>node.textContent==='Co-Guild Master and Vice Guild Master').length===1);
+    && !co.textContent.includes(guides.office_92.definition) && co.querySelectorAll('.role-reporting218').filter(node=>node.textContent==='Council portfolio: Co-Guild Master / Hand of the Sovereign').length===1);
   const councilLineCasesP2=[
     ['co_gm','Council portfolio: Co-Guild Master / Hand of the Sovereign'],
     ['chief_intake','Council portfolio: High Minister of the Chancery & Imperial Census'],
@@ -97,10 +95,10 @@ const body218 = String.raw`
   check('.218 exactly one CLOSED owner-named metadata drawer preserves all ten ordered native slots',rankDrawer218.length===1&&!rankDrawer218[0].open&&nativeSlots218.length===10&&nativeSlots218.every((node,index)=>node.textContent==='Rank '+(index+1)+' '+nativeNames218[index]+' · slot '+index));
   for (const key of ['office_06','office_92','raid_leader_na','class_lead:mage','rank_raider']) {
     await page.go('#/roles/'+encodeURIComponent(key));
-    await waitFor(() => !!page.app.querySelector('[data-role-key201="'+key+'"]'), 'direct scoped guide '+key);
+    const family=directory.families.find(row=>row.key===directory.keyToFamily[key]);
+    await waitFor(() => !!page.app.querySelector('[data-role-family203="'+family.key+'"]'), 'direct scoped guide '+key);
     const node=page.app.querySelector('[data-role-key201="'+key+'"]');
-    check('.218 direct '+key+' links open their own readable group without changing identity', node.open
-      && node.parentElement.open && page.app.querySelector('[data-role-family203="'+directory.keyToFamily[key]+'"]').open);
+    check('.219 direct '+key+' links open the canonical family, retaining real sub-office scope', page.app.querySelector('[data-role-family203="'+family.key+'"]').open && (!node || node.classList.contains('role-primary203') || node.open));
   }
   const reservedNotice218 = 'Leader, High Council and Officer Corps seats are reserved appointments. You cannot apply for them, including when no holder is listed.';
   for (const route of ['#/roles', '#/vote', '#/apply']) {

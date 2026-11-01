@@ -72,8 +72,8 @@ function collectionRows(input: unknown, context: TalentCollectionContext, parseC
     if ('error' in name || seen.has(name.key)) return null;
     const build30 = row.build30 === undefined ? '' : row.build30, build60 = row.build60 === undefined ? '' : row.build60;
     if (typeof build30 !== 'string' || typeof build60 !== 'string' || build30.length > 512 || build60.length > 512) return null;
-    // An empty main anchor may retain later alt builds; it never represents a build itself.
-    if (!build30 && !build60 && (rows.length > 0 || envelope.characters.length < 2)) return null;
+    // .219: named/classed alts are declarations even without optional builds.
+    // They retain the same three-character/2 KiB bound and imply no verification.
     if (!rows.length && (name.name !== context.character || row.class !== context.className)) return null;
     seen.add(name.key); rows.push({ character: name.name, class: row.class, build30, build60, key: name.key });
   }

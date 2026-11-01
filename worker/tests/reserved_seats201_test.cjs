@@ -6,6 +6,7 @@ const fs201=require('node:fs'),path201=require('node:path'),crypto201=require('n
 function prefix201(file,pattern,pin){const source=fs201.readFileSync(path201.join(__dirname,file),'utf8'),cuts=[...source.matchAll(pattern)];if(cuts.length!==1)throw Error('reserved201_original_fixture_boundary');const prefix=source.slice(0,cuts[0].index);if(crypto201.createHash('sha256').update(file==='privacy_native_erasure_mode_test.cjs'?require('./frontend_fixture_prefix217.cjs').historicalBoardNativePrefix217(prefix):prefix).digest('hex')!==pin)throw Error('reserved201_original_fixture_drift');return prefix;}
 
 async function worker201(){
+ call=require("./application_editor219_fixture.cjs").currentApplicationCall219(call);
  const intent=load('./application-track199'),catalogue=load('./governance-offices'),ID='300000000000000001';
  const originalSchema=JSON.stringify(db.prepare('SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name').all());
  const base={position:'member',backups:[],class:'warrior',role:'dps',region:'eu',character:'Reserved Tester',avail:'f'.repeat(42),availTz:'Europe/Stockholm',fallback:true,board:false,ack:true,answers:{experience:'A synthetic membership experience.',why:'Join a fictional guild community.',leadership:'Led a fictional group through an encounter.',scenario:'Listen and apply the agreed rules.',hours:'10to20',voice:'yes'}};

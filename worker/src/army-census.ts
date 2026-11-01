@@ -61,6 +61,9 @@ const digest = async (text: string) => b64u(new Uint8Array(await crypto.subtle.d
 function parsed(row: Row, now: number): ArmySnapshot | null {
   try { if (row.updated_by !== null || row.value.length > 1023) return null; const v = validateArmySnapshot(JSON.parse(row.value), now, false); if (v.observedAt !== row.updated_at || JSON.stringify(v) !== row.value) return null; return v; } catch { return null; }
 }
+// The signed Discord adapter uses the identical closed stored-value validator;
+// this export is not a new receiver, publisher or anonymous delivery route.
+export { parsed as parsedArmySnapshot219 };
 /** All Army delivery is session-dependent, including errors and bodyless HEAD replies. */
 export function privateArmyResponse(request: Request, response: Response): Response {
   const headers = securityHeaders(new Headers(response.headers));

@@ -8,14 +8,14 @@
     {
       "path": "worker/public/static/app.css",
       "mode": "100644",
-      "bytes": 86782,
-      "sha256": "ffaf1e056a14406e0472c3e8fdab74769172cc438a3842a5f6a7a450bb5cad26"
+      "bytes": 86934,
+      "sha256": "d987609878f4459a6b4ac564f6258581603076a721e1941a134dc99b4ed43546"
     },
     {
       "path": "worker/public/static/app.js",
       "mode": "100644",
-      "bytes": 728406,
-      "sha256": "52b792f6a35e86957b269ba211e299b690c28f7a1c80423bd367913f9a00532d"
+      "bytes": 730912,
+      "sha256": "f44d1375e84c6588cb45c9507159a03d3b9aeba1fd0512b2074710dd5e75c7c9"
     },
     {
       "path": "worker/public/static/olympus-icon.png",
@@ -3818,8 +3818,8 @@
     {
       "path": "worker/src/site-data.ts",
       "mode": "100644",
-      "bytes": 59926,
-      "sha256": "6da41c1d9158f99bdfaf0f3dca4b7931a10ef541d8a15450e3d2775825f12847"
+      "bytes": 60038,
+      "sha256": "6657bc72fa1c8528478b3e2b6e82c2d22cb4ea7292ce90ce16f12fc537edb549"
     },
     {
       "path": "worker/src/site-ranks.ts",
@@ -3830,8 +3830,8 @@
     {
       "path": "worker/public/static/app.js",
       "mode": "100644",
-      "bytes": 728406,
-      "sha256": "52b792f6a35e86957b269ba211e299b690c28f7a1c80423bd367913f9a00532d"
+      "bytes": 730912,
+      "sha256": "f44d1375e84c6588cb45c9507159a03d3b9aeba1fd0512b2074710dd5e75c7c9"
     },
     {
       "path": "worker/public/static/rank-planner/app.js",
@@ -3842,8 +3842,8 @@
     {
       "path": "worker/src/site-core.ts",
       "mode": "100644",
-      "bytes": 20749,
-      "sha256": "c813c39582421314a88609ac75c0610412ded1a09cfc217a14f8666e039520ac"
+      "bytes": 20777,
+      "sha256": "afe3a965f64940a3663266d7cf65d6f3c2aaa7bb40c3672273b0743b2b7701bc"
     },
     {
       "path": "tools/build-talent-art.py",
@@ -4076,8 +4076,8 @@
     {
       "path": "worker/public/static/organization-overview205.js",
       "mode": "100644",
-      "bytes": 22510,
-      "sha256": "fcd6da1179d52e78a27543b8a52ca151cfa3956cda7b4cce5b886a8ed833d477"
+      "bytes": 22667,
+      "sha256": "c5eb36b1347002f16be73e70b963c361a72f21da18a936ee9e247eebac61a8c3"
     },
     {
       "path": "worker/public/static/organization-view.js",

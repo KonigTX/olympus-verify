@@ -41,7 +41,8 @@ check('native leadership slots0 through4 are reserved and member standings are n
 check('historical Treasurer key still describes the reserved appointment at Council slot1', guides.rank_treasurer.nativeSlot === 1 && guides.rank_treasurer.eligibility === 'reserved' && /not an additional native rank/.test(guides.rank_treasurer.boundaries));
 for (const position of site.POSITIONS.filter(row => !/^office_\d{2,3}$/.test(row.key))) {
   const guide = complete[position.key];
-  check('legacy detailed copy retained for ' + position.key, !!guide && guide.definition === position.info.about && JSON.stringify(guide.responsibilities) === JSON.stringify(position.info.duties) && JSON.stringify(guide.expectations) === JSON.stringify(position.info.expect) && guide.commitment === position.info.time);
+  const family=load('site-role-directory203').ROLE_DIRECTORY_203.keyToFamily[position.key], edited=load('site-role-editorial219').ROLE_EDITORIAL_219[family];
+  check((edited ? '.219 single edited family specification for ' : 'legacy detailed copy retained for ') + position.key, !!guide && (edited ? guide.definition===edited.definition && JSON.stringify(guide.responsibilities)===JSON.stringify(edited.responsibilities) && JSON.stringify(guide.expectations)===JSON.stringify(edited.expectations) && guide.commitment===edited.commitment && guide.worksWith===edited.worksWith && new Set(guide.responsibilities).size===guide.responsibilities.length : guide.definition === position.info.about && JSON.stringify(guide.responsibilities) === JSON.stringify(position.info.duties) && JSON.stringify(guide.expectations) === JSON.stringify(position.info.expect) && guide.commitment === position.info.time));
 }
 for (const region of ['na', 'eu']) {
   const lead = complete['raid_leader_' + region], assist = complete['raid_assist_' + region];

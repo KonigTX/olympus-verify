@@ -1,5 +1,7 @@
+import { organizerMarkersSql219, organizerMarker219 } from './guild-calendar-metadata219';
+import { guildOrganizerMemberNow219 } from './guild-command-authority219';
 /** Owner task 3 (10 Oct 2026): one explicitly opted reminder, due sixty minutes before the event.
- * The half-hour cron sends at its next eligible tick, not at a promised exact minute. A lost send is held.
+ * The quarter-hour cron sends at its next eligible tick, not at a promised exact minute. A lost send is held.
  * Consent is durable, but execution rechecks today's account/organizer/member facts; it never fabricates a session.
  */
 import type { Env } from "./env";
@@ -16,7 +18,7 @@ interface Event { id: string; title: string; starts_at: number; duration_min: nu
 interface Reminder {
   event_id: string; event_revision: number; starts_at: number; actor: string | null; consent_version: number | null; consent_account_incarnation: string | null;
   guild_id: string; channel_id: string; host: string; op_id: string; claim_nonce: string | null;
-  state: "armed" | "claimed" | "posted" | "refused" | "unknown" | "cancelled" | "removed";
+  organizer_marker?: string; state: "armed" | "claimed" | "posted" | "refused" | "unknown" | "cancelled" | "removed";
   message_id: string | null; frozen_content: string | null; cleanup_requested: number; retain_until: number; mention_ids: string | null;
   created_at: number; updated_at: number; last_attempt_at: number; expired?: number; privacy_generation?: string | null;
 }
@@ -31,8 +33,7 @@ const organizers = (env: Env) => {
 const authority = `EXISTS(SELECT 1 FROM site_users u WHERE u.discord_id=r.actor AND u.session_version=r.consent_version AND r.consent_account_incarnation IS NOT NULL AND typeof(r.consent_account_incarnation)='text' AND length(r.consent_account_incarnation)=32 AND length(CAST(r.consent_account_incarnation AS BLOB))=32 AND instr(r.consent_account_incarnation,char(0))=0 AND r.consent_account_incarnation NOT GLOB '*[^0-9a-f]*' AND u.account_incarnation=r.consent_account_incarnation AND u.denied=0 AND u.in_server=1)
   AND EXISTS(SELECT 1 FROM characters c WHERE c.discord_id=r.actor AND c.status='member')
   AND NOT EXISTS(SELECT 1 FROM members m WHERE m.discord_id=r.actor AND m.banned=1)
-  AND r.actor IN(SELECT value FROM json_each(?2,'$.organizers'))
-  AND EXISTS(SELECT 1 FROM community_events e WHERE e.id=r.event_id AND (e.created_by=r.actor OR r.actor IN(SELECT value FROM json_each(?2,'$.staff'))))`;
+  AND (CASE WHEN json_array_length(${organizerMarkersSql219()})>0 THEN COALESCE(r.actor=json_extract(?2,'$.roleActor'),0) ELSE r.actor IN(SELECT value FROM json_each(?2,'$.organizers')) AND EXISTS(SELECT 1 FROM community_events e WHERE e.id=r.event_id AND (e.created_by=r.actor OR r.actor IN(SELECT value FROM json_each(?2,'$.staff')))) END)`;
 const current = `r.cleanup_requested=0 AND r.retain_until>${DB_NOW} AND EXISTS(SELECT 1 FROM community_events e WHERE e.id=r.event_id
   AND e.reminder_closed=0 AND e.revision=r.event_revision AND e.starts_at=r.starts_at AND e.status='scheduled'
   AND e.starts_at>${DB_NOW} AND e.starts_at<=${DB_NOW}+3600 AND e.starts_at<=e.created_at+366*86400 AND e.retain_until>${DB_NOW})`;
@@ -153,33 +154,36 @@ export async function eventReminderConsent(request: Request, env: Env, ctx: Comm
 
 /** The original Native row is copied before any rotation/provider await. NULL legacy consent never authorizes a new POST. */
 function originalReminderRow(row:Reminder):Readonly<Reminder>{
-  const keys=['event_id','event_revision','starts_at','actor','consent_version','consent_account_incarnation','guild_id','channel_id','host','op_id','claim_nonce','state','message_id','frozen_content','mention_ids','cleanup_requested','retain_until','created_at','updated_at','last_attempt_at','privacy_generation'] as const;
+  const keys=['event_id','event_revision','starts_at','actor','consent_version','consent_account_incarnation','guild_id','channel_id','host','op_id','claim_nonce','state','message_id','frozen_content','mention_ids','cleanup_requested','retain_until','created_at','updated_at','last_attempt_at','privacy_generation','organizer_marker'] as const;
   const copy:Record<string,unknown>={};for(const k of keys){const d=Object.getOwnPropertyDescriptor(row,k);if(!d||!Object.hasOwn(d,'value')||d.get||d.set)throw Error('reminder_original_row_held');copy[k]=d.value;}
   if(copy.consent_account_incarnation!==null)privacyAccountIncarnation(copy.consent_account_incarnation);
   if(copy.privacy_generation!==null&&(typeof copy.privacy_generation!=='string'||copy.privacy_generation.length!==32||Array.from(copy.privacy_generation).some(c=>!('0123456789abcdef'.includes(c)))))throw Error('reminder_original_row_held');
   return Object.freeze(copy) as unknown as Readonly<Reminder>;
 }
 /** One due candidate per invocation; failed prerequisites rotate by last_attempt_at. Unknown sends never enter this scan. */
-export async function runEventReminders(env: Env): Promise<number> {
+export async function runEventReminders(env: Env, selected219?:Readonly<{eventId:string;opId:string}>): Promise<number> {
+  if(selected219 && (!ID.test(selected219.eventId)||!ID.test(selected219.opId)))return 0;
   if (!enabled(env)) return 0;
   const d = destination(env); if (!d) return 0;
-  const nativeRow = await env.DB.prepare(`SELECT r.*,(SELECT generation FROM privacy_subjects WHERE subject_id=r.actor) AS privacy_generation FROM community_event_reminders r WHERE r.state='armed' AND r.consent_account_incarnation IS NOT NULL AND ${current} ORDER BY r.last_attempt_at,r.starts_at,r.event_id LIMIT 1`).first<Reminder>();
+  const nativeRow = await env.DB.prepare(`SELECT r.*,(SELECT generation FROM privacy_subjects WHERE subject_id=r.actor) AS privacy_generation,${organizerMarkersSql219()} AS organizer_marker FROM community_event_reminders r WHERE r.state='armed' AND r.consent_account_incarnation IS NOT NULL AND ${current} AND (?1 IS NULL OR (r.event_id=?1 AND r.op_id=?2)) ORDER BY r.last_attempt_at,r.starts_at,r.event_id LIMIT 1`).bind(selected219?.eventId??null,selected219?.opId??null).first<Reminder>();
   if (!nativeRow) return 0;
   const r=originalReminderRow(nativeRow);if(r.consent_account_incarnation===null)return 0;
   const originalNonce=privacyAccountIncarnation(r.consent_account_incarnation);
+  const roleMode219=organizerMarker219(r.organizer_marker,r.actor,r.op_id);
+  if(roleMode219===null)return 0;
   const rotated = await env.DB.prepare(`UPDATE community_event_reminders SET last_attempt_at=${DB_NOW} WHERE event_id=?1 AND state='armed' AND op_id=?2 RETURNING last_attempt_at`)
     .bind(r.event_id, r.op_id).first<{ last_attempt_at: number }>();
   if (!rotated) return 0;
   if (!r.actor || r.guild_id !== d.guild || r.channel_id !== d.channel || r.host !== d.host || !r.frozen_content) return 0;
   const bot = await qualifyDestination(env, d);
-  if (!bot || !(await eventDiscordMemberPresent(env, r.actor, d.guild))) return 0;
-  const nonce = randomToken(), ids = organizers(env);
+  if (!bot || !(roleMode219 ? await guildOrganizerMemberNow219(env,r.actor,d.guild) : await eventDiscordMemberPresent(env, r.actor, d.guild))) return 0;
+  const nonce = randomToken(), ids = JSON.stringify({...JSON.parse(organizers(env)),marker219:r.organizer_marker,...(roleMode219?{roleActor:r.actor}:{})});
   // Consume the selected consent, not a replacement row or a newly active generation after HTTP awaits.
   // All stored fields stay exact except this invocation's rotation timestamp and claimed state/nonce/time.
   const selected = `${privacyAccountIncarnationLiteralFenceSql('r.consent_account_incarnation',originalNonce)} AND r.op_id=?4 AND r.actor IS ?5 AND r.consent_version IS ?6 AND r.event_revision=?7 AND r.starts_at=?8
     AND r.guild_id=?9 AND r.channel_id=?10 AND r.host=?11 AND r.message_id IS ?12 AND r.frozen_content IS ?13
     AND r.cleanup_requested=?14 AND r.retain_until=?15 AND r.created_at=?16 AND r.last_attempt_at=?17 AND r.updated_at=?18
-    AND ${privacyGenerationLiteralFenceSql("r.actor", r.privacy_generation ?? null)}`;
+    AND ${privacyGenerationLiteralFenceSql("r.actor", r.privacy_generation ?? null)} AND ${organizerMarkersSql219()} IS json_extract(?2,'$.marker219')`;
   const selectedValues = (updatedAt: number) => [r.event_id, ids, nonce, r.op_id, r.actor, r.consent_version,
     r.event_revision, r.starts_at, r.guild_id, r.channel_id, r.host, r.message_id, r.frozen_content,
     r.cleanup_requested, r.retain_until, r.created_at, rotated.last_attempt_at, updatedAt];
@@ -188,10 +192,11 @@ export async function runEventReminders(env: Env): Promise<number> {
     .bind(...selectedValues(r.updated_at), r.claim_nonce).first<{ updated_at: number; mention_ids: string | null }>();
   if (!claim) return 0;
   const mentions = mentionIdsOf(claim.mention_ids), content = reminderContent(r.frozen_content, mentions)!;
+  const prePostRoles219=!roleMode219 || await guildOrganizerMemberNow219(env,r.actor,d.guild);
   // Reconsume the same selected row and generation after claim; no fresh authority is adopted before POST.
   const proof = await env.DB.prepare(`SELECT 1 AS ok FROM community_event_reminders r WHERE event_id=?1 AND state='claimed'
     AND claim_nonce=?3 AND r.mention_ids IS ?19 AND ${recipientsConsentSql("r.")} AND ${selected} AND ${current} AND ${authority}`).bind(...selectedValues(claim.updated_at), claim.mention_ids).first<{ ok: number }>();
-  if (!proof || !enabled(env) || JSON.stringify(destination(env)) !== JSON.stringify(d)) {
+  if (!prePostRoles219 || !proof || !enabled(env) || JSON.stringify(destination(env)) !== JSON.stringify(d)) {
     await env.DB.prepare(`UPDATE community_event_reminders SET state='cancelled',updated_at=${DB_NOW} WHERE event_id=?1 AND claim_nonce=?2 AND state='claimed'`).bind(r.event_id, nonce).run(); return 0;
   }
   let state = "unknown", pointer: string | null = null;
@@ -202,10 +207,12 @@ export async function runEventReminders(env: Env): Promise<number> {
       pointer = sent.value.id; if (exactContent(sent.value, content)) state = "posted";
     }
   } catch { /* unknown transport/redirect/abort/body result stays held; no automatic resend */ }
+  const postRoles219=!roleMode219 || await guildOrganizerMemberNow219(env,r.actor,d.guild).catch(()=>false);
+  const settlementIds219=postRoles219?ids:JSON.stringify({...JSON.parse(ids),roleActor:null});
   const db = privacyProviderCustodyDatabase(env), custody: EventCustodyProof = {
     eventId: r.event_id, revision: r.event_revision, startsAt: r.starts_at, opId: r.op_id, nonce,
     guild: r.guild_id, channel: r.channel_id, pointer: r.message_id, retainUntil: r.retain_until };
-  const originalAuthority = `${privacyAccountIncarnationLiteralFenceSql('r.consent_account_incarnation',originalNonce)} AND (${authority}) AND r.actor=?14 AND r.consent_version=?15 AND ${privacyGenerationLiteralFenceSql("r.actor", r.privacy_generation ?? null)}`;
+  const originalAuthority = `${privacyAccountIncarnationLiteralFenceSql('r.consent_account_incarnation',originalNonce)} AND (${authority}) AND r.actor=?14 AND r.consent_version=?15 AND ${privacyGenerationLiteralFenceSql("r.actor", r.privacy_generation ?? null)} AND ${organizerMarkersSql219()} IS json_extract(?2,'$.marker219')`;
   // A partial account deletion clears consent while the POST is in flight. Keep
   // its known pointer under the original operation tuple; authority below still
   // classifies it as unknown with cleanup required, never as a delivered reminder.
@@ -214,7 +221,7 @@ export async function runEventReminders(env: Env): Promise<number> {
       cleanup_requested=CASE WHEN ?4 IS NOT NULL AND NOT((${current}) AND (${originalAuthority}) AND r.mention_ids IS ?16 AND ${recipientsConsentSql("r.")}) THEN 1 ELSE cleanup_requested END,
       updated_at=${DB_NOW} WHERE event_id=?1 AND claim_nonce=?5 AND op_id=?6 AND guild_id=?7 AND channel_id=?8 AND host=?9
         AND event_revision=?10 AND starts_at=?11 AND retain_until<=?12 AND (message_id IS ?13 OR message_id=?4) AND state IN('claimed','unknown') RETURNING state`)
-      .bind(r.event_id, ids, state, pointer, nonce, r.op_id, r.guild_id, r.channel_id, r.host, r.event_revision, r.starts_at, r.retain_until, r.message_id, r.actor, r.consent_version, claim.mention_ids),
+      .bind(r.event_id, settlementIds219, state, pointer, nonce, r.op_id, r.guild_id, r.channel_id, r.host, r.event_revision, r.starts_at, r.retain_until, r.message_id, r.actor, r.consent_version, claim.mention_ids),
     db.prepare(`INSERT INTO audit(ts,actor,action,subject,details) SELECT ${DB_NOW},'cron','community.event_reminder_delivery',?1,?2 WHERE changes()=1`).bind(r.event_id, JSON.stringify({ result: state })),
     eventAdoptedCustody(db, "event_reminder", custody, state as "posted" | "refused" | "unknown", pointer),
   ]);

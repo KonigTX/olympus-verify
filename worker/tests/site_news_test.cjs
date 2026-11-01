@@ -1505,16 +1505,16 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   },
   {
     "file": "worker/src/index.ts",
-    "startMarker": "const BUILD = \"2026-10-30.218 Guild charter, guides and tools\";",
+    "startMarker": "const BUILD = \"2026-10-31.219 Applications, roles and guild commands\";",
     "singleLine": true,
-    "paragraphSha256": "a442551adf3f6cc49ef7bcf36c6ca9cbe821740196d3587fbc740eb1345cb17a",
-    "paragraphBytes": 63,
+    "paragraphSha256": "4e7581c33c0ccf495b37c098ed9654241678b79abf377eb386f3baf9b027fba8",
+    "paragraphBytes": 70,
     "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
     "count": 0,
-    "ownerRelease": 218,
-    "purpose": "Owner Master218 unique current release label; reviewed Root e925c1e/033bcb2 plus genuine Claude b9fd746 integration. Exact source only; no global allowance.",
-    "predecessorSHA256": "d58127f59f32b4e320a41907a6baecabcfb8cba8e77c11947fe202489bf543f5",
-    "predecessorRelease": 217,
+    "ownerRelease": 219,
+    "purpose": "Owner Build219: exact current label; independent Root review and hosted qualification required. No general vocabulary allowance.",
+    "predecessorSHA256": "a442551adf3f6cc49ef7bcf36c6ca9cbe821740196d3587fbc740eb1345cb17a",
+    "predecessorRelease": 218,
     "currentBuild": true
   },
   {
@@ -1575,6 +1575,22 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
     "count": 1,
     "ownerRelease": 218,
     "purpose": "Owner Master218 explicit reporting/portfolio classification helper in reviewed Root integration; exact unique source line, no global allowance."
+  }
+]);
+  const RETIRED_CONTEXTS219 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-10-30.218 Guild charter, guides and tools\";",
+    "singleLine": true,
+    "paragraphSha256": "a442551adf3f6cc49ef7bcf36c6ca9cbe821740196d3587fbc740eb1345cb17a",
+    "paragraphBytes": 63,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 218,
+    "purpose": "Owner Master218 unique current release label; reviewed Root e925c1e/033bcb2 plus genuine Claude b9fd746 integration. Exact source only; no global allowance.",
+    "predecessorSHA256": "d58127f59f32b4e320a41907a6baecabcfb8cba8e77c11947fe202489bf543f5",
+    "predecessorRelease": 217,
+    "historicalParagraph": "const BUILD = \"2026-10-30.218 Guild charter, guides and tools\";"
   }
 ]);
   const guardedCounts = (text) => {
@@ -1730,7 +1746,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
 
   // .218's exact release label contains no guarded rank term, so it grants zero credit.
   // Keep the byte, duplicate, planted-term and wrong-file refusals without raising ALLOWED or changing GUARD.
-  const buildSpecs217 = CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===218 && spec.file==='worker/src/index.ts'), buildFile217='worker/src/index.ts';
+  const buildSpecs217 = CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===219 && spec.currentBuild===true && spec.file==='worker/src/index.ts'), buildFile217='worker/src/index.ts';
   const buildText217=guarded.find(([file])=>file===buildFile217)[1], buildQualification217=currentContextQualification(buildFile217,buildText217);
   const buildLine217=buildSpecs217.length===1 ? buildQualification217.paragraphs.find(value=>value.startsWith(buildSpecs217[0].startMarker))||'' : '';
   check('.218 pins exactly one current release label with zero guarded vocabulary credit',buildSpecs217.length===1 && buildSpecs217[0].file===buildFile217 && buildSpecs217[0].singleLine===true && buildSpecs217[0].digest===currentDigest && buildSpecs217[0].count===0 && buildQualification217.errors.length===0 && buildQualification217.credits[currentDigest]===0 && Object.keys(guardedCounts(buildLine217)).length===0 && Buffer.byteLength(buildLine217,'utf8')===buildSpecs217[0].paragraphBytes && sha(buildLine217)===buildSpecs217[0].paragraphSha256 && GUARD.size===28 && Object.keys(ALLOWED[buildFile217]).length===1 && ALLOWED[buildFile217][currentDigest]===undefined);
@@ -1762,9 +1778,12 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   check('.218 the retired .216 label cannot satisfy the unique current-label context',sha(retiredBuildLine216)==='aba9f6548957197d62f4a92550d15c1bd1ba084296c1676754b3a51bac1d9d68'&&!CURRENT_CONTEXTS.some(spec=>spec.startMarker===retiredBuildLine216)&&!!buildLine217&&currentContextQualification(buildFile217,buildText217.replace(buildLine217,retiredBuildLine216)).errors.length>0&&vocabularyOverages(buildFile217,buildText217.replace(buildLine217,retiredBuildLine216)).length>0);
 
 
+  const current219=CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===219);
+  check('.219 exact current label retains its .218 predecessor and zero new vocabulary credit',current219.length===1&&current219[0].currentBuild===true&&current219[0].count===0&&current219[0].predecessorSHA256===RETIRED_CONTEXTS219[0].paragraphSha256&&RETIRED_CONTEXTS219.length===1&&sha(RETIRED_CONTEXTS219[0].historicalParagraph)===RETIRED_CONTEXTS219[0].paragraphSha256&&Buffer.byteLength(RETIRED_CONTEXTS219[0].historicalParagraph,'utf8')===RETIRED_CONTEXTS219[0].paragraphBytes);
+  check('.219 the retired .218 label cannot satisfy current custody',!!buildLine217&&currentContextQualification(buildFile217,buildText217.replace(buildLine217,RETIRED_CONTEXTS219[0].historicalParagraph)).errors.length>0);
   // Explicit Master218 scope; original GUARD and ALLOWED remain byte-identical.
   const ownerContexts218=CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===218);
-  check('.218 qualifies exactly seven reviewed successors/new contexts and six digest credits',ownerContexts218.length===7&&ownerContexts218.reduce((sum,spec)=>sum+spec.count,0)===6&&ownerContexts218.every(spec=>spec.digest===currentDigest)&&GUARD.size===28);
+  check('.219 retains six unchanged .218 contexts and their six original digest credits',ownerContexts218.length===6&&ownerContexts218.reduce((sum,spec)=>sum+spec.count,0)===6&&ownerContexts218.every(spec=>spec.digest===currentDigest)&&GUARD.size===28);
   for(const spec of ownerContexts218){
     const text=guarded.find(([file])=>file===spec.file)[1],qualified=currentContextQualification(spec.file,text),paragraph=qualified.paragraphs.find(value=>value.startsWith(spec.startMarker))||'',changed=paragraph.slice(0,-1)+'!';
     check('.218 exact reviewed context '+spec.paragraphSha256.slice(0,12),qualified.errors.length===0&&Buffer.byteLength(paragraph,'utf8')===spec.paragraphBytes&&sha(paragraph)===spec.paragraphSha256&&(guardedCounts(paragraph)[currentDigest]||0)===spec.count);
@@ -1783,7 +1802,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
     check('.218 retired bytes remain uncredited '+spec.paragraphSha256.slice(0,12),!historicalPresent218&&!appendedQualification218.paragraphs.some(paragraph=>sha(paragraph)===spec.paragraphSha256)&&(appendedQualification218.credits[spec.digest]||0)<=(baseline218.credits[spec.digest]||0)&&(spec.count===0?currentContextQualification(spec.file,buildText217.replace(buildLine217,spec.startMarker)).errors.length>0:appendedUncredited218>((ALLOWED[spec.file]||{})[spec.digest]||0)&&overOriginalVocabularyAllowance(spec.file,appendedHits218,appendedQualification218).some(value=>value===spec.file+': digest '+spec.digest.slice(0,12)+' x'+appendedUncredited218)));
   }
   const currentBuildTuple218=/^const BUILD = "(\d{4}-\d{2}-\d{2})\.(\d+) [^"]+";$/.exec(buildLine217),currentNews218=news.RELEASE_NOTES[0];
-  check('.218 exact BUILD version/date equals the newest actual release-note metadata',!!currentBuildTuple218&&currentBuildTuple218[1]==='2026-10-30'&&currentBuildTuple218[2]==='218'&&currentNews218.build==='.'+currentBuildTuple218[2]&&currentNews218.date===currentBuildTuple218[1]);
+  check('.219 exact BUILD version/date equals the newest actual release-note metadata',!!currentBuildTuple218&&currentBuildTuple218[1]==='2026-10-31'&&currentBuildTuple218[2]==='219'&&currentNews218.build==='.'+currentBuildTuple218[2]&&currentNews218.date===currentBuildTuple218[1]);
   const retiredBuildSpec217=RETIRED_CONTEXTS218.find(spec=>spec.ownerRelease===217&&spec.file===buildFile217);
   check('.218 the retired217 label cannot replace or accompany the unique current label',!!retiredBuildSpec217&&currentContextQualification(buildFile217,buildText217.replace(buildLine217,retiredBuildSpec217.startMarker)).errors.length>0&&currentContextQualification(buildFile217,buildText217+'\n'+retiredBuildSpec217.startMarker).errors.length>0&&Object.keys(currentContextQualification('README.md',retiredBuildSpec217.startMarker).credits).length===0);
 

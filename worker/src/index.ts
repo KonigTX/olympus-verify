@@ -1,3 +1,4 @@
+import { isGuildCommand219, guildCommandReadOnly219, handleGuildCommand219 } from './guild-commands219';
 /**
  * olympus-verify Worker — routes
  *   POST /interactions          Discord HTTP interactions (slash commands, buttons)
@@ -398,7 +399,7 @@ const READ_ONLY_ADMIN: ReadonlySet<string> = new Set(["lookup"]);
 export function isReadOnly(i: Interaction): boolean {
   if (i.type !== 2) return false;
   const name = i.data?.name ?? "";
-  if (READ_ONLY_COMMANDS.has(name)) return true;
+  if (READ_ONLY_COMMANDS.has(name) || guildCommandReadOnly219(i)) return true;
   const sub = i.data?.options?.[0];
   return name === "olympus-admin" && sub?.type === 1 && READ_ONLY_ADMIN.has(sub.name);
 }
@@ -516,6 +517,7 @@ async function route(request: Request, env: Env, path: string, schemaReady = tru
         try{const r=await createInteractionRequest(env,request,body);return reply(`Whisper !olympus ${r.code} to an online qualified High Councillor. This code expires in ten minutes. You need no AddOn or website account.`);}
         catch(e){return reply(e instanceof QrHeld?`Councillor verification is held: ${e.code}.`:'Councillor verification is currently held.');}
       }
+      if(isGuildCommand219(i))return handleGuildCommand219(env,i,Number(request.headers.get("X-Signature-Timestamp")),ctx?work=>deferOriginalServing(ctx,"interaction_guild219",work):undefined);
       return await handleInteraction(env, i, ctx ? (label, work) => deferOriginalServing(ctx, label, work) : undefined,roleDispatch);
     };
     // .50 (Codex's second review, 1 Oct 00:05 UTC): a command that only reads is answered afresh every time instead of
@@ -646,7 +648,7 @@ async function freshRegistrationRefused(env: Env, trigger: string): Promise<void
 }
 
 /** Bumped with every change that needs a redeploy, so GET /health shows which build is live. */
-const BUILD = "2026-10-30.218 Guild charter, guides and tools";
+const BUILD = "2026-10-31.219 Applications, roles and guild commands";
 
 /**
  * Presence of each secret (never the value) and a D1 round trip — enough to tell a missing `wrangler secret put` from a

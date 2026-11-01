@@ -1,3 +1,4 @@
+import { rsvpPreferenceSql219 } from './guild-calendar-metadata219';
 /** Closed own-copy collection descriptors. Client strings select a name, never SQL, columns, owners or ordering. */
 import type { Env } from './env';
 import { FormError } from './policy-form-core';
@@ -51,7 +52,7 @@ const sources:Record<PrivacyFamilyHistoryCollection,string>={
  'community.directory.professions':`SELECT rowid AS __history_id,0 AS __history_at,profession,skill,updated_at FROM community_professions WHERE discord_id=?1`,
  'community.directory.alts':`SELECT rowid AS __history_id,0 AS __history_at,name,status,proof,claimed_at,reviewed_at,updated_at FROM community_alt_claims WHERE discord_id=?1`,
  'community.directory.crafts':'SELECT rowid AS __history_id,0 AS __history_at,profession,recipe_name,updated_at FROM community_craft_offers WHERE discord_id=?1',
- 'community.events.signups':'SELECT s.rowid AS __history_id,0 AS __history_at,s.event_id,e.title,e.starts_at,s.status,s.character_name,s.raid_role,s.rsvp_starts_at,s.updated_at,s.remind_mention,s.decision,s.decided_at FROM community_event_signups s LEFT JOIN community_events e ON e.id=s.event_id WHERE s.discord_id=?1',
+ 'community.events.signups':`SELECT s.rowid AS __history_id,0 AS __history_at,s.event_id,e.title,e.starts_at,s.status,s.character_name,s.raid_role,s.rsvp_starts_at,s.updated_at,s.remind_mention,s.decision,s.decided_at,${rsvpPreferenceSql219()} AS preference219 FROM community_event_signups s LEFT JOIN community_events e ON e.id=s.event_id WHERE s.discord_id=?1`,
  'community.events.created':'SELECT rowid AS __history_id,0 AS __history_at,id,title,starts_at,status,created_at,updated_at,ends_at,duration_min,capacity,role_targets,retain_until FROM community_events WHERE created_by=?1',
  'community.events.attendance':'SELECT a.rowid AS __history_id,0 AS __history_at,a.event_id,e.title,e.starts_at,a.state,a.source,a.reason_code,a.recorded_at FROM community_event_attendance a LEFT JOIN community_events e ON e.id=a.event_id WHERE a.discord_id=?1',
  'community.trials.trials':`SELECT t.rowid AS __history_id,0 AS __history_at,CASE WHEN instr(t.status,char(0))>0 THEN json_extract('privacy_copy_unconfirmed','$') ELSE t.status END AS status,t.started_at,t.review_due_at,CASE WHEN instr(t.outcome_reason,char(0))>0 THEN json_extract('privacy_copy_unconfirmed','$') ELSE t.outcome_reason END AS outcome_reason,t.concluded_at,t.created_at,t.updated_at,t.retain_until FROM community_trials t WHERE t.discord_id=?1 AND t.retain_until>${now}`,
@@ -88,7 +89,7 @@ const results=['published','reconciled','removed','admission_changed','discord_r
 const projectedFields:Partial<Record<PrivacyFamilyHistoryCollection,string>>={
  'community.councillor_verification.betaFernWindows':BETA_WINDOW_OWN_FIELDS,
  'community.directory.professions':'profession,skill,updated_at','community.directory.alts':'name,status,proof,claimed_at,reviewed_at,updated_at','community.directory.crafts':'profession,recipe_name,updated_at',
- 'community.events.signups':'event_id,title,starts_at,status,character_name,raid_role,rsvp_starts_at,updated_at,remind_mention,decision,decided_at','community.events.created':'id,title,starts_at,status,created_at,updated_at,ends_at,duration_min,capacity,role_targets,retain_until','community.events.attendance':'event_id,title,starts_at,state,source,reason_code,recorded_at',
+ 'community.events.signups':'event_id,title,starts_at,status,character_name,raid_role,rsvp_starts_at,updated_at,remind_mention,decision,decided_at,preference219','community.events.created':'id,title,starts_at,status,created_at,updated_at,ends_at,duration_min,capacity,role_targets,retain_until','community.events.attendance':'event_id,title,starts_at,state,source,reason_code,recorded_at',
  'community.trials.trials':'status,started_at,review_due_at,outcome_reason,concluded_at,created_at,updated_at,retain_until','community.restrictions.cases':'category,set_at,review_at,expires_at,appeal_status,review_outcome,reviewed_at,acknowledged_at,resolved_at,updated_at,retain_until,active',
  'community.restrictions.watchList':'category,character_name,added_at,review_at,expires_at,renewed_at,renewal_reason','community.departures.departures':'character_name,kind,observed_at,status,created_at,reviewed_at,retain_until',
  'community.contributions.obligations':'guild_scope,period_start,due_at,policy_version,amount_copper,paid,paid_magnitude,eligible,state,acknowledged_at,officer_contact_at,final_notice_at,final_acknowledged_at,final_officer_contact_at,created_at,updated_at,retain_until',

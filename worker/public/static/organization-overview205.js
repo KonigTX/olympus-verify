@@ -90,11 +90,12 @@ export function renderAllianceOverview205(data, ui, onSelectNode) {
   }
   function familyCard(row) {
     const family = row.family, node = nodes.get(row.nodeId), institution = family.kind === "institution", reserved = family.kind === "role" && family.tier !== "member_specialist";
+    const rankRow219 = ui.officeFor219?.(family.primaryKey) || family.sourceKeys.map(key => ui.officeFor219?.(key)).find(row => row?.nativeRankOrdinal);
     const body = h("div", { class: "org-alliance-family-guide" });
     const card = h("details", { class: "org-alliance-family" + (institution ? " org-alliance-institution218" : ""), "data-alliance-family": family.key },
       h("summary", { class: "org-alliance-card-heading" }, posIcon(node.icon), h("span", null, h("strong", { text: family.label }), h("small", { text: institution ? "Collective institution or historical mandate" : TIERS205[family.tier] + (reserved ? " · Reserved appointment" : " · " + (family.kind === "status" ? "Standing or recognition" : "Role or voluntary activity")) }))),
       h("p", { class: "org-alliance-badges" }, h("span", { class: "org-alliance-tier", "data-tier": family.tier, text: institution ? "Governance institution" : TIERS205[family.tier] }),
-        institution ? null : h("span", { class: "small", text: row.slots.length ? row.slots.map(slot => "Rank " + (slot + 1) + " " + model.ranks[slot].label).join(" · ") : "No native rank assigned" })),
+        institution ? null : h("span", { class: "small", text: rankRow219?.nativeRankOrdinal ? "Rank " + rankRow219.nativeRankOrdinal + " " + rankRow219.nativeRankName + " (Slot " + rankRow219.nativeSlot + ") · Title " + rankRow219.codexTitles.join(" / ") : "No native rank assigned" })),
       body,
       h("a", { class: "btn small", href: "#/roles/" + encodeURIComponent(family.key), text: "Open this complete role family" }),
       nodeButton(row.nodeId, "Trace responsibilities"));
@@ -103,7 +104,7 @@ export function renderAllianceOverview205(data, ui, onSelectNode) {
       if (!card.open || loaded) return;
       loaded = true;
       body.append(guide(family.primaryKey, { canonical:true, familyKey:family.key }));
-      for (const [groupKey,title,kinds] of [["offices","Separate offices & remits",["office"]], ["specialisms","Regional & class duties",["region","class"]], ["associations","Related titles & rank details",["alias","native","historical"]]]) {
+      for (const [groupKey,title,kinds] of [["offices","Separate offices & remits",["office"]], ["specialisms","Regional & class duties",["region","class"]]]) {
         const variants = family.variants.filter(variant => kinds.includes(variant.presentation || (["region","class"].includes(variant.kind) ? variant.kind : "office")));
         if (!variants.length) continue;
         const group = h("section", { class:"org-alliance-guide-group218", "data-alliance-guide-group218":groupKey }, h("h4", {text:title}));

@@ -1,3 +1,4 @@
+import { APPLICATION_SPECS_219 } from './application-specs219';
 /**
  * The guild site's fixed vocabulary and every rule about what a submission may contain (build .41, 29 Sep 2026;
  * .43, 30 Sep: raid roles split NA/EU, backup choices, the weekly availability grid, the voting board; .44, 30 Sep:
@@ -798,6 +799,7 @@ export function meta(ruleset?: RulesetSnapshot) {
     talentSnapshotRevision: TALENT_SNAPSHOT_REVISION,
     talentBuilds: TALENT_BUILD_COLLECTION_LIMITS,
     questions: QUESTIONS,
+    applicationSpecs219: APPLICATION_SPECS_219,
     professions: PROFESSIONS,
     ballots: BALLOTS,
     // The .199 seat adapters remain historical vocabulary for old applications.
