@@ -1,0 +1,92 @@
+{
+  "schema": "olympus-site-relay-feed",
+  "version": 1,
+  "producer": "olympus-relay/site.1",
+  "sequence": 83,
+  "generatedAt": 1800001800,
+  "complete": true,
+  "scope": {
+    "id": "forever-pve-alliance",
+    "mappingVersion": 1,
+    "faction": "Alliance"
+  },
+  "guilds": [
+    {
+      "guild": "Olympus",
+      "source": "companion-relay",
+      "basis": "own-roster",
+      "characters": {"status": "available", "value": 500, "precision": "exact", "sourceTime": {"notBefore": 1800001200, "notAfter": 1800001499}, "validUntil": 1800003000},
+      "online": {"status": "available", "value": 0, "precision": "exact", "sourceTime": {"notBefore": 1800001500, "notAfter": 1800001500}, "validUntil": 1800002400}
+    },
+    {
+      "guild": "Olympus I",
+      "source": "companion-relay",
+      "basis": "own-roster",
+      "characters": {"status": "available", "value": 301, "precision": "approximate", "sourceTime": {"notBefore": 1800001200, "notAfter": 1800001499}, "validUntil": 1800003000},
+      "online": {"status": "unavailable", "reason": "no-fresh-quorum", "sourceTime": {"notBefore": 1800000000, "notAfter": 1800000000}}
+    },
+    {
+      "guild": "Olympus II",
+      "source": "companion-relay",
+      "basis": "own-roster",
+      "characters": {"status": "available", "value": 512, "precision": "approximate", "sourceTime": {"notBefore": 1800001200, "notAfter": 1800001499}, "validUntil": 1800003000},
+      "online": {"status": "available", "value": 73, "precision": "approximate", "sourceTime": {"notBefore": 1800001200, "notAfter": 1800001499}, "validUntil": 1800002100}
+    },
+    {
+      "guild": "Olympus III",
+      "source": "companion-relay",
+      "basis": "own-roster",
+      "characters": {"status": "masked", "band": "few", "precision": "exact", "sourceTime": {"notBefore": 1800001500, "notAfter": 1800001500}, "validUntil": 1800003300},
+      "online": {"status": "unavailable", "reason": "complementary-small-group", "sourceTime": {"notBefore": 1800001500, "notAfter": 1800001500}}
+    },
+    {
+      "guild": "Olympus IV",
+      "source": "companion-relay",
+      "basis": "own-roster",
+      "characters": {"status": "unavailable", "reason": "conflict", "sourceTime": {"notBefore": 1800001200, "notAfter": 1800001499}},
+      "online": {"status": "unavailable", "reason": "conflict", "sourceTime": {"notBefore": 1800001200, "notAfter": 1800001499}}
+    },
+    {
+      "guild": "Olympus V",
+      "source": "companion-relay",
+      "basis": "own-roster",
+      "characters": {"status": "unavailable", "reason": "not-observed", "sourceTime": null},
+      "online": {"status": "unavailable", "reason": "not-observed", "sourceTime": null}
+    },
+    {
+      "guild": "Olympus VI",
+      "source": "companion-relay",
+      "basis": "own-roster",
+      "characters": {"status": "unavailable", "reason": "expired", "sourceTime": {"notBefore": 1799999700, "notAfter": 1799999999}},
+      "online": {"status": "unavailable", "reason": "expired", "sourceTime": {"notBefore": 1799999700, "notAfter": 1799999999}}
+    },
+    {
+      "guild": "Olympus VII",
+      "source": "companion-relay",
+      "basis": "own-roster",
+      "characters": {"status": "available", "value": 90, "precision": "exact", "sourceTime": {"notBefore": 1800001500, "notAfter": 1800001500}, "validUntil": 1800003300},
+      "online": {"status": "masked", "band": "few", "precision": "exact", "sourceTime": {"notBefore": 1800001500, "notAfter": 1800001500}, "validUntil": 1800002400}
+    },
+    {
+      "guild": "Olympus VIII",
+      "source": "companion-relay",
+      "basis": "own-roster",
+      "characters": {"status": "available", "value": 241, "precision": "approximate", "sourceTime": {"notBefore": 1800001200, "notAfter": 1800001200}, "validUntil": 1800003000},
+      "online": {"status": "unavailable", "reason": "no-fresh-quorum", "sourceTime": {"notBefore": 1800000000, "notAfter": 1800000000}}
+    },
+    {
+      "guild": "Olympus IX",
+      "source": "companion-relay",
+      "basis": "own-roster",
+      "characters": {"status": "available", "value": 40, "precision": "exact", "sourceTime": {"notBefore": 1800001500, "notAfter": 1800001500}, "validUntil": 1800003300},
+      "online": {"status": "available", "value": 0, "precision": "exact", "sourceTime": {"notBefore": 1800001500, "notAfter": 1800001500}, "validUntil": 1800002400}
+    },
+    {
+      "guild": "Olympus X",
+      "source": "companion-relay",
+      "basis": "own-roster",
+      "characters": {"status": "available", "value": 18, "precision": "exact", "sourceTime": {"notBefore": 1800001500, "notAfter": 1800001500}, "validUntil": 1800003300},
+      "online": {"status": "unavailable", "reason": "complementary-small-group", "sourceTime": {"notBefore": 1800001500, "notAfter": 1800001500}}
+    }
+  ]
+}

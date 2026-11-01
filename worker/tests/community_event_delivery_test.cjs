@@ -160,6 +160,15 @@ async function deleteThroughOriginalRoute(target,actor) {
   r = await call("POST", "/api/community/events/discord/remove", { eventId: EVENT, opId: OP }, ORG, { EVENT_DISCORD_DELIVERY: "" });
   check("explicit cleanup works while publication OFF and deletes only exact known pointer", r.status === 200 && row().state === "removed" && row().message_id === null && row().frozen_content === null && messages.size === 0 && effects().at(-1).method === "DELETE", r);
 
+  // A channel's display name is not routing or authority. Exercise the actual
+  // admitted publisher with renamed channels rather than normalizing names.
+  for (const displayName of ["⚡olympus-verify", "📅raid-schedule", "⚖️the-stockades", "💰imperial-treasury"]) {
+    await seed(); await event();
+    hooks.http = req => req.url === `/api/v10/channels/${CHANNEL}` ? Response.json({ id: CHANNEL, guild_id: GUILD, type: 0, name: displayName }) : undefined;
+    r = await publish();
+    check("emoji channel rename preserves ID-routed publication: " + displayName, r.status === 200 && row().channel_id === CHANNEL && effects().length === 1 && effects()[0].url === `/api/v10/channels/${CHANNEL}/messages`, r);
+  }
+
   for (const [label, response] of [
     ["outage", () => new Response("PRIVATE_MEMBERSHIP_ERROR", { status: 503 })],
     ["not found", () => new Response(null, { status: 404 })],

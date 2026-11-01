@@ -1,0 +1,1072 @@
+{
+  "schema": "olympus-site-relay-feed-fixtures",
+  "version": 1,
+  "status": "reference-proposal-not-production",
+  "privacy": "All identities are invented fixture identifiers. No expected relay wire value contains contributor evidence.",
+  "nonGoals": [
+    "No production endpoint, host, key or credential is represented.",
+    "No signature is generated or cryptographically verified.",
+    "The reference validator checks declared structure and policy coherence; it does not execute the production aggregation or atomic replay-store algorithms.",
+    "These fixtures do not activate or modify the manual export, Army QR or Olympus Link."
+  ],
+  "proposedPolicy": {
+    "scopeId": "forever-pve-alliance",
+    "allowedGuilds": [
+      "Olympus",
+      "Olympus I",
+      "Olympus II",
+      "Olympus III",
+      "Olympus IV",
+      "Olympus V",
+      "Olympus VI",
+      "Olympus VII",
+      "Olympus VIII",
+      "Olympus IX",
+      "Olympus X"
+    ],
+    "minimumQuorum": 2,
+    "strictMajority": true,
+    "characterFreshnessSeconds": 1800,
+    "onlineFreshnessSeconds": 900,
+    "characterTolerance": "PROPOSED: max(5, ceil(0.05 * max(a,b)))",
+    "onlineTolerance": "PROPOSED: max(2, ceil(0.05 * max(a,b)))",
+    "clusterRule": "A valid cluster is pairwise compatible from minimum to maximum; adjacency is never transitively chained.",
+    "medianRule": "OPEN DECISION: lower median or rounded middle-pair median",
+    "manualRelaySeparation": true,
+    "fixtureMedianRule": "rounded-middle-pair-provisional-option-a"
+  },
+  "cases": [
+    {
+      "id": "exact-two-witness-agreement",
+      "kind": "aggregation",
+      "input": {
+        "now": 1800001800,
+        "guild": "Olympus",
+        "metric": "characters",
+        "observations": [
+          {
+            "witness": "fixture-link-a",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001499
+            },
+            "value": 500
+          },
+          {
+            "witness": "fixture-link-b",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001499
+            },
+            "value": 500
+          }
+        ]
+      },
+      "expectedMetric": {
+        "status": "available",
+        "value": 500,
+        "precision": "exact",
+        "sourceTime": {
+          "notBefore": 1800001200,
+          "notAfter": 1800001499
+        },
+        "validUntil": 1800003000
+      }
+    },
+    {
+      "id": "approximate-three-witness-agreement",
+      "kind": "aggregation",
+      "input": {
+        "now": 1800001800,
+        "guild": "Olympus I",
+        "metric": "characters",
+        "observations": [
+          {
+            "witness": "fixture-link-a",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001499
+            },
+            "value": 300
+          },
+          {
+            "witness": "fixture-link-b",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001499
+            },
+            "value": 301
+          },
+          {
+            "witness": "fixture-link-c",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001499
+            },
+            "value": 302
+          }
+        ]
+      },
+      "expectedMetric": {
+        "status": "available",
+        "value": 301,
+        "precision": "approximate",
+        "sourceTime": {
+          "notBefore": 1800001200,
+          "notAfter": 1800001499
+        },
+        "validUntil": 1800003000
+      }
+    },
+    {
+      "id": "different-observation-times-use-conservative-source-interval",
+      "kind": "time-aggregation",
+      "input": {
+        "now": 1800001800,
+        "guild": "Olympus I",
+        "metric": "characters",
+        "observations": [
+          {
+            "witness": "fixture-link-a",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001200
+            },
+            "value": 300
+          },
+          {
+            "witness": "fixture-link-b",
+            "interval": {
+              "notBefore": 1800001260,
+              "notAfter": 1800001260
+            },
+            "value": 300
+          }
+        ]
+      },
+      "expectedMetric": {
+        "status": "available",
+        "value": 300,
+        "precision": "exact",
+        "sourceTime": {
+          "notBefore": 1800001200,
+          "notAfter": 1800001200
+        },
+        "validUntil": 1800003000
+      },
+      "assertion": "The public sourceTime is exactly the oldest participating source bucket; validUntil uses that bucket notBefore."
+    },
+    {
+      "id": "olympus-ii-four-to-one-majority",
+      "kind": "aggregation",
+      "input": {
+        "now": 1800001800,
+        "guild": "Olympus II",
+        "metric": "characters",
+        "observations": [
+          {
+            "witness": "fixture-link-a",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001499
+            },
+            "value": 512
+          },
+          {
+            "witness": "fixture-link-b",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001499
+            },
+            "value": 512
+          },
+          {
+            "witness": "fixture-link-c",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001499
+            },
+            "value": 512
+          },
+          {
+            "witness": "fixture-link-d",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001499
+            },
+            "value": 513
+          },
+          {
+            "witness": "fixture-link-e",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001499
+            },
+            "value": 680
+          }
+        ]
+      },
+      "expectedMetric": {
+        "status": "available",
+        "value": 512,
+        "precision": "approximate",
+        "sourceTime": {
+          "notBefore": 1800001200,
+          "notAfter": 1800001499
+        },
+        "validUntil": 1800003000
+      },
+      "assertion": "Four agreeing observations form the unique strict majority. The wire reveals neither denominator nor partition."
+    },
+    {
+      "id": "single-source-no-quorum",
+      "kind": "aggregation",
+      "input": {
+        "now": 1800001800,
+        "guild": "Olympus III",
+        "metric": "characters",
+        "observations": [
+          {
+            "witness": "fixture-link-a",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001499
+            },
+            "value": 220
+          }
+        ]
+      },
+      "expectedMetric": {
+        "status": "unavailable",
+        "reason": "no-quorum",
+        "sourceTime": {
+          "notBefore": 1800001200,
+          "notAfter": 1800001499
+        }
+      }
+    },
+    {
+      "id": "two-to-two-conflict",
+      "kind": "aggregation",
+      "input": {
+        "now": 1800001800,
+        "guild": "Olympus IV",
+        "metric": "characters",
+        "observations": [
+          {
+            "witness": "fixture-link-a",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001499
+            },
+            "value": 200
+          },
+          {
+            "witness": "fixture-link-b",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001499
+            },
+            "value": 201
+          },
+          {
+            "witness": "fixture-link-c",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001499
+            },
+            "value": 260
+          },
+          {
+            "witness": "fixture-link-d",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001499
+            },
+            "value": 261
+          }
+        ]
+      },
+      "expectedMetric": {
+        "status": "unavailable",
+        "reason": "conflict",
+        "sourceTime": {
+          "notBefore": 1800001200,
+          "notAfter": 1800001499
+        }
+      }
+    },
+    {
+      "id": "nontransitive-chain-conflict",
+      "kind": "aggregation",
+      "input": {
+        "now": 1800001800,
+        "guild": "Olympus V",
+        "metric": "characters",
+        "fixtureTolerance": 5,
+        "observations": [
+          {
+            "witness": "fixture-link-a",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001499
+            },
+            "value": 100
+          },
+          {
+            "witness": "fixture-link-b",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001499
+            },
+            "value": 105
+          },
+          {
+            "witness": "fixture-link-c",
+            "interval": {
+              "notBefore": 1800001200,
+              "notAfter": 1800001499
+            },
+            "value": 110
+          }
+        ]
+      },
+      "expectedMetric": {
+        "status": "unavailable",
+        "reason": "conflict",
+        "sourceTime": {
+          "notBefore": 1800001200,
+          "notAfter": 1800001499
+        }
+      },
+      "assertion": "100 and 110 are incompatible, so the chain cannot become one cluster."
+    },
+    {
+      "id": "verified-linked-account-dedup",
+      "kind": "deduplication",
+      "input": {
+        "guild": "Olympus VI",
+        "observations": [
+          {
+            "account": "fixture-account-a",
+            "character": "fixture-character-a1",
+            "verifiedLinkGroup": "fixture-link-a",
+            "value": 140
+          },
+          {
+            "account": "fixture-account-a",
+            "character": "fixture-character-a2",
+            "verifiedLinkGroup": "fixture-link-a",
+            "value": 140
+          },
+          {
+            "account": "fixture-account-b",
+            "character": "fixture-character-b1",
+            "verifiedLinkGroup": "fixture-link-b",
+            "value": 140
+          }
+        ]
+      },
+      "expectedPrivate": {
+        "deduplicatedWitnessUnits": 2
+      },
+      "expectedMetric": {
+        "status": "available",
+        "value": 140,
+        "precision": "exact",
+        "sourceTime": {
+          "notBefore": 1800001500,
+          "notAfter": 1800001500
+        },
+        "validUntil": 1800003300
+      }
+    },
+    {
+      "id": "unverified-link-claim-remains-nonqualifying",
+      "kind": "deduplication",
+      "input": {
+        "guild": "Olympus VI",
+        "observations": [
+          {
+            "account": "fixture-account-a",
+            "character": "fixture-character-a",
+            "verifiedLinkGroup": "fixture-link-a",
+            "qualifying": true,
+            "value": 140
+          },
+          {
+            "account": "fixture-account-b",
+            "character": "fixture-character-b",
+            "unverifiedClaimedLink": "fixture-link-a",
+            "qualifying": false,
+            "value": 140
+          }
+        ]
+      },
+      "expectedPrivate": {
+        "deduplicatedQualifyingWitnessUnits": 1
+      },
+      "expectedMetric": {
+        "status": "unavailable",
+        "reason": "no-quorum",
+        "sourceTime": {
+          "notBefore": 1800001500,
+          "notAfter": 1800001500
+        }
+      },
+      "assertion": "Under the safer proposed v1 rule, an unverified claim neither merges accounts nor creates quorum."
+    },
+    {
+      "id": "council-alone-cannot-publish",
+      "kind": "authority",
+      "input": {
+        "guild": "Olympus VII",
+        "observations": [
+          {
+            "witness": "fixture-link-council",
+            "councilWitness": true,
+            "councilAuthorityState": "current",
+            "value": 90
+          }
+        ]
+      },
+      "expectedMetric": {
+        "status": "unavailable",
+        "reason": "no-quorum",
+        "sourceTime": {
+          "notBefore": 1800001500,
+          "notAfter": 1800001500
+        }
+      }
+    },
+    {
+      "id": "council-plus-ordinary-count-once-each",
+      "kind": "authority",
+      "input": {
+        "guild": "Olympus VII",
+        "observations": [
+          {
+            "witness": "fixture-link-council",
+            "councilWitness": true,
+            "value": 90
+          },
+          {
+            "witness": "fixture-link-ordinary",
+            "councilWitness": false,
+            "value": 90
+          }
+        ]
+      },
+      "expectedMetric": {
+        "status": "available",
+        "value": 90,
+        "precision": "exact",
+        "sourceTime": {
+          "notBefore": 1800001500,
+          "notAfter": 1800001500
+        },
+        "validUntil": 1800003300
+      }
+    },
+    {
+      "id": "character-quorum-online-stale",
+      "kind": "online",
+      "input": {
+        "now": 1800001800,
+        "guild": "Olympus VIII",
+        "observations": [
+          {
+            "witness": "fixture-link-a",
+            "charactersAt": 1800001200,
+            "characters": 240,
+            "onlineAt": 1800000000,
+            "online": 24
+          },
+          {
+            "witness": "fixture-link-b",
+            "charactersAt": 1800001200,
+            "characters": 241,
+            "onlineAt": 1800000000,
+            "online": 25
+          }
+        ]
+      },
+      "expectedCharacters": {
+        "status": "available",
+        "value": 241,
+        "precision": "approximate",
+        "sourceTime": {
+          "notBefore": 1800001200,
+          "notAfter": 1800001200
+        },
+        "validUntil": 1800003000
+      },
+      "expectedOnline": {
+        "status": "unavailable",
+        "reason": "no-fresh-quorum",
+        "sourceTime": {
+          "notBefore": 1800000000,
+          "notAfter": 1800000000
+        }
+      }
+    },
+    {
+      "id": "online-zero-is-valid",
+      "kind": "online",
+      "input": {
+        "now": 1800001800,
+        "guild": "Olympus IX",
+        "observations": [
+          {
+            "witness": "fixture-link-a",
+            "at": 1800001500,
+            "characters": 40,
+            "online": 0
+          },
+          {
+            "witness": "fixture-link-b",
+            "at": 1800001500,
+            "characters": 40,
+            "online": 0
+          }
+        ]
+      },
+      "expectedCharacters": {
+        "status": "available",
+        "value": 40,
+        "precision": "exact",
+        "sourceTime": {
+          "notBefore": 1800001500,
+          "notAfter": 1800001500
+        },
+        "validUntil": 1800003300
+      },
+      "expectedOnline": {
+        "status": "available",
+        "value": 0,
+        "precision": "exact",
+        "sourceTime": {
+          "notBefore": 1800001500,
+          "notAfter": 1800001500
+        },
+        "validUntil": 1800002400
+      }
+    },
+    {
+      "id": "small-total-masked-after-aggregation",
+      "kind": "masking",
+      "input": {
+        "guild": "Olympus X",
+        "acceptedCharacters": 3
+      },
+      "expectedCharacters": {
+        "status": "masked",
+        "band": "few",
+        "precision": "exact",
+        "sourceTime": {
+          "notBefore": 1800001500,
+          "notAfter": 1800001500
+        },
+        "validUntil": 1800003300
+      },
+      "expectedOnline": {
+        "status": "unavailable",
+        "reason": "complementary-small-group",
+        "sourceTime": {
+          "notBefore": 1800001500,
+          "notAfter": 1800001500
+        }
+      }
+    },
+    {
+      "id": "small-online-masked-after-aggregation",
+      "kind": "masking",
+      "input": {
+        "guild": "Olympus X",
+        "acceptedCharacters": 18,
+        "acceptedOnline": 3
+      },
+      "expectedCharacters": {
+        "status": "available",
+        "value": 18,
+        "precision": "exact",
+        "sourceTime": {
+          "notBefore": 1800001500,
+          "notAfter": 1800001500
+        },
+        "validUntil": 1800003300
+      },
+      "expectedOnline": {
+        "status": "masked",
+        "band": "few",
+        "precision": "exact",
+        "sourceTime": {
+          "notBefore": 1800001500,
+          "notAfter": 1800001500
+        },
+        "validUntil": 1800002400
+      }
+    },
+    {
+      "id": "small-complement-hidden",
+      "kind": "masking",
+      "input": {
+        "guild": "Olympus X",
+        "acceptedCharacters": 18,
+        "acceptedOnline": 16
+      },
+      "expectedCharacters": {
+        "status": "available",
+        "value": 18,
+        "precision": "exact",
+        "sourceTime": {
+          "notBefore": 1800001500,
+          "notAfter": 1800001500
+        },
+        "validUntil": 1800003300
+      },
+      "expectedOnline": {
+        "status": "unavailable",
+        "reason": "complementary-small-group",
+        "sourceTime": {
+          "notBefore": 1800001500,
+          "notAfter": 1800001500
+        }
+      }
+    },
+    {
+      "id": "relay-expiry-withdraws-old-value",
+      "kind": "lifecycle",
+      "input": {
+        "previousSequence": 40,
+        "now": 1800003600,
+        "lastQualifyingInterval": {
+          "notBefore": 1800001200,
+          "notAfter": 1800001499
+        }
+      },
+      "expectedSequence": 41,
+      "expectedMetric": {
+        "status": "unavailable",
+        "reason": "expired",
+        "sourceTime": {
+          "notBefore": 1800001200,
+          "notAfter": 1800001499
+        }
+      }
+    },
+    {
+      "id": "revocation-loses-quorum",
+      "kind": "lifecycle",
+      "input": {
+        "previousSequence": 50,
+        "previousValue": 160,
+        "revokedWitness": "fixture-link-b",
+        "remainingQualifyingWitnesses": [
+          "fixture-link-a"
+        ]
+      },
+      "expectedSequence": 51,
+      "expectedMetric": {
+        "status": "unavailable",
+        "reason": "revoked",
+        "sourceTime": {
+          "notBefore": 1800001500,
+          "notAfter": 1800001500
+        }
+      }
+    },
+    {
+      "id": "erasure-recomputes-and-cannot-recreate",
+      "kind": "lifecycle",
+      "input": {
+        "erase": "fixture-person-erasure-token",
+        "affectedStores": [
+          "accountMappings",
+          "opaqueIdsAndHashes",
+          "claims",
+          "rawObservations",
+          "snapshots",
+          "logs",
+          "backups"
+        ],
+        "remainingQualifyingWitnesses": [
+          "fixture-link-a"
+        ]
+      },
+      "expectedPrivate": {
+        "recompute": true,
+        "backupRestoreMustReapplyDeletion": true
+      },
+      "expectedMetric": {
+        "status": "unavailable",
+        "reason": "deleted",
+        "sourceTime": {
+          "notBefore": 1800001500,
+          "notAfter": 1800001500
+        }
+      }
+    },
+    {
+      "id": "complete-snapshot-disappearance",
+      "kind": "lifecycle",
+      "input": {
+        "previousSequence": 60,
+        "guild": "Olympus IV",
+        "completeSourceSetContainsGuild": false
+      },
+      "expectedSequence": 61,
+      "expectedMetric": {
+        "status": "unavailable",
+        "reason": "withdrawn",
+        "sourceTime": {
+          "notBefore": 1800001500,
+          "notAfter": 1800001500
+        }
+      }
+    },
+    {
+      "id": "explicit-tombstone-row-in-complete-snapshot",
+      "kind": "lifecycle",
+      "input": {
+        "previousSequence": 70,
+        "nextHttpResponseComplete": true,
+        "guild": "Olympus V",
+        "relayState": "withdrawn"
+      },
+      "expectedSequence": 71,
+      "expectedCharacters": {
+        "status": "unavailable",
+        "reason": "withdrawn",
+        "sourceTime": {
+          "notBefore": 1800001500,
+          "notAfter": 1800001500
+        }
+      },
+      "expectedOnline": {
+        "status": "unavailable",
+        "reason": "withdrawn",
+        "sourceTime": {
+          "notBefore": 1800001500,
+          "notAfter": 1800001500
+        }
+      },
+      "assertion": "The tombstone is an explicit row inside an otherwise complete ordered eleven-guild HTTP 200 snapshot, never a partial wire delta."
+    },
+    {
+      "id": "manual-fallback-after-relay-withdrawal",
+      "kind": "site-selection-not-relay-wire",
+      "input": {
+        "relayMetric": {
+          "status": "unavailable",
+          "reason": "revoked",
+          "sourceTime": {
+            "notBefore": 1800001500,
+            "notAfter": 1800001500
+          }
+        },
+        "manualCandidate": {
+          "schema": "olympus-site-aggregate",
+          "valid": true,
+          "value": 158,
+          "precision": "exact",
+          "sourceInterval": {
+            "notBefore": 1800001600,
+            "notAfter": 1800001600
+          }
+        }
+      },
+      "expectedSelection": {
+        "candidate": "manual",
+        "label": "manual",
+        "value": 158
+      },
+      "assertion": "The manual candidate is not serialized into the relay feed and never contributes to relay quorum."
+    },
+    {
+      "id": "upstream-304-identical-snapshot",
+      "kind": "cache",
+      "input": {
+        "ifNoneMatch": "fixture-etag-sequence-82",
+        "now": 1800001800,
+        "currentSequence": 82,
+        "materialSnapshotChanged": false
+      },
+      "expectedHttp": {
+        "status": 304,
+        "body": null,
+        "sequenceRemains": 82
+      },
+      "assertion": "A 304 changes no source interval, validUntil, sequence or candidate age."
+    },
+    {
+      "id": "aging-crosses-expiry-before-304",
+      "kind": "cache",
+      "input": {
+        "ifNoneMatch": "fixture-etag-sequence-82",
+        "now": 1800003600,
+        "currentSequence": 82,
+        "metricValidUntil": 1800003000
+      },
+      "expectedHttp": {
+        "status": 200,
+        "sequence": 83,
+        "etag": "fixture-etag-sequence-83"
+      },
+      "expectedMetric": {
+        "status": "unavailable",
+        "reason": "expired",
+        "sourceTime": {
+          "notBefore": 1800001200,
+          "notAfter": 1800001499
+        }
+      },
+      "assertion": "Expiry is a material transition, so a matching old ETag cannot return 304."
+    },
+    {
+      "id": "rounded-relay-and-exact-manual-overlap",
+      "kind": "site-selection-not-relay-wire",
+      "input": {
+        "relayInterval": {
+          "notBefore": 1800001200,
+          "notAfter": 1800001499
+        },
+        "manualInterval": {
+          "notBefore": 1800001320,
+          "notAfter": 1800001320
+        },
+        "relayValid": true,
+        "manualValid": true
+      },
+      "expectedPrivate": {
+        "ordering": "tie"
+      },
+      "expectedSelection": {
+        "candidate": "manual",
+        "label": "manual"
+      }
+    },
+    {
+      "id": "wrong-scope-is-rejected",
+      "kind": "scope",
+      "input": {
+        "scope": {
+          "realmGroup": "fixture-realm-a+fixture-realm-b",
+          "faction": "Alliance"
+        },
+        "guild": "Olympus"
+      },
+      "expectedRequest": {
+        "accepted": false,
+        "reason": "wrong-scope"
+      }
+    },
+    {
+      "id": "wrong-faction-is-rejected",
+      "kind": "scope",
+      "input": {
+        "scope": {
+          "realmGroup": "forever-pve",
+          "faction": "Horde"
+        },
+        "guild": "Olympus"
+      },
+      "expectedRequest": {
+        "accepted": false,
+        "reason": "wrong-scope"
+      }
+    },
+    {
+      "id": "wrong-guild-is-rejected",
+      "kind": "scope",
+      "input": {
+        "scope": {
+          "realmGroup": "forever-pve",
+          "faction": "Alliance"
+        },
+        "guild": "Fixture Other Guild"
+      },
+      "expectedRequest": {
+        "accepted": false,
+        "reason": "wrong-scope"
+      }
+    },
+    {
+      "id": "jws-structurally-bound-request",
+      "kind": "request-auth-structure",
+      "requestNow": 1800001800,
+      "input": {
+        "header": {
+          "alg": "EdDSA",
+          "kid": "fixture-feed-key-1",
+          "typ": "olympus-feed-request+jwt"
+        },
+        "claims": {
+          "v": 1,
+          "iss": "olympus-site",
+          "aud": "olympus-site-aggregates",
+          "iat": 1800001800,
+          "exp": 1800001860,
+          "jti": "fixture-000102030405060708090a0b0c0d0e0f",
+          "htm": "GET",
+          "htu": "https://relay.fixture.invalid/companion/v1/site/aggregates?v=1&scope=forever-pve-alliance",
+          "scope": "forever-pve-alliance"
+        },
+        "replayStoreResult": "atomically-consumed"
+      },
+      "expectedAuth": {
+        "structurallyAccepted": true,
+        "cryptographicVerification": "not-tested-by-reference-validator"
+      }
+    },
+    {
+      "id": "jws-wrong-alg-rejected",
+      "kind": "request-auth-structure",
+      "input": {
+        "override": {
+          "header.alg": "HS256"
+        }
+      },
+      "expectedAuth": {
+        "structurallyAccepted": false,
+        "reason": "alg"
+      }
+    },
+    {
+      "id": "jws-wrong-kid-rejected",
+      "kind": "request-auth-structure",
+      "input": {
+        "override": {
+          "header.kid": "fixture-unlisted-key"
+        }
+      },
+      "expectedAuth": {
+        "structurallyAccepted": false,
+        "reason": "kid"
+      }
+    },
+    {
+      "id": "jws-wrong-iss-rejected",
+      "kind": "request-auth-structure",
+      "input": {
+        "override": {
+          "claims.iss": "fixture-wrong-issuer"
+        }
+      },
+      "expectedAuth": {
+        "structurallyAccepted": false,
+        "reason": "iss"
+      }
+    },
+    {
+      "id": "jws-wrong-aud-rejected",
+      "kind": "request-auth-structure",
+      "input": {
+        "override": {
+          "claims.aud": "fixture-wrong-audience"
+        }
+      },
+      "expectedAuth": {
+        "structurallyAccepted": false,
+        "reason": "aud"
+      }
+    },
+    {
+      "id": "jws-wrong-method-rejected",
+      "kind": "request-auth-structure",
+      "input": {
+        "override": {
+          "claims.htm": "POST"
+        }
+      },
+      "expectedAuth": {
+        "structurallyAccepted": false,
+        "reason": "htm"
+      }
+    },
+    {
+      "id": "jws-wrong-target-rejected",
+      "kind": "request-auth-structure",
+      "input": {
+        "override": {
+          "claims.htu": "https://relay.fixture.invalid/fixture/wrong"
+        }
+      },
+      "expectedAuth": {
+        "structurallyAccepted": false,
+        "reason": "htu"
+      }
+    },
+    {
+      "id": "jws-wrong-scope-rejected",
+      "kind": "request-auth-structure",
+      "input": {
+        "override": {
+          "claims.scope": "fixture-wrong-scope"
+        }
+      },
+      "expectedAuth": {
+        "structurallyAccepted": false,
+        "reason": "scope"
+      }
+    },
+    {
+      "id": "jws-expiry-over-sixty-seconds-rejected",
+      "kind": "request-auth-structure",
+      "input": {
+        "override": {
+          "claims.iat": 1800001800,
+          "claims.exp": 1800001861
+        }
+      },
+      "expectedAuth": {
+        "structurallyAccepted": false,
+        "reason": "lifetime"
+      }
+    },
+    {
+      "id": "jws-token-expired-rejected",
+      "kind": "request-auth-structure",
+      "requestNow": 1800001800,
+      "input": {
+        "override": {
+          "claims.iat": 1800001700,
+          "claims.exp": 1800001760
+        }
+      },
+      "expectedAuth": {
+        "structurallyAccepted": false,
+        "reason": "expired"
+      }
+    },
+    {
+      "id": "jws-iat-too-far-future-rejected",
+      "kind": "request-auth-structure",
+      "requestNow": 1800001800,
+      "input": {
+        "override": {
+          "claims.iat": 1800001806,
+          "claims.exp": 1800001866
+        }
+      },
+      "expectedAuth": {
+        "structurallyAccepted": false,
+        "reason": "future-iat"
+      }
+    },
+    {
+      "id": "jws-replay-rejected",
+      "kind": "request-auth-structure",
+      "input": {
+        "override": {
+          "claims.jti": "fixture-000102030405060708090a0b0c0d0e0f"
+        },
+        "replayStoreResult": "already-consumed"
+      },
+      "expectedAuth": {
+        "structurallyAccepted": false,
+        "reason": "replay"
+      }
+    }
+  ]
+}
