@@ -1,5 +1,13 @@
 # Discord operator checklist: Verify and Forever
 
+## Current .221 preparation — 1 November 2026
+
+The dated observations below remain history. The .219 operation registered15 Verify commands (six core plus nine guild utilities), and .220 changed the channel guidance without re-registering them. The .221 candidate prepares19: retain all six core entries and their permissions, retain the existing guide/event/raid/reference names, add `/olympus-status`, `/olympus-unlink`, `/olympus-privacy` and `/forever`, update `/workshop` to `search` and private-draft `order`, and append staff `release` and `role-sync` aliases. Only the exact qualified, action-time registration receipt establishes that they are live. `release` can close an open verification request and refuses an existing binding; explicit `unbind` remains a separate reviewed staff action. The namespaced account links open the normal authenticated website controls, and do not erase or unlink immediately. `/olympus-status` keeps the existing status workflow, including any already-authorized guarded role restoration.
+
+The registration planner binds the actual15-command readback and its digest, preserves the six core definitions and permissions, permits only the two named admin additions, and verifies the final19-command readback. Dormant `/olympus-qr`, global commands, application metadata, role assignments and the private companion namespace remain outside this operation. Do not use the historical bulk `register.mjs` for the current catalogue. Workshop commission drafts store no order and notify no crafter; the member reviews and sends their own request.
+
+The34 channel renames and raid topic were already acknowledged in .220. Keep snowflake IDs and the existing `raid-signups` routing key; do not replay renames to match an illustrative emoji spelling. Verify Server Members entitlement is recorded under ticket69051883 with renewal review before23 October2027. This is a REST directory entitlement, not a claim that a Gateway connection or the private companion uses it. Keep shared membership role1552077551839617104 protected in companion current main `b27052c`. Portal toggles, ordinary-member/officer command permissions and actual opted-in reminder delivery require their own live observations; local signed fixtures alone do not prove them.
+
 Audit: 31 October 2026, accepted Verify .218. Checked means observed read-only, not newly changed. This is not a registration/deployment instruction to execute automatically.
 
 ## Developer Portal

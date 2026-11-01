@@ -78,6 +78,14 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".221", date: "2026-11-01", lines: [
+      "Role search handles regional names and punctuation; the rank crosswalk gives one clear portal-access summary.",
+      "Launch guidance advances to the announced first raid date after launch, without inventing a regional raid-unlock time.",
+      "Namespaced account commands open the existing private controls. Forever guides share the current catalogue, and Workshop orders prepare an explicitly unsent commission draft.",
+      "Officer request release cannot unlink an existing character. Database schema, privacy safeguards and optional integration gates are unchanged.",
+    ],
+  },
+  {
     build: ".220", date: "2026-11-01", lines: [
       "Verification and raid instructions name the renamed Discord channels. Existing channel IDs and routing remain unchanged.",
       "Raid notices support RSVP buttons or the website calendar; the raid leader confirms the roster. Reminders still require an explicit organizer opt-in.",

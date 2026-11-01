@@ -120,6 +120,21 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .221 reverses only the exact new evergreen note; all older finite inverses stay intact.
+  const release221 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".221\", date: \"2026-11-01\", lines: [",
+    "      \"Role search handles regional names and punctuation; the rank crosswalk gives one clear portal-access summary.\",",
+    "      \"Launch guidance advances to the announced first raid date after launch, without inventing a regional raid-unlock time.\",",
+    "      \"Namespaced account commands open the existing private controls. Forever guides share the current catalogue, and Workshop orders prepare an explicitly unsent commission draft.\",",
+    "      \"Officer request release cannot unlink an existing character. Database schema, privacy safeguards and optional integration gates are unchanged.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .221 prepend occurs once', originalNews.split(release221).length === 2);
+  originalNews = originalNews.replace(release221, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
   // .220 reverses only the exact new channel-guidance note; historical News stays pinned.
   const release220 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

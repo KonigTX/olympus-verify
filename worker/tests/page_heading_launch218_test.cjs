@@ -172,8 +172,10 @@ async function headingAndLaunch218() {
 
     const passed = await openPage(MEMBER, {}, {clockNow:officialAt+1000}); observe(passed);
     const passedBanner = mainOf(passed).querySelector('.launch-notice218');
-    check('.218 elapsed official time is an announcement rather than an availability claim', passedBanner?.textContent.includes('The announced launch time has passed. Check Blizzard’s service notices for actual service availability.')
-      && !passedBanner.querySelector('[role="timer"]') && !passedBanner.textContent.includes('Open now'));
+    check('.221 elapsed launch advances to the announced raid date without inventing an unlock hour or live availability', passedBanner?.textContent.includes('First raids are announced for 9 December 2026')
+      && passedBanner.textContent.includes('regional opening hour is not confirmed here')
+      && !passedBanner.querySelector('[role="timer"]') && !passedBanner.textContent.includes('Open now')
+      && passedBanner.getAttribute('aria-label') === 'Forever raid schedule');
     check('.218 Home links to an application without implying an editable form is on Home',
       !passedBanner.textContent.includes('in this application') && !!passedBanner.querySelector('a[href="#/apply"]'));
     await fixtureRun("UPDATE site_settings SET value='0' WHERE key='applicationsOpen'");

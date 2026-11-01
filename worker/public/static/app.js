@@ -189,7 +189,7 @@
     const directory = roleDirectory203();
     return frame("Olympus ranks", h("a", { class: "btn small", href: "#/roles/rosetta-stone", text: "Open the Rosetta Stone" }),
       h("a", { class: "btn small", href: "#/organization/alliance-overview", text: "Explore the Alliance organization" }),
-      h("p", { text: "Leader and High Council govern; the Officer Corps administers; members and specialists build the guild. Co-Guild Master and Treasurer are appointments, not extra native ranks. Actual game permissions are set separately by the Guild Master." }),
+      h("p", { text: "Leader and High Council govern; the Officer Corps administers; members and specialists build the guild. Co-Guild Master and Treasurer are appointments, not extra native ranks." }),
       directory ? h("ol", { class: "role-ranks203" }, directory.ranks.map(rank => {
         const source = offices199().find(row => row.group === "native" && row.nativeSlot === rank.nativeSlot);
         return h("li", null, h("a", { href: "#/roles/" + encodeURIComponent(rank.familyKey), "data-rank-family203": rank.familyKey, "data-native-slot": String(rank.nativeSlot) },
@@ -205,17 +205,27 @@
     return h("details", { class: "card rosetta199", id: "role-rosetta-stone", tabindex: "-1", open }, h("summary", { text: "Olympus Role & Rank Rosetta Stone" }),
       h("p", { text: "101 stable offices and 137 assignable keys share this bridge, including the dedicated High Council Head of Trading & Markets. Display classification and an application do not confer an office, game rank, Discord role or portal access. Olympus Link remains OFF; /oly discord is a future qualified verification path, not a currently active admission shortcut." }),
       h("table", { class: "rosetta-table199" }, h("thead", null, h("tr", null, headings.map(text => h("th", { scope: "col", text })))), h("tbody", null, ranks199().map(rank => {
-        const rows = offices199().filter(row => row.nativeSlot === rank.nativeSlot), tiers = [...new Set(rows.map(row => row.tierLabel))], titles = [...new Set(rows.flatMap(row => row.codexTitles || []))];
+        const rows = offices199().filter(row => row.nativeSlot === rank.nativeSlot), tiers = [...new Set(rows.map(row => row.tierLabel))], titleOrder = ["I", "II", "III", "IV", "V"], titles = [...new Set(rows.flatMap(row => row.codexTitles || []))].sort((a,b) => titleOrder.indexOf(a) - titleOrder.indexOf(b));
         const cells = [h("strong", { text: `Rank ${rank.nativeRankOrdinal} ${rank.name}` }), h("div", null, tiers.join(" / "), h("br"), h("a", { href: "#/governance", text: `Title ${titles.join(" / ") || "I–V"}` })),
           h("details", null, h("summary", { text: `${rows.length} mapped office / assignment keys` }), h("ul", null, rows.map(row => {
             const family = directory?.families.find(item => item.key === directory.keyToFamily[row.key]);
             return h("li", null, h("a", { href: "#/organization/" + encodeURIComponent(row.key), text: family?.kind === "institution" ? family.label : row.applicationLabel || row.label }), " · ", row.ministry || row.department,
               roleReporting218(row,family,{includeMinistry:false}) ? " · " + roleReporting218(row,family,{includeMinistry:false}) : "");
           }))),
-          h("p", { text: [...new Set(rows.map(row => row.discordPortal))].join(" ") || "Olympus Guild Member; cosmetic tithe tiers and Broadcaster / Stream Shield are separate consented labels and capabilities." }),
+          h("p", { text: rankPortalSummary221(rank.nativeSlot) }),
           h("p", null, rank.nativeSlot < 5 ? "Reserved appointment; no public application." : "Membership, raiding and artisan work use the role directory; other standing and titles require their own review. ", rank.nativeSlot >= 5 ? h("a", {href:"#/vote",text:"Explore the role directory"}) : null)];
         return h("tr", { "data-rank-crosswalk": String(rank.nativeRankOrdinal) }, cells.map((cell, i) => h("td", { "data-column": headings[i] }, cell)));
       }))));
+  }
+  function rankPortalSummary221(slot) {
+    const summaries = [
+      "Olympus Guild Leader; administrative, bank and signing capabilities follow the Guild Master’s explicit delegation.",
+      "High Council access requires a current verified appointment and the permission for the task. Co-GM and Treasurer have separately checked Treasury access.",
+      "Olympus Officer; calendar organization and officer-tier Treasury access use current server-side permission checks.",
+      "Officer Alt records an officer’s alternate character under that officer’s existing account and delegated remit.",
+      "Olympus Raid Leader; raid organization and officer-tier Treasury access use current server-side permission checks."
+    ];
+    return summaries[slot] || "Olympus Guild Member after verification. Cosmetic Tithe Tiers and the consented Broadcaster / Stream Shield capability are separate from native rank.";
   }
   function officeTierPanels199() {
     return [["leader", "Leader & Royal Appointments"], ["high_council", "High Council Roles"], ["officer_corps", "Officer Corps Roles"], ["member_specialist", "Member & Specialist Roles"]].map(([tier, label]) => frame(label, null,
@@ -420,8 +430,11 @@
     if (royalWritsVisible200() && onChoose) sections.push(h("details", {class:"role-section201","data-role-section201":"patron"},
       h("summary", {text:"Royal Patron & Flagship charter requests"}), h("p", {text:track199("patron")?.description || "Reviewed voluntary charter requests; no purchased authority."}),
       h("button", {type:"button",class:"btn small",text:"Review the Patron application",disabled:admissionClosed219,onclick:() => onChoose({applicationTrack:"patron",targetOffice:null})})));
-    const matchesText203 = (text,value) => value.length <= 2 && /^[a-z0-9]+$/.test(value)
-      ? text.split(/[^\p{L}\p{N}]+/u).includes(value) : text.includes(value);
+    const searchWords221 = text => String(text).normalize("NFKC").toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
+    const matchesText203 = (text,value) => {
+      const terms = searchWords221(value), words = searchWords221(text);
+      return terms.length > 0 && terms.every(term => term.length <= 2 ? words.includes(term) : words.some(word => word.includes(term)));
+    };
     function filter() {
       const value = search.value.trim().toLowerCase(); let matches = 0;
       for (const entry of entries) {
@@ -2621,16 +2634,22 @@
   }
 
   function launchApplicationCopy218(applicationEditable) {
-    return h("p", {class:"launch-application-copy218"}, applicationEditable ? "Claim names in game while eligible, then record your Main and declared Alts in this application. " : "Claim eligible names in game. Record your Main and declared Alts on your guild application when applications are open. ",
-      !applicationEditable ? h("a", {href:"#/apply",text:"View your guild application"}) : null, " · ", h("a", {href:"#/names",text:"Keep your reserved-name list current"}), ". The website neither reserves names nor verifies character ownership.");
+    const reservationDatePassed = new Date(nowSec() * 1000).toISOString().slice(0,10) > "2026-11-03";
+    const instruction = reservationDatePassed
+      ? applicationEditable ? "Record your Main and declared Alts in this application. " : "Record your Main and declared Alts on your guild application when applications are open. "
+      : applicationEditable ? "Claim names in game while eligible, then record your Main and declared Alts in this application. " : "Claim eligible names in game. Record your Main and declared Alts on your guild application when applications are open. ";
+    return h("p", {class:"launch-application-copy218"}, instruction,
+      !applicationEditable ? h("a", {href:"#/apply",text:"View your guild application"}) : null, !applicationEditable ? " · " : null, h("a", {href:"#/names",text:"Keep your reserved-name list current"}), ". The website neither reserves names nor verifies character ownership.");
   }
   function launchNotice218({applicationEditable = false} = {}) {
     const announcedLaunch = 1793833200; // Blizzard: 4 November 2026, 23:00 UTC; independent of the editable guild admission schedule.
     const live = nowSec() >= announcedLaunch;
-    return h("aside", {class:"launch-notice218", "aria-label":"Forever global launch"},
-      h("p", {class:"launch-notice-title218"}, h("strong", {text:live ? "World of Warcraft: Forever launch time has arrived" : "November 4 · Forever global launch"})),
-      live ? h("p", {text:"The announced launch time has passed. Check Blizzard’s service notices for actual service availability."}) : countdown(announcedLaunch, {onDone:refreshWhenClean}),
+    const raidDatePassed = new Date(nowSec() * 1000).toISOString().slice(0,10) > "2026-12-09";
+    return h("aside", {class:"launch-notice218", "aria-label":live ? "Forever raid schedule" : "Forever global launch"},
+      h("p", {class:"launch-notice-title218"}, h("strong", {text:live ? raidDatePassed ? "Forever raids · announced date passed" : "9 December · first Forever raids" : "November 4 · Forever global launch"})),
+      live ? h("p", {text:raidDatePassed ? "The announced raid date has passed. Check Blizzard’s service notices and the game for actual availability." : "First raids are announced for 9 December 2026: Barrow Deeps, Hyjal Summit and Onyxia’s Lair. This is a calendar date; the regional opening hour is not confirmed here."}) : countdown(announcedLaunch, {onDone:refreshWhenClean}),
       h("p", {text:"4 November 2026 · 23:00 UTC · 3:00 PM PST. Early in-game name reservation: 27 October–3 November for eligible purchases, up to three characters total across rulesets."}),
+      live ? h("p", null,h("a", {href:"https://news.blizzard.com/en-us/article/24315820/world-of-warcraft-forever-goes-live-globally-november-4",target:"_blank",rel:"noopener noreferrer",text:"Blizzard’s announced launch and raid schedule"})) : null,
       launchApplicationCopy218(applicationEditable));
   }
   ROUTES.apply = function apply(main) {

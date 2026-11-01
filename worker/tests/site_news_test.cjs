@@ -1241,12 +1241,14 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
     "file": "worker/public/static/app.js",
     "startMarker": "      h(\"p\", { text: \"Leader and High Council govern;",
     "singleLine": true,
-    "paragraphSha256": "02b3d34889f0d5141a35285db5f80bbc649d2dff5893828f62d193c0a0d830c8",
-    "paragraphBytes": 266,
+    "paragraphSha256": "2fbac0c92635e93bc8f1560085f47fad5f89cf75caec43412165a0fb73c4cca7",
+    "paragraphBytes": 202,
     "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
     "count": 1,
     "ownerRelease": 199,
-    "purpose": "Direct owner199 rank/office/Rosetta/application bridge; exact file, source line, bytes and digest count only."
+    "purpose": "Direct owner199 rank/office/Rosetta/application bridge; exact file, source line, bytes and digest count only. Owner evergreen copy cleanup removes one duplicate scope sentence; the same one guarded occurrence remains.",
+    "editorialPredecessorSHA256": "02b3d34889f0d5141a35285db5f80bbc649d2dff5893828f62d193c0a0d830c8",
+    "editorialRelease": 221
   },
   {
     "file": "worker/public/static/app.js",
@@ -1505,16 +1507,16 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   },
   {
     "file": "worker/src/index.ts",
-    "startMarker": "const BUILD = \"2026-11-01.220 Discord channel guidance\";",
+    "startMarker": "const BUILD = \"2026-11-01.221 Guild guides and command workflows\";",
     "singleLine": true,
-    "paragraphSha256": "f07de5c926c34a288989535d4c6e9935e2a89a2079cc4cab270e191bee19cbb4",
-    "paragraphBytes": 56,
+    "paragraphSha256": "cbd275af4a1a6783ff84b52981226926064ba3d277a1dd8d5942f2a90d1cd858",
+    "paragraphBytes": 66,
     "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
     "count": 0,
-    "ownerRelease": 220,
-    "purpose": "Owner channel-name follow-up: one exact current release label, zero new vocabulary credit.",
-    "predecessorSHA256": "4e7581c33c0ccf495b37c098ed9654241678b79abf377eb386f3baf9b027fba8",
-    "predecessorRelease": 219,
+    "ownerRelease": 221,
+    "purpose": "Owner evergreen release: exact current build label only, no new guarded-vocabulary allowance.",
+    "predecessorSHA256": "f07de5c926c34a288989535d4c6e9935e2a89a2079cc4cab270e191bee19cbb4",
+    "predecessorRelease": 220,
     "currentBuild": true
   },
   {
@@ -1575,6 +1577,33 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
     "count": 1,
     "ownerRelease": 218,
     "purpose": "Owner Master218 explicit reporting/portfolio classification helper in reviewed Root integration; exact unique source line, no global allowance."
+  },
+  {
+    "file": "worker/public/static/app.js",
+    "startMarker": "      \"High Council access requires a current verified appointment and the permission for the task. Co-GM and Treasurer have separately checked Treasury access.\",",
+    "singleLine": true,
+    "paragraphSha256": "97d8468b48b0a0aaafeeaf4d953fd035f9afd07ec7d5d4675b16c5b3352b4110",
+    "paragraphBytes": 162,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 221,
+    "purpose": "One canonical rank-2 portal summary in the Rosetta table, replacing concatenated per-office descriptions; exact source line only."
+  }
+]);
+  const RETIRED_CONTEXTS221 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-01.220 Discord channel guidance\";",
+    "singleLine": true,
+    "paragraphSha256": "f07de5c926c34a288989535d4c6e9935e2a89a2079cc4cab270e191bee19cbb4",
+    "paragraphBytes": 56,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 220,
+    "purpose": "Owner channel-name follow-up: one exact current release label, zero new vocabulary credit.",
+    "predecessorSHA256": "4e7581c33c0ccf495b37c098ed9654241678b79abf377eb386f3baf9b027fba8",
+    "predecessorRelease": 219,
+    "historicalParagraph": "const BUILD = \"2026-11-01.220 Discord channel guidance\";"
   }
 ]);
   const RETIRED_CONTEXTS220 = Object.freeze([
@@ -1685,15 +1714,15 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   const iconText = guarded.find(([file]) => file === iconFile)[1];
   const qualifiedIcon = currentContextQualification(iconFile, iconText);
   const originalIconContext = qualifiedIcon.paragraphs[0] || "";
-  check("current app contexts qualify exactly29 pinned lineage and Master218 reporting contexts", qualifiedIcon.errors.length === 0 && qualifiedIcon.paragraphs.length === 29 && qualifiedIcon.credits[currentDigest] === 31 && Object.keys(qualifiedIcon.credits).length === 1);
+  check("current app contexts qualify exactly30 pinned lineage and Master218 reporting contexts", qualifiedIcon.errors.length === 0 && qualifiedIcon.paragraphs.length === 30 && qualifiedIcon.credits[currentDigest] === 32 && Object.keys(qualifiedIcon.credits).length === 1);
   const extraIconText = `${iconText}\n\n${approvedGram}`;
   const extraIconQualification = currentContextQualification(iconFile, extraIconText);
-  check("an extra occurrence outside the29 exact approved app contexts remains restricted", !!approvedGram && extraIconQualification.errors.length === 0 && extraIconQualification.credits[currentDigest] === 31 && vocabularyOverages(iconFile, extraIconText).some((s) => s.includes(`${currentDigest.slice(0, 12)} x1`)));
+  check("an extra occurrence outside the30 exact approved app contexts remains restricted", !!approvedGram && extraIconQualification.errors.length === 0 && extraIconQualification.credits[currentDigest] === 32 && vocabularyOverages(iconFile, extraIconText).some((s) => s.includes(`${currentDigest.slice(0, 12)} x1`)));
   const changedIconContext = originalIconContext ? `${originalIconContext.slice(0, -1)}!` : "";
   check("an icon-context byte edit cannot borrow the fixed qualification", !!originalIconContext && currentContextQualification(iconFile, iconText.replace(originalIconContext, changedIconContext)).errors.length > 0 && vocabularyOverages(iconFile, iconText.replace(originalIconContext, changedIconContext)).length > 0);
   check("a duplicate icon context cannot create another qualification", !!originalIconContext && currentContextQualification(iconFile, `${iconText}\n\n${originalIconContext}`).errors.length > 0 && vocabularyOverages(iconFile, `${iconText}\n\n${originalIconContext}`).length > 0);
   check("approved icon bytes in another guarded file receive no qualification", !!originalIconContext && vocabularyOverages("README.md", originalIconContext).some((s) => s.includes(currentDigest.slice(0, 12))) && Object.keys(currentContextQualification("README.md", originalIconContext).credits).length === 0);
-  const otherIconDigestOver = overOriginalVocabularyAllowance(iconFile, { [currentDigest]: 31, [otherDigest]: 1 }, qualifiedIcon);
+  const otherIconDigestOver = overOriginalVocabularyAllowance(iconFile, { [currentDigest]: 32, [otherDigest]: 1 }, qualifiedIcon);
   check("every other icon-file digest retains its original allowance", !!otherDigest && [...GUARD].filter((d) => d !== currentDigest).every((d) => qualifiedIcon.credits[d] === undefined) && otherIconDigestOver.length === 1 && otherIconDigestOver.some((s) => s.includes(otherDigest.slice(0, 12))) && !otherIconDigestOver.some(s => s.includes("credit exceeds")));
   const titleIISpec = CURRENT_CONTEXTS.find(spec => spec.singleLine), titleIIContext = qualifiedIcon.paragraphs.find(text => text.startsWith(titleIISpec.startMarker)) || "";
   check(".198 Title II qualification is one exact 146-byte line with only its single approved digest", titleIISpec.singleLine === true && Buffer.byteLength(titleIIContext, "utf8") === 146 && sha(titleIIContext) === titleIISpec.paragraphSha256 && titleIIContext.split("\n").length === 1 && JSON.stringify(guardedCounts(titleIIContext)) === JSON.stringify({ [currentDigest]: 1 }));
@@ -1726,8 +1755,8 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   const retiredNativeAlias201=RETIRED_CONTEXTS218.filter(spec=>spec.paragraphSha256==='c58fa50d176a4d413750ec8f47eef7c115a101a270d38ee501c82523a08a95ea');
   check('.201 retains all14 context lineages as13 current plus one removed native-alias paragraph without raising any original allowance',ownerContexts201.length === 13 && retiredNativeAlias201.length===1 && retiredNativeAlias201[0].ownerRelease===201 && retiredNativeAlias201[0].digest===currentDigest && retiredNativeAlias201[0].count===1 && GUARD.size === 28 && ownerContexts201.every(spec=>spec.digest===currentDigest));
   const retiredNativeText201=retiredNativeAlias201[0]?.historicalParagraph||'';
-  check('.218 retired native-alias bytes and their punctuation edit receive no current credit',!!retiredNativeText201&&[retiredNativeText201,retiredNativeText201.slice(0,-1)+'!'].every(line=>{const value=iconText+'\n'+line,q=currentContextQualification(iconFile,value);return q.errors.length===0&&q.credits[currentDigest]===31&&!q.paragraphs.includes(line)&&vocabularyOverages(iconFile,value).some(value=>value===iconFile+': digest '+currentDigest.slice(0,12)+' x1');}));
-  check('.218 duplicated retired native-alias bytes cannot multiply a current credit',!!retiredNativeText201&&currentContextQualification(iconFile,iconText+'\n'+retiredNativeText201+'\n'+retiredNativeText201).credits[currentDigest]===31&&vocabularyOverages(iconFile,iconText+'\n'+retiredNativeText201+'\n'+retiredNativeText201).some(value=>value===iconFile+': digest '+currentDigest.slice(0,12)+' x2'));
+  check('.218 retired native-alias bytes and their punctuation edit receive no current credit',!!retiredNativeText201&&[retiredNativeText201,retiredNativeText201.slice(0,-1)+'!'].every(line=>{const value=iconText+'\n'+line,q=currentContextQualification(iconFile,value);return q.errors.length===0&&q.credits[currentDigest]===32&&!q.paragraphs.includes(line)&&vocabularyOverages(iconFile,value).some(value=>value===iconFile+': digest '+currentDigest.slice(0,12)+' x1');}));
+  check('.218 duplicated retired native-alias bytes cannot multiply a current credit',!!retiredNativeText201&&currentContextQualification(iconFile,iconText+'\n'+retiredNativeText201+'\n'+retiredNativeText201).credits[currentDigest]===32&&vocabularyOverages(iconFile,iconText+'\n'+retiredNativeText201+'\n'+retiredNativeText201).some(value=>value===iconFile+': digest '+currentDigest.slice(0,12)+' x2'));
   check('.218 retired native-alias bytes in another file remain unqualified',!!retiredNativeText201&&Object.keys(currentContextQualification('README.md',retiredNativeText201).credits).length===0&&vocabularyOverages('README.md',retiredNativeText201).some(value=>value==='README.md: digest '+currentDigest.slice(0,12)+' x1'));
   for(const spec of ownerContexts201){
     const text=guarded.find(([file])=>file===spec.file)[1],qualified=currentContextQualification(spec.file,text),paragraph=qualified.paragraphs.find(value=>value.startsWith(spec.startMarker))||'',changed=paragraph?paragraph.slice(0,-1)+'!':'';
@@ -1762,7 +1791,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
 
   // .218's exact release label contains no guarded rank term, so it grants zero credit.
   // Keep the byte, duplicate, planted-term and wrong-file refusals without raising ALLOWED or changing GUARD.
-  const buildSpecs217 = CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===220 && spec.currentBuild===true && spec.file==='worker/src/index.ts'), buildFile217='worker/src/index.ts';
+  const buildSpecs217 = CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===221 && spec.currentBuild===true && spec.file==='worker/src/index.ts'), buildFile217='worker/src/index.ts';
   const buildText217=guarded.find(([file])=>file===buildFile217)[1], buildQualification217=currentContextQualification(buildFile217,buildText217);
   const buildLine217=buildSpecs217.length===1 ? buildQualification217.paragraphs.find(value=>value.startsWith(buildSpecs217[0].startMarker))||'' : '';
   check('.218 pins exactly one current release label with zero guarded vocabulary credit',buildSpecs217.length===1 && buildSpecs217[0].file===buildFile217 && buildSpecs217[0].singleLine===true && buildSpecs217[0].digest===currentDigest && buildSpecs217[0].count===0 && buildQualification217.errors.length===0 && buildQualification217.credits[currentDigest]===0 && Object.keys(guardedCounts(buildLine217)).length===0 && Buffer.byteLength(buildLine217,'utf8')===buildSpecs217[0].paragraphBytes && sha(buildLine217)===buildSpecs217[0].paragraphSha256 && GUARD.size===28 && Object.keys(ALLOWED[buildFile217]).length===1 && ALLOWED[buildFile217][currentDigest]===undefined);
@@ -1794,10 +1823,14 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   check('.218 the retired .216 label cannot satisfy the unique current-label context',sha(retiredBuildLine216)==='aba9f6548957197d62f4a92550d15c1bd1ba084296c1676754b3a51bac1d9d68'&&!CURRENT_CONTEXTS.some(spec=>spec.startMarker===retiredBuildLine216)&&!!buildLine217&&currentContextQualification(buildFile217,buildText217.replace(buildLine217,retiredBuildLine216)).errors.length>0&&vocabularyOverages(buildFile217,buildText217.replace(buildLine217,retiredBuildLine216)).length>0);
 
 
-  const current220=CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===220);
-  check('.220 exact current label retains its .219 predecessor and zero new vocabulary credit',current220.length===1&&current220[0].currentBuild===true&&current220[0].count===0&&current220[0].predecessorSHA256===RETIRED_CONTEXTS220[0].paragraphSha256&&RETIRED_CONTEXTS220.length===1&&sha(RETIRED_CONTEXTS220[0].historicalParagraph)===RETIRED_CONTEXTS220[0].paragraphSha256&&Buffer.byteLength(RETIRED_CONTEXTS220[0].historicalParagraph,'utf8')===RETIRED_CONTEXTS220[0].paragraphBytes);
-  check('.220 preserves the .219 to .218 predecessor custody',RETIRED_CONTEXTS220[0].predecessorSHA256===RETIRED_CONTEXTS219[0].paragraphSha256&&RETIRED_CONTEXTS219.length===1&&sha(RETIRED_CONTEXTS219[0].historicalParagraph)===RETIRED_CONTEXTS219[0].paragraphSha256);
-  for(const spec of [...RETIRED_CONTEXTS220,...RETIRED_CONTEXTS219])check('.220 a retired label cannot satisfy current custody '+spec.ownerRelease,!!buildLine217&&currentContextQualification(buildFile217,buildText217.replace(buildLine217,spec.historicalParagraph)).errors.length>0);
+  const current221=CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===221&&spec.currentBuild===true);
+  check('.221 exact current label retains its .220 predecessor and zero new vocabulary credit',current221.length===1&&current221[0].count===0&&current221[0].predecessorSHA256===RETIRED_CONTEXTS221[0].paragraphSha256&&RETIRED_CONTEXTS221.length===1&&sha(RETIRED_CONTEXTS221[0].historicalParagraph)===RETIRED_CONTEXTS221[0].paragraphSha256&&Buffer.byteLength(RETIRED_CONTEXTS221[0].historicalParagraph,'utf8')===RETIRED_CONTEXTS221[0].paragraphBytes);
+  check('.221 preserves .220 through .218 predecessor custody',RETIRED_CONTEXTS221[0].predecessorSHA256===RETIRED_CONTEXTS220[0].paragraphSha256&&RETIRED_CONTEXTS220[0].predecessorSHA256===RETIRED_CONTEXTS219[0].paragraphSha256&&RETIRED_CONTEXTS219.length===1&&sha(RETIRED_CONTEXTS219[0].historicalParagraph)===RETIRED_CONTEXTS219[0].paragraphSha256);
+  for(const spec of [...RETIRED_CONTEXTS221,...RETIRED_CONTEXTS220,...RETIRED_CONTEXTS219])check('.221 a retired label cannot satisfy current custody '+spec.ownerRelease,!!buildLine217&&currentContextQualification(buildFile217,buildText217.replace(buildLine217,spec.historicalParagraph)).errors.length>0);
+  const portal221=CURRENT_CONTEXTS.find(spec=>spec.ownerRelease===221&&spec.file===iconFile);
+  const portalText221=qualifiedIcon.paragraphs.find(value=>value.startsWith(portal221.startMarker))||'';
+  check('.221 portal access grants only its one exact source-line credit',sha(portalText221)===portal221.paragraphSha256&&Buffer.byteLength(portalText221,'utf8')===portal221.paragraphBytes&&guardedCounts(portalText221)[currentDigest]===1);
+  check('.221 changed, duplicated or cross-file portal text cannot borrow credit',vocabularyOverages(iconFile,iconText.replace(portalText221,portalText221+'!')).length>0&&vocabularyOverages(iconFile,iconText+'\n'+portalText221).length>0&&Object.keys(currentContextQualification('README.md',portalText221).credits).length===0);
   // Explicit Master218 scope; original GUARD and ALLOWED remain byte-identical.
   const ownerContexts218=CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===218);
   check('.219 retains six unchanged .218 contexts and their six original digest credits',ownerContexts218.length===6&&ownerContexts218.reduce((sum,spec)=>sum+spec.count,0)===6&&ownerContexts218.every(spec=>spec.digest===currentDigest)&&GUARD.size===28);
@@ -1819,7 +1852,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
     check('.218 retired bytes remain uncredited '+spec.paragraphSha256.slice(0,12),!historicalPresent218&&!appendedQualification218.paragraphs.some(paragraph=>sha(paragraph)===spec.paragraphSha256)&&(appendedQualification218.credits[spec.digest]||0)<=(baseline218.credits[spec.digest]||0)&&(spec.count===0?currentContextQualification(spec.file,buildText217.replace(buildLine217,spec.startMarker)).errors.length>0:appendedUncredited218>((ALLOWED[spec.file]||{})[spec.digest]||0)&&overOriginalVocabularyAllowance(spec.file,appendedHits218,appendedQualification218).some(value=>value===spec.file+': digest '+spec.digest.slice(0,12)+' x'+appendedUncredited218)));
   }
   const currentBuildTuple218=/^const BUILD = "(\d{4}-\d{2}-\d{2})\.(\d+) [^"]+";$/.exec(buildLine217),currentNews218=news.RELEASE_NOTES[0];
-  check('.220 exact BUILD version/date equals the newest actual release-note metadata',!!currentBuildTuple218&&currentBuildTuple218[1]==='2026-11-01'&&currentBuildTuple218[2]==='220'&&currentNews218.build==='.'+currentBuildTuple218[2]&&currentNews218.date===currentBuildTuple218[1]);
+  check('.221 exact BUILD version/date equals the newest actual release-note metadata',!!currentBuildTuple218&&currentBuildTuple218[1]==='2026-11-01'&&currentBuildTuple218[2]==='221'&&currentNews218.build==='.'+currentBuildTuple218[2]&&currentNews218.date===currentBuildTuple218[1]);
   const retiredBuildSpec217=RETIRED_CONTEXTS218.find(spec=>spec.ownerRelease===217&&spec.file===buildFile217);
   check('.218 the retired217 label cannot replace or accompany the unique current label',!!retiredBuildSpec217&&currentContextQualification(buildFile217,buildText217.replace(buildLine217,retiredBuildSpec217.startMarker)).errors.length>0&&currentContextQualification(buildFile217,buildText217+'\n'+retiredBuildSpec217.startMarker).errors.length>0&&Object.keys(currentContextQualification('README.md',retiredBuildSpec217.startMarker).credits).length===0);
 
