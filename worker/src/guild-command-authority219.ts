@@ -8,7 +8,7 @@ import { officerRoles } from './env';
 import { now } from './db';
 import { userOf, type Interaction } from './discord';
 import { DB_NOW } from './community-context';
-import { discordMemberFenceSql } from './community-event-buttons';
+import { discordMemberFenceSql } from './discord-member-fence219';
 import { destination, discord } from './community-event-delivery';
 import { privacyAccountIncarnation, readPrivacySubject } from './privacy-serving-authority';
 

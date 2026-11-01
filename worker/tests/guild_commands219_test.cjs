@@ -29,6 +29,7 @@ async function guildCommands219(){
  const create219=async(who=ORG)=>send219('raid','schedule',{title:'Synthetic .219 raid',starts:new Date((at()+1800)*1000).toISOString(),minutes:120,capacity:10,details:'Synthetic preparation notes.'},who);
  await fresh219();
  const authority219=load('./guild-command-authority219');
+ check('command member SQL remains exactly the legacy button proof without importing its role lane',load('./discord-member-fence219').discordMemberFenceSql(7,null,'0'.repeat(32))===load('./community-event-buttons').discordMemberFenceSql(7,null,'0'.repeat(32))&&load('./discord-member-fence219').discordMemberFenceSql(1,'1'.repeat(32),'2'.repeat(32))===load('./community-event-buttons').discordMemberFenceSql(1,'1'.repeat(32),'2'.repeat(32)));
  for(const [label,body] of [['pending',{user:{id:ORG,bot:false},pending:true,roles:[OFFICER]}],['pending-malformed',{user:{id:ORG,bot:false},pending:'false',roles:[OFFICER]}],['bot',{user:{id:ORG,bot:true},pending:false,roles:[OFFICER]}],['bot-malformed',{user:{id:ORG,bot:'false'},pending:false,roles:[OFFICER]}]]){
   hooks.http=async()=>Response.json(body);check(label+' current member response cannot authorize a staff write',!await authority219.guildOrganizerMemberNow219(directEnv(over219),ORG,GUILD));
  }
