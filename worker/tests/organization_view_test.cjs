@@ -89,6 +89,7 @@ syntheticCountView208.dispose();
 const wide205=open({overview205:true});
 check('.221 the interactive full map is open immediately alongside the readable alliance overview',wide205.one('org-relationship-map205').open&&!!wide205.one('org-alliance'));
 check('.221 the live map comes before the long alliance guide',wide205.main.children.indexOf(wide205.one('org-relationship-map205'))<wide205.main.children.indexOf(wide205.one('org-alliance')));
+check('.221 the chart controls precede the rank and Council reading sections',wide205.one('org-relationship-map205').children.indexOf(wide205.one('org-chart-location'))<wide205.one('org-relationship-map205').children.indexOf(wide205.one('org-rank-guide'))&&wide205.one('org-relationship-map205').children.indexOf(wide205.one('org-chart-location'))<wide205.one('org-relationship-map205').children.indexOf(wide205.one('org-council-overview')));
 const deepOffice205=open({overview205:true,parts:['office_27']});
 check('.205 an existing office deep link reveals its complete mandate inside the outer map',deepOffice205.one('org-relationship-map205').open&&deepOffice205.doc.activeElement===deepOffice205.detail&&deepOffice205.detail.textContent.includes('Crafter'));
 const deepNode205=open({overview205:true,parts:['treasury']});
