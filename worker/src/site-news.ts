@@ -78,6 +78,13 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".220", date: "2026-11-01", lines: [
+      "Verification and raid instructions name the renamed Discord channels. Existing channel IDs and routing remain unchanged.",
+      "Raid notices support RSVP buttons or the website calendar; the raid leader confirms the roster. Reminders still require an explicit organizer opt-in.",
+      "This guidance update changes no permissions, privacy rules, database schema or optional integration gates.",
+    ],
+  },
+  {
     build: ".219", date: "2026-10-31", lines: [
       "Submitted and Under review applications can be edited in place. Original submission and review history stay on record.",
       "Main, declared alts, class, specialization, optional builds, availability, track and notes can be updated. Old or stale editors must reload before saving.",

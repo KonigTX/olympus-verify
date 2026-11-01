@@ -2357,7 +2357,7 @@
       flash,
       S.reapply ? h("div", { class: "mt" }, noticeBox("warn", "icon-warning", // .114: a rename Blizzard required (the Worker's rename_holds)
         h("p", null, h("strong", { text: "Apply again. " }), `Blizzard required your character ${S.reapply.from} to be renamed (now ${S.reapply.to}), so Olympus asks you to apply again.`),
-        h("p", null, "Open ", h("a", { href: "#/apply", text: "Apply" }), ` and save your application once more, and verify ${S.reapply.to} again in Discord with Get my code in #join-olympus. Unless another of your characters is in the guild, your Guild Member role is on hold until the leadership approves the new application.`))) : null,
+        h("p", null, "Open ", h("a", { href: "#/apply", text: "Apply" }), ` and save your application once more, and verify ${S.reapply.to} again in Discord with Get my code in #⚡olympus-verify. Unless another of your characters is in the guild, your Guild Member role is on hold until the leadership approves the new application.`))) : null,
       seats,
       h("section", { class: "frame mt", "data-addon-promotion": "olympus-guild" },
         h("h2", { text: "Olympus in game" }),
@@ -5517,7 +5517,7 @@
       h("p", { text: "Community viewing is available to site administrators and current guild members. Sign in with the linked Discord account that has the Guild Member role, or confirm a character through the current roster." }),
       h("details", { class: "membership-help" }, h("summary", { text: "How to confirm your character" }),
         h("ol", null,
-          h("li", { text: "In Discord, open #join-olympus and choose Get my code, or use /verify. Follow the bot's current instructions." }),
+          h("li", { text: "In Discord, open #⚡olympus-verify and choose Get my code, or use /verify. Follow the bot's current instructions." }),
           h("li", { text: "Send the displayed verification line from the character you want linked. The officer's checked addon verifies that character; the current roster export must then confirm its guild membership." }),
           h("li", { text: "Use My status or /verify-status in the bot to check progress. If the character is already verified but these pages remain locked, ask an Olympus officer to check the current roster record. Keep the code private." })),
         h("a", { href: "#/guide/member", text: "Read the member guide" })),
@@ -6456,9 +6456,9 @@
     const reconcile = h("button", { class: "btn small", type: "button", text: "Check existing message" });
     const link = h("div", { class: "btn-row" });
     add(panel, frame("Discord announcement", h("a", { class: "btn small", href: eventHref(id), text: "Back to event" }),
-      h("p", { text: "Preview the announcement before publishing it to raid-signups. It contains the event title, time, duration and calendar link. Sign-ups stay on the website; this message does not ping members." }), status, preview, exactDetails, link,
+      h("p", { text: "Preview the announcement before publishing it to #📅raid-schedule. It contains the event title, time, duration and calendar link. Members can RSVP with its buttons or on the website; only the raid leader confirms the roster. This message does not ping members." }), status, preview, exactDetails, link,
       h("div", { class: "btn-row" }, publish, remove, refresh),
-      fieldBox("event-discord-message", "Find an announcement after a lost answer", message, { hint: "Open raid-signups in Discord, copy the bot's message link, then check it here. Checking an existing message does not post another one." }), reconcile));
+      fieldBox("event-discord-message", "Find an announcement after a lost answer", message, { hint: "Open #📅raid-schedule in Discord, copy the bot's message link, then check it here. Checking an existing message does not post another one." }), reconcile));
     const buttons = () => {
       const d = current && current.delivery, held = d && ["claimed", "unknown"].includes(d.state);
       publish.textContent = d && d.state === "posted" ? "Update announcement" : "Publish announcement";
@@ -6535,7 +6535,7 @@
     const preview = h("pre", { class: "details", style: "white-space:pre-wrap;overflow-wrap:anywhere" });
     const link = h("div", { class: "btn-row" });
     add(panel, frame("Optional raid reminder", null,
-      h("p", { text: "Opt in separately for one reminder in raid-signups, with this event's title, time and calendar link. It does not ping or name attendees. It becomes due sixty minutes before the start; the half-hour scheduler sends at its next eligible tick. Outages or a busy queue can delay or prevent delivery; nothing is sent after the event starts." }),
+      h("p", { text: "Opt in separately for one reminder in #📅raid-schedule, with this event's title, time and calendar link. It does not ping or name attendees. It becomes due sixty minutes before the start; the half-hour scheduler sends at its next eligible tick. Outages or a busy queue can delay or prevent delivery; nothing is sent after the event starts." }),
       status, preview, h("label", { class: "check field", for: "event-reminder-consent" }, choice, "I want one reminder for this event revision"),
       h("div", { class: "btn-row" }, arm, stop, refresh), link,
       fieldBox("event-reminder-message", "Find a reminder after a lost answer", message), h("div", { class: "btn-row" }, check, remove)));

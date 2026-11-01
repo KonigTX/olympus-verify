@@ -120,6 +120,20 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .220 reverses only the exact new channel-guidance note; historical News stays pinned.
+  const release220 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".220\", date: \"2026-11-01\", lines: [",
+    "      \"Verification and raid instructions name the renamed Discord channels. Existing channel IDs and routing remain unchanged.\",",
+    "      \"Raid notices support RSVP buttons or the website calendar; the raid leader confirms the roster. Reminders still require an explicit organizer opt-in.\",",
+    "      \"This guidance update changes no permissions, privacy rules, database schema or optional integration gates.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .220 prepend occurs once', originalNews.split(release220).length === 2);
+  originalNews = originalNews.replace(release220, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
   // .219 reverses only this uniquely counted owner release note.
   const release219 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
