@@ -1,6 +1,6 @@
-// .201 owner decision: reserved appointments stay readable historical evidence,
-// but cannot be requested through a current application save. Real Worker and
-// original Native E2 SQLite/OAuth fixtures; only Discord HTTP is synthetic.
+// .201 reserves new appointment requests; .219 permits owners to edit the exact
+// retained open selection with a current editor token. Real Worker and original
+// Native E2 SQLite/OAuth fixtures; only Discord HTTP is synthetic.
 'use strict';
 const fs201=require('node:fs'),path201=require('node:path'),crypto201=require('node:crypto'),{Module}=require('node:module');
 function prefix201(file,pattern,pin){const source=fs201.readFileSync(path201.join(__dirname,file),'utf8'),cuts=[...source.matchAll(pattern)];if(cuts.length!==1)throw Error('reserved201_original_fixture_boundary');const prefix=source.slice(0,cuts[0].index);if(crypto201.createHash('sha256').update(file==='privacy_native_erasure_mode_test.cjs'?require('./frontend_fixture_prefix217.cjs').historicalBoardNativePrefix217(prefix):prefix).digest('hex')!==pin)throw Error('reserved201_original_fixture_drift');return prefix;}
@@ -67,14 +67,23 @@ async function worker201(){
 
 async function native201(){
  const f=fixture();try{
-  const cookie=await f.signIn(ID);await f.signIn(OTHER);await seedPersonal(f,{roles:0});
+  const cookie=await f.signIn(ID),otherCookie=await f.signIn(OTHER);await seedPersonal(f,{roles:0});
   const originalSchema=JSON.stringify(f.rows("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name"));
   const history={applicationTrack:'high_council',targetOffice:'office_03',boardApplicationIntentOptIn:true,extra:'Historical reserved Native .201 sentinel.'};
-  await f.write("UPDATE site_applications SET position='office_03',answers=? WHERE discord_id=?",JSON.stringify(history),ID);
-  const before=JSON.stringify(f.raw('SELECT * FROM site_applications WHERE discord_id=?',ID));
-  const payload={position:'office_03',applicationTrack:'high_council',targetOffice:'office_03',backups:[],class:'warrior',role:'dps',region:'eu',character:'Native Target',fallback:true,ack:true,board:true,avail:'f'.repeat(42),answers:{experience:'Synthetic Native reserved experience.',why:'Synthetic Native reserved service.',voice:'yes'}};
-  const denied=await f.call('PUT','/api/application',{cookie,body:payload}),deniedBody=await denied.json();
-  check('actual Native-ON save refuses reserved seats without modifying historical application',denied.status===403&&deniedBody.error==='reserved_seat'&&JSON.stringify(f.raw('SELECT * FROM site_applications WHERE discord_id=?',ID))===before);
+  await f.write("UPDATE site_applications SET position='office_03',answers=?,status='reviewing',admin_note='Retained staff review sentinel.',reviewed_by=?,reviewed_at=? WHERE discord_id=?",JSON.stringify(history),OTHER,clock-20,ID);
+  const before=f.raw('SELECT * FROM site_applications WHERE discord_id=?',ID),beforeBytes=JSON.stringify(before);
+  const payload={position:'office_03',applicationTrack:'high_council',targetOffice:'office_03',backups:[],class:'warrior',role:'dps',region:'eu',character:'Native Target',fallback:true,ack:true,board:true,avail:'f'.repeat(42),answers:{experience:'Synthetic Native reserved experience.',why:'Synthetic Native reserved service.',leadership:'Led a fictional group through a raid.',scenario:'Listen to each person and apply the agreed rules.',hours:'10to20',voice:'yes',extra:history.extra}};
+  const opened=await f.call('GET','/api/me',{cookie}),openedBody=await opened.json();
+  check('Native retained editor obtains its real own exact-content token',opened.status===200&&typeof openedBody.application?.editToken==='string');
+  const editToken=openedBody.application.editToken;
+  const missing=await f.call('PUT','/api/application',{cookie,body:payload}),missingBody=await missing.json();
+  check('Native retained reserved edit without its editor token refuses without changing the row',missing.status===409&&missingBody.error==='stale_application'&&JSON.stringify(f.raw('SELECT * FROM site_applications WHERE discord_id=?',ID))===beforeBytes);
+  const rearranged=await f.call('PUT','/api/application',{cookie,body:{...payload,targetOffice:'office_04',editToken}}),rearrangedBody=await rearranged.json();
+  check('Native retained edit cannot replace its reserved seat with a different reserved request',rearranged.status===403&&rearrangedBody.error==='reserved_seat'&&JSON.stringify(f.raw('SELECT * FROM site_applications WHERE discord_id=?',ID))===beforeBytes);
+  const fresh=await f.call('PUT','/api/application',{cookie:otherCookie,body:{...payload,editToken:null}}),freshBody=await fresh.json();
+  check('Native new reserved request cannot create another account application or change the retained row',fresh.status===403&&freshBody.error==='reserved_seat'&&!f.raw('SELECT 1 FROM site_applications WHERE discord_id=?',OTHER)&&JSON.stringify(f.raw('SELECT * FROM site_applications WHERE discord_id=?',ID))===beforeBytes);
+  const saved=await f.call('PUT','/api/application',{cookie,body:{...payload,editToken}}),savedBody=await saved.json(),after=f.raw('SELECT * FROM site_applications WHERE discord_id=?',ID);
+  check('actual Native-ON retained reserved edit preserves creation time, reserved intent and staff review history',saved.status===200&&savedBody.application.position==='office_03'&&JSON.parse(after.answers).applicationTrack==='high_council'&&JSON.parse(after.answers).targetOffice==='office_03'&&after.created_at===before.created_at&&after.status===before.status&&after.admin_note===before.admin_note&&after.reviewed_by===before.reviewed_by&&after.reviewed_at===before.reviewed_at);
   const ordinary=await f.call('GET','/api/me/export',{cookie}),own=await ordinary.json();
   check('Native own-copy retains original historical High Council intent',ordinary.status===200&&own.site.application.answers.applicationTrack==='high_council'&&own.site.application.answers.targetOffice==='office_03');
   const entryPage=await f.call('GET','/privacy/access'),entryHtml=await entryPage.text(),entryMatch=/name="csrf" value="([^"]+)"/.exec(entryHtml);

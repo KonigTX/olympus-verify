@@ -46,7 +46,7 @@ export const ROLE_EDITORIAL_219 = {
     "expectations": [
       "Treat people respectfully in game and on Discord, including when a group struggles.",
       "Keep officers informed about an extended absence when your branch’s published activity policy asks for it.",
-      "Respect each team’s attendance, loot and roster decisions without assuming membership guarantees a place."
+      "Respect each team’s attendance, loot and roster decisions. The 1,000-character branch cap is a planning boundary; actual game capacity is separately unverified, and membership guarantees no team place."
     ],
     "commitment": "Play at your own pace; there is no universal weekly quota. Honour the schedule of any team or event you choose to join.",
     "worksWith": "Fellow members, Recruiters, Mentors and activity organizers."
@@ -214,7 +214,7 @@ export const ROLE_EDITORIAL_219 = {
   "worksWith": "Regional PvP Leads, PvP Captains and willing teammates."
 },
   "pvp_leadership": {
-    "definition": "The regional or branch PvP Lead organizes optional battleground premades and agreed competitive events for Olympus’s PvE Alliance community. This Officer Corps role delivers the local programme; the alliance-wide Grand Marshal of PvP remains a separate Council portfolio.",
+    "definition": "The regional or branch PvP Lead organizes optional battleground premades and agreed competitive events for Olympus’s Alliance community on the PvE ruleset. This Officer Corps role delivers the local programme; the alliance-wide Grand Marshal of PvP remains a separate Council portfolio.",
     "responsibilities": [
       "Publish optional PvP nights and keep the willing team’s availability, roles and composition current.",
       "Prepare strategy and practice sessions, assign Captains and call or delegate target priorities in voice.",

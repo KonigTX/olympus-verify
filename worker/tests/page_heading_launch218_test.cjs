@@ -85,16 +85,26 @@ async function headingAndLaunch218() {
     await page.go('#/apply');
     check('.218 an available Apply form alone uses editable-form instructions',!!mainOf(page).querySelector('form')
       && mainOf(page).querySelector('.launch-notice218').textContent.includes('in this application'));
-    // Retained private boot fixtures exercise two historical read-only client branches.
-    for(const [track218,office218,title218] of [['officer','office_62','Reserved seats — applications are closed'],['patron',null,'Patron applications are paused']]) {
+    // .219 exposes an editor for retained open reserved/paused applications;
+    // merely opening it must not change their private choices or sharing.
+    for(const [track218,office218] of [['officer','office_62'],['patron',null]]) {
       const answers218={applicationTrack:track218,targetOffice:office218,boardApplicationIntentOptIn:false};
       const historical218={id:MEMBER,status:'submitted',position:track218==='officer'?'officer':'member',backups:[],character:'Heading Reader',class:'warrior',role:'dps',region:'na',answers:answers218,createdAt:now,updatedAt:now};
       const retained218=await openPage(MEMBER,{}, {clockNow:earlyClock,bootTransform:b=>{b.application=structuredClone(historical218);b.settings.royalWritsOn=false;}});
+      observe(retained218);
       await retained218.go('#/apply');const prior218=JSON.stringify(retained218.boot.application);
-      check('.218 retained '+track218+' no-form branch keeps neutral instructions and original private choices',
-        mainOf(retained218).textContent.includes(title218) && !mainOf(retained218).querySelector('form')
-        && !mainOf(retained218).querySelector('.launch-notice218').textContent.includes('in this application')
+      const retainedMain218=mainOf(retained218),retainedForm218=retainedMain218.querySelector('form');
+      check('.219 retained '+track218+' editor keeps appropriate instructions and original private choices',
+        !!retainedForm218 && retainedMain218.textContent.includes('Save changes updates this application in place.')
+        && retainedMain218.querySelector('.launch-notice218').textContent.includes('in this application')
         && JSON.stringify(retained218.boot.application)===prior218 && prior218===JSON.stringify(historical218));
+      check('.219 retained '+track218+' editor preserves exactly one primary heading with later frame titles at H2',
+        headings(retainedMain218).length===1 && headings(retainedMain218)[0].textContent==='Your application'
+        && frameTitles(retainedMain218).slice(1).every(node=>node.tagName==='H2'));
+      check('.219 retained '+track218+' editor does not infer separate board sharing consent',
+        !!retainedForm218 && ['#board-portrait-opt-in','#board-talent-builds-opt-in','#board-application-intent199'].every(selector=>{
+          const input=retainedForm218.querySelector(selector);return !!input && input.checked===false;
+        }));
     }
     await page.go('#/community/news');
     await must(() => mainOf(page).textContent.includes('The road to launch'), 'actual News road-to-launch response');
