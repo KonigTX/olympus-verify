@@ -4082,8 +4082,8 @@
     {
       "path": "worker/public/static/organization-view.js",
       "mode": "100644",
-      "bytes": 37217,
-      "sha256": "dd700342c7a7fd9929af9e639e9662566294072c0e328c49c4afa39c270fdc52"
+      "bytes": 37185,
+      "sha256": "c0396ada7078b6640856c0cbea38d237cd1c55511e9837f80675b35884fa3f3a"
     },
     {
       "path": "worker/public/static/qr-beta-window-data.html",

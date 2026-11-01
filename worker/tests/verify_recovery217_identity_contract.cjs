@@ -4,7 +4,7 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const sha=v=>crypto.createHash('sha256').update(typeof v==='string'||Buffer.isBuffer(v)?v:JSON.stringify(v)).digest('hex');
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
-const SOURCE_SHA='ebdf0262e17ede0fd8ad408a2a671fd6b5fd9593646c9a88d0ddc9bb4ddf7633';
+const SOURCE_SHA='bc4ab0d1b9bafa757317050d64f4f699b8c57aca93b88740761f275f864a0180';
 const RECOVERY="For verification, **Get my code** uses a request code while those are available. A same-day character-code request can keep by-name `/verify` closed until 00:00 UTC.";
 const CACHE='UPDATE seen_interactions SET response = ?2 WHERE id = ?1',INTERACTION='810000000000000902';
 const LEGACY='The Guild Member role is left as it is; remove it in Discord by hand if they should lose it.';
