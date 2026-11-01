@@ -7627,3 +7627,9 @@ Required checks: affected application/frontend/editorial/event/privacy leaves, T
 Rollout: after merge and shipping-main CI, archive exact merged source; take and restore-verify a fresh D1 backup; deploy that one .219 package with existing variables preserved. Perform90 public probes, genuine signed-in live readbacks and RT-16 on the oldest open application whose note is currently empty. Retain bot-host comment-only robots200 exceptions and the owner’s60,000ms first-ordinary-cron allowance with raw timestamps, without claiming clock correction. Stop only the owned observer after the first callback. Read back guild registrations without public test traffic, fast-forward both named local checkouts and append the actual closeout.
 
 Rollback: retain accepted .218 exact source/UUID/package and the fresh pre-.219 backup. No automatic rollback, D1 restore, schema rewrite, role reset or unknown provider retry is authorized by a failed readback. Preserve the raw failure and follow the exact owner recovery path.
+
+## Worker .220 — Discord channel guidance (prepared 1 November 2026)
+
+The owner-authorized Discord renames are already live and retain their IDs. This prospective Worker candidate updates literal verification and raid-channel labels and corrects the event preview to describe existing RSVP buttons. It changes no routing, schema, permissions, dispatch, custody or external OFF gate.
+
+Qualification: focused event-button, site/host/retention, frontend, News inverse, TypeScript and staged projection checks; internal source review. Hosted CI and exact-head automated review belong to this candidate. Live .219 remains accepted until a separately qualified rollout; no production deployment is part of this prepared copy follow-up. A future rollout uses a fresh restore-verified backup and current live guards. Rollback is the exact accepted .219 commit, with settings preserved and no schema rollback.

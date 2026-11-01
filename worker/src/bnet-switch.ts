@@ -43,5 +43,5 @@ export async function setBnetSwitch(env:Env,actor:string,on:boolean,admission?:S
 }
 export function bnetSwitchedOffPage(extraHeaders:Record<string,string>={}):Response{
  const h=policyHeaders();for(const[k,v]of Object.entries(extraHeaders))h.set(k,v);
- return new Response(policyShell('Battle.net linking is switched off','<p>Olympus does not use Battle.net sign-in at the moment, so this link was not finished and nothing from it was stored. Verification does not need it: use Get my code in the pinned guide in #join-olympus.</p><p><a href="/privacy/account">Your data controls</a></p>'),{status:200,headers:h});
+ return new Response(policyShell('Battle.net linking is switched off','<p>Olympus does not use Battle.net sign-in at the moment, so this link was not finished and nothing from it was stored. Verification does not need it: use Get my code in the pinned guide in #⚡olympus-verify.</p><p><a href="/privacy/account">Your data controls</a></p>'),{status:200,headers:h});
 }
