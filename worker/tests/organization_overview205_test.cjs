@@ -97,7 +97,7 @@ function open() {
     return module.exports;
   }
   const overview = load('organization-overview205.js');
-  const section = overview.renderAllianceOverview205(model, { h, add: (parent, nodes) => parent.append(nodes), clear: element => element.replaceChildren(), posIcon: () => h('img'), roleDirectory203: directory, roleGuides201: guides, roleGuide201: (key, options = {}) => {
+  const section = overview.renderAllianceOverview205(model, { h, add: (parent, nodes) => parent.append(nodes), clear: element => element.replaceChildren(), posIcon: () => h('img'), roleDirectory203: directory, roleGuides201: guides, officeFor219: key => catalogue.find(row => row.key === key), roleGuide201: (key, options = {}) => {
     guideCalls.push(key);
     guideOptions.push({key,...options});
     const guide = guides[key];
@@ -204,9 +204,10 @@ raid.open = true; raid.dispatch('toggle');
 check('opening Raid Leader requests its original full primary guide', page.guideCalls.includes(directory.families.find(family => family.key === raidFamily).primaryKey));
 for (const detail of raid.all(node => node.tagName === 'DETAILS')) { detail.open = true; detail.dispatch('toggle'); }
 check('NA and EU retain separately reachable complete regional guides', page.guideCalls.includes('raid_leader_na') && page.guideCalls.includes('raid_leader_eu'));
-check('.218 overview distinguishes canonical job regional scopes and native associations at the real guide boundary', page.guideOptions.some(row => row.key === 'office_74' && row.canonical && row.familyKey === 'raid_leader')
+check('.219 overview retains the canonical job and both regional specifications without a native association stub', page.guideOptions.some(row => row.key === 'office_74' && row.canonical && row.familyKey === 'raid_leader')
   && ['raid_leader_na','raid_leader_eu'].every(key => page.guideOptions.some(row => row.key === key && row.association === false && row.sharedWith === 'office_74'))
-  && page.guideOptions.some(row => row.key === 'rank_raid_leader' && row.association === true && row.sharedWith === 'office_74'));
+  && !page.guideCalls.includes('rank_raid_leader') && !raid.all(node => node.getAttribute('data-alliance-guide-group218') === 'associations').length
+  && raid.textContent.includes('Rank 5 Raid Leader (Slot 4)') && directory.keyToFamily.rank_raid_leader === raidFamily);
 check('expanded regional guides retain their complete definitions duties expectations and boundaries', ['raid_leader_na', 'raid_leader_eu'].every(key => {
   const rendered = raid.all(node => node.getAttribute('data-real-guide-fixture') === key)[0], guide = guides[key];
   return rendered && [guide.definition, ...guide.responsibilities, ...guide.expectations, guide.commitment, guide.boundaries].every(text => rendered.textContent.includes(text));

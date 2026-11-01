@@ -14,7 +14,7 @@ async function review(){
   switch(key){
    case 'verification.inviteQueue':return {lastWatcherHoldAt:iso(at)};
    case 'community.directory.alts':return {claimedAt:iso(at),reviewedAt:iso(at),updatedAt:iso(at)};
-   case 'community.events.signups':return {rsvpStartsAt:iso(t+100),updatedAt:iso(at)};
+   case 'community.events.signups':return {rsvpStartsAt:iso(t+100),updatedAt:iso(at),preference:null};
    case 'community.events.created':return {createdAt:iso(t-100),updatedAt:iso(t-100),endsAt:iso(t+3700),durationMin:60,capacity:null,roleTargets:null,retainUntil:iso(t+3700+30*86400)};
    case 'community.events.attendance':return {source:'officer',recordedAt:iso(at)};
    case 'community.trials.trials':return {createdAt:iso(at),updatedAt:iso(at),retainUntil:iso(t+10000)};
@@ -121,14 +121,14 @@ async function review(){
   eq(item.key+' own count excludes all counterpart records',first.capture.count,expected);
   eq(item.key+' first payload count',first.entries.length,Math.min(1000,expected));
   eq(item.key+' selected original current cursor retains preview prefix',first.entries.slice(0,previewRows.length),previewRows);
-  for(const [index,entry]of first.entries.entries()){eq(item.key+' exact established projection keys',Object.keys(entry).sort(),item.fields.slice().sort());exactOwnMetadata(item.key,entry,index,seedAt,'first');}
+  for(const [index,entry]of first.entries.entries()){eq(item.key+' exact established projection keys',Object.keys(entry).sort(),(item.key==='community.events.signups'?[...item.fields,'preference']:item.fields).slice().sort());exactOwnMetadata(item.key,entry,index,seedAt,'first');}
   if(expected>1000){
    eq(item.key+' exact remaining tail',first.capture.remaining,expected-1000);eq(item.key+' first page incompleteness honest',first.capture.complete,false);
    const last=(await download(f,item.key,first.nextCursor)).body.history;
    eq(item.key+' retained tail entries reachable',last.entries.length,expected-1000);eq(item.key+' full selected count delivered',last.capture.delivered,expected);
    eq(item.key+' tail complete with no hidden rest',last.capture.complete,true);eq(item.key+' tail no next cursor',last.nextCursor,null);
    eq(item.key+' original capture never refreshed',last.capture.at,first.capture.at);eq(item.key+' original24h deadline never refreshed',last.capture.expiresAt,first.capture.expiresAt);
-   for(const [offset,entry]of last.entries.entries()){eq(item.key+' tail exact established keys',Object.keys(entry).sort(),item.fields.slice().sort());exactOwnMetadata(item.key,entry,first.entries.length+offset,seedAt,'tail');}
+   for(const [offset,entry]of last.entries.entries()){eq(item.key+' tail exact established keys',Object.keys(entry).sort(),(item.key==='community.events.signups'?[...item.fields,'preference']:item.fields).slice().sort());exactOwnMetadata(item.key,entry,first.entries.length+offset,seedAt,'tail');}
    const reread=(await download(f,item.key,first.currentCursor)).body.history;
    eq(item.key+' fresh original grant can reread exact first page',reread.entries,first.entries);
   }else{eq(item.key+' legal finite capacity complete',first.capture.complete,true);eq(item.key+' no invented impossible tail',first.nextCursor,null);}

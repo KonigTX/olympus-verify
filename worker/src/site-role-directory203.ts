@@ -162,7 +162,8 @@ function directory203(): RoleDirectory203 {
       // A shared family is not evidence that two independently written offices have the same remit.
       // The old branch-GM guide is narrower than the alliance Sovereign even though its stored key aliases the GM.
       const alias = key !== 'guild_master' && (row?.aliasOf === seed.primaryKey
-        || (seed.key === 'member' && key === 'office_55') || (seed.key === 'raider' && key === 'office_75'));
+        || (seed.key === 'member' && key === 'office_55') || (seed.key === 'raider' && key === 'office_75')
+        || (seed.key === 'social' && ['office_13','office_05'].includes(key)) || (seed.key === 'recruiter' && key === 'office_77'));
       const presentation: RoleVariantPresentation218 = kind === 'region' || kind === 'class' ? kind
         : kind === 'historical' ? 'historical' : row?.group === 'native' ? 'native' : alias ? 'alias' : 'office';
       const label = seed.contexts?.[key] ?? (row?.group === 'native' ? `${row.label} — native rank ${row.nativeRankOrdinal} (slot ${row.nativeSlot})` : sourceLabel203(key));

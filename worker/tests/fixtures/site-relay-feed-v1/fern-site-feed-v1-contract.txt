@@ -1,0 +1,566 @@
+OLYMPUS SITE RELAY FEED V1
+Revised contract draft for review
+2026-10-29
+
+STATUS
+
+This document is a design contract, not a production activation notice. It supersedes the
+2026-10-27 feed proposal. No endpoint, credential, parser or relay-to-site adapter is represented
+as live by this document.
+
+The words REQUIRED, PROPOSED and OPEN DECISION have precise meanings here:
+
+- REQUIRED records a direction already established in the review.
+- PROPOSED is the current implementation recommendation and still needs explicit agreement.
+- OPEN DECISION must be frozen before fixtures become an executable contract.
+
+The deliberate manual .198 export remains unchanged. It keeps its own file, parser, storage
+candidate, consent flow and expiry rules. The relay feed described here is a separate endpoint,
+schema and candidate. Army QR and Olympus Link remain on their separate gates and receive no
+authority or activation from this feed.
+
+
+1. PURPOSE AND TRUST STATEMENT
+
+REQUIRED: The feed publishes bounded, masked observations of native in-game guild rosters. It is
+not proof of membership, verification, a unique human, a Discord identity or Council authority.
+
+REQUIRED: A published metric needs a quorum of distinct qualifying, deduplicated linked-account
+witnesses. This wording is deliberate. Multiple accounts or characters can still belong to one
+human. The system must never describe its result as deduplicated or verified unique people.
+
+REQUIRED: Single-source, conflicting, expired, revoked, deleted or withdrawn results expose a
+state and bounded source time only. They expose no count, leading value, witness total or conflict
+partition.
+
+
+2. POLLING ENDPOINT
+
+PROPOSED endpoint:
+
+  GET https://<relay-host>/companion/v1/site/aggregates?v=1&scope=forever-pve-alliance
+  Authorization: Bearer <compact-JWS>
+  If-None-Match: "<previous-strong-etag>"
+
+REQUIRED:
+
+- The website polls every five minutes. Push and ping remain out of v1.
+- The route is read-only and server-to-server. The credential never reaches browser code.
+- Sign-in, Companion-session and Olympus Link credentials are refused on this route.
+- The endpoint returns one complete atomic snapshot for one canonical scope.
+- A missing or malformed required guild row invalidates the entire response. It never means
+  "keep the previous value".
+
+PROPOSED operational limit: 30 requests per minute per feed credential, followed by HTTP 429 and
+Retry-After. This limit is not a source of individual, member or Council authority.
+
+OPEN DECISION: Confirm the endpoint path above. Once frozen, the exact origin, path and canonical
+query serialization become part of the signed request target.
+
+
+3. FEED-REQUEST JWS
+
+REQUIRED: The website signs a short-lived compact JWS with a dedicated Ed25519 feed-request key.
+The key is separate from Discord sign-in, Companion sessions, Olympus Link and every Council or
+member key. The private key stays server-side and is never logged.
+
+Protected header:
+
+  {
+    "alg": "EdDSA",
+    "kid": "<feed-key-id>",
+    "typ": "olympus-feed-request+jwt"
+  }
+
+Claims:
+
+  {
+    "v": 1,
+    "iss": "olympus-site",
+    "aud": "olympus-site-aggregates",
+    "iat": 1800000000,
+    "exp": 1800000060,
+    "jti": "<at-least-128-bits-of-randomness>",
+    "htm": "GET",
+    "htu": "https://<relay-host>/companion/v1/site/aggregates?v=1&scope=forever-pve-alliance",
+    "scope": "forever-pve-alliance"
+  }
+
+REQUIRED validation:
+
+- Pin alg to EdDSA. Never use an algorithm named only by the untrusted token.
+- Resolve kid only against the dedicated feed-request allowlist. Two explicitly configured keys
+  may overlap during rotation.
+- Require the protected typ value to equal olympus-feed-request+jwt exactly.
+- Require the signed claim v to equal integer 1 exactly.
+- Pin iss and aud to the exact configured values.
+- Require integer iat and exp, exp greater than iat, and exp - iat no greater than 60 seconds.
+- At validation time now, reject the request when iat > now + clockSkew or
+  now > exp + clockSkew. A token that is structurally well formed is not valid before its
+  permitted iat window or after its permitted exp window.
+- Bind htm to GET, htu to the exact canonical HTTPS endpoint and query, and scope to the requested
+  canonical scope.
+- Atomically consume each jti once across every relay instance. Retain the replay record until
+  after exp plus the accepted clock-skew window.
+- Redact Authorization, the compact JWS, jti and all key material from application, proxy, error
+  and analytics logs.
+- A valid polling credential identifies only the website. It grants and asserts no individual
+  Council, member, contributor or verification authority.
+
+PROPOSED maximum clock skew: five seconds in either direction.
+
+
+4. CANONICAL SCOPE
+
+REQUIRED logical scope:
+
+  id: forever-pve-alliance
+  faction: Alliance
+  guilds, in this exact canonical order:
+    Olympus
+    Olympus I
+    Olympus II
+    Olympus III
+    Olympus IV
+    Olympus V
+    Olympus VI
+    Olympus VII
+    Olympus VIII
+    Olympus IX
+    Olympus X
+
+REQUIRED:
+
+- The relay maps its exact native realm-group value to this logical scope server-side.
+- Client-provided aliases, free-form realm combinations such as RealmA+RealmB, other factions and
+  all other guild names are rejected rather than normalized into this scope.
+- A scope-mapping change increments mappingVersion and requires a reviewed fixture update.
+
+OPEN DECISION: Record the exact canonical Forever PvE realm-group value and the minimal accepted
+native aliases. Do not activate the endpoint with a placeholder mapping.
+
+
+5. QUALIFYING CONTRIBUTORS AND DEDUPLICATION
+
+REQUIRED:
+
+- Multiple devices and characters linked to one account count as one witness for a guild and
+  metric.
+- The relay deduplicates before aggregation and keeps only the newest eligible observation for
+  each deduplicated witness and metric.
+- The same uploaded checkpoint cannot count twice.
+- An unverified character claim cannot force two accounts to merge.
+- A merge can only preserve or lower the number of eligible witnesses; it cannot manufacture a
+  new witness.
+- A roster observation for guild G qualifies only when it is the contributor's native own-roster
+  observation for G. Relayed, second-hand, seen-only and disputed rows do not qualify.
+- characters means roster characters, including alts. It is not a unique-player estimate.
+
+PROPOSED safer v1 rule: only an authenticated account with an established linked-account identity
+is a qualifying witness. An unverified character claim may be held as non-qualifying evidence but
+does not count toward quorum until linked.
+
+OPEN DECISION: Confirm whether any authenticated but unverified account may count. If the answer
+is yes, define its separate risk class and show that it cannot be multiplied or used to force an
+account merge.
+
+PROPOSED privacy implementation: use a relay-generated opaque internal contributor identifier or
+a per-person deletable salt. Do not expose it. Do not use a globally reproducible public hash that
+can recreate a contributor after erasure.
+
+
+6. COUNCIL WITNESS DESIGNATION
+
+REQUIRED:
+
+- Council designation is independent authority metadata on the relay.
+- A Council witness counts once, exactly like another qualifying witness.
+- Council status cannot replace the two-witness quorum, break a tie, override a conflict, choose a
+  cluster, widen a scope, grant feed access or alter a count.
+- No public feed field reveals whether a Council witness participated.
+- Expiring or revoking Council designation removes only the designation. The contributor may still
+  count as an ordinary qualifying witness unless their contributor eligibility is separately
+  revoked.
+
+PROPOSED authoritative source: the current signed HS1 Council membership source. HT1 titles alone
+must not create Council membership.
+
+OPEN DECISION: Confirm the authoritative Council source, its owner, refresh cadence, expiry and
+revocation procedure.
+
+
+7. ELIGIBLE OBSERVATIONS AND TIME
+
+REQUIRED:
+
+- Character totals and online counts are aggregated independently.
+- Character quorum never supplies online quorum.
+- Online needs at least two sufficiently fresh, independently agreeing observations of its own.
+- Online zero is a valid exact observation and must not be converted to missing.
+- Count masking occurs after aggregation, never before cluster selection.
+
+PROPOSED freshness windows:
+
+  characters: 1,800 seconds
+  online:       900 seconds
+
+REQUIRED timestamp model:
+
+- An exact source timestamp t is the interval [t,t].
+- A source timestamp explicitly rounded down to five minutes is [t,t+299].
+- Interval A is definitely newer than B only when A.notBefore > B.notAfter.
+- Overlapping intervals are a tie; neither source is strictly newer.
+- Reject impossible interval order, excessive width and a notBefore value beyond the configured
+  future-skew allowance. A rounded interval may end slightly after receipt only because of its
+  declared rounding window.
+- Freshness uses the oldest plausible time, notBefore.
+- Every observation in an accepted cluster must satisfy the metric's freshness window.
+- The aggregate expires at the earliest participating notBefore plus the freshness window.
+
+For an accepted metric, sourceTime is one bounded coarse source bucket, never a span across all
+participating observations:
+
+- Select the accepted observation with the earliest notBefore.
+- If more than one has that notBefore, select the one with the earliest notAfter, then the lowest
+  opaque internal witness identifier only as a deterministic private tie-breaker.
+- Publish exactly that selected observation's interval as sourceTime.
+- sourceTime.notAfter - sourceTime.notBefore must be between 0 and 299 seconds.
+- validUntil is sourceTime.notBefore plus the metric freshness window.
+
+This oldest-participating-bucket rule is conservative for expiry and does not reveal the temporal
+dispersion of the witness set. Example: accepted observations from [1800001200,1800001499] and
+[1800001500,1800001500] publish sourceTime [1800001200,1800001499], not the wider interval
+[1800001200,1800001500]. Character validUntil is then 1800003000 under the proposed 1,800-second
+window.
+
+For a nonaccepted state, expose only one bounded sourceTime bucket for the most recent eligible
+observation, using the inverse deterministic ordering. It is informational, never wider than 299
+seconds, and carries no count or partition.
+
+The site derives displayed age from the original sourceTime interval. HTTP response time, poll time,
+cache time and a 304 response never become a new source time.
+
+
+8. DETERMINISTIC AGREEMENT
+
+For each guild and metric:
+
+1. Select the newest eligible observation for each already-deduplicated qualifying witness.
+2. Let N be all eligible deduplicated witnesses for that metric, including outliers. N is the
+   majority denominator and never appears in the public response.
+3. Sort observations by numeric value and then by the opaque internal witness identifier.
+4. Define direct agreement as:
+
+     abs(a-b) <= max(absoluteTolerance, ceil(relativeTolerance * max(a,b)))
+
+5. Enumerate maximal contiguous clusters whose minimum and maximum directly agree. Do not join an
+   A-B-C chain merely because A agrees with B and B agrees with C.
+6. Deduplicate clusters with identical membership.
+7. Accept only one unique largest cluster that contains at least two witnesses and satisfies:
+
+     clusterSize / N > 0.5
+
+8. Equal largest clusters are conflict, including overlapping equal clusters in a nontransitive
+   chain.
+9. Publish the deterministic median of the accepted cluster.
+10. precision is exact only when every accepted value is identical. If tolerance joined different
+    values, precision is approximate.
+
+Consequences required by this rule:
+
+- Four agreeing values and one outlier are accepted: 4/5 is an 80 percent majority. The earlier
+  Olympus II no-majority example was incorrect.
+- Two agreeing values and one outlier are accepted.
+- Two values against two values are conflict.
+- A nontransitive chain with two equal largest directly compatible clusters is conflict.
+- A single source is no-quorum and exposes no value.
+
+PROPOSED tolerances:
+
+  characters: absoluteTolerance 5, relativeTolerance 0.05
+  online:     absoluteTolerance 2, relativeTolerance 0.05
+
+OPEN DECISION: Freeze the median for an even accepted cluster before fixtures become normative:
+
+- Option A, recommended for a symmetric estimate: floor((lowerMiddle + upperMiddle + 1) / 2).
+- Option B, compatible with the older draft: lowerMiddle.
+
+The choice must be a schema policy constant and cannot vary by guild or request.
+
+For reproducible illustration only, the examples and fixtures in this review package
+provisionally use Option A, the rounded middle-pair median. This is a fixture assumption,
+not a record of final agreement or production behavior.
+The reference examples and fixtures provisionally use Option A so they can remain deterministic;
+that fixture choice does not close the OPEN DECISION or authorize production behavior.
+
+Online runs the same algorithm over its own fresh eligible observations. PROPOSED privacy gate:
+online may be published only when characters is also accepted, solely so complementary masking
+can be evaluated. This does not allow character quorum to substitute for online quorum.
+
+
+9. MASKING AFTER AGGREGATION
+
+REQUIRED masking, aligned with the deliberate manual export:
+
+- A positive accepted count from one through four is published only as the nonnumeric band few.
+- Online zero remains the exact numeric value zero.
+- If the character total is hidden, online is unavailable.
+- If an exact online value would reveal an offline remainder from one through four, online is
+  unavailable with reason complementary-small-group.
+- Witness totals, Council participation, agreeing/disagreeing totals, conflict groups, partitions,
+  raw values, contributor identifiers, hashes and claims are never public, even when the guild
+  count itself is large.
+
+
+10. EXACT RESPONSE SCHEMA
+
+The v1 parser is exact. Unknown or missing keys reject the entire response. A change to key shape
+requires v2.
+
+Top level:
+
+  {
+    "schema": "olympus-site-relay-feed",
+    "version": 1,
+    "producer": "olympus-relay/site.1",
+    "sequence": 42,
+    "generatedAt": 1800001800,
+    "complete": true,
+    "scope": {
+      "id": "forever-pve-alliance",
+      "mappingVersion": 1,
+      "faction": "Alliance"
+    },
+    "guilds": [ exactly eleven canonical rows ]
+  }
+
+generatedAt is the material snapshot creation time. It changes only when sequence changes; it is
+not rewritten on every HTTP response.
+
+Each guild row:
+
+  {
+    "guild": "Olympus II",
+    "source": "companion-relay",
+    "basis": "own-roster",
+    "characters": <metric-result>,
+    "online": <metric-result>
+  }
+
+Available exact or approximate metric:
+
+  {
+    "status": "available",
+    "value": 987,
+    "precision": "approximate",
+    "sourceTime": { "notBefore": 1800000000, "notAfter": 1800000299 },
+    "validUntil": 1800001800
+  }
+
+Small accepted metric:
+
+  {
+    "status": "masked",
+    "band": "few",
+    "precision": "exact",
+    "sourceTime": { "notBefore": 1800000000, "notAfter": 1800000299 },
+    "validUntil": 1800001800
+  }
+
+Unavailable metric:
+
+  {
+    "status": "unavailable",
+    "reason": "conflict",
+    "sourceTime": { "notBefore": 1800000000, "notAfter": 1800000299 }
+  }
+
+Allowed unavailable reasons:
+
+  not-observed
+  no-quorum
+  no-fresh-quorum
+  conflict
+  expired
+  revoked
+  deleted
+  withdrawn
+  complementary-small-group
+
+For not-observed, sourceTime is null. No unavailable result has value, band, precision or
+validUntil.
+No row contains a label, corroboratedBy, contributors or conflict object. The website maps bounded
+state codes to its own display copy.
+
+
+11. COMPLETE SNAPSHOTS, WITHDRAWAL AND TOMBSTONES
+
+REQUIRED:
+
+- Every HTTP 200 response contains exactly the eleven canonical guild rows.
+- deleted, revoked, withdrawn and not-observed rows are explicit tombstone states inside the
+  complete snapshot. A row is never silently omitted.
+- The consumer atomically accepts or rejects the entire snapshot.
+- A previously accepted relay value is withdrawn when it loses quorum, conflicts, expires, is
+  revoked, is deleted or disappears from the relay's complete source set.
+- A revocation or deletion removes the affected observation, recomputes the metric and invalidates
+  the prior snapshot. If the remaining observations still form quorum, a new accepted result may
+  be emitted under a new sequence and ETag.
+- Network failure never extends validUntil. After expiry, relay data is unavailable even if an old
+  response remains cached.
+
+
+12. SEQUENCE, ETAG AND HTTP 304
+
+REQUIRED:
+
+- sequence is monotonic per canonical scope.
+- sequence changes on every material value or state transition, including acceptance, masking,
+  loss of quorum, conflict, expiry, revocation, deletion, withdrawal and a changed sourceTime.
+- The strong ETag is derived from the canonical response bytes for the current sequence.
+- Aging that crosses a freshness or validity boundary is a material transition and must produce a
+  new sequence/ETag even if no new observation arrived.
+- A matching If-None-Match returns HTTP 304 only while the evaluated material snapshot is still
+  identical.
+- A 304 has no feed body and never updates sourceTime, validUntil, sequence, manual timestamp,
+  cache acquisition time used for freshness or any candidate age.
+
+The HTTP Date header may reflect response time. It is never a source timestamp.
+
+
+13. MANUAL EXPORT COEXISTENCE
+
+REQUIRED:
+
+- Manual .198 and relay candidates use different schemas, parsers and storage namespaces.
+- A manual candidate never contributes to relay quorum.
+- A relay candidate never overwrites or mutates the stored manual candidate.
+- The selected website value always displays its source as manual or companion-relay.
+- A valid manual candidate remains available when relay is no-quorum, conflicting, expired,
+  revoked, deleted, withdrawn or unavailable.
+
+PROPOSED precedence when both candidates are valid:
+
+- A source is newer only when its entire source interval is strictly later than the other's.
+- If relay is definitely newer, select relay.
+- If manual is definitely newer, select manual.
+- If intervals overlap, treat them as tied and select manual.
+
+OPEN DECISION: Confirm this interval-based precedence. An alternative "relay whenever available"
+policy is simpler, but it would not honor the agreed conservative tie rule.
+
+
+14. PRIVACY SURFACE
+
+The website receives and stores only this bounded masked aggregate. It must not receive the wider
+Companion file or any of the following:
+
+- character, member, Discord, GUID, BattleTag, account or contributor identifiers;
+- names other than the eleven canonical guild names;
+- witness totals, Council participation, agreement percentages or conflict partitions;
+- ranks, notes, chat, keys, alt estimates, claims or raw observations;
+- request JWS content or replay identifiers.
+
+The relay may keep only the minimum internal provenance needed to deduplicate, recompute, revoke
+and erase. Internal provenance is not a feed extension point.
+
+
+15. RETENTION, REVOCATION AND ERASURE
+
+REQUIRED behavior:
+
+- Erasure or contributor revocation removes the contributor from active candidate sets and
+  recomputes every affected metric.
+- Any affected accepted result is replaced under a new sequence/ETag. If quorum is lost or conflict
+  remains, no count is published.
+- Person mappings, opaque identifiers or hashes, claims, raw inputs, snapshots, logs and backups
+  each have a documented deletion rule.
+- Retained raw data cannot recreate an erased account mapping or claim.
+- A durable deletion ledger outlives the oldest backup and is reapplied before any restored backup
+  becomes available.
+
+PROPOSED maximum retention:
+
+  active account/person mapping and verification claims:
+    while active; delete from primary storage within 24 hours of a valid erasure request
+
+  raw observations and raw checkpoint material:
+    24 hours
+
+  current and historical bounded masked snapshots, if history is needed:
+    30 days
+
+  redacted security and site-access logs:
+    30 days
+
+  encrypted backups:
+    30 days
+
+Logs never contain Authorization, compact JWS, account identifiers, raw observations or unmasked
+counts. Deletion records must be applied on restore so a backup cannot repopulate erased claims.
+
+OPEN DECISION: Confirm each duration, the erasure service-level target and whether any masked
+snapshot history is needed at all.
+
+
+16. VERSIONING
+
+REQUIRED: v1 is an exact schema. Additive fields are not silently accepted. A shape or semantic
+change ships as v2 with new fixtures.
+
+PROPOSED: Keep v1 available for at least 90 days after v2, with Deprecation and Sunset headers.
+
+
+17. NORMATIVE FIXTURE MATRIX
+
+The separate fixture package must freeze and test at least:
+
+- exact two-witness agreement;
+- tolerance-based approximate agreement;
+- Olympus II four-to-one acceptance at 80 percent;
+- a single source with no public count;
+- a two-to-two conflict with no public count or partitions;
+- a nontransitive A-B-C chain that does not become one cluster;
+- two characters from one linked account deduplicated to one witness;
+- an unverified claim that cannot force an account merge;
+- Council alone remaining no-quorum;
+- Council plus one distinct ordinary witness following normal two-witness rules;
+- character quorum with stale or insufficient online observations;
+- independently corroborated online zero;
+- small total, small online and complementary-remainder masking after aggregation;
+- expiry, revocation, deletion and complete-snapshot disappearance;
+- an explicit tombstone state;
+- manual fallback after relay withdrawal;
+- 304 preserving original source age, followed by an expiry transition with a new ETag;
+- rounded relay and exact manual intervals overlapping and selecting manual on the tie;
+- wrong scope, guild and faction;
+- invalid or replayed JWS alg, kid, iss, aud, method, target, scope, expiry and jti.
+
+The validator must recursively reject identity fields, witness-count fields, Council participation,
+conflict partitions, unmasked small groups, unknown keys and noncanonical guild ordering in every
+public expected result.
+
+The reference validator checks fixture structure and the documented policy only. It does not and
+must not claim to verify a production signature, real Ed25519 key handling, atomic jti consumption,
+server storage, network behavior, the production aggregation implementation or addon runtime.
+
+
+18. OPEN DECISIONS SUMMARY
+
+The following must be answered before the fixture package becomes normative or any adapter is
+wired:
+
+1. Exact endpoint path and canonical query serialization.
+2. Exact Forever PvE realm-group mapping and minimal native aliases.
+3. Whether an authenticated but unverified account can ever be a qualifying witness.
+4. Authoritative Council source, owner, expiry and revocation procedure.
+5. Character and online tolerance constants.
+6. Character and online freshness windows.
+7. Even-sized cluster median: rounded middle pair or lower median.
+8. Whether online publication additionally requires an accepted character total for masking.
+9. Manual-versus-relay precedence for overlapping source intervals.
+10. Retention durations, erasure service level and whether masked snapshot history is needed.
+11. Endpoint rate limit and v1 deprecation period.
+
+Until those items are frozen, this remains a review draft. Production activation, key exchange,
+deployment and publication remain separate approvals.

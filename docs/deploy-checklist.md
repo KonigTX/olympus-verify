@@ -7610,3 +7610,20 @@ The fast projection preflight checks those inert declarations. The actual resour
 complete historical inverse chain and original whole-News digest. Never replace that proof with a new digest,
 broader guard or uncounted reversal. Preserve the original failed runs and distinct historical review receipts;
 final integrated local, hosted-review, CI and production results must be recorded against their actual bytes.
+
+
+## Worker .219 — editable applications, role editorial and guild commands (31 October 2026)
+
+Prospective release; the actual accepted commit, deployment UUID, backup and readbacks belong in the final QA receipt. Starting baseline is accepted .218 at6a0b3b9c. The owner authorizes solo Root qualification, independently attributable internal review, both PR gates and squash merges, fresh verified D1 backup, then live .219. Claude’s external counter-signature is waived; hosted CI and completed exact-head automated review with both findings flags false remain mandatory.
+
+Existing Submitted/Under review applications keep their original submission/review metadata while editing in place. Exact own-view tokens and consuming SQL prevent stale edits; old tabs reload. Declared specialization and no-code alts use existing bounded application JSON. Filled historical leadership choices can be retained privately; new leadership applications remain closed. Role families share one edited specification, with genuine NA/EU and class duties retained.
+
+The Verify-owned nine-name guild suite is described in [guild-commands219.md](guild-commands219.md). Calendar creation and command replies are private. Only an explicitly armed one-shot reminder posts publicly, under existing durable custody and fresh role/account checks. Post-start attendance lock covers the website and commands; general rosters disclose only the viewer’s own attendance. Existing six registrations are preserved; dormant QR and the private companion namespace are not activated.
+
+Configuration: preserve current bindings, all launch gates and Native E2 epoch; exact443 live/442 application objects, zero DDL. No new secret/binding, cosmetic dispatch, Army publisher or Olympus Link activation. Daniel’s relay remains unmounted/OFF. The companion change protects prospective shared membership-role custody and preserves private destination configuration.
+
+Required checks: affected application/frontend/editorial/event/privacy leaves, TypeScript, exact asset and News inverses, Native E2/identify-copy<100, Lua and Workerd startup/scheduled checks, desktop1280 and mobile390/375/320 browser QA, hosted13-job Verify CI and applicable companion CI, clean exact-head reviews. No unchanged failed run is relabelled; no full local aggregate is substituted for these scopes.
+
+Rollout: after merge and shipping-main CI, archive exact merged source; take and restore-verify a fresh D1 backup; deploy that one .219 package with existing variables preserved. Perform90 public probes, genuine signed-in live readbacks and RT-16 on the oldest open application whose note is currently empty. Retain bot-host comment-only robots200 exceptions and the owner’s60,000ms first-ordinary-cron allowance with raw timestamps, without claiming clock correction. Stop only the owned observer after the first callback. Read back guild registrations without public test traffic, fast-forward both named local checkouts and append the actual closeout.
+
+Rollback: retain accepted .218 exact source/UUID/package and the fresh pre-.219 backup. No automatic rollback, D1 restore, schema rewrite, role reset or unknown provider retry is authorized by a failed readback. Preserve the raw failure and follow the exact owner recovery path.

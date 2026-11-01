@@ -24,7 +24,7 @@ async function frontendOwner197() {
     const model=directoryModel203(page), expected=[...page.boot.meta.appointments.map(row=>row.key),'member','raider','pvp_team'].sort();
     if (!model || model.version!==1 || model.sourceKeyCount!==140 || !Array.isArray(model.families) || model.families.length!==70 || !Array.isArray(model.ranks)) return false;
     const families=familyCards203(page), keys=sourceGuides203(page).map(row=>row.getAttribute('data-role-key201')).sort(), covered=model.families.flatMap(family=>family.sourceKeys).sort();
-    return expected.length===140 && new Set(expected).size===140 && JSON.stringify(keys)===JSON.stringify(expected) && JSON.stringify(covered)===JSON.stringify(expected)
+    return expected.length===140 && new Set(expected).size===140 && JSON.stringify(keys)===JSON.stringify(model.families.flatMap(f=>[f.primaryKey,...f.variants.filter(v=>["office","region","class"].includes(v.presentation)).map(v=>v.key)]).sort()) && JSON.stringify(covered)===JSON.stringify(expected)
       && families.length===model.families.length && new Set(families.map(row=>row.getAttribute('data-role-family203'))).size===families.length
       && model.families.every(family=>families.some(row=>row.getAttribute('data-role-family203')===family.key&&row.querySelector('summary .role-entry-name201')?.textContent===family.label)&&family.sourceKeys.every(key=>model.keyToFamily[key]===family.key));
   };
@@ -33,6 +33,7 @@ async function frontendOwner197() {
   const characters = () => [['Mia One', 'warrior'], ['Mia Two', 'mage'], ['Mia Three', 'druid']].map(([character, cls]) => ({ character, class: cls, build30: code(cls, 30), build60: code(cls, 60) }));
   const collection = () => ({ version: 1, characters: characters() });
   const request = async (method, url, payload, who = MEMBER) => {
+    if(method==="PUT"&&url==="/api/application")payload=await require("./application_editor219_fixture.cjs").applicationEnvelope219(payload,async()=>{const own=await indexMod.default.fetch(new Request("https://guild.example/api/me",{headers:{Cookie:await cookieFor(who)}}),env(),ctx);return own.status===200?own.json():null;});
     const response = await indexMod.default.fetch(new Request('https://guild.example' + url, { method, headers: { Cookie: await cookieFor(who), Origin: 'https://guild.example', 'X-Olympus': siteCore.PAGE_VERSION, ...(payload === undefined ? {} : { 'Content-Type': 'application/json' }) }, ...(payload === undefined ? {} : { body: JSON.stringify(payload) }) }), env(), ctx);
     return { response, body: await response.clone().json().catch(() => null) };
   };
@@ -174,7 +175,7 @@ async function frontendOwner197() {
   await must(() => identityCalls.length === 1, 'one original pending appointment collection');
   const coGmLabel = appointments.boot.meta.positions.find(position => position.key === 'co_gm')?.label;
   const details = {click:()=>appointments.window.__roleDialog201('co_gm')};
-  check('.201 current reserved directory exposes its guide and no obsolete Officer application Details control',!!appointments.app.querySelector('[data-role-key201="co_gm"]')&&!appointments.app.querySelector('button[aria-label="Details: '+coGmLabel+'"]'));
+  check('.201 current reserved directory exposes its guide and no obsolete Officer application Details control',!!appointments.app.querySelector('[data-role-family203="co_gm"]')&&!appointments.app.querySelector('button[aria-label="Details: '+coGmLabel+'"]'));
   if (!details) throw Error('actual appointed Co-Guild Master details control is unavailable');
   details.click(); let dialog = appointments.document.querySelector('dialog[open]') || appointments.document.querySelectorAll('dialog').find(item => item.open);
   check('same captured main and dialog share only the one in-flight collection without early identity paint', !!dialog && identityCalls.length === 1 && identityReplies.length === 0 && !appointments.app.textContent.includes('Qualified co_gm') && !dialog.textContent.includes('Qualified co_gm'));
@@ -342,16 +343,16 @@ async function frontendOwner197() {
       });
     }));
   const councilInstitution218=guided199.app.querySelector('[data-role-family203="high_council"]'),nativeCouncil218=councilInstitution218?.querySelector('[data-role-key201="rank_high_council"]');
-  check('.218 an institutional primary claims no native rank while its own retained High Council native reference keeps Rank2 metadata',!!councilInstitution218&&!councilInstitution218.querySelector('.role-primary203').querySelector('.rank-office199')&&nativeCouncil218?.querySelectorAll('.rank-office199').length===1&&nativeCouncil218.querySelector('.rank-office199').textContent.includes('Rank 2 High Council'));
-  check('.203 exactly three ordinary job families offer applications while optional activities, standings and institutions do not become application tracks',JSON.stringify(guided199.app.querySelectorAll('[data-family-apply203]').map(button=>button.getAttribute('data-family-apply203')).sort())===JSON.stringify(['artisan','member','raider'])&&guided199.app.querySelectorAll('.role-variant203').length===70&&new Set(families203.map(card=>card.querySelector('summary .role-entry-name201').textContent)).size===70);
+  check('.218 an institutional primary claims no native rank while its own retained High Council native reference keeps Rank2 metadata',!!councilInstitution218&&!councilInstitution218.querySelector('.role-primary203').querySelector('.rank-office199')&&!nativeCouncil218&&model203.ranks.find(row=>row.nativeSlot===1).familyKey==='high_council');
+  check('.203 exactly three ordinary job families offer applications while optional activities, standings and institutions do not become application tracks',JSON.stringify(guided199.app.querySelectorAll('[data-family-apply203]').map(button=>button.getAttribute('data-family-apply203')).sort())===JSON.stringify(['artisan','member','raider'])&&guided199.app.querySelectorAll('.role-variant203').length===model203.families.reduce((n,f)=>n+f.variants.filter(v=>['office','region','class'].includes(v.presentation)).length,0)&&new Set(families203.map(card=>card.querySelector('summary .role-entry-name201').textContent)).size===70);
   const reservedRows201=allRows201.filter(row=>row.reservedSeat201);
-  check('.203 every reserved source key retains its proper role, standing or institution badge and explicit closed-application policy',reservedRows201.length>70&&reservedRows201.every(row=>{const card=familyForKey203(guided199,row.key),family=model203.families.find(item=>item.key===model203.keyToFamily[row.key]),badge=family.kind==='status'?'Standing or recognition — not an application':family.kind==='institution'?'Governance body — not an application':'Reserved seat — no applications';return card?.querySelector('summary .badge')?.textContent===badge&&!!card.querySelector('[data-role-key201="'+row.key+'"]')&&!family.application&&/no applications|not an application/.test(card.querySelector('summary .badge').textContent)&&!card.querySelector('[data-apply-role201]')&&!card.querySelector('[data-family-apply203]')&&!card.querySelector('a[href^="#/vote/"]');}));
+  check('.203 every reserved source key retains its proper role, standing or institution badge and explicit closed-application policy',reservedRows201.length>70&&reservedRows201.every(row=>{const card=familyForKey203(guided199,row.key),family=model203.families.find(item=>item.key===model203.keyToFamily[row.key]),badge=family.kind==='status'?'Standing or recognition — not an application':family.kind==='institution'?'Governance body — not an application':'Reserved seat — no applications';return card?.querySelector('summary .badge')?.textContent===badge&&model203.keyToFamily[row.key]===family.key&&!family.application&&/no applications|not an application/.test(card.querySelector('summary .badge').textContent)&&!card.querySelector('[data-apply-role201]')&&!card.querySelector('[data-family-apply203]')&&!card.querySelector('a[href^="#/vote/"]');}));
   const tradingFamily208 = familyForKey203(guided199, 'office_96'), tradingGuide208 = guided199.boot.meta.roleGuides201.office_96;
   check('.208 Vote directory gives Trading its own detailed reserved Council family without a purchase or application action', tradingFamily208?.getAttribute('data-role-family203') === 'head_trading' && tradingFamily208.querySelector('summary .role-entry-name201')?.textContent === 'Head of Trading & Markets' && tradingFamily208.textContent.includes(tradingGuide208.definition) && tradingGuide208.responsibilities.every(text => tradingFamily208.textContent.includes(text)) && tradingFamily208.querySelector('summary .badge')?.textContent==='Reserved seat — no applications' && !tradingFamily208.querySelector('[data-apply-role201]') && !tradingFamily208.querySelector('[data-family-apply203]') && !tradingFamily208.querySelector('a[href^="#/vote/"]'));
   check('.208 Trading keeps its complete limits visible without absorbing the Treasurer, Artisanry or Auditor families', ['office_86', 'office_58', 'office_08'].every(key => familyForKey203(guided199, key) !== tradingFamily208) && tradingFamily208.textContent.includes('Treasurer retains financial custody') && tradingFamily208.textContent.includes('auditor remains independent') && !guided199.app.querySelector('form'));
   for(const [label,keys] of [['Officer',['office_62','officer','rank_officer']],['Raider',['office_75','raider','rank_raider']],['Treasurer',['office_86','treasurer','rank_treasurer']]]){
     const familyKeys=keys.map(key=>model203.keyToFamily[key]);
-    check('.203 '+label+' aliases share one canonical job card rather than competing duplicate cards',new Set(familyKeys).size===1&&families203.filter(card=>card.getAttribute('data-role-family203')===familyKeys[0]).length===1&&keys.every(key=>!!guided199.app.querySelector('[data-role-key201="'+key+'"]')));
+    check('.203 '+label+' aliases share one canonical job card rather than competing duplicate cards',new Set(familyKeys).size===1&&families203.filter(card=>card.getAttribute('data-role-family203')===familyKeys[0]).length===1&&keys.every(key=>model203.keyToFamily[key]===familyKeys[0]));
   }
   for(const [key,region,times] of [['raid_leader_na','North American','7 pm to midnight (4 to 9 pm Pacific)'],['raid_leader_eu','European','7 pm to midnight (6 to 11 pm UK)']]){
     const card=guided199.app.querySelector('[data-role-key201="'+key+'"]');
@@ -382,7 +383,7 @@ async function frontendOwner197() {
   await historical201(APPLICANT199,seed199);
   const exact199=await openPage(APPLICANT199),exactSends199=[];
   exact199.before((url,init)=>{if(url==='/api/application')exactSends199.push(init.method||'GET');return false;});await exact199.go('#/apply');
-  check('.201 historical reserved application keeps its full private summary and Withdraw but no editor or implicit conversion',exact199.app.textContent.includes(seed199.answers.extra)&&exact199.app.textContent.includes('Reserved')&&!!byText(exact199.app,'button','Withdraw my application')&&!exact199.app.querySelector('form')&&exactSends199.length===0&&one('SELECT position FROM site_applications WHERE discord_id=?',APPLICANT199).position==='class_lead');
+  check('.201 historical reserved application keeps its full private summary and Withdraw but no editor or implicit conversion',exact199.app.querySelector('[data-field="extra"] textarea')?.value===seed199.answers.extra&&exact199.app.textContent.includes('reserved')&&!!byText(exact199.app,'button','Withdraw my application')&&!!exact199.app.querySelector('form')&&exactSends199.length===0&&one('SELECT position FROM site_applications WHERE discord_id=?',APPLICANT199).position==='class_lead');
   const privateIntentBoard199=await openPage(OTHER);await privateIntentBoard199.go('#/vote/class_lead%3Amage');
   await must(()=>privateIntentBoard199.app.querySelectorAll('.cand').some(candidate=>candidate.textContent.includes('Iris')),'historical class board read');
   let irisCard199=privateIntentBoard199.app.querySelectorAll('.cand').find(candidate=>candidate.textContent.includes('Iris'));
@@ -393,8 +394,9 @@ async function frontendOwner197() {
   irisCard199=sharedIntentBoard199.app.querySelectorAll('.cand').find(candidate=>candidate.textContent.includes('Iris'));
   check('.201 consented historical exact-office badges remain canonical and do not imply new application availability',irisCard199.querySelector('.application-intent199')?.getAttribute('data-application-track')==='officer'&&!irisCard199.querySelector('.talent-build-links')&&!irisCard199.textContent.includes(seed199.answers.extra));
   const oldAnswers201=one('SELECT answers FROM site_applications WHERE discord_id=?',APPLICANT199).answers;
+  const oldForm219 = exact199.app.querySelector('form');
   exact199.app.querySelector('[data-apply-role201="member"]').click();
-  await must(()=>!!exact199.app.querySelector('form'),'explicit ordinary replacement form');
+  await must(()=>!!exact199.app.querySelector('form')&&exact199.app.querySelector('form')!==oldForm219,'explicit ordinary replacement form');
   check('.201 explicit Member choice removes reserved backups locally without saving or rewriting history',exactSends199.length===0&&one('SELECT answers FROM site_applications WHERE discord_id=?',APPLICANT199).answers===oldAnswers201&&exact199.app.querySelectorAll('[data-field="backups"] select').every(select=>!select.value)&&!exact199.app.querySelector('#board-application-intent199')?.checked);
   await exact199.go('#/');
   for(const state201 of ['submitted','reviewing']){
@@ -418,7 +420,7 @@ async function frontendOwner197() {
   const bridgeKeys199=rows199.flatMap(row=>row.querySelectorAll('li a').map(link=>decodeURIComponent(link.getAttribute('href').slice('#/organization/'.length))));
   check('.199 Rosetta Stone enumerates all137 assignable keys exactly once across their ten rank rows',bridgeKeys199.length===137&&new Set(bridgeKeys199).size===137&&JSON.stringify(bridgeKeys199.slice().sort())===JSON.stringify(keys201));
   const roleCards201=roles199.app.querySelectorAll('[data-role-key201]');
-  check('.203 Roles keeps all101 stable office references and every original source key in canonical families, with no reserved application CTA',directoryComplete203(roles199)&&roleCards201.filter(card=>/^office_[0-9]{2,3}$/.test(card.getAttribute('data-role-key201'))).length===101&&reservedRows201.every(row=>!familyForKey203(roles199,row.key).querySelector('[data-apply-role201]')));
+  check('.203 Roles keeps all101 stable office references and every original source key in canonical families, with no reserved application CTA',directoryComplete203(roles199)&&Object.keys(roles199.boot.meta.roleDirectory203.keyToFamily).filter(key=>/^office_[0-9]{2,3}$/.test(key)).length===101&&reservedRows201.every(row=>!familyForKey203(roles199,row.key).querySelector('[data-apply-role201]')));
   for(const appointedKey199 of ['member','office_07','office_27']){
     const artisanCards199=await openPage(APPLICANT199,{}, {bootTransform:boot=>{boot.settings.appointed={[appointedKey199]:'Recorded synthetic holder'};}});await artisanCards199.go('#/roles');
     const targets199=['office_07','office_27'].map(key=>({key,card:artisanCards199.app.querySelector('[data-role-key201="'+key+'"]')}));
@@ -536,7 +538,7 @@ async function frontendOwner197() {
   const retained200 = await openPage(PATRON200), retainedRequests200 = [];
   retained200.before((url, init) => { if (url === '/api/application') retainedRequests200.push(init.method || 'GET'); return false; });
   await retained200.go('#/apply');
-  check('.200 an existing Patron application remains visibly labelled with its original private history and the full role directory while paused, without an edit form or silent write', retained200.app.textContent.includes('Patron applications are paused') && !!retained200.app.querySelector('[data-application-track="patron"]') && retained200.app.textContent.includes('Private retained Patron fixture .200') && directoryComplete203(retained200) && !retained200.app.querySelector('form') && retainedRequests200.length === 0 && JSON.stringify(one('SELECT answers,position,status FROM site_applications WHERE discord_id=?', PATRON200)) === JSON.stringify(patronBefore200));
+  check('.200 an existing Patron application remains visibly labelled with its original private history and the full role directory while paused, with an editable current record and no silent write', retained200.app.textContent.includes('Patron applications are paused') && !!retained200.app.querySelector('[data-application-track="patron"]') && retained200.app.querySelector('[data-field="extra"] textarea')?.value==='Private retained Patron fixture .200' && directoryComplete203(retained200) && !!retained200.app.querySelector('form') && retainedRequests200.length === 0 && JSON.stringify(one('SELECT answers,position,status FROM site_applications WHERE discord_id=?', PATRON200)) === JSON.stringify(patronBefore200));
   const patronCopy200 = await request('GET', '/api/me/export', undefined, PATRON200);
   check('.200 paused Patron history remains in the real own-copy with its canonical track and unchanged application content', patronCopy200.response.status === 200 && patronCopy200.body.site.application.answers.applicationTrack === 'patron' && patronCopy200.body.site.application.answers.extra === 'Private retained Patron fixture .200' && one('SELECT answers FROM site_applications WHERE discord_id=?', PATRON200).answers === patronBefore200.answers);
   retained200.app.querySelector('[data-apply-role201="member"]').click();
@@ -779,7 +781,7 @@ async function frontendOwner197() {
   const privacyInitial210=await privacySeed210(),privacyInitialRow210=privacyRow210(privacyInitial210),privacyPublic210=await privacyBoard210(privacyInitial210);
   check('.210 historical reserved fixture has all three actual public board projections before UI withdrawal',!!privacyPublic210?.avatarUrl&&privacyPublic210.talentBuilds?.length===6&&privacyPublic210.applicationIntent?.applicationTrack==='officer'&&privacyPublic210.applicationIntent?.targetOffice==='office_62');
   const partial210=await privacyPage210(privacyInitial210);
-  check('.210 readonly reserved application exposes three unchecked remove-only choices and a disabled Apply action',!!partial210.panel&&partial210.inputs.length===3&&partial210.inputs.every(input=>!input.checked)&&partial210.save?.disabled===true&&!partial210.page.app.querySelector('form'));
+  check('.210 readonly reserved application exposes three unchecked remove-only choices and a disabled Apply action',!!partial210.panel&&partial210.inputs.length===3&&partial210.inputs.every(input=>!input.checked)&&partial210.save?.disabled===true&&!!partial210.page.app.querySelector('form'));
   if(partial210.panel){
     const hold210={};hold210.promise=new Promise(resolve=>{hold210.resolve=resolve;});partial210.page.hold((url,init)=>url==='/api/application'&&init.method==='PUT'?hold210.promise:0);
     privacySelect210(partial210.panel,0);partial210.save.focus();partial210.save.click();
@@ -796,7 +798,7 @@ async function frontendOwner197() {
   }else console.log('INFO .210 pre-UI baseline: action/pending checks skipped because the actual privacy panel is absent');
   for(const kind of ['accepted','declined','patron']){
     const id=await privacySeed210(kind),before=privacyRow210(id),view=await privacyPage210(id);
-    check('.210 '+kind+' readonly application exposes independent removal without a full application form',!!view.panel&&view.inputs.length===3&&!view.page.app.querySelector('form'));
+    check('.210 '+kind+' readonly application exposes independent removal without a full application form',!!view.panel&&view.inputs.length===3&&(kind==='patron'?!!view.page.app.querySelector('form'):!view.page.app.querySelector('form')));
     if(!view.panel)continue;
     view.inputs.forEach(input=>{input.checked=true;fire(input,'change');});view.save.click();await must(()=>privacyFields210.every(([,key])=>privacyAnswers210(id)[key]===false)&&!view.page.app.querySelector('.board-privacy210'),'privacy210 '+kind+' withdrawal');
     check('.210 '+kind+' removal is an actual consent-only PUT preserving status, board timestamp and complete private answers',view.sends.length===1&&Object.keys(view.sends[0]).sort().join('|')==='boardApplicationIntent|boardPortrait|boardTalentBuilds|consentOnly'&&privacyFields210.every(([field])=>view.sends[0][field]===false)&&view.sends[0].consentOnly===true&&privacyInvariant210(privacyRow210(id))===privacyInvariant210(before));

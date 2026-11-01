@@ -24,6 +24,7 @@ async function workerConsent210(){
  const flags210=[['boardPortrait','boardPortraitOptIn'],['boardTalentBuilds','boardTalentBuildsOptIn'],['boardApplicationIntent','boardApplicationIntentOptIn']];
  const all210={consentOnly:true,boardPortrait:false,boardTalentBuilds:false,boardApplicationIntent:false};
  const request210=async(method,url,body,who=MEMBER)=>{
+  if(method==='PUT'&&url==='/api/application')body=await require('./application_editor219_fixture.cjs').applicationEnvelope219(body,async()=>{const own=await request210('GET','/api/me',undefined,who);return own.status===200?own.body:null;});
   const response=await indexMod.default.fetch(new Request('https://guild.example'+url,{method,headers:{Cookie:await cookieFor(who),Origin:'https://guild.example','X-Olympus':siteCore.PAGE_VERSION,...(body===undefined?{}:{'Content-Type':'application/json'})},...(body===undefined?{}:{body:JSON.stringify(body)})}),env(),ctx);
   return{status:response.status,body:await response.json()};
  };
@@ -37,6 +38,8 @@ async function workerConsent210(){
   const out=await request210('GET','/api/board/officer',undefined,OTHER);assert210.equal(out.status,200);
   return out.body.candidates.find(row=>row.id===MEMBER);
  };
+ let out210=await request210('PUT','/api/application',body210);
+ check210('new reserved applications remain refused before any historical fixture is seeded',out210.status===403&&out210.body.error==='reserved_seat'&&!row210());
  await seed210();let card210=await board210();
  check210('historical fixture starts with portrait, two genuine current builds and canonical intent all visible',!!card210.avatarUrl&&card210.talentBuilds.length===2&&card210.applicationIntent?.targetOffice==='office_62');
  for(const [field,stored]of flags210){
@@ -45,7 +48,7 @@ async function workerConsent210(){
   check210(field+' alone clears its projection while retaining both other choices',out.status===200&&JSON.stringify(JSON.parse(after.answers))===JSON.stringify(expected)&&!!card210.avatarUrl===(field!=='boardPortrait')&&card210.talentBuilds.length===(field==='boardTalentBuilds'?0:2)&&!!card210.applicationIntent===(field!=='boardApplicationIntent'));
   check210(field+' does not change roles, status, first board consent, or private application content',JSON.stringify(withoutTimes(before))===JSON.stringify(withoutTimes(after))&&out.body.application.answers[stored]===false);
  }
- await seed210();let out210=await request210('PUT','/api/application',all210);card210=await board210();
+ await seed210();out210=await request210('PUT','/api/application',all210);card210=await board210();
  check210('all-clear suppresses every projection but keeps the historical candidate on the board',out210.status===200&&!!card210&&!card210.avatarUrl&&!card210.talentBuilds.length&&!card210.applicationIntent&&row210().status==='submitted'&&row210().board_at>0);
  const stable210=JSON.stringify({row:row210(),audit:audits210()});out210=await request210('PUT','/api/application',all210);
  check210('repeated withdrawal is idempotent without timestamp or audit churn',out210.status===200&&JSON.stringify({row:row210(),audit:audits210()})===stable210);
@@ -66,8 +69,12 @@ async function workerConsent210(){
   const before=JSON.stringify({row:row210(),audit:audits210()}),out=await request210('PUT','/api/application',payload);
   check210('strict envelope refuses '+JSON.stringify(payload)+' without mutation',out.status===400&&out.body.error==='invalid'&&JSON.stringify({row:row210(),audit:audits210()})===before);
  }
- let before210=JSON.stringify(row210());out210=await request210('PUT','/api/application',body210);
- check210('normal reserved full-save remains403 and cannot re-enable sharing',out210.status===403&&out210.body.error==='reserved_seat'&&JSON.stringify(row210())===before210);
+ const beforeFull210=row210();out210=await request210('PUT','/api/application',body210);card210=await board210();
+ check210('retained open reserved full-save honors fresh separate sharing choices without changing the seat or first consent',out210.status===200&&row210().position===beforeFull210.position&&row210().status===beforeFull210.status&&row210().created_at===beforeFull210.created_at&&row210().board_at===beforeFull210.board_at&&flags210.every(([,key])=>JSON.parse(row210().answers)[key]===true)&&!!card210.avatarUrl&&card210.talentBuilds.length===2&&card210.applicationIntent?.targetOffice==='office_62');
+ const forged210={...body210,answers:{...body210.answers,...Object.fromEntries(flags210.map(([,key])=>[key,true]))}};for(const [field]of flags210)delete forged210[field];
+ out210=await request210('PUT','/api/application',forged210);card210=await board210();
+ check210('missing separate sharing fields cannot be replaced by forged answers flags on a current retained full-save',out210.status===200&&flags210.every(([,key])=>JSON.parse(row210().answers)[key]===false)&&!card210.avatarUrl&&!card210.talentBuilds.length&&!card210.applicationIntent);
+ let before210=JSON.stringify(row210());
  out210=await request210('PUT','/api/application',all210,OTHER);
  check210('another signed-in account cannot target this application or create its own via consent-only',out210.status===404&&JSON.stringify(row210())===before210&&!one('SELECT 1 FROM site_applications WHERE discord_id=?',OTHER));
  // Begin a new local request window using the fixture clock, rather than

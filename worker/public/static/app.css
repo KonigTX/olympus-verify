@@ -1221,3 +1221,6 @@ html[data-stream-shield="on"] main.shell,html[data-stream-shield="on"] #app>.not
 /* Primary frame headings keep the plaque’s original scale and wrapping. */
 .plaque h1.page-heading218{font-size:1.55rem;overflow-wrap:anywhere;min-width:0}
 .role-variants203 > summary{min-height:44px;padding:.6rem;color:var(--gold-soft);cursor:pointer}
+
+/* Rank badges stay readable on the narrowest supported application view. */
+.rank-office199{white-space:normal;max-width:100%;overflow-wrap:anywhere}

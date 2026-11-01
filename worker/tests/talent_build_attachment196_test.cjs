@@ -203,11 +203,18 @@ check('empty main anchor retains only real alt builds with the original main bin
   assert.ok(visible.every(row=>row.character!=='Mia One'&&['mage','druid'].includes(row.class)));
   assert.deepEqual(shared(value,false,collectionContext,collectionName),[]);
 });
-check('empty anchor refuses wrong main, missing main, empty alt and phantom-only input', () => {
+check('empty anchor refuses wrong or missing primary identity', () => {
   const value=collectionFixture();value.characters[0].build30=value.characters[0].build60='';
-  for(const mutate of [v=>v.characters[0].character='Other Person',v=>v.characters[0].class='mage',v=>v.characters.shift(),v=>v.characters.splice(1),v=>{v.characters[1].build30='';v.characters[1].build60='';}]){const bad=clone(value);mutate(bad);assert.equal(collection(bad,collectionContext,collectionName),null);}
+  for(const mutate of [v=>v.characters[0].character='Other Person',v=>v.characters[0].class='mage',v=>v.characters.shift()]){const bad=clone(value);mutate(bad);assert.equal(collection(bad,collectionContext,collectionName),null);}
   assert.equal(collection(value,{...collectionContext,character:null},collectionName),null);
   assert.deepEqual(collection({version:1,characters:[]},collectionContext,collectionName),{version:1,characters:[]});
+});
+check('.219 named main and alts need no build codes and publish no phantom build', () => {
+  const value=collectionFixture();for(const character of value.characters)character.build30=character.build60='';
+  assert.deepEqual(collection(value,collectionContext,collectionName),value);
+  assert.deepEqual(shared(value,true,collectionContext,collectionName),[]);
+  assert.deepEqual(collection({...value,characters:value.characters.slice(0,1)},collectionContext,collectionName),{...value,characters:value.characters.slice(0,1)});
+  assert.ok(new TextEncoder().encode(JSON.stringify(value)).length<=2048);
 });
 check('anchored historical alt retains exact own private code and cannot newly share', () => {
   const value=collectionFixture();value.characters[0].build30=value.characters[0].build60='';value.characters[1].build30=value.characters[1].build30.replace(data.revision,'f'.repeat(12));

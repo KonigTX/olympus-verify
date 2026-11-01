@@ -1,3 +1,4 @@
+import { metadataFields219 } from './guild-calendar-metadata219';
 /** Identify-only history continuation (owner takeover, 2026-10-10). Cursors convey integrity, never admission. */
 import type { Env } from './env';
 import { apiJson, sign, verify } from './site-core';
@@ -76,6 +77,8 @@ function project(c:PrivacyHistoryCollection,r:RecordValue,at:number):RecordValue
  if(c==='eventChanges'){
   // Same closed projection as the aggregate identify-only copy, including legacy/malformed JSON refusal.
   if(typeof r.event_id!=='string'||!/^[A-Za-z0-9_-]{22}$/.test(r.event_id)||!['created','updated','cancelled'].includes(r.action as string)||typeof r.fields!=='string'||r.fields.length>256)throw new FormError('privacy_copy_unconfirmed',503);
+  const metadata219=r.action==='updated'?metadataFields219(r.fields):null;
+  if(metadata219)return {eventId:r.event_id,action:r.action,at:secondsToIso(r.at as number),changedFieldNames:metadata219};
   let fields:unknown;try{fields=JSON.parse(r.fields);}catch{throw new FormError('privacy_copy_unconfirmed',503);}
   if(!Array.isArray(fields)||fields.length>6||fields.some(f=>typeof f!=='string'||!eventFields.has(f))||new Set(fields).size!==fields.length||(r.action==='updated'?fields.length===0:fields.length!==0))throw new FormError('privacy_copy_unconfirmed',503);
   return {eventId:r.event_id,action:r.action,at:secondsToIso(r.at as number),changedFieldNames:fields};

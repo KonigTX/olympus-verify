@@ -120,6 +120,23 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .219 reverses only this uniquely counted owner release note.
+  const release219 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".219\", date: \"2026-10-31\", lines: [",
+    "      \"Submitted and Under review applications can be edited in place. Original submission and review history stay on record.\",",
+    "      \"Main, declared alts, class, specialization, optional builds, availability, track and notes can be updated. Old or stale editors must reload before saving.\",",
+    "      \"Role families have one clear specification with separate regional and class duties. Leadership seats remain reserved appointments.\",",
+    "      \"Private /raid and /event commands share the website calendar and seven signup preferences. Authorized officers can arm one reminder and lock attendance after start.\",",
+    "      \"Discord guide, talent, Workshop, Treasury, Stockades, Council, branch and launch references use the existing website sources and preserve private access boundaries.\",",
+    "      \"No schema or external integration is activated. The relay stays unmounted pending publisher confirmation; cosmetic dispatch, Army publishing and Olympus Link remain OFF.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .219 prepend occurs once', originalNews.split(release219).length === 2);
+  originalNews = originalNews.replace(release219, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
   // .218 prepends this exact dated member-facing note. Reverse only this
   // finite, counted literal before the unchanged historical inverses and hash.
   const release218 = [

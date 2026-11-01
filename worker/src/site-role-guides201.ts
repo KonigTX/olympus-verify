@@ -1,3 +1,4 @@
+import { editorialRoleGuides219 } from './site-role-editorial219';
 /** Owner decision, 26 Oct 2026: describe every seat; Officer Corps, Council and royal seats are reserved.
  * This is a reading guide, never an appointment, vacancy feed, permission preset or application admission rule.
  * Legacy position copy is supplied by site-data after it has been built, avoiding a circular import and retaining
@@ -120,7 +121,7 @@ const content201: Readonly<Record<string, Content201>> = {
     'The Chief Strategist turns research into plans that a raid team can actually execute. The role compares encounter evidence and alternative tactics, then gives the Raid Leaders a clear recommendation with assumptions and fallback options rather than an untested theory.',
     ['Research Forever encounter changes and record the source and version of each claim.', 'Develop assignments, positioning notes and recovery options with the relevant class specialists.', 'Review results after progression attempts and update a plan when evidence contradicts it.'],
     ['Separate a proven mechanic from speculation or a strategy copied from a different ruleset.', 'Invite practical feedback from the people carrying out the assignments.'],
-    'Research before progression nights and short post-raid analysis.', 'War Head, Raid Leaders, Class Heads and Scouts.'
+    'Research before progression nights and short post-raid analysis.', 'Grand Marshal of PvE, Regional Raid Leaders, Class Heads and Scouts.'
   ],
   office_17: [
     'A Class Head coordinates the guild’s support for one class across its raid groups. The Head maintains a consistent standard of advice, develops mentors and resolves differences between teams without turning personal build preference into an unexplained rule.',
@@ -252,7 +253,7 @@ const content201: Readonly<Record<string, Content201>> = {
     'The Emissary of War represents a branch’s raid and organized combat needs to the War portfolio. Accurate local capacity matters more than impressive numbers: the alliance needs to know which teams are prepared, which times work and where additional support is wanted.',
     ['Collect the branch’s agreed raid schedule, composition needs and training requests.', 'Coordinate proposed shared activities with the local Raid Leaders before making commitments.', 'Return strategy updates and identify differences in the branch’s actual readiness.'],
     ['Report uncertain roster or attendance information as uncertain.', 'Respect local raid command and do not allocate another team’s players or loot.'],
-    'Coordination around planned raid weeks and cross-branch events.', 'War Head, branch Guild Master, Raid Leaders and Class Heads.'
+    'Coordination around planned raid weeks and cross-branch events.', 'Grand Marshals of PvE and PvP, the branch Guild Master, Raid Leaders and Class Heads.'
   ],
   office_39: [
     'An Event Coordinator takes an approved event from idea to a playable plan. This is the logistics role: reserve a suitable time, make joining instructions understandable and ensure someone is responsible when the event starts.',
@@ -318,7 +319,7 @@ const content201: Readonly<Record<string, Content201>> = {
     'The Intelligence / Scouting Lead organizes lawful in-game observation for planned activities. Scouting should provide useful information about routes, encounter conditions or event readiness; it must not become an excuse to collect personal information or direct harassment.',
     ['Give scouts a clear observation task, reporting format and endpoint.', 'Check the time, game version and reliability of reports before passing them to organizers.', 'Combine findings into practical route or strategy notes and identify uncertainty.'],
     ['Use information available through permitted gameplay and respect participant privacy.', 'Do not portray an unverified rumour or a stale observation as current enemy intent.'],
-    'Bounded scouting assignments and preparation for agreed events.', 'Chief Strategist, War Head and relevant raid or event leaders.'
+    'Bounded scouting assignments and preparation for agreed events.', 'Chief Strategist, the relevant Grand Marshal of PvE or PvP, and the designated raid or event leaders.'
   ],
   office_50: [
     'The Lead Correspondent coordinates the branch news network and the editorial handover to Town Crier. The job is to help members learn what actually happened and what is coming next, with a clear distinction between an approved notice, an opinion and an unverified report.',
@@ -336,7 +337,7 @@ const content201: Readonly<Record<string, Content201>> = {
     'The Marshall coordinates orderly execution of an assigned organized combat activity. The appointment is about readiness, group movement and clear command handovers; it does not create a second sovereign authority over every raid or a license to compel participation.',
     ['Translate the approved event plan into group assignments and assembly instructions.', 'Confirm that leaders, support roles and communication channels are ready before starting.', 'Report changes, losses or obstacles to the event’s command and organize an orderly finish.'],
     ['Give concise calls and preserve a calm channel during disruption.', 'Respect the event’s opt-in scope, published conduct and designated commander.'],
-    'The preparation and running window of the appointed activity.', 'War Head, Raid Leaders, PvP Captains and Emissaries of War.'
+    'The preparation and running window of the appointed activity.', 'The designated activity commander, Grand Marshals of PvE and PvP, Raid Leaders, PvP Captains and Emissaries of War.'
   ],
   office_53: [
     'The Media & Communications Lead coordinates how Olympus speaks across announcements, guides and creative coverage. The Lead keeps the message understandable and consistent while making sure a guild brand does not erase the rights or choices of individual contributors.',
@@ -450,7 +451,7 @@ const content201: Readonly<Record<string, Content201>> = {
     'The PvP Lead organizes optional battleground premades and agreed competitive events within the guild’s PvE ruleset direction. The role builds a dependable team and a clear voice channel without turning optional competition into compulsory participation or changing the announced ruleset. This regional or branch Officer Corps role is distinct from the alliance-wide MAIN PvP Lead Council remit.',
     ['Publish optional PvP nights and maintain the willing team’s composition.', 'Prepare strategy, assign Captains and call or delegate target priorities.', 'Review conduct and coordinate inter-guild questions through the appropriate Liaison.'],
     ['Have practical group-leading experience and a calm microphone presence.', 'Keep event objectives and rivalry within the guild and platform rules.'],
-    'About 5 to 10 hours a week when an active program is scheduled.', 'PvP Captains, War Head, officers and Liaison.'
+    'About 5 to 10 hours a week when an active program is scheduled.', 'PvP Captains, Grand Marshal of PvP, officers and Liaison.'
   ],
   office_72: [
     'The Quartermaster turns approved plans into available supplies. A raid or guild project should know what can be provided, what is missing and who is responsible for the handover, without relying on an undocumented personal stash.',
@@ -681,5 +682,5 @@ export function roleGuides201(positions: readonly LegacyPosition201[] = []): Rea
     if (/^office_[0-9]{2,3}$/.test(position.key)) continue;
     guides[position.key] = Object.freeze({ ...existing, eligibilityNote: eligibilityNote201(existing.eligibility), definition: position.info.about, responsibilities: Object.freeze([...position.info.duties]), expectations: Object.freeze([...position.info.expect]), commitment: position.info.time, worksWith: position.info.works ?? existing.worksWith });
   }
-  return Object.freeze(guides);
+  return editorialRoleGuides219(guides);
 }

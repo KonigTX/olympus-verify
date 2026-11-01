@@ -266,6 +266,7 @@ async function legacySchemaHeld(old) {
 
 (async () => {
   console.log("== .213: the original site JSON limit applies during consumption ==");
+  call = require("./application_editor219_fixture.cjs").currentApplicationCall219(call);
   const jsonRequest213 = (body, headers = {}) => new Request("https://guild.example/body-fixture", { method: "POST", body, headers, duplex: "half" });
   const chunkedJson213 = (bytes, size, headers) => {
     let offset = 0;
@@ -997,7 +998,8 @@ async function legacySchemaHeld(old) {
     res = await call("GET", "/api/board/officer", { who: B });
     check("Alice stays on the board for her other choices", (await J(res)).candidates.some((x) => x.id === A));
     res = await call("PUT", "/api/application", { who: A, body: { ...appBody, position: "raid_leader_eu", backups: ["officer", "class_lead:priest"], class: "priest", role: "healer", region: "eu" } });
-    check("  her historical leadership application cannot be edited through current admissions", res.status === 403 && (await J(res)).error === 'reserved_seat');
+    out = await J(res);
+    check("  her existing open historical leadership application can correct answers while retaining its reserved choices", res.status === 200 && out.application.position === "raid_leader_eu" && out.application.status === "submitted" && out.application.editToken.length === 64);
     check("  the historical parser still requires dropping an appointed backup", (await historicalValidation201(appBody, A)).field === 'backups');
     res = await call("PUT", "/api/application", { who: B, body: { ...appBody, position: "class_lead", classLead: "priest", backups: [] } });
     check("  Class Lead remains a reserved appointment, even for an already appointed class", res.status === 403 && (await J(res)).error === 'reserved_seat');
@@ -1554,7 +1556,7 @@ async function legacySchemaHeld(old) {
   check("/queue/unverified carries the verified list for the watcher", Array.isArray(out.verified) && out.verified[0].username === "grace_new" && out.members.some((m) => m.name === "Nobody Here"));
   res = await index.fetch(new Request("https://verify.example/health", { headers: { Authorization: "Bearer watcher-token-for-tests-only-0123456789" } }), rawEnv(), ctx);
   out = await res.json();
-  check("/health names the build and the site (to the watcher's bearer, since .49)", out.build === "2026-10-30.218 Guild charter, guides and tools" && out.site.host === "guild.example" && out.site.admins === 1);
+  check("/health names the build and the site (to the watcher's bearer, since .49)", out.build === "2026-10-31.219 Applications, roles and guild commands" && out.site.host === "guild.example" && out.site.admins === 1);
 
   console.log("\n== the addon-facing queue still works for an old-style caller ==");
   res = await ingest.getQueue(env(), "");

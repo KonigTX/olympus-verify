@@ -8,6 +8,7 @@ if (cuts200.length !== 1) throw Error('one original site fixture boundary requir
 const prefix200 = text200.slice(0, cuts200[0].index);
 const body200 = String.raw`
 (async () => {
+  call=require("./application_editor219_fixture.cjs").currentApplicationCall219(call);
   const installedSchema200 = JSON.stringify(db.prepare('SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name').all());
   const member200 = '300000000000000001';
   const otherMember200 = '300000000000000003';
@@ -91,7 +92,7 @@ const body200 = String.raw`
   const preservedPatron200 = JSON.stringify(application200());
   for (const [label, payload] of [['top-level', directPatron200], ['answers JSON', nestedPatron200], ['legacy editor omitting intent', applicationBody200]]) {
     res200 = await call('PUT', '/api/application', { who: member200, body: payload }); result200 = await J(res200);
-    check(label + ' cannot change or silently strip an existing Patron intent while OFF', res200.status === 403 && result200.error === 'royal_writs_paused' && JSON.stringify(application200()) === preservedPatron200);
+    check(label + ' can edit an existing open Patron record while OFF without stripping its original intent', res200.status === 200 && JSON.parse(application200().answers).applicationTrack === 'patron' && application200().created_at === JSON.parse(preservedPatron200).created_at);
   }
   res200 = await call('GET', '/api/me', { who: member200 }); result200 = await J(res200);
   check('paused existing Patron remains visible in the ordinary owned application DTO', res200.status === 200 && result200.application?.answers.applicationTrack === 'patron');
@@ -141,7 +142,7 @@ const body200 = String.raw`
     } finally { PREPARE_HOOK = null; }
     const label200 = switchKey200 + ' switched OFF during ' + (existing200 ? 'existing application update' : 'first application insert');
     check(label200 + ' genuinely completed the original reentrant Admin save', interleaved200 && adminSwitchStatus200 === 200 && observedSwitch200 === '0');
-    check(label200 + ' refuses at the atomic application write without changing its row or audit', res200.status === 403 && result200.error === refusal200 && JSON.stringify(application200() ?? null) === beforeApplication200 && applicationAudits200() === beforeApplicationAudit200, res200.status, result200.error);
+    check(label200 + (existing200 ? ' remains an admitted in-place edit with original submission time' : ' refuses a new insert atomically without changing row or audit'), existing200 ? res200.status === 200 && application200().character === 'Changed Racer' && application200().created_at === JSON.parse(beforeApplication200).created_at && applicationAudits200() !== beforeApplicationAudit200 : res200.status === 403 && result200.error === refusal200 && JSON.stringify(application200() ?? null) === beforeApplication200 && applicationAudits200() === beforeApplicationAudit200, res200.status, result200.error);
     console.log('MEASURED_APPLICATION_SWITCH_RACE ' + JSON.stringify({ switchKey: switchKey200, existing: existing200, adminStatus: adminSwitchStatus200, observedSwitch: observedSwitch200, status: res200.status, error: result200.error, rowUnchanged: JSON.stringify(application200() ?? null) === beforeApplication200, auditUnchanged: applicationAudits200() === beforeApplicationAudit200 }));
   }
   await call('PUT', '/api/admin/settings', { who: VIKTOR, body: { applicationsOpen: true, royalWritsOn: false } });

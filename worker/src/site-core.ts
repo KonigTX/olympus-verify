@@ -188,6 +188,7 @@ export function avatarUrl(env: Env, id: string, avatar: string | null | undefine
 // ---------- applications, search, request plumbing ----------
 
 export interface AppRow {
+  char_key?: string | null;
   discord_id: string;
   position: string;
   class_lead: string | null;

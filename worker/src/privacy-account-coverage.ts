@@ -78,7 +78,7 @@ export function projectOwnDirectoryCopy(kind:'professions'|'alts',r:Record<strin
 }
 export function projectOwnEventCopy(kind:'signups'|'created'|'attendance',r:Record<string,unknown>){
  const id=ownCopyText(kind==='created'?r.id:r.event_id,22);if(!/^[A-Za-z0-9_-]{22}$/.test(id as string))return ownCopyRefuse();
- if(kind==='signups'){const remind=ownCopyInt(r.remind_mention,0,1);if(remind===null||(r.decision===null)!==(r.decided_at===null))return ownCopyRefuse();return {eventId:id,title:ownCopyText(r.title,80,true),startsAt:ownCopyDate(r.starts_at,true),status:ownCopyEnum(r.status,['yes','tentative','no']),character:ownCopyText(r.character_name,40,true),raidRole:ownCopyEnum(r.raid_role,['tank','healer','damage'],true),rsvpStartsAt:ownCopyDate(r.rsvp_starts_at),updatedAt:ownCopyDate(r.updated_at),remindMention:remind===1,decision:ownCopyEnum(r.decision,['accepted','bench','declined'],true),decidedAt:ownCopyDate(r.decided_at,true)};}
+ if(kind==='signups'){const remind=ownCopyInt(r.remind_mention,0,1);if(remind===null||(r.decision===null)!==(r.decided_at===null))return ownCopyRefuse();return {eventId:id,title:ownCopyText(r.title,80,true),startsAt:ownCopyDate(r.starts_at,true),status:ownCopyEnum(r.status,['yes','tentative','no']),...(Object.hasOwn(r,'preference219')?{preference:ownCopyEnum(r.preference219,['tank','healer','melee','ranged','tentative','bench','absent'],true)}:{}),character:ownCopyText(r.character_name,40,true),raidRole:ownCopyEnum(r.raid_role,['tank','healer','damage'],true),rsvpStartsAt:ownCopyDate(r.rsvp_starts_at),updatedAt:ownCopyDate(r.updated_at),remindMention:remind===1,decision:ownCopyEnum(r.decision,['accepted','bench','declined'],true),decidedAt:ownCopyDate(r.decided_at,true)};}
  if(kind==='attendance')return {eventId:id,title:ownCopyText(r.title,80,true),startsAt:ownCopyDate(r.starts_at,true),state:ownCopyEnum(r.state,['present','absent','excused','unknown']),source:ownCopyEnum(r.source,['officer','observed']),reasonCode:ownCopyEnum(r.reason_code,['late','left_early'],true),recordedAt:ownCopyDate(r.recorded_at)};
  let roleTargets:Record<string,number>|null=null;
  if(r.role_targets!==null){
@@ -281,7 +281,7 @@ const rows:StoreCoverage[]=[
   "collections": [
    "community.events.signups"
   ],
-  "description": "Own signup/status/character/raid role/update, original answered-for start, reminder-mention choice and the organizer's roster decision with its date (the deciding organizer withheld); missing event context stays null.",
+  "description": "Own signup/status/character/raid role/update and current seven-way signup preference, original answered-for start, reminder-mention choice and the organizer's roster decision with its date (the deciding organizer withheld); missing event context stays null.",
   "handling": "Selected fields only. Omitted content and staff-related records need attended review; an empty or filtered section is not proof that nothing is retained."
  },
  {
