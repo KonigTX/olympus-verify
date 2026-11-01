@@ -2227,14 +2227,14 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     await live5.go("#/community/news");
     await waitFor(() => !!byText(live5.app, "h2", "The road to launch"), "the road to launch");
     const announcedRoad218=frameOf(live5, "The road to launch");
-    check("  one hour after the announced global launch News states the announcement passed and directs readers to service notices without claiming observed service", announcedRoad218.textContent.includes("The announced launch time has passed. Check Blizzard’s service notices for actual service availability.")&&!announcedRoad218.querySelector('[role="timer"]')&&!announcedRoad218.textContent.includes("Live now"));
+    check("  one hour after the announced global launch News states the announcement passed and directs readers to service notices without claiming observed service", announcedRoad218.textContent.includes("First raids are announced for 9 December 2026") && announcedRoad218.textContent.includes("regional opening hour is not confirmed here")&&!announcedRoad218.querySelector('[role="timer"]')&&!announcedRoad218.textContent.includes("Live now"));
     // .218: the official launch announcement must not silently inherit the editable guild admission date.
     for (const [label, clock, arrived] of [["one hour before", 1793829600000, false], ["one hour after", 1793836800000, true]]) {
       const launch218 = await openPage(MEMBER, {}, { clockNow: clock, bootTransform(boot) { boot.settings.launchAt = 1793919600; } });
       await launch218.go("#/apply");
       const announcement218 = launch218.app.querySelector('.launch-notice218');
-      check(".218 " + label + " official launch uses4Nov even if guild schedule is5Nov", !!announcement218 && announcement218.textContent.includes("4 November 2026 · 23:00 UTC")
-        && (arrived ? announcement218.textContent.includes("announced launch time has passed") && !announcement218.querySelector('[role="timer"]')
+      check(".218 " + label + " official launch uses4Nov even if guild schedule is5Nov", !!announcement218 && announcement218.textContent.includes(arrived ? "9 December · first Forever raids" : "4 November 2026 · 23:00 UTC")
+        && (arrived ? announcement218.textContent.includes("regional opening hour is not confirmed here") && !announcement218.querySelector('[role="timer"]')
           : Array.from(announcement218.querySelector('[role="timer"]')?.querySelectorAll('.num') || [], node => node.textContent).join(':') === '0:01:00:00'));
     }
     if (launchRow) (await fixtureRun("UPDATE site_settings SET value = ? WHERE key = 'launchAt'",launchRow.value)); else (await fixtureRun("DELETE FROM site_settings WHERE key = 'launchAt'"));

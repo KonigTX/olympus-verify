@@ -83,7 +83,7 @@ const recordTool169 = (page, namespace, calls) => {
   const inspectOrganization210 = (parts, term) => {
     const view = organization210.open({overview205:true, parts});
     const selected = !!term && view.node(term.nodeId)?.getAttribute('aria-pressed') === 'true' && view.detail.textContent.includes(term.label + ':') && view.one('org-relationship-map205').open && view.doc.activeElement === view.detail;
-    const fallback = view.node('council').getAttribute('aria-pressed') === 'true' && !view.one('org-relationship-map205').open;
+    const fallback = view.node('council').getAttribute('aria-pressed') === 'true' && view.one('org-relationship-map205').open && view.doc.activeElement !== view.detail;
     view.dispose(); return {selected, fallback};
   };
   for (const row of classAliases210) {

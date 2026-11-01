@@ -8,16 +8,17 @@ import { rateLimited } from './site-core';
 import { destination, type ActionRow } from './community-event-delivery';
 import { runEventReminders } from './community-event-reminders';
 import { captureGuildActor219, currentGuildActor219, guildActorBatch219, type GuildActor219 } from './guild-command-authority219';
-import { GUILD_COMMAND_NAMES_219 } from './guild-command-definitions219';
+import { GUILD_COMMAND_NAMES_221 } from './guild-command-definitions221';
+import { workshopOrderDraft221 } from './guild-workshop-order221';
 import { createCalendar219, readCalendar219, calendarRoster219, rsvpCalendar219, attendanceCalendar219, eventId219, type CalendarEvent219, ROSTER_PAGE_219 } from './guild-calendar219';
 import { consentCalendarReminder219 } from './guild-reminder219';
 import { RSVP_CHOICES_219 } from './guild-calendar-metadata219';
 import { guideLookup219, workshopLookup219, referenceLookup219, safeDiscordText219, type GuildEmbed219 } from './guild-utilities219';
 
 const COMPONENT=/^raid219:rsvp:([A-Za-z0-9_-]{22}):([1-9][0-9]{0,8}):(tank|healer|melee|ranged|tentative|bench|absent)$/;
-export const isGuildCommand219=(i:Interaction):boolean=>(i.type===2&&GUILD_COMMAND_NAMES_219.has(i.data?.name??''))||(i.type===3&&COMPONENT.test(i.data?.custom_id??''));
+export const isGuildCommand219=(i:Interaction):boolean=>(i.type===2&&GUILD_COMMAND_NAMES_221.has(i.data?.name??''))||(i.type===3&&COMPONENT.test(i.data?.custom_id??''));
 export function guildCommandReadOnly219(i:Interaction):boolean {
- if(i.type!==2||!GUILD_COMMAND_NAMES_219.has(i.data?.name??''))return false;
+ if(i.type!==2||!GUILD_COMMAND_NAMES_221.has(i.data?.name??''))return false;
  return !['raid','event'].includes(i.data!.name!)||['list','roster'].includes(subcommand(i)??'');
 }
 const options219=(i:Interaction):Record<string,unknown>=>{
@@ -47,8 +48,11 @@ export async function executeGuildCommand219(env:Env,a:GuildActor219,i:Interacti
   const ok=await rsvpCalendar219(env,a,component[1]!,Number(component[2]),component[3]!);
   return {content:ok?`${component[3]==='bench'?'Bench requested; the organizer’s separate roster decision is unchanged.':'Your '+component[3]+' preference was saved.'} Change it on the newest event notice or calendar.`:'Nothing changed. The event, roster capacity, account or button revision is no longer current. Open the calendar and check your signup.'};
  }
- if(name==='guide')return {embeds:[await guideLookup219(env,a,sub,v)]};
- if(name==='workshop')return {embeds:[await workshopLookup219(env,a,v.search,page219(v.page))]};
+ if(name==='guide'||name==='forever'){
+  const aliases:Readonly<Record<string,string>>={guide:'class',talents:'talent',consumables:'consumes',buffs:'buffs',attunement:'attunement'};
+  return {embeds:[await guideLookup219(env,a,name==='forever'?(aliases[sub]??''):sub,v)]};
+ }
+ if(name==='workshop')return {embeds:[sub==='order'?workshopOrderDraft221(env,v):await workshopLookup219(env,a,v.query??v.search,page219(v.page))]};
  if(!['raid','event'].includes(name))return {embeds:[await referenceLookup219(env,a,name)]};
  if(['schedule','create'].includes(sub)){
   const event=await createCalendar219(env,a,v);

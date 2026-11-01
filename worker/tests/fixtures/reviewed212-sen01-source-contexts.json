@@ -1,13 +1,28 @@
 {
   "schema": "reviewed212-sen01-source-contexts-v1",
-  "purpose": "SEN-01 (30 Oct 2026) static source qualification only. Reversing these exact hunks (SEN-01: refusal copy, one opening timestamp, code dating; its follow-up: one atomic request insert with the same-day rule, and the officer release) gives the accepted .212 interactions.ts; no reconstructed source is executed. The .216 lifecycle restriction adds one import inverse and refines only the release-block inverse; accepted authority remains unchanged. The .217 recovery copy adds one exact whole linked-reply inverse; original accepted authority remains unchanged.",
+  "purpose": "SEN-01 (30 Oct 2026) static source qualification only. Reversing these exact hunks (SEN-01: refusal copy, one opening timestamp, code dating; its follow-up: one atomic request insert with the same-day rule, and the officer release) gives the accepted .212 interactions.ts; no reconstructed source is executed. The .216 lifecycle restriction adds one import inverse and refines only the release-block inverse; accepted authority remains unchanged. The .217 recovery copy adds one exact whole linked-reply inverse; original accepted authority remains unchanged. The .221 command aliases, private account links and bound-character release refusal reverse through three exact hunks to accepted .220 before the original SEN-01 inverses. Runtime tests execute current source; reconstruction is static only.",
   "path": "worker/src/interactions.ts",
   "acceptedCommit": "a57e178b5a5042be68c9181d5488f5b597bc43a5",
   "acceptedSHA256": "b7d24eea98da3b7342d98f6f6b4e97a43b3f618835dffda7c78f9bef6ee8ec0f",
   "acceptedBytes": 60661,
-  "currentSHA256": "ebdf0262e17ede0fd8ad408a2a671fd6b5fd9593646c9a88d0ddc9bb4ddf7633",
-  "currentBytes": 66829,
+  "currentSHA256": "bc4ab0d1b9bafa757317050d64f4f699b8c57aca93b88740761f275f864a0180",
+  "currentBytes": 68057,
   "edits": [
+    {
+      "count": 1,
+      "from": "        return character ? issueCode(env, i, character, lane,roleDispatch) : issueTicket(env, i, lane);\n      }\n      case \"verify-status\":\n      case \"olympus-status\":\n        return cmdStatus(env, i,roleDispatch);\n      case \"olympus-privacy\":\n      case \"olympus-unlink\": {\n        const host = env.SITE_HOST;\n        if (!host || !/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,}$/i.test(host)) return reply(\"The account-controls website is not configured. Ask an officer for the current privacy page.\");\n        const base = `https://${host}`;\n        return reply(i.data.name === \"olympus-privacy\"\n          ? `Open [Account data](${base}/#/data) for your own export and self-service erasure controls. [Privacy policy](${base}/legal/privacy). You will authenticate on the website; this command copies or erases nothing.`\n          : `Open [Account data](${base}/#/data) to review account-removal controls. For a linked game character, ask an authorized officer to use the guarded unbind workflow. An optional Discord connection is removed in Discord Settings → Connections. Nothing was unlinked or erased by this command.`);\n      }\n      case \"olympus-admin\":\n        return cmdAdmin(env, i, lane, defer,roleDispatch);\n    }\n",
+      "to": "        return character ? issueCode(env, i, character, lane,roleDispatch) : issueTicket(env, i, lane);\n      }\n      case \"verify-status\":\n        return cmdStatus(env, i,roleDispatch);\n      case \"olympus-admin\":\n        return cmdAdmin(env, i, lane, defer,roleDispatch);\n    }\n"
+    },
+    {
+      "count": 1,
+      "from": "  if (!hasAnyRole(i, officerRoles(env))) return reply(\"Officers only.\");\n  const actor = userOf(i).id;\n  switch (subcommand(i)) {\n    case \"release\":\n    case \"unbind\": {\n      const raw = option<string>(i, \"character\") ?? \"\";\n      const key = normalizeCharacter(raw);\n      const row = await getCharacter(env, key);\n      if (subcommand(i) === \"release\" && row && row.status !== \"unbound\") return reply(\"That character already has a binding. Request release cannot unlink it; use the explicit unbind workflow after reviewing the current owner.\");\n      // SEN-01 follow-up (30 Oct 2026): a name with no live binding (never linked, or unbound) can still be held by an open\n      // request. Closing it is the officers' lever short of a ban; the reply names the holder, who cannot take the name back\n      // before 00:00 UTC (issueCode). A blank name (open request codes carry an empty name_key) closes nothing; an unbound\n",
+      "to": "  if (!hasAnyRole(i, officerRoles(env))) return reply(\"Officers only.\");\n  const actor = userOf(i).id;\n  switch (subcommand(i)) {\n    case \"unbind\": {\n      const raw = option<string>(i, \"character\") ?? \"\";\n      const key = normalizeCharacter(raw);\n      const row = await getCharacter(env, key);\n      // SEN-01 follow-up (30 Oct 2026): a name with no live binding (never linked, or unbound) can still be held by an open\n      // request. Closing it is the officers' lever short of a ban; the reply names the holder, who cannot take the name back\n      // before 00:00 UTC (issueCode). A blank name (open request codes carry an empty name_key) closes nothing; an unbound\n"
+    },
+    {
+      "count": 1,
+      "from": "        accountText(await accountInfo(env, row.discord_id));\n      return reply(text.length > 1990 ? text.slice(0, 1985) + \"\\u2026\" : text);\n    }\n    case \"role-sync\":\n    case \"sync\": {\n      return deferredAdminReply(env, i, defer, \"interaction_admin_sync\", () => runAdminSync(env, actor, roleDispatch));\n    }\n",
+      "to": "        accountText(await accountInfo(env, row.discord_id));\n      return reply(text.length > 1990 ? text.slice(0, 1985) + \"\\u2026\" : text);\n    }\n    case \"sync\": {\n      return deferredAdminReply(env, i, defer, \"interaction_admin_sync\", () => runAdminSync(env, actor, roleDispatch));\n    }\n"
+    },
     {
       "count": 1,
       "from": "import { readPrivacySubject, privacyBoundSubjectEnv,privacyActorAlreadyBound,pendingPrivacyCapture } from './privacy-serving-authority';\n",

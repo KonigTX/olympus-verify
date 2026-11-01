@@ -24,8 +24,8 @@ function fixture(changes = new Map(), repin = false) {
   return { ...base, get };
 }
 check('real staged projection graph passes', verify(base).result === 'PASS');
-for (const replacement of ['build: ".221", date: "2026-11-01"', 'build: ".220", date: "2026-10-31"']) {
-  rejects('current release note cannot drift from runtime build/date: ' + replacement, () => verify(fixture(changed('worker/src/site-news.ts', s => s.replace('build: ".220", date: "2026-11-01"', replacement)))), /current release note exactly matches runtime BUILD/);
+for (const replacement of ['build: ".222", date: "2026-11-01"', 'build: ".221", date: "2026-10-31"']) {
+  rejects('current release note cannot drift from runtime build/date: ' + replacement, () => verify(fixture(changed('worker/src/site-news.ts', s => s.replace('build: ".221", date: "2026-11-01"', replacement)))), /current release note exactly matches runtime BUILD/);
 }
 const council218 = 'worker/public/static/governance/council-composition-master218.md';
 rejects('Master218 Cabinet document byte drift is refused', () => verify(fixture(changed(council218, s => s + '\n'))), /byte pin drift/);

@@ -85,7 +85,17 @@ export async function handleInteraction(env: Env, i: Interaction, defer?: Defer,
         return character ? issueCode(env, i, character, lane,roleDispatch) : issueTicket(env, i, lane);
       }
       case "verify-status":
+      case "olympus-status":
         return cmdStatus(env, i,roleDispatch);
+      case "olympus-privacy":
+      case "olympus-unlink": {
+        const host = env.SITE_HOST;
+        if (!host || !/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i.test(host)) return reply("The account-controls website is not configured. Ask an officer for the current privacy page.");
+        const base = `https://${host}`;
+        return reply(i.data.name === "olympus-privacy"
+          ? `Open [Account data](${base}/#/data) for your own export and self-service erasure controls. [Privacy policy](${base}/legal/privacy). You will authenticate on the website; this command copies or erases nothing.`
+          : `Open [Account data](${base}/#/data) to review account-removal controls. For a linked game character, ask an authorized officer to use the guarded unbind workflow. An optional Discord connection is removed in Discord Settings → Connections. Nothing was unlinked or erased by this command.`);
+      }
       case "olympus-admin":
         return cmdAdmin(env, i, lane, defer,roleDispatch);
     }
@@ -641,10 +651,12 @@ async function cmdAdmin(env: Env, i: Interaction, lane?: LaneCapture, defer?: De
   if (!hasAnyRole(i, officerRoles(env))) return reply("Officers only.");
   const actor = userOf(i).id;
   switch (subcommand(i)) {
+    case "release":
     case "unbind": {
       const raw = option<string>(i, "character") ?? "";
       const key = normalizeCharacter(raw);
       const row = await getCharacter(env, key);
+      if (subcommand(i) === "release" && row && row.status !== "unbound") return reply("That character already has a binding. Request release cannot unlink it; use the explicit unbind workflow after reviewing the current owner.");
       // SEN-01 follow-up (30 Oct 2026): a name with no live binding (never linked, or unbound) can still be held by an open
       // request. Closing it is the officers' lever short of a ban; the reply names the holder, who cannot take the name back
       // before 00:00 UTC (issueCode). A blank name (open request codes carry an empty name_key) closes nothing; an unbound
@@ -811,6 +823,7 @@ async function cmdAdmin(env: Env, i: Interaction, lane?: LaneCapture, defer?: De
         accountText(await accountInfo(env, row.discord_id));
       return reply(text.length > 1990 ? text.slice(0, 1985) + "\u2026" : text);
     }
+    case "role-sync":
     case "sync": {
       return deferredAdminReply(env, i, defer, "interaction_admin_sync", () => runAdminSync(env, actor, roleDispatch));
     }

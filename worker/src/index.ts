@@ -394,7 +394,7 @@ export async function runSourceEpoch2ScheduledBody(env: Env, ctx: ExecutionConte
 const STORED_RESPONSE_MAX = 32 * 1024;
 
 /** Commands with nothing to protect from a repeat: they read and answer. `/olympus-admin lookup` is the one read-only subcommand. */
-const READ_ONLY_COMMANDS: ReadonlySet<string> = new Set(["verify-status", LOOKUP_COMMAND, USER_MENU_LOOKUP]);
+const READ_ONLY_COMMANDS: ReadonlySet<string> = new Set(["verify-status", "olympus-status", "olympus-unlink", "olympus-privacy", LOOKUP_COMMAND, USER_MENU_LOOKUP]);
 const READ_ONLY_ADMIN: ReadonlySet<string> = new Set(["lookup"]);
 export function isReadOnly(i: Interaction): boolean {
   if (i.type !== 2) return false;
@@ -648,7 +648,7 @@ async function freshRegistrationRefused(env: Env, trigger: string): Promise<void
 }
 
 /** Bumped with every change that needs a redeploy, so GET /health shows which build is live. */
-const BUILD = "2026-11-01.220 Discord channel guidance";
+const BUILD = "2026-11-01.221 Guild guides and command workflows";
 
 /**
  * Presence of each secret (never the value) and a D1 round trip — enough to tell a missing `wrangler secret put` from a

@@ -272,17 +272,17 @@ export function renderOrganization(main, data, ui) {
     fit();
     ui.scrollToSection?.(detail);
   });
-  relationshipMap205 = h("details", { class: "org-relationship-map205 frame", open: !allianceOverview205 },
+  relationshipMap205 = h("details", { class: "org-relationship-map205 frame", open: true },
     h("summary", { text: "Explore exact reporting & coordination lines" }));
-  relationshipMap205.open = !allianceOverview205;
+  relationshipMap205.open = true;
   relationshipMap205.addEventListener("toggle", () => { if (relationshipMap205.open) requestAnimationFrame(present); });
   add(main, [h("section", { class: "governance-hero" }, posIcon("guild_master"), h("div", null, h("p", { class: "eyebrow", text: "The administration of Olympus" }), h("h1", { text: "Many guilds. One Olympus." }), h("p", { text: "Follow a line of responsibility, find the people a duty serves, and understand where an office’s authority ends." }))),
     h("aside", { class: "org-adoption", role: "note" }, h("strong", { text: "Guild rules adopted · 13 October 2026" }), h("p", { text: "Adopted by the authorized guild administration. An office shown here does not appoint a holder, grant a Council vote or alter game, Discord, website or bank permissions. Individual appointments and actual access remain separately recorded." }),
       h("p", {class:"small",text:(ui.reservedNotice201 || "Leader, High Council and Officer Corps seats are reserved appointments. You cannot apply for them, including when no holder is listed.") + " Collective institutions and their case panels are not additional individual seats."})),
     h("nav", { class: "governance-quicklinks", "aria-label": "Organization resources" }, h("a", { class: "btn", href: "#/roles/rosetta-stone", text: "Olympus Role & Rank Rosetta Stone" }), h("a", { class: "btn", href: "#/governance/operational-charter-the-work-of-olympus", text: "Read the operational charter" }), h("a", { class: "btn", href: data.directoryRoute, text: "Current appointed leadership" }), h("a", { class: "btn small", href: "#/governance", text: "Complete governance book" })),
     h("p", {class:"role-standing-scope218 small muted",text:ui.standingIntro218 || "These labels record a member’s current guild standing; they are not open positions. Ask the responsible officer to review a change in status."}),
-    allianceOverview205,
     relationshipMap205,
+    allianceOverview205,
     h("section", { class: "frame org-rank-guide" }, h("h2", { text: "The Ten In-Game Ranks of Olympus" }), h("p", { text: "High Council is Rank 2 (slot 1). The Officer Corps occupies Ranks 3–5: Officer, Officer Alt and Raid Leader. Co-Guild Master and Treasurer are Council appointments, not extra native ranks." }),
       h("ol", { class: "organization-ranks" }, data.nativeRanks.map(r => h("li", { "data-native-rank": String(r.order) }, h("a", { href:"#/roles/" + encodeURIComponent(ui.roleDirectory203?.ranks?.find(rank=>rank.nativeSlot===r.nativeSlot)?.familyKey || "rosetta-stone"), text:r.name }), h("small", { text: "Rank " + r.order + " · zero-based slot " + r.nativeSlot })))),
       h("p", { class: "small muted", text: "The owner-directed hierarchy is a planning and application guide. Current native installation, signing profiles, accepted appointments, Council votes and actual access require their own records." })),
@@ -301,10 +301,9 @@ export function renderOrganization(main, data, ui) {
     h("details", { class: "frame org-profile-notes" }, h("summary", { text: "Technical & Historical Profile Notes" }), h("p", { text: data.roleRank199.historicalProfileNote }), h("p", { text: "Older drafts that gave Treasurer a separate native slot are superseded. The historical beta-five client observation and the addon’s second-rank Captain assumption remain evidence to review before real native adoption; this page performs no in-game rank write or key-profile activation. Officer Alt is now the fourth native rank, while the Treasurer key is an appointment alias. No title alone grants bank withdrawal, invitations, key signing or confidential access." })),
     h("section", { class: "frame" }, h("h2", { text: "Olympus I–X · affiliation and succession" }), h("p", { text: "These are directory places for affiliated guilds, not assertions that ten guilds are formed or that their Guild Masters have been appointed. A local Guild Master retains local command while accepting the common charter. Each guild names five correspondents: PvP, Raiding, Finance, Artisanry and Heraldry." }), h("ul", { class: "organization-guilds" }, data.guildPlaceholders.map(g => h("li", null, h("strong", { text: g.name }), h("small", { text: g.state }))))),
     h("section", { class: "frame" }, h("h2", { text: "Role families, duties and expectations" }), h("p", { text: "One guide brings together alternate titles and regional or class specialisms. The chart retains the separate lines of responsibility; grouping guides does not merge appointments, permissions or historical records." }), ui.roleFamilyDirectory203 ? ui.roleFamilyDirectory203() : h("p", { role:"alert", text:"The consolidated role guide is unavailable. Reload before choosing a role." }), h("details", { class:"org-catalogue-history203" }, h("summary", { text:"Office register · 101 stable offices / 137 stored keys" }), h("p", { class:"small muted", text:"These original identifiers and scoped records are retained for existing links and records. They are not additional jobs or vacancies. Use the role-family guide above for current definitions and admission options." }), termList))]);
-  // Keep the detailed relationship explorer available without shrinking the new default overview.
-  for (const node of [...main.children]) {
-    if (node.classList?.contains("org-rank-guide") || node.classList?.contains("org-council-overview") || node.classList?.contains("org-guide") || node === chartLocation || node === chartDialog) relationshipMap205.append(node);
-  }
+  // Show the interactive map before its longer rank, Council and reading references.
+  const mapReadingSections221 = [...main.children].filter(node => node.classList?.contains("org-rank-guide") || node.classList?.contains("org-council-overview") || node.classList?.contains("org-guide"));
+  for (const node of [chartLocation, chartDialog, ...mapReadingSections221]) relationshipMap205.append(node);
   // Match the encoded assignment links emitted by the shared Rosetta table.
   // Decode once, as other SPA readers do; malformed input is simply no match.
   let requested = "";

@@ -6,7 +6,7 @@
 const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto');
 const sha = value => crypto.createHash('sha256').update(value).digest('hex');
 const manifestBytes = fs.readFileSync(path.join(__dirname, 'fixtures/reviewed212-sen01-source-contexts.json'));
-if (sha(manifestBytes) !== '59cd3fe6d5bc52dc7193e434bd6a70277ef0bce5ff1f8f77d33c9e6b0c2f0391') throw Error('reviewed212 SEN-01 source contexts differ');
+if (sha(manifestBytes) !== '9cdcd33b492d33d7ae1b0428b3d1e01009e8562d9b98845d356fc8f4b8c4c479') throw Error('reviewed212 SEN-01 source contexts differ');
 const manifest = JSON.parse(manifestBytes.toString('utf8'));
 if (manifest.schema !== 'reviewed212-sen01-source-contexts-v1') throw Error('reviewed212 SEN-01 schema differs');
 function original212Interactions(raw) {
