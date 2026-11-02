@@ -52,8 +52,12 @@ for row in ref["assets"] + ref["fixed_art_source_pins"] + ref["required_public_r
     raw = path.read_bytes()
     assert len(raw) == row["bytes"] and hashlib.sha256(raw).hexdigest() == row["sha256"], row["path"]
 assert len(ref["assets"]) == 512 and len(ref["fixed_art_source_pins"]) == 7
-assert len(ref["required_public_resources"]) == 60
-assert len({row["path"] for row in ref["assets"] + ref["required_public_resources"]}) == 572
+assert len(ref["required_public_resources"]) == 61
+assert len({row["path"] for row in ref["assets"] + ref["required_public_resources"]}) == 573
+# .224 adds a finite current Cabinet reference; it is not game art.
+council224 = "worker/public/static/governance/council-portfolios224.md"
+assert sum(row["path"] == council224 and row["mode"] == "100644" for row in ref["required_public_resources"]) == 1
+assert council224 not in set(ref["official_paths"]) | set(ref["native_paths"]) | {row["path"] for row in ref["assets"]}
 # .222 adds one current Council reference; it remains a byte-pinned document, not game art.
 council222 = "worker/public/static/governance/council-portfolios222.md"
 assert sum(row["path"] == council222 and row["mode"] == "100644" for row in ref["required_public_resources"]) == 1

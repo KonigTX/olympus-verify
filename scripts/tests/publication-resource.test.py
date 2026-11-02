@@ -58,10 +58,10 @@ public = {**assets, **resources}
 runtime = sorted(p for p in payloads if gate.runtime_path(p))
 prefixes = set(ref['runtime_prefixes'])
 check(len(assets) == 512 and len(ref['official_paths']) == 494, '512 exact assets: all510 prior assets plus two independently approved custom variants;493 official image/font paths and1 historical video unchanged')
-check(len(resources) == 60 and len(public) == 572, '60 exact non-art resources: accepted207 inventory plus the Master218 Council record and three ordinary218 guide files')
-check({p for p in payloads if p.startswith('worker/public/')} == set(public), 'actual tracked public tree is the exact closed572-path union')
+check(len(resources) == 61 and len(public) == 573, '61 exact non-art resources: prior inventory plus the current224 Cabinet record')
+check({p for p in payloads if p.startswith('worker/public/')} == set(public), 'actual tracked public tree is the exact closed573-path union')
 check(len(ref['_fixed_art_sources']) == 7 and assets[gate.BRAND_EXCEPTION['path']] == gate.BRAND_EXCEPTION, 'six original art-sensitive producer pins plus the finite login verifier and original crest contract')
-check(all(pin(p) == row for p, row in public.items()), 'all572 current public byte pins match the reviewed reference')
+check(all(pin(p) == row for p, row in public.items()), 'all573 current public byte pins match the reviewed reference')
 organization_overview = 'worker/public/static/organization-overview205.js'
 organization_context = 'worker/public/static/organization-context205.js'
 organization_resources = {organization_overview, organization_context}
@@ -219,7 +219,7 @@ with tempfile.TemporaryDirectory(prefix='olympus-publication-resource-test-') as
 
     admitted = load()
     proof = gate.validate_result_tree(rows, payloads, admitted)
-    check(proof['result'] == 'PASS' and proof['public_asset_count'] == 572 and proof['required_non_art_resource_pins_verified'] == 60, 'real load_contract then validate_result_tree accepts the complete current source')
+    check(proof['result'] == 'PASS' and proof['public_asset_count'] == 573 and proof['required_non_art_resource_pins_verified'] == 61, 'real load_contract then validate_result_tree accepts the complete current source')
     check(proof['official_image_font_count'] == 493 and proof['official_video_count'] == 1 and proof['official_art_file_count'] == 494, 'result evidence counts the video separately from the493 images/fonts')
     check(proof['login_art_exception_byte_pin_verified'] is True and proof['nonofficial_owner_approved_login_art_count'] == 3 and proof['login_art_exception'] == ref['login_art_exception'], 'result evidence reports the approved custom still separately from all494 official assets')
     check(proof['login_art_variants_byte_pins_verified'] is True and proof['login_art_variants'] == ref['login_art_variants'], 'result evidence separately verifies both current variants while preserving the historical singleton proof')

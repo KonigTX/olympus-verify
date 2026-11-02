@@ -73,9 +73,10 @@ function apply(b,op){try{op(b);return 'ok';}catch(e){return 'throw:'+e.message;}
  check('roles.ts is byte-identical to the reviewed .163 integrated source',sha(src('roles.ts'))==='0fb851d804ddb97594a8b4109db3fad46a3f88df8c65475b63f2c79dbf89f6f8');
  const sources211=source211.sourceChecks(path.join(root,'src'),{files:{'role-settlements':'04bf328c854d60033a604e1f8b0e8d26712d3ec40b521985732a723a6d1c5672','privacy-global-serving-origin':'89053632c43fec4e5fd05cc82749ea3362f2907b1a58adee8d1f27e9fd2397ca'}});
  const discord222=require('./source222-discord-type-projection.cjs').checks(path.join(root,'src'));
- check('.222 lane proof preserves original211 stages and Treasury support with one exact type-only Discord successor',Object.entries(sources211).filter(([key])=>key!=='discord:exact-reviewed-support').every(([,ok])=>ok)&&sources211['discord:exact-reviewed-support']===false&&discord222.qualified&&discord222.negativeControls);
+ const branch224=require('./source224-branch-name-projection.cjs').checks(path.join(root,'src'));
+ check('.224 lane proof preserves original211 restrictions with exact222 erased-type and224 protected Branch aliases',Object.entries(sources211).filter(([key])=>!['discord:exact-reviewed-support','treasury-cosmetic:exact-reviewed-support'].includes(key)).every(([,ok])=>ok)&&sources211['discord:exact-reviewed-support']===false&&sources211['treasury-cosmetic:exact-reviewed-support']===false&&discord222.qualified&&discord222.negativeControls&&branch224.qualified&&branch224.negativeControls);
  console.log('RETAINED211_DISCORD_RAW_SEAL false; finite222 type-only runtime parity '+discord222.qualified);
- for(const row of require('./source222-discord-type-projection.cjs').driftControls222(path.join(root,'src')))check('.211 lane reconstruction refuses '+row.source+' '+row.name,row.refused);
+ for(const row of require('./source224-branch-name-projection.cjs').driftControls224(path.join(root,'src')))check('.211 lane reconstruction refuses '+row.source+' '+row.name,row.refused);
  check('role-settlements.ts reconstructs the entire reviewed .163 integrated source through exact current pinned contextual reversals',source211.source211HistoricalDigest('role-settlements',settlements)==='04bf328c854d60033a604e1f8b0e8d26712d3ec40b521985732a723a6d1c5672');
  // .198 preserves every request allowance and original whole-source seal. Only
  // the three exact reviewed absent-duplicate qualification contexts are reversed.
