@@ -58,10 +58,10 @@ public = {**assets, **resources}
 runtime = sorted(p for p in payloads if gate.runtime_path(p))
 prefixes = set(ref['runtime_prefixes'])
 check(len(assets) == 512 and len(ref['official_paths']) == 494, '512 exact assets: all510 prior assets plus two independently approved custom variants;493 official image/font paths and1 historical video unchanged')
-check(len(resources) == 59 and len(public) == 571, '59 exact non-art resources: accepted207 inventory plus the Master218 Council record and three ordinary218 guide files')
-check({p for p in payloads if p.startswith('worker/public/')} == set(public), 'actual tracked public tree is the exact closed571-path union')
+check(len(resources) == 60 and len(public) == 572, '60 exact non-art resources: accepted207 inventory plus the Master218 Council record and three ordinary218 guide files')
+check({p for p in payloads if p.startswith('worker/public/')} == set(public), 'actual tracked public tree is the exact closed572-path union')
 check(len(ref['_fixed_art_sources']) == 7 and assets[gate.BRAND_EXCEPTION['path']] == gate.BRAND_EXCEPTION, 'six original art-sensitive producer pins plus the finite login verifier and original crest contract')
-check(all(pin(p) == row for p, row in public.items()), 'all571 current public byte pins match the reviewed reference')
+check(all(pin(p) == row for p, row in public.items()), 'all572 current public byte pins match the reviewed reference')
 organization_overview = 'worker/public/static/organization-overview205.js'
 organization_context = 'worker/public/static/organization-context205.js'
 organization_resources = {organization_overview, organization_context}
@@ -70,7 +70,7 @@ check(organization_resources.issubset(resources) and not organization_resources.
       and all(ref['runtime_paths'].count(p) == 1 and resources[p]['mode'] == '100644' for p in organization_resources), 'two exact205 organization modules are runtime resources without official/native art exceptions')
 council_record206='worker/public/static/governance/council-composition-2026-10-28.md'
 check(council_record206 in resources and council_record206 not in assets and council_record206 not in ref['runtime_paths'] and resources[council_record206]['mode']=='100644', 'the dated206 Council clarification is one exact non-art document, never runtime or an image exception')
-refused(lambda: gate.resource_rows(list(resources.values()) + [{**resources[organization_context], 'path': 'worker/public/static/organization-unreviewed205.js'}], 'official_public_resource_pin_invalid'), 'official_public_resource_pin_invalid', 'the closed59-resource cap rejects a60th unique module')
+refused(lambda: gate.resource_rows(list(resources.values()) + [{**resources[organization_context], 'path': 'worker/public/static/organization-unreviewed205.js'}], 'official_public_resource_pin_invalid'), 'official_public_resource_pin_invalid', 'the closed60-resource cap rejects a61st unique module')
 treasury207 = {'worker/public/static/'+name for name in ('treasury-plan207.js','treasury-plan-content207.js','treasury-plan-model207.js','treasury-plan207.css')}
 check(treasury207.issubset(resources) and not treasury207.intersection(assets) and not treasury207.intersection(ref['official_paths']) and not treasury207.intersection(ref['native_paths']) and all(ref['runtime_paths'].count(p)==1 for p in treasury207), 'four207 treasury resources are ordinary runtime sources, never official/native art')
 master196_resources = {'worker/public/static/legal-view196.js', 'worker/public/static/approved-guild-helper196.js', 'worker/public/static/army-live/sanitized-export.js', 'worker/public/static/army-live/savedvariables-import.js'}
@@ -99,14 +99,18 @@ refused(lambda: gate.references(payloads[retired_source], app, assets, prefixes,
 refused(lambda: gate.references(payloads[retired_source] + ('\nfetch("' + retired_url + '")').encode(), retired_source, assets, prefixes, resources), 'unlisted_website_runtime_reference', 'retired route exception refuses a second fetchable reference even in its source file')
 covered = {r['path']: r['references'] for r in coverage}
 expected_app = {
-    '/static/governance/olympus-adoption-checklist-r6.pdf', '/static/governance/olympus-governance-r6.pdf',
-    '/static/governance/olympus-governance-r6.zip', '/static/governance/olympus-guide-r6.pdf',
-    '/static/governance/olympus-release-preparation.pdf', '/static/governance/olympus-templates-r6.pdf',
     '/static/governance/organization.json', '/static/governance/reconciled-book.md', '/static/qr-phase1.html',
     '/static/organization-view.js', '/static/organization-overview205.js', '/static/talents/calculator.js', '/static/talents/calculator.css',
     '/static/resources169.js', '/static/resources169.css'
 }
 check(expected_app.issubset(covered[app]), 'actual governance, organization, QR and resource app URLs have finite coverage')
+historical_downloads = [
+    '/static/governance/olympus-adoption-checklist-r6.pdf', '/static/governance/olympus-governance-r6.pdf',
+    '/static/governance/olympus-governance-r6.zip', '/static/governance/olympus-guide-r6.pdf',
+    '/static/governance/olympus-release-preparation.pdf', '/static/governance/olympus-templates-r6.pdf',
+]
+check(all(url not in covered[app] and 'worker/public' + url in {**assets, **resources} for url in historical_downloads),
+      'the retired archive panel has no current app references while all six historical downloads retain their exact byte pins')
 check(covered['worker/public/static/organization-view.js'] == ['/static/organization-view.css'], 'actual organization module dependency is its exact native stylesheet')
 check(covered[organization_overview] == ['/static/organization-context205.js'] and covered[organization_context] == [], 'actual205 overview imports its exact context module and context adds no static dependencies')
 for source, dependency in ((app, organization_overview), (organization_overview, organization_context)):
@@ -215,7 +219,7 @@ with tempfile.TemporaryDirectory(prefix='olympus-publication-resource-test-') as
 
     admitted = load()
     proof = gate.validate_result_tree(rows, payloads, admitted)
-    check(proof['result'] == 'PASS' and proof['public_asset_count'] == 571 and proof['required_non_art_resource_pins_verified'] == 59, 'real load_contract then validate_result_tree accepts the complete current source')
+    check(proof['result'] == 'PASS' and proof['public_asset_count'] == 572 and proof['required_non_art_resource_pins_verified'] == 60, 'real load_contract then validate_result_tree accepts the complete current source')
     check(proof['official_image_font_count'] == 493 and proof['official_video_count'] == 1 and proof['official_art_file_count'] == 494, 'result evidence counts the video separately from the493 images/fonts')
     check(proof['login_art_exception_byte_pin_verified'] is True and proof['nonofficial_owner_approved_login_art_count'] == 3 and proof['login_art_exception'] == ref['login_art_exception'], 'result evidence reports the approved custom still separately from all494 official assets')
     check(proof['login_art_variants_byte_pins_verified'] is True and proof['login_art_variants'] == ref['login_art_variants'], 'result evidence separately verifies both current variants while preserving the historical singleton proof')

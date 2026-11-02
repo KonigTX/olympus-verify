@@ -78,6 +78,15 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".222", date: "2026-11-01", lines: [
+      "The private raid hub brings event selection, signup preferences, rosters and organizer forms together; existing reminder and attendance safeguards remain.",
+      "Council guides distinguish the Minister of Propaganda from technical architecture, and use consistent portfolio titles without changing appointments or access.",
+      "Organization connections use a tree layout with card-border ports. Resource cards use existing game artwork with readable text overlays.",
+      "Site updates are owner-only. Applicant portrait consent stays intact, with a neutral fallback and one class badge. The retired external news promotion is removed.",
+      "The beta-role and channel-permission audit is recorded separately; membership assignments and live-release activation remain unchanged.",
+    ],
+  },
+  {
     build: ".221", date: "2026-11-01", lines: [
       "Role search handles regional names and punctuation; the rank crosswalk gives one clear portal-access summary.",
       "Launch guidance advances to the announced first raid date after launch, without inventing a regional raid-unlock time.",
@@ -400,7 +409,7 @@ export async function newsPage(request: Request, env: Env): Promise<Response> {
     // administrator saved the directory; the page shows the day
     leadership: { updatedAt: typeof stamp === "number" ? hourOf(stamp) : null },
     beta: { ...BETA_ANNOUNCED_CLOSURE, launchAt: settings.launchAt },
-    releases: RELEASE_NOTES.slice(0, 5),
+    releases: ctx.subject?.discordId === '472099715253796864' ? RELEASE_NOTES.slice(0, 5) : [],
   });
 }
 

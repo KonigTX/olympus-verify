@@ -59,26 +59,46 @@ function rankBridge(text, inverse = false, keys = null) {
   }
   return text;
 }
+const current222Bytes = fs.readFileSync(path.join(root, 'docs/governance-current222.json'));
+if (sha256(current222Bytes) !== 'fa1e6503fbd3a38d0591284621a4d1a9083e3bc620142742d02372197282ae3a') throw Error('Governance222 finite manifest changed');
+const current222 = JSON.parse(current222Bytes);
+function currentBridge222(text, inverse = false, scope = 'book') {
+  const applicable = current222.changes.filter(c => scope === 'book' ? c.inBook : scope === 'outside' ? c.inBook && c.scope !== 'titles' : c.scope === scope);
+  for (const change of inverse ? applicable.slice().reverse() : applicable) {
+    const before = '\n\n' + change.before + '\n\n', after = '\n\n' + change.after + '\n\n';
+    const a = text.split(before).length - 1, b = text.split(after).length - 1;
+    if (a === 1 && b === 0) { if (!inverse) text = text.replace(before, after); }
+    else if (a === 0 && b === 1) { if (inverse) text = text.replace(after, before); }
+    else throw Error('Ambiguous finite governance222 paragraph: ' + change.key);
+  }
+  return text;
+}
 function projection(book, source) {
+  source = currentBridge222(source, true, 'titles');
+  book = currentBridge222(book, true);
   if (source.includes("\r") || book.includes("\r") || !source.startsWith(firstTitle)) throw Error("Expected LF authored governance sources");
   if ((source.match(/^# Title /gm) || []).length !== 5 || (source.match(/^## Article [IVX]+\.\d+ — /gm) || []).length !== 36 || (source.match(/^### Section [IVX]+\.\d+\.\d+ — /gm) || []).length !== 72 || (source.match(/^\([a-d]\) /gm) || []).length !== 147) throw Error("Unexpected five-Title structural census");
   const uncorrected = factsBridge(presentationBridge218(book, true), true);
   const end = uncorrected.indexOf(nextChapter), start = uncorrected.indexOf(firstTitle);
   if (end < 0 || uncorrected.indexOf(nextChapter, end + 1) >= 0 || (start >= 0 && (start > end || uncorrected.indexOf(firstTitle, start + 1) >= 0))) throw Error("Ambiguous governance insertion boundary");
   const result = presentationBridge218(factsBridge(rankBridge(uncorrected.slice(0, start < 0 ? end : start) + source.trimEnd() + "\n\n" + uncorrected.slice(end))));
-  const bytes = Buffer.from(result, "utf8");
-  if (bytes.length > 524288 || (result.match(/^# /gm) || []).length !== 20) throw Error("Governance reader size or chapter bound");
   const currentStart = result.indexOf(firstTitle), currentEnd = result.indexOf(nextChapter, currentStart);
   const originalOutside = Buffer.from(rankBridge(factsBridge(presentationBridge218(result.slice(0, currentStart) + result.slice(currentEnd), true), true), true), "utf8");
   if (originalOutside.length !== bridge.outsideTitlesBaselineBytes || sha256(originalOutside) !== bridge.outsideTitlesBaselineSHA256) throw Error("Governance outside-Titles baseline differs beyond finite owner rank bridge");
-  return { text: result, bytes: bytes.length, sha256: sha256(bytes) };
+  const finalText = currentBridge222(result), bytes = Buffer.from(finalText, 'utf8');
+  if (bytes.length > 524288 || (finalText.match(/^# /gm) || []).length !== 20) throw Error("Governance reader size or chapter bound");
+  return { text: finalText, bytes: bytes.length, sha256: sha256(bytes) };
+}
+function assertAuthoredSource222(source) {
+  if (sha256(Buffer.from(currentBridge222(source, true, 'titles'))) !== current222.originalSourceSHA256) throw Error('Governance222 source exceeds finite owner delta');
 }
 function run(mode) {
   const book = fs.readFileSync(bookPath, "utf8"), source = fs.readFileSync(sourcePath, "utf8");
+  assertAuthoredSource222(source);
   const expected = projection(book, source), model = JSON.parse(fs.readFileSync(modelPath, "utf8"));
-  const charter = fs.readFileSync(charterPath, "utf8"), charterFacts = ["facts204-04", "facts204-05"];
-  const expectedCharter = factsBridge(rankBridge(factsBridge(charter, true, charterFacts), false, ["operational-council-current", "operational-council-not-rank"]), false, charterFacts);
-  const supplement = { source: "docs/master199-governance-titles.md", supersedes: "docs/master198-governance-titles.md", recordedAt: "2026-10-30", authority: "explicit owner Master218 direction; prior .199 statutory text retained", titles: 5, articles: 36, sections: 72, subclauses: 147, constitutionalVoteRecorded: false, namedSignaturesClaimed: false, permissionsApplied: false, previous: {"source":"docs/master199-governance-titles.md","supersedes":"docs/master198-governance-titles.md","recordedAt":"2026-10-25","authority":"explicit owner Build .199 direction","titles":5,"articles":34,"sections":68,"subclauses":138,"constitutionalVoteRecorded":false,"namedSignaturesClaimed":false,"permissionsApplied":false} };
+  const charter = fs.readFileSync(charterPath, "utf8"), priorCharter = currentBridge222(charter, true, 'charter'), charterFacts = ["facts204-04", "facts204-05"];
+  const expectedCharter = currentBridge222(factsBridge(rankBridge(factsBridge(priorCharter, true, charterFacts), false, ["operational-council-current", "operational-council-not-rank"]), false, charterFacts), false, 'charter');
+  const supplement = { source: "docs/master199-governance-titles.md", supersedes: "docs/master198-governance-titles.md", recordedAt: "2026-11-01", authority: "explicit owner .222 Council direction; prior statutory text retained through finite inverse", titles: 5, articles: 36, sections: 72, subclauses: 147, constitutionalVoteRecorded: false, namedSignaturesClaimed: false, permissionsApplied: false, previous: {"source":"docs/master199-governance-titles.md","supersedes":"docs/master198-governance-titles.md","recordedAt":"2026-10-25","authority":"explicit owner Build .199 direction","titles":5,"articles":34,"sections":68,"subclauses":138,"constitutionalVoteRecorded":false,"namedSignaturesClaimed":false,"permissionsApplied":false} };
   if (mode === "--write" || mode === "--write-book") {
     fs.writeFileSync(bookPath, expected.text, "utf8");
     fs.writeFileSync(charterPath, expectedCharter, "utf8");
@@ -94,4 +114,4 @@ if (require.main === module) {
   if (process.argv.length !== 3 || !["--check", "--write", "--write-book"].includes(process.argv[2])) throw Error("Use --check, --write or --write-book");
   run(process.argv[2]);
 }
-module.exports = { projection, rankBridge, factsBridge, presentationBridge218 };
+module.exports = { projection, rankBridge, factsBridge, presentationBridge218, currentBridge222, assertAuthoredSource222 };

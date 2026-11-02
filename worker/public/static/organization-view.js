@@ -25,18 +25,17 @@ export function renderOrganization(main, data, ui) {
   // .176: wrap each level in family order instead of reserving a horizontal column for every leaf.
   // Parentage, directed links and the complete reading order remain the unchanged charter model.
   function cardHeight() { return Math.max(124, ...[...buttons.values()].map(button => button.offsetHeight || 124)); }
-  function compactLayout(availableWidth) {
-    const columns = Math.max(1, Math.min(4, Math.floor((availableWidth - 32) / (250 * .85))));
-    const width = columns * 250, pitch = cardHeight() + 30; let y = 30;
+  // Reserve one vertical span per subtree; cards and paths share coordinates.
+  function compactLayout() {
+    const pitch = cardHeight() + 42; let cursor = 30, depthMax = 0;
     position.clear();
-    for (const level of levels) {
-      level.forEach((node, i) => {
-        const row = Math.floor(i / columns), rowCount = Math.min(columns, level.length - row * columns);
-        position.set(node.id, { x: (Math.floor((columns - rowCount) / 2) + i % columns) * 250 + 125, y: y + row * pitch });
-      });
-      y += Math.ceil(level.length / columns) * pitch + 30;
+    function place(node, depth) {
+      depthMax = Math.max(depthMax, depth); const own = children(node.id);
+      if (own.length) { const points = own.map(n => place(n, depth + 1)); const y = (points[0] + points[points.length - 1]) / 2; position.set(node.id, { x: 145 + depth * 340, y }); return y; }
+      const y = cursor; cursor += pitch; position.set(node.id, { x: 145 + depth * 340, y }); return y;
     }
-    return { width, height: y };
+    visible.filter(n => n.parent === null).forEach(n => place(n, 0));
+    return { width: (depthMax + 1) * 340, height: cursor + cardHeight() };
   }
   const { width, height } = compactLayout(850);
   const fullPosition = new Map(position);
@@ -69,7 +68,7 @@ export function renderOrganization(main, data, ui) {
     h("p", { class: "small muted", text: "Drag to pan. Use +/− or Ctrl/⌘ + wheel to zoom. Focus the chart and use arrow keys to pan, Shift for larger steps, and Home or 0 to fit the selected branch. Escape closes full screen. List includes every office and group." }));
   chartHelp.open = true;
   const search = h("input", { type: "search", id: "organization-search", maxlength: "160", placeholder: "Find an office, rank or duty…", "aria-label": "Search all offices and " + data.terms.length + " labels" });
-  let scale = 1, x = 0, y = 0, selected = "council", dragging = null, isList = false, suppressClick = false, branchMode = false, disposed = false, relationshipMap205 = null;
+  let scale = 1, x = 0, y = 0, selected = "council", dragging = null, isList = false, suppressClick = false, branchMode = true, disposed = false, relationshipMap205 = null;
   const zoomStatus = h("output", { class: "org-zoom", "aria-label": "Chart zoom" });
   function chartSummary() { return branchMode ? `Branch: ${nodeTitle218(byId.get(selected))}. Parent and directly connected offices shown at a readable scale; drag to see the rest. Full map shows all ${visible.length} chart offices; List includes all ${data.nodes.length} groups.` : `Full map overview: all ${visible.length} chart offices. At overview scale, select an office and choose Fit branch to read it, or use List.`; }
   function drawLayout(shown, chartWidth, chartHeight) {
@@ -83,15 +82,20 @@ export function renderOrganization(main, data, ui) {
       const show = shown.has(e.fromId) && shown.has(e.toId); e.path.style.display = show ? "" : "none";
       if (!show) continue;
       const a = position.get(e.fromId), b = position.get(e.toId);
-      // Wrapped rows use the empty gutters, so a distant relationship never cuts through another office's label.
-      if (a.y === b.y) e.path.setAttribute("d", `M ${a.x} ${a.y} L ${a.x} ${a.y - 15} L ${b.x} ${b.y - 15} L ${b.x} ${b.y}`);
-      else {
-        const downward = a.y < b.y, low = downward ? b : a, high = downward ? a : b;
-        const gutter = low.x + (low.x <= high.x ? 125 : -125), height = cardHeight();
-        const start = a.y + (downward ? buttons.get(e.fromId).offsetHeight || 124 : 0), end = b.y + (downward ? 0 : buttons.get(e.toId).offsetHeight || 124);
-        const startLane = a.y + (downward ? height + 15 : -15), endLane = b.y + (downward ? -15 : height + 15);
-        e.path.setAttribute("d", `M ${a.x} ${start} L ${a.x} ${startLane} L ${gutter} ${startLane} L ${gutter} ${endLane} L ${b.x} ${endLane} L ${b.x} ${end}`);
+      const ah = buttons.get(e.fromId).offsetHeight || 124, bh = buttons.get(e.toId).offsetHeight || 124;
+      if (a.x !== b.x) {
+        const direction = b.x > a.x ? 1 : -1, startX = a.x + direction * 115, endX = b.x - direction * 115;
+        const middle = (startX + endX) / 2, startY = a.y + ah / 2, endY = b.y + bh / 2;
+                if (Math.abs(a.x-b.x) > 340) {
+          const first=startX+direction*28,last=endX-direction*28;
+          e.path.setAttribute("d","M "+startX+" "+startY+" L "+first+" "+startY+" L "+first+" 12 L "+last+" 12 L "+last+" "+endY+" L "+endX+" "+endY);
+        } else e.path.setAttribute("d","M "+startX+" "+startY+" L "+middle+" "+startY+" L "+middle+" "+endY+" L "+endX+" "+endY);
+      } else {
+        const startY = a.y + ah / 2, endY = b.y + bh / 2, outside = a.x + 148;
+        e.path.setAttribute("d", "M "+(a.x+115)+" "+startY+" L "+outside+" "+startY+" L "+outside+" "+endY+" L "+(b.x+115)+" "+endY);
       }
+      e.path.setAttribute("data-from", e.fromId); e.path.setAttribute("data-to", e.toId);
+      e.path.setAttribute("data-start-port", "card-border"); e.path.setAttribute("data-end-port", "card-border");
     }
   }
   function branchLayout() {
@@ -99,15 +103,13 @@ export function renderOrganization(main, data, ui) {
     const parent = n.parent && fullPosition.has(n.parent) ? byId.get(n.parent) : null;
     const related = visible.filter(o => o.id !== selected && o.id !== parent?.id && (o.parent === selected || n.coordinates.includes(o.id) || o.coordinates.includes(selected)));
     // Only presentation changes: relationship direction, kind and mandate text still come from the unchanged model.
-    const columns = Math.max(1, Math.min(3, Math.max(1, related.length), Math.floor(((viewport.clientWidth || 850) - 32) / (250 * .85))));
-    const chartWidth = columns * 250, pitch = cardHeight() + 30;
-    position.clear(); if (parent) position.set(parent.id, { x: chartWidth / 2, y: 30 });
-    const selectedY = parent ? 30 + pitch : 30; position.set(selected, { x: chartWidth / 2, y: selectedY });
-    related.forEach((o, i) => {
-      const row = Math.floor(i / columns), rowCount = Math.min(columns, related.length - row * columns);
-      position.set(o.id, { x: (Math.floor((columns - rowCount) / 2) + i % columns) * 250 + 125, y: selectedY + pitch + row * pitch });
-    });
-    const chartHeight = selectedY + (related.length ? Math.ceil(related.length / columns) * pitch : 0) + cardHeight() + 16;
+    const pitch = cardHeight() + 42, chartWidth = parent ? 1020 : 680;
+    const count = Math.max(1, related.length), chartHeight = count * pitch + 60;
+    const centerY = (chartHeight - cardHeight()) / 2;
+    position.clear(); if (parent) position.set(parent.id, { x: 145, y: centerY });
+    const selectedX = parent ? 485 : 145;
+    position.set(selected, { x: selectedX, y: centerY });
+    related.forEach((o, i) => position.set(o.id, { x: selectedX + 340, y: 30 + i * pitch }));
     drawLayout(new Set(position.keys()), chartWidth, chartHeight); return { width: chartWidth, height: chartHeight };
   }
   function transform() { stage.style.transform = `translate(${x}px, ${y}px) scale(${scale})`; zoomStatus.textContent = Math.round(scale * 100) + "%"; }
@@ -118,7 +120,7 @@ export function renderOrganization(main, data, ui) {
     const size = branchLayout(); if (!size) { overview(); status.textContent = "Rank and membership groupings have no command arrows. Their full descriptions are available in List. " + chartSummary(); return; }
     branchMode = true; const w = viewport.clientWidth || 850, ht = viewport.clientHeight || 620;
     // A large branch can pan instead of reducing office labels to unreadable thumbnails.
-    scale = Math.max(.85, Math.min(1, (w - 32) / size.width, (ht - 32) / size.height)); x = (w - size.width * scale) / 2; y = 16;
+    scale = Math.max(.85, Math.min(1, (w - 32) / size.width, (ht - 32) / size.height)); x = (w - size.width * scale) / 2; y = Math.min(16, ht / 2 - ((position.get(selected)?.y || 0) + cardHeight()/2) * scale);
     overviewButton.setAttribute("aria-pressed", "false"); branchButton.setAttribute("aria-pressed", "true"); status.textContent = chartSummary(); transform();
   }
   function overview() {
@@ -291,7 +293,7 @@ export function renderOrganization(main, data, ui) {
       h("ul", { class: "org-council-offices" }, (data.councilComposition?.offices || []).map(title => h("li", null, h("strong", { text: title })))),
       data.councilComposition ? h("p", { class: "org-composition-status", role: "note", text: data.councilComposition.formalStatus }) : null,
       h("p", { text: "The Treasurer, Co-Guild Master, MAIN Raid Lead, MAIN PvP Lead and Head of Justice are High Council offices alongside the other current alliance portfolios. Council seats require an accepted appointment. Regional Raid and PvP leads remain distinct Officer Corps responsibilities. Accepted councillors without another portfolio ordinarily serve the Council of Justice, subject to case designation and conflict review." }),
-      h("p", { class: "small muted", text: "Systems and Addons remains shared support, with its Council portfolio distinct from specialist advisers. Advisers are not automatically voting councillors. This current composition does not itself issue an eligible vote, individual warrant, native rank or permission. One person still has one vote, subject to recusal." }),
+      h("p", { class: "small muted", text: "Systems and Addons is technical support outside the High Council. The Minister of Propaganda directs campaigns; Heraldry keeps official records and publication standards. Advisers are not automatically voting councillors. This current composition does not itself issue an eligible vote, individual warrant, native rank or permission. One person still has one vote, subject to recusal." }),
       h("div", { class: "org-composition-links" }, data.councilComposition ? h("a", { href: data.councilComposition.sourcePath, text: "Read the current Council reference" }) : null,
       data.councilComposition?.previousDirection ? h("a", { href: data.councilComposition.previousDirection.sourcePath, text: "Historical Council direction (19–23 October 2026)" }) : null,
       h("a", { href: "#/governance/operational-charter-the-work-of-olympus", text: "Read Operational Charter O3 — The High Council and its offices" }))),
@@ -300,7 +302,7 @@ export function renderOrganization(main, data, ui) {
     chartLocation, chartDialog,
     h("details", { class: "frame org-profile-notes" }, h("summary", { text: "Technical & Historical Profile Notes" }), h("p", { text: data.roleRank199.historicalProfileNote }), h("p", { text: "Older drafts that gave Treasurer a separate native slot are superseded. The historical beta-five client observation and the addon’s second-rank Captain assumption remain evidence to review before real native adoption; this page performs no in-game rank write or key-profile activation. Officer Alt is now the fourth native rank, while the Treasurer key is an appointment alias. No title alone grants bank withdrawal, invitations, key signing or confidential access." })),
     h("section", { class: "frame" }, h("h2", { text: "Olympus I–X · affiliation and succession" }), h("p", { text: "These are directory places for affiliated guilds, not assertions that ten guilds are formed or that their Guild Masters have been appointed. A local Guild Master retains local command while accepting the common charter. Each guild names five correspondents: PvP, Raiding, Finance, Artisanry and Heraldry." }), h("ul", { class: "organization-guilds" }, data.guildPlaceholders.map(g => h("li", null, h("strong", { text: g.name }), h("small", { text: g.state }))))),
-    h("section", { class: "frame" }, h("h2", { text: "Role families, duties and expectations" }), h("p", { text: "One guide brings together alternate titles and regional or class specialisms. The chart retains the separate lines of responsibility; grouping guides does not merge appointments, permissions or historical records." }), ui.roleFamilyDirectory203 ? ui.roleFamilyDirectory203() : h("p", { role:"alert", text:"The consolidated role guide is unavailable. Reload before choosing a role." }), h("details", { class:"org-catalogue-history203" }, h("summary", { text:"Office register · 101 stable offices / 137 stored keys" }), h("p", { class:"small muted", text:"These original identifiers and scoped records are retained for existing links and records. They are not additional jobs or vacancies. Use the role-family guide above for current definitions and admission options." }), termList))]);
+    h("section", { class: "frame" }, h("h2", { text: "Role families, duties and expectations" }), h("p", { text: "One guide brings together alternate titles and regional or class specialisms. The chart retains the separate lines of responsibility; grouping guides does not merge appointments, permissions or historical records." }), ui.roleFamilyDirectory203 ? ui.roleFamilyDirectory203() : h("p", { role:"alert", text:"The consolidated role guide is unavailable. Reload before choosing a role." }), h("details", { class:"org-catalogue-history203" }, h("summary", { text:"Office register · 102 stable offices / 138 stored keys" }), h("p", { class:"small muted", text:"These original identifiers and scoped records are retained for existing links and records. They are not additional jobs or vacancies. Use the role-family guide above for current definitions and admission options." }), termList))]);
   // Show the interactive map before its longer rank, Council and reading references.
   const mapReadingSections221 = [...main.children].filter(node => node.classList?.contains("org-rank-guide") || node.classList?.contains("org-council-overview") || node.classList?.contains("org-guide"));
   for (const node of [chartLocation, chartDialog, ...mapReadingSections221]) relationshipMap205.append(node);

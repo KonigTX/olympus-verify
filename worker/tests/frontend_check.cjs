@@ -1776,7 +1776,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     check("  the picture rule admits only Discord's avatar addresses (profile, server, default) and nothing else", good.every((u) => AV.test(u)) && bad.every((u) => !AV.test(u)));
     check(".196 applicants, account rows and recommendation portraits use the closed Discord helper while class art remains alongside", APP_JS.includes('discordAvatar(c, { class: "avatar"') && APP_JS.includes('const userCell = (u) => h("span", { class: "nowrap" }, discordAvatar(u,') && APP_JS.includes('c.class ? h("span", null, icon("class-" + c.class') && APP_JS.includes('it.typed ? h("img", { class: "typed-icon", src: art("icon-names"), alt: "" }) : discordAvatar(it)') && APP_JS.includes('function ownAvatar(user) { return discordAvatar(user); }'));
     const avatarSource = APP_JS.slice(APP_JS.indexOf("  function discordAvatar("), APP_JS.indexOf("  function ownAvatar("));
-    const avatarRenderer = new Function("h", "accountArt", "DISCORD_AVATAR", avatarSource + "\nreturn discordAvatar;")((tag, attrs) => { const image = new Element(tag); for (const [key, value] of Object.entries(attrs)) image.setAttribute(key, value); return image; }, () => "/static/wow/pos-member.png", AV);
+    const avatarRenderer = new Function("h", "art", "DISCORD_AVATAR", avatarSource + "\nreturn discordAvatar;")((tag, attrs) => { const image = new Element(tag); for (const [key, value] of Object.entries(attrs)) image.setAttribute(key, value); return image; }, () => "/static/wow/pos-member.png", AV);
     const safePortrait = avatarRenderer({avatarUrl:good[0]}), rejectedPortrait = avatarRenderer({avatarUrl:bad[0]}), absentPortrait = avatarRenderer({});
     check(".196 actual portrait helper sets only the closed CDN address with no-referrer and local fallbacks", safePortrait.getAttribute("src") === good[0] && [safePortrait,rejectedPortrait,absentPortrait].every(image => image.getAttribute("referrerpolicy") === "no-referrer") && [rejectedPortrait,absentPortrait].every(image => image.getAttribute("src") === "/static/wow/pos-member.png"));
     safePortrait.dispatchEvent(new Event("error"));
@@ -1968,16 +1968,19 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     const card = byText(news.app, "h3", "News").closest("a");
     check("  switched on: the News tab and the overview card with the official launch icon", texts(news.app, 'nav[aria-label="Community sections"] a').includes("News") && card.getAttribute("href") === "#/community/news" && !!card.querySelector('img[src="/static/wow/icon-launch.png"]'));
     await news.go("#/community/news");
-    await waitFor(() => !!byText(news.app, "h2", "Site updates"), "the News page");
+    await waitFor(() => !!byText(news.app, "h2", "Notices"), "the News page");
     check("  the News page: no notices yet; Olympus I full by the export of about the hour; no figures yet; the directory link; the later announced beta shutdown plan and the launch", frameOf(news, "Notices").textContent.includes("No notices right now.") && frameOf(news, "Olympus I").textContent.includes("Olympus I is full: the officers' roster export of about") && frameOf(news, "Olympus I").textContent.includes("counts 1000 of 1000 members") && frameOf(news, "The guild in figures").textContent.includes("No figures yet") && !!frameOf(news, "Leadership directory").querySelector('a[href="#/community/leadership"]') && /October/.test(frameOf(news, "The road to launch").textContent) && frameOf(news, "The road to launch").textContent.includes("23") && frameOf(news, "The road to launch").textContent.includes("scheduled the final beta shutdown") && frameOf(news, "The road to launch").textContent.includes("actual server closure was not observed") && !!frameOf(news, "The road to launch").querySelector('a[href="https://us.forums.blizzard.com/en/wow/t/heads-up-wow-forever-stress-test-on-october-21/2387920"]') && !!frameOf(news, "The road to launch").querySelector('[role="timer"]'));
     const rel = load("./site-news").RELEASE_NOTES[0];
-    check("  the newest release note from the Worker, line by line", texts(frameOf(news, "Site updates"), "li").includes(rel.lines[0]) && frameOf(news, "Site updates").textContent.includes(`build ${rel.build}`));
+    check(".222 ordinary members cannot see Site updates or its release-note payload", !frameOf(news,"Site updates")&&!news.app.textContent.includes(rel.lines[0]));
+    const owner222=STAFF; // Existing synthetic owner fixture; never recreate its account.
+    const ownerNews222=await openPage(owner222);await ownerNews222.go('#/community/news');await waitFor(()=>!!frameOf(ownerNews222,'Site updates'),'owner-only release notes');
+    check('.222 the owner sees the exact current release note',texts(frameOf(ownerNews222,'Site updates'),'li').includes(rel.lines[0])&&frameOf(ownerNews222,'Site updates').textContent.includes('build '+rel.build));
     const want = db.prepare("SELECT id FROM community_events WHERE status = 'scheduled' AND starts_at > ? AND starts_at < ? ORDER BY starts_at, id LIMIT 5").all(nowS(), nowS() + 14 * 86400).map((r) => `#/community/calendar/${r.id}`);
     const upcoming = frameOf(news, "Coming up");
     check("  Coming up: the next scheduled events in 14 days, each a link to its calendar page, title and time only", !!upcoming && upcoming.querySelectorAll("a").map((a) => a.getAttribute("href")).join() === want.join() && want[0] === `#/community/calendar/${EV}` && upcoming.textContent.includes("Zul'Gurub · ") && upcoming.textContent.includes("120 minutes"), want);
     const noEv = await openPage(MEMBER, { COMMUNITY_FEATURES: "directory" });
     await noEv.go("#/community/news");
-    await waitFor(() => !!byText(noEv.app, "h2", "Site updates"), "News without the calendar");
+    await waitFor(() => !!byText(noEv.app, "h2", "Notices"), "News without the calendar");
     check("  with the events feature off there is no Coming up frame", !frameOf(noEv, "Coming up") && !!frameOf(noEv, "Notices"));
     const lateOff = await openPage(MEMBER);
     (await fixtureRun("UPDATE site_settings SET value = '0' WHERE key = 'newsOn'")); // switched off after the page loaded
@@ -1986,7 +1989,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     check("  switched off after the page loaded: the Worker's 404 news_off is said in words and nothing is shown", lateOff.app.textContent.includes("The News page is switched off.") && !frameOf(lateOff, "Notices"));
     (await fixtureRun("UPDATE site_settings SET value = '1' WHERE key = 'newsOn'"));
     // review of 3 Oct 2026: the member's other seat words, an empty calendar window and a directory never changed
-    const newsFrameText = async (title) => { const pg = await openPage(MEMBER); await pg.go("#/community/news"); await waitFor(() => !!byText(pg.app, "h2", "Site updates"), "News"); const f = frameOf(pg, title); return f ? f.textContent : ""; };
+    const newsFrameText = async (title) => { const pg = await openPage(MEMBER); await pg.go("#/community/news"); await waitFor(() => !!byText(pg.app, "h2", "Notices"), "News"); const f = frameOf(pg, title); return f ? f.textContent : ""; };
     (await fixtureRun("UPDATE roster_snapshots SET member_count = 995 WHERE id = ?",snap));
     let seatWords = await newsFrameText("Olympus I");
     check("(.115) News, Olympus I open: the free seats and the export's hour and count", seatWords.includes("Olympus I has 5 free seats: the officers' roster export of about") && seatWords.includes("counts 995 of 1000 members."), seatWords);
@@ -2005,7 +2008,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     if (leadRow) (await fixtureRun("UPDATE site_settings SET key = 'leadership-kept-aside' WHERE key = 'leadership'"));
     const emptyNews = await openPage(MEMBER);
     await emptyNews.go("#/community/news");
-    await waitFor(() => !!byText(emptyNews.app, "h2", "Site updates"), "News with nothing coming up");
+    await waitFor(() => !!byText(emptyNews.app, "h2", "Notices"), "News with nothing coming up");
     check("  no scheduled event in the next 14 days: 'No events in the next 14 days.'; a directory never saved: 'Not changed yet.' and the link", frameOf(emptyNews, "Coming up").textContent.includes("No events in the next 14 days.") && frameOf(emptyNews, "Leadership directory").textContent.includes("Not changed yet.") && !!frameOf(emptyNews, "Leadership directory").querySelector('a[href="#/community/leadership"]'));
     for (const id of soon) (await fixtureRun("UPDATE community_events SET status = 'scheduled' WHERE id = ?",id));
     if (leadRow) (await fixtureRun("UPDATE site_settings SET key = 'leadership' WHERE key = 'leadership-kept-aside'"));
@@ -2255,12 +2258,12 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     // authority boundary while rendering the fuller individual responsibilities.
     const roles5 = await openPage(MEMBER);
     await roles5.go("#/roles");
-    await waitFor(() => !!roles5.app.querySelector("#role-treasurer"), "the Roles page");
+    await waitFor(() => !!roles5.app.querySelector('[data-role-family203="treasurer"] .role-primary203'), "the Roles page");
     const guideKeys201=["co_gm","officer","treasurer","raider","class_lead:mage","loot_council","professions","pvp_leader","raid_assist_na","raid_assist_eu"];
     const commonBoundary218='This is a descriptive website guide. A title or application changes no game rank, Discord role, bank limit, signing authority or addon permission; actual access requires its separate authorized process.';
   // Fixed literal oracle, not expectations rebuilt from the rendered family cards.
   const fullBoundarySeal218=require('./role_boundaries218_seal.cjs');
-  const fullBoundarySeal218Rows=Object.entries(roles5.boot.meta.roleGuides201).filter(([key])=>roles5.boot.meta.roleDirectory203.keyToFamily[key]).map(([key,guide])=>[key,typeof guide?.boundaries==='string'?guide.boundaries.replaceAll(commonBoundary218,'').trim():'']).filter(([,text])=>text).sort(([a],[b])=>a<b?-1:a>b?1:0);
+  const fullBoundarySeal218Rows=Object.entries(roles5.boot.meta.roleGuides201).filter(([key])=>roles5.boot.meta.roleDirectory203.keyToFamily[key]&&fullBoundarySeal218.specificKeys.includes(key)).map(([key,guide])=>[key,typeof guide?.boundaries==='string'?guide.boundaries.replaceAll(commonBoundary218,'').trim():'']).filter(([,text])=>text).sort(([a],[b])=>a<b?-1:a>b?1:0);
   check('.218 exactly40 source-specific boundary keys remain sealed', fullBoundarySeal218.specificKeys.length===40 && fullBoundarySeal218Rows.length===40 && JSON.stringify(fullBoundarySeal218Rows.map(([key])=>key))===JSON.stringify(fullBoundarySeal218.specificKeys));
   check('.218 every one of40 exact role-specific boundary texts remains sealed', require('node:crypto').createHash('sha256').update(JSON.stringify(fullBoundarySeal218Rows)).digest('hex')===fullBoundarySeal218.specificTextSHA256);
   for(const [key,familyKey,nodeKey] of fullBoundarySeal218.placements){
@@ -2659,14 +2662,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     await p.go("#/governance");
     await waitFor(() => !!p.app.querySelector('[data-chapter="reading-and-adopting-this-book"]'), ".154 current member book");
     const chapters = p.app.querySelectorAll("details.governance-chapter");
-    const tradingPortfolio209 = p.app.querySelector("#trading-portfolio208"), tradingLinks209 = tradingPortfolio209?.querySelectorAll("a.btn") || [];
-    check(".209 the actual trading card retains both complete guide links inside the mobile-wrap scope", tradingLinks209.length === 2 && [
-      ["#/roles/head_trading", "Read the complete trading responsibilities & expectations"],
-      ["/static/governance/council-composition-master218.md", "Current Council portfolios & reporting lines"]
-    ].every(([href, text], i) => tradingLinks209[i].getAttribute("href") === href && tradingLinks209[i].textContent === text));
-    const tradingRules209 = [...APP_CSS.matchAll(/#trading-portfolio208\s+\.btn\s*\{([^}]+)\}/g)];
-    const tradingDeclarations209 = new Map((tradingRules209[0]?.[1] || "").split(";").map(declaration => declaration.trim()).filter(Boolean).map(declaration => declaration.split(/:\s*/, 2)));
-    check(".209 both trading links can shrink and wrap their full labels without clipping or hidden overflow", tradingRules209.length === 1 && tradingDeclarations209.size === 4 && tradingDeclarations209.get("max-width") === "100%" && tradingDeclarations209.get("min-width") === "0" && tradingDeclarations209.get("white-space") === "normal" && tradingDeclarations209.get("overflow-wrap") === "anywhere");
+    check(".222 governance is current: no dated trading editorial aside or archive promotion", !p.app.querySelector("#trading-portfolio208") && !p.app.querySelector(".governance-archive") && !p.app.textContent.includes("Owner direction recorded 28 October 2026"));
     const treasuryQuicklink209 = p.app.querySelector('.governance-quicklinks a[href="#/treasury-plan"]');
     // .218 (owner, 31 Oct 2026): officers and above only. This page is an ordinary MEMBER, so the quick link is absent;
     // This checks ordinary-member omission. The server gate is covered separately; this check does not claim a rendered admitted-officer label.
@@ -2677,7 +2673,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     check(".209 the trading-link fix remains scoped and preserves the ordinary button layout", /\.btn\s*\{[^}]*white-space:\s*nowrap\s*;/.test(APP_CSS) && /\*\s*\{\s*box-sizing:\s*border-box\s*;\s*\}/.test(APP_CSS));
     check(".198 member can read all20 R7 chapters including five statutory/RP Titles and Royal Codex with original adoption and no issued appointments", chapters.length === 20 && chapters.some(c => c.querySelector("summary").textContent.includes("Royal Codex")) && ["title-i-the-sovereign-royal-decrees", "title-ii-the-high-council-co-guild-master-privy-court", "title-iii-the-imperial-treasury-guild-bank-tithe-ledger", "title-iv-the-grand-alliance-concordat", "title-v-the-guild-workshop-artisans-charter-and-the-heralds-accord"].every(id => chapters.some(c => c.getAttribute("data-chapter") === id && c.textContent.includes("Section ")) && p.app.querySelector(`a[href="#/governance/${id}"]`)) && p.app.textContent.includes("R7 • Guild rules adopted 13 October 2026") && p.app.textContent.includes("Adoption issues no individual appointment or named signature") && p.app.textContent.includes("changes no native rank, bank limit or platform permission"), p.app.textContent.slice(0, 1600));
     check(".154 reading, adoption, appointment and operational entry links point at real chapters", ["reading-and-adopting-this-book", "adoption-and-office-registers", "3-letters-patent-and-warrants", "operational-charter-the-work-of-olympus"].every((id) => chapters.some((c) => c.getAttribute("data-chapter") === id) && p.app.querySelector(`a[href="#/governance/${id}"]`)));
-    check("current R7 source and historical R6 downloads have exact distinct labels, paths and filenames", [["Historical R6 PDF", "/static/governance/olympus-governance-r6.pdf", "Olympus Guild Governance - Successor Draft.pdf"], ["Historical R6 package", "/static/governance/olympus-governance-r6.zip", "Olympus Governance - Successor Draft.zip"], ["Historical R6 guide", "/static/governance/olympus-guide-r6.pdf", "Olympus Guild Guide - Draft R6.pdf"], ["Historical R6 checklist", "/static/governance/olympus-adoption-checklist-r6.pdf", "Olympus Adoption Checklist - Draft R6.pdf"], ["Historical R6 templates", "/static/governance/olympus-templates-r6.pdf", "Olympus Appointment and News Templates - Draft R6.pdf"], ["Release preparation PDF", "/static/governance/olympus-release-preparation.pdf", "Olympus Release Preparation Checklist.pdf"], ["Download current R7 source", "/static/governance/reconciled-book.md", "Olympus Governance R7.md"]].every(([label, href, filename]) => { const link = byText(p.app, "a", label); return link && link.getAttribute("href") === href && link.getAttribute("download") === filename; }));
+    check(".222 current R7 source remains available while the historical download panel is retired", (()=>{const link=byText(p.app,'a','Download current R7 source');return link?.getAttribute('href')==='/static/governance/reconciled-book.md'&&link.getAttribute('download')==='Olympus Governance R7.md'&&!p.app.querySelector('.governance-archive')&&!p.app.querySelector('a[href="/static/governance/olympus-governance-r6.pdf"]');})());
     for (const [assetPath, contentType] of [["/static/governance/olympus-governance-r6.pdf", "application/pdf"], ["/static/governance/olympus-governance-r6.zip", "application/zip"], ...["olympus-guide-r6", "olympus-adoption-checklist-r6", "olympus-templates-r6", "olympus-release-preparation"].map((name) => ["/static/governance/" + name + ".pdf", "application/pdf"])]) {
       const unsigned = await indexMod.default.fetch(new Request("https://guild.example" + assetPath), env({ ASSETS: governanceAssets }), ctx);
       check("unsigned Worker denies private historical download: " + assetPath, unsigned.status === 401 && /no-store/.test(unsigned.headers.get("Cache-Control") || "") && (await unsigned.json()).error === "discord_sign_in_required");
@@ -2750,6 +2746,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     check(".208 actual private R7-bound model preserves original38/95 arrays and retains Trading and adds five separate Council portfolio records", (() => {
       const assert=require('node:assert/strict'), historicalScope218='Historical application and ballot compatibility only; current institutional display and reserved-seat admission are separate.';
 function originalTerms218(terms) {
+ terms=require('../../scripts/governance-role-inverse222.cjs').originalTerms222(terms);
  const specs={office_26:{ordinal:26,label:'Council of Justice',applicationLabel:'Council of Justice',acquisition:'Case-designated judicial institution; chaired by the Lord High Chancellor, with accepted unconflicted members.'},office_94:{ordinal:94,label:'War Head',applicationLabel:'War Directorate (historical shared template)',acquisition:'Historical shared War Head reference; current PvE and PvP portfolios have their own separate appointments.'}};
  const keys=['label','applicationLabel','applicationAliases','applicationEligible','applicationRoleKeys','acquisition'];
  return terms.map(current=>{
@@ -2768,12 +2765,12 @@ function originalTerms218(terms) {
 }
       const digest = value => require("node:crypto").createHash("sha256").update(JSON.stringify(value)).digest("hex"), trading = model.terms[95];
       return modelResponse.status === 200 && modelResponse.headers.get("Cache-Control") === "private, no-store, no-transform" && model.revision === "R7" && model.draft === false && model.ratified === true && model.appointmentsIssued === false
-        && model.nodes.length === 41 && nodes.size === 41 && model.terms.length === 101 && new Set(model.terms.map(term => term.label)).size === 101 && model.nativeRanks.length === 10 && model.officeMandates.length === 41
-        && digest(model.nodes.filter(node => !["trading","security","concordat"].includes(node.id)).map(node=>node.id==="intake"?{...node,parent:"heraldry"}:node)) === "62fd12faf62b8529a8679a80a1ee278e2422048502c01738ac2fe7286c677ddf"
-        && digest(model.officeMandates.filter(office => !["trading","security","concordat"].includes(office.nodeId))) === "ae968c007def93478c0bfac5e51169f9a3f4bd62d7abddaaa624210aa267ae2c"
+        && model.nodes.length === 42 && nodes.size === 42 && model.terms.length === 102 && new Set(model.terms.map(term => term.label)).size === 102 && model.nativeRanks.length === 10 && model.officeMandates.length === 42
+        && digest(model.nodes.filter(node => !["trading","security","concordat","propaganda"].includes(node.id)).map(node=>node.id==="intake"?{...node,parent:"heraldry"}:node.id==="systems"?JSON.parse(fs.readFileSync(path.join(root,"../docs/governance-nodes222.json"),"utf8")).systemsBefore:node)) === "62fd12faf62b8529a8679a80a1ee278e2422048502c01738ac2fe7286c677ddf"
+        && digest(model.officeMandates.filter(office => !["trading","security","concordat","propaganda"].includes(office.nodeId))) === "ae968c007def93478c0bfac5e51169f9a3f4bd62d7abddaaa624210aa267ae2c"
         && digest(originalTerms218(model.terms.slice(0, 95))) === "74fb4f44153a550b7b306789763e73932393e96124d781572c6d2db5c9b87d3b"
-        && model.book.bytes === 271522 && model.book.sha256 === "0495d02d98aa1f31a64a575c6bc88caee4864e0c17db1140235f5aa8d416215b"
-        && model.appointments.length === 137 && new Set(model.appointments.map(row => row.key)).size === 137 && model.councilComposition.currentSeats.length === 13
+        && model.book.bytes === 271992 && model.book.sha256 === "93a557b8a1fbe1752094c1c9bf9dfefc8e61ff51a12e79ff17e67a8050bcf992"
+        && model.appointments.length === 138 && new Set(model.appointments.map(row => row.key)).size === 138 && model.councilComposition.currentSeats.length === 13
         && trading.officeKey === "office_96" && trading.ordinal === 96 && trading.label === "Head of Trading & Markets" && trading.tier === "high_council" && trading.nativeSlot === 1 && trading.applicationEligible === false && trading.mappingApplies === false;
     })());
     check(".154 actual model keeps hierarchy, independent review and the five liaison remits", nodes.get("council").parent === "founder" && nodes.get("council").relation === "accountability" && nodes.get("war").parent === "council" && nodes.get("officers").parent === "guilds" && nodes.get("justice").relation === "independence" && nodes.get("auditor").relation === "independence" && model.nodes.filter((node) => node.parent === "emissaries").length === 5 && nodes.get("emissary-heraldry").coordinates.includes("heraldry"));

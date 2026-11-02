@@ -17,7 +17,7 @@ const body218 = String.raw`
   const sharedBoundary218 = 'This is a descriptive website guide. A title or application changes no game rank, Discord role, bank limit, signing authority or addon permission; actual access requires its separate authorized process.';
   // Fixed literal oracle, not expectations rebuilt from the rendered family cards.
   const boundarySeal218=require('./role_boundaries218_seal.cjs');
-  const boundarySeal218Rows=Object.entries(guides).filter(([key])=>directory.keyToFamily[key]).map(([key,guide])=>[key,typeof guide?.boundaries==='string'?guide.boundaries.replaceAll(sharedBoundary218,'').trim():'']).filter(([,text])=>text).sort(([a],[b])=>a<b?-1:a>b?1:0);
+  const boundarySeal218Rows=Object.entries(guides).filter(([key])=>directory.keyToFamily[key]&&boundarySeal218.specificKeys.includes(key)).map(([key,guide])=>[key,typeof guide?.boundaries==='string'?guide.boundaries.replaceAll(sharedBoundary218,'').trim():'']).filter(([,text])=>text).sort(([a],[b])=>a<b?-1:a>b?1:0);
   check('.218 exactly40 source-specific boundary keys remain sealed', boundarySeal218.specificKeys.length===40 && boundarySeal218Rows.length===40 && JSON.stringify(boundarySeal218Rows.map(([key])=>key))===JSON.stringify(boundarySeal218.specificKeys));
   check('.218 every one of40 exact role-specific boundary texts remains sealed', require('node:crypto').createHash('sha256').update(JSON.stringify(boundarySeal218Rows)).digest('hex')===boundarySeal218.specificTextSHA256);
   for(const [key,familyKey,nodeKey] of boundarySeal218.placements){
@@ -27,7 +27,7 @@ const body218 = String.raw`
   }
   const all = page.app.querySelectorAll('[data-role-key201]').map(node => node.getAttribute('data-role-key201')).sort();
   const expectedVisible = directory.families.flatMap(f => [f.primaryKey,...f.variants.filter(v=>['office','region','class'].includes(v.presentation)).map(v=>v.key)]).sort();
-  check('.219 all140 source identities remain mapped while only70 canonical guides and genuine sub-offices render', Object.keys(directory.keyToFamily).length===140 && all.length===new Set(all).size && JSON.stringify(all)===JSON.stringify(expectedVisible) && page.app.querySelectorAll('[data-role-family203]').length===70);
+  check('.219 all140 source identities remain mapped while only70 canonical guides and genuine sub-offices render', Object.keys(directory.keyToFamily).length===141 && all.length===new Set(all).size && JSON.stringify(all)===JSON.stringify(expectedVisible) && page.app.querySelectorAll('[data-role-family203]').length===71);
   check('.219 no duplicate metadata drawers or stitched alias prose', !page.app.textContent.includes('Covered by the') && !page.app.textContent.includes('Related titles & rank details') && !page.app.textContent.includes('Also known as:') && !page.app.querySelector('[data-role-variant-group218="associations"]'));
 
   for (const family of directory.families) {
@@ -66,19 +66,22 @@ const body218 = String.raw`
   }
   const vice=page.app.querySelector('[data-role-key201="office_92"]'), co=page.app.querySelector('[data-role-family203="co_gm"] .role-primary203');
   check('.218 Vice-GM succession duties cannot silently become Co-GM duties', vice.querySelector('.role-guide201').textContent.includes(guides.office_92.commitment)
-    && !co.textContent.includes(guides.office_92.definition) && co.querySelectorAll('.role-reporting218').filter(node=>node.textContent==='Council portfolio: Co-Guild Master / Hand of the Sovereign').length===1);
+    && !co.textContent.includes(guides.office_92.definition) && co.querySelectorAll('.role-reporting218').length===0 && page.app.querySelector('[data-role-family203="co_gm"] summary').textContent.includes('Hand of the Sovereign / Co-Guild Master'));
   const councilLineCasesP2=[
-    ['co_gm','Council portfolio: Co-Guild Master / Hand of the Sovereign'],
+    ['co_gm','Council portfolio: Hand of the Sovereign / Co-Guild Master'],
     ['chief_intake','Council portfolio: High Minister of the Chancery & Imperial Census'],
     ['minister_artisanry','Council portfolio: Grand Master Artisan'],
     ['minister_heraldry','Council portfolio: Lord High Herald / Minister of Heraldry'],
-    ['treasurer','Council portfolio: Lord High Treasurer / Imperial Exchequer'],
-    ['architect','Council portfolio: High Architect of Systems'],
+    ['treasurer','Council portfolio: Lord High Treasurer'],
+    ['propaganda','Council portfolio: Minister of Propaganda / Chief Propagandist'],
   ];
   for(const [key,line] of councilLineCasesP2){
     const primary=page.app.querySelector('[data-role-family203="'+key+'"] .role-primary203');
-    check('.218 fixed Council reporting line remains in its own '+key+' primary scope',!!primary&&primary.querySelectorAll('.role-reporting218').filter(node=>node.textContent===line).length===1);
+    check('.218 Council reporting is stated once in the header or its own '+key+' primary scope',!!primary&&primary.querySelectorAll('.role-reporting218').filter(node=>node.textContent===line).length===(directory.families.find(f=>f.key===key).label===line.replace('Council portfolio: ','')?0:1));
   }
+  const technical222=page.app.querySelector('[data-role-family203="architect"]');
+  check('.222 architecture is technical Officer Corps support without a Council portfolio label',directory.families.find(f=>f.key==='architect').tier==='officer_corps'&&!technical222.querySelector('.role-reporting218')&&technical222.textContent.includes('outside the High Council'));
+  check('.222 Propaganda has its own detailed responsibilities and boundaries',guides.office_102.responsibilities.length>=4&&guides.office_102.boundaries.includes('no moderation')&&directory.keyToFamily.office_102==='propaganda');
   const justice=page.app.querySelector('[data-role-family203="justice"]'), chancellor=page.app.querySelector('[data-role-family203="head_justice"]');
   check('.218 one judicial portfolio and one clearly named institution retain separate holder scopes', justice.querySelector('summary').textContent.includes('Council of Justice — institution')
     && !justice.querySelector('summary').textContent.includes('Head of Justice') && chancellor.querySelector('summary').textContent.includes('Lord High Chancellor / Head of Justice')

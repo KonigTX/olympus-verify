@@ -91,9 +91,9 @@ function renderedQuicklinks(app, { treasury = true } = {}) {
   // .218: the Treasury programme link is officer-only; the caller states which answer the page has.
   const nodes = vm.runInNewContext(code, { document, Node, treasuryPlanAllowed218: () => treasury }, { timeout: 1000 });
   const [nav, archive] = nodes;
-  if (nodes.length !== 2 || !(nav instanceof Element) || nav.tagName !== "NAV" || !(archive instanceof Element) || archive.tagName !== "DETAILS") throw Error("Navigation and Archive elements");
+  if (nodes.length !== 1 || !(nav instanceof Element) || nav.tagName !== "NAV" || archive !== undefined) throw Error("Navigation and Archive elements");
   const descendants = (node, tag) => node.childNodes.flatMap(child => [...(child.tagName === tag ? [child] : []), ...descendants(child, tag)]);
-  const currentLinks = descendants(nav, "A"), archiveLinks = descendants(archive, "A");
+  const currentLinks = descendants(nav, "A"), archiveLinks = archive ? descendants(archive, "A") : [];
   return { links: [...currentLinks, ...archiveLinks], currentLinks, archiveLinks, archive, buttons: descendants(nav, "BUTTON") };
 }
 function runChecks(workerRoot = path.join(__dirname, "..")) {
@@ -115,27 +115,27 @@ function runChecks(workerRoot = path.join(__dirname, "..")) {
     && member.currentLinks.length === currentLinks.length - 1 && member.archiveLinks.length === archiveLinks.length
     && member.links.every((link, i) => link.textContent === links.filter((l) => !plan(l))[i].textContent));
   const download = (label, href, filename) => links.filter((link) => link.textContent === label && link.getAttribute("href") === href && link.getAttribute("download") === filename).length === 1;
-  check("actual h/add labels the unchanged R6 PDF as historical with its exact download filename", download("Historical R6 PDF", "/static/governance/olympus-governance-r6.pdf", "Olympus Guild Governance - Successor Draft.pdf"));
-  check("actual h/add labels the unchanged R6 package as historical with its exact filename", download("Historical R6 package", "/static/governance/olympus-governance-r6.zip", "Olympus Governance - Successor Draft.zip"));
+  check("current reader does not promote the historical R6 PDF", !download("Historical R6 PDF", "/static/governance/olympus-governance-r6.pdf", "Olympus Guild Governance - Successor Draft.pdf"));
+  check("current reader does not promote the historical R6 package", !download("Historical R6 package", "/static/governance/olympus-governance-r6.zip", "Olympus Governance - Successor Draft.zip"));
   const readingLinks = [["Treasury programme & 90-day plan", "#/treasury-plan"], ["Start here", "#/governance/reading-and-adopting-this-book"], ["Adoption checklist", "#/governance/adoption-and-office-registers"], ["Appointment templates", "#/governance/3-letters-patent-and-warrants"], ["Interactive organization", "#/organization"], ["Operational charter", "#/governance/operational-charter-the-work-of-olympus"], ["Role & Rank Rosetta Stone", "#/roles/rosetta-stone"], ["Title I · Sovereign", "#/governance/title-i-the-sovereign-royal-decrees"], ["Title II · Council & Court", "#/governance/title-ii-the-high-council-co-guild-master-privy-court"], ["Title III · Treasury", "#/governance/title-iii-the-imperial-treasury-guild-bank-tithe-ledger"], ["Title IV · Grand Alliance", "#/governance/title-iv-the-grand-alliance-concordat"], ["Title V · Artisans & Heralds", "#/governance/title-v-the-guild-workshop-artisans-charter-and-the-heralds-accord"]];
-  check("closed nineteen-link census retains twelve exact programme/reading/chart/Title/Rosetta links and the distinct current R7 source download", links.length === 19 && readingLinks.every(([label, href]) => links.filter((link) => link.textContent === label && link.getAttribute("href") === href && link.getAttribute("download") === null).length === 1) && download("Download current R7 source", "/static/governance/reconciled-book.md", "Olympus Governance R7.md"));
-  check("current thirteen programme/reading/source links stay outside the closed six-download historical Archive", currentLinks.length === 13 && archiveLinks.length === 6 && archive.className === "governance-archive" && archive.getAttribute("open") === null && archive.childNodes.filter(node => node.tagName === "SUMMARY" && node.textContent === "Archive and release records").length === 1 && currentLinks.every(link => !archiveLinks.includes(link)) && archiveLinks.every(link => link.getAttribute("download") !== null && link.getAttribute("href") !== "/static/governance/reconciled-book.md") && readingLinks.every(([label, href]) => currentLinks.some(link => link.textContent === label && link.getAttribute("href") === href)));
+  check("closed thirteen-link current-reader census retains twelve exact programme/reading/chart/Title/Rosetta links and the distinct current R7 source download", links.length === 13 && readingLinks.every(([label, href]) => links.filter((link) => link.textContent === label && link.getAttribute("href") === href && link.getAttribute("download") === null).length === 1) && download("Download current R7 source", "/static/governance/reconciled-book.md", "Olympus Governance R7.md"));
+  check("current reader keeps thirteen useful links and removes the historical Archive block", currentLinks.length === 13 && archiveLinks.length === 0 && archive === undefined && !app.includes("Archive and release records"));
   check("current R7 print control is a button with the actual retained click handler", buttons.length === 1 && buttons[0].textContent === "Print current R7 book" && buttons[0].getAttribute("type") === "button" && typeof buttons[0].listeners.click === "function");
   for (const [label, file, filename, bytes, hash] of EXTRA_DOWNLOADS) {
     const data = fs.readFileSync(path.join(dir, file));
-    check(label + " has accepted bytes and a matching real download link", data.length === bytes && sha(data) === hash && data.subarray(0, 5).toString("ascii") === "%PDF-" && data.subarray(-128).includes(Buffer.from("%%EOF")) && download(label, "/static/governance/" + file, filename));
+    check(label + " retains its exact historical bytes without promotion on the current reader", data.length === bytes && sha(data) === hash && data.subarray(0, 5).toString("ascii") === "%PDF-" && data.subarray(-128).includes(Buffer.from("%%EOF")) && !download(label, "/static/governance/" + file, filename));
   }
   const manifest = JSON.parse(fs.readFileSync(path.join(dir, "downloads-manifest.json"), "utf8"));
   check("historical PDF manifest retains its original R6 source and unratified/unissued status", manifest.schema === "olympus-governance-downloads-v1" && manifest.sourceSHA256 === PDF.sha256 && manifest.ratified === false && manifest.appointmentsIssued === false && manifest.artifacts.length === 4 && EXTRA_DOWNLOADS.every(([, file, , bytes, hash]) => manifest.artifacts.filter((entry) => entry.file === file && entry.bytes === bytes && entry.sha256 === hash).length === 1));
   const currentBook = fs.readFileSync(path.join(dir, "reconciled-book.md"));
-  check("current R7 plus199five-Title and rank-bridge source is exact and distinct from preserved R6", currentBook.length === 271522 && sha(currentBook) === "0495d02d98aa1f31a64a575c6bc88caee4864e0c17db1140235f5aa8d416215b" && !currentBook.equals(book));
+  check("current R7 plus199five-Title and rank-bridge source is exact and distinct from preserved R6", currentBook.length === 271992 && sha(currentBook) === "93a557b8a1fbe1752094c1c9bf9dfefc8e61ff51a12e79ff17e67a8050bcf992" && !currentBook.equals(book));
   check("current R7 adoption notice separates appointments, signatures, permissions and historical status", app.includes("R7 • Guild rules adopted 13 October 2026") && app.includes("Adoption issues no individual appointment or named signature") && app.includes("changes no native rank, bank limit or platform permission") && app.includes("Dated archives retain their historical status"));
   check("current governance loader sends same-origin credentials for private book/model delivery", app.includes('fetch(path, { credentials: "same-origin", redirect: "error" })'));
   const bad = Buffer.from(zip); bad.writeUInt32LE((bad.readUInt32LE(entries[0].centralOffset + 16) ^ 1) >>> 0, entries[0].centralOffset + 16);
   let crcRejected = false; try { inspectZip(bad); } catch { crcRejected = true; }
   check("negative archive control rejects changed central CRC", crcRejected);
-  const wrong = renderedQuicklinks(app.replace('download: "Olympus Guild Governance - Successor Draft.pdf"', 'download: "wrong.pdf"')).links;
-  check("negative UI control detects wrong historical PDF download filename", !wrong.some((link) => link.textContent === "Historical R6 PDF" && link.getAttribute("download") === "Olympus Guild Governance - Successor Draft.pdf"));
+  const wrong = renderedQuicklinks(app.replace('download: "Olympus Governance R7.md"', 'download: "wrong.md"')).links;
+  check("negative UI control detects a wrong current book filename", !wrong.some((link) => link.textContent === "Download current R7 source" && link.getAttribute("download") === "Olympus Governance R7.md"));
   return checks;
 }
 module.exports = { runChecks };

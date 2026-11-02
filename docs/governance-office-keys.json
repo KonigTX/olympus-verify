@@ -402,5 +402,9 @@
   {
     "key": "office_101",
     "label": "Lord High Chancellor / Head of Justice"
+  },
+  {
+    "key": "office_102",
+    "label": "Minister of Propaganda"
   }
 ]

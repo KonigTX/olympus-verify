@@ -2,13 +2,14 @@
  * explicitly armed one-shot reminder uses the configured public raid channel;
  * local/live registration checks never create a raid or send a test notice. */
 import type { Env } from './env';
+import { isRaidHub222, raidHub222, raidModal222, raidAutocomplete222, assertHubRows222, type HubRow222 } from './raid-hub222';
 import { API, credentialFetch, json, reply, subcommand, type Interaction } from './discord';
 import { now } from './db';
 import { rateLimited } from './site-core';
 import { destination, type ActionRow } from './community-event-delivery';
 import { runEventReminders } from './community-event-reminders';
 import { captureGuildActor219, currentGuildActor219, guildActorBatch219, type GuildActor219 } from './guild-command-authority219';
-import { GUILD_COMMAND_NAMES_221 } from './guild-command-definitions221';
+import { GUILD_COMMAND_NAMES_222 } from './guild-command-definitions222';
 import { workshopOrderDraft221 } from './guild-workshop-order221';
 import { createCalendar219, readCalendar219, calendarRoster219, rsvpCalendar219, attendanceCalendar219, eventId219, type CalendarEvent219, ROSTER_PAGE_219 } from './guild-calendar219';
 import { consentCalendarReminder219 } from './guild-reminder219';
@@ -16,9 +17,9 @@ import { RSVP_CHOICES_219 } from './guild-calendar-metadata219';
 import { guideLookup219, workshopLookup219, referenceLookup219, safeDiscordText219, type GuildEmbed219 } from './guild-utilities219';
 
 const COMPONENT=/^raid219:rsvp:([A-Za-z0-9_-]{22}):([1-9][0-9]{0,8}):(tank|healer|melee|ranged|tentative|bench|absent)$/;
-export const isGuildCommand219=(i:Interaction):boolean=>(i.type===2&&GUILD_COMMAND_NAMES_221.has(i.data?.name??''))||(i.type===3&&COMPONENT.test(i.data?.custom_id??''));
+export const isGuildCommand219=(i:Interaction):boolean=>isRaidHub222(i)||(i.type===2&&GUILD_COMMAND_NAMES_222.has(i.data?.name??''))||(i.type===3&&COMPONENT.test(i.data?.custom_id??''));
 export function guildCommandReadOnly219(i:Interaction):boolean {
- if(i.type!==2||!GUILD_COMMAND_NAMES_221.has(i.data?.name??''))return false;
+ if(i.type!==2||!GUILD_COMMAND_NAMES_222.has(i.data?.name??''))return false;
  return !['raid','event'].includes(i.data!.name!)||['list','roster'].includes(subcommand(i)??'');
 }
 const options219=(i:Interaction):Record<string,unknown>=>{
@@ -30,7 +31,7 @@ export function rsvpComponents219(event:Pick<CalendarEvent219,'id'|'revision'>,h
  const buttons=RSVP_CHOICES_219.map(choice=>({type:2 as const,style:choice==='absent'?2:3,label:choice[0]!.toUpperCase()+choice.slice(1),custom_id:`raid219:rsvp:${event.id}:${event.revision}:${choice}`}));
  return [{type:1,components:buttons.slice(0,4)},{type:1,components:[...buttons.slice(4),{type:2,style:5,label:'Open calendar',url:`https://${host}/#/community/calendar/${event.id}`}]}];
 }
-export interface Answer219 {content?:string;embeds?:GuildEmbed219[];components?:ActionRow[]}
+export interface Answer219 {content?:string;embeds?:GuildEmbed219[];components?:(ActionRow|HubRow222)[]}
 export function assertGuildAnswer219(answer:Answer219):void {
  if((answer.content?.length??0)>2000||(answer.embeds?.length??0)>10||(answer.components?.length??0)>5)throw Error('This result exceeds Discord limits. Open the complete website view.');
  let chars=0;
@@ -39,10 +40,12 @@ export function assertGuildAnswer219(answer:Answer219):void {
   chars+=embed.title.length+(embed.description?.length??0)+(embed.footer?.text.length??0);
   for(const field of embed.fields??[]){if(field.name.length>256||field.value.length>1024)throw Error('This result exceeds Discord limits. Open the complete website view.');chars+=field.name.length+field.value.length;}
  }
- if(chars>6000||answer.components?.some(row=>row.components.length>5||row.components.some(button=>button.label.length>80||(button.custom_id?.length??0)>100)))throw Error('This result exceeds Discord limits. Open the complete website view.');
+ assertHubRows222(answer.components??[]);
+ if(chars>6000)throw Error('This result exceeds Discord limits. Open the complete website view.');
 }
 const eventEmbed219=(e:CalendarEvent219,host:string):GuildEmbed219=>({title:safeDiscordText219(e.title,80),url:`https://${host}/#/community/calendar/${e.id}`,description:`<t:${e.starts_at}:F> · <t:${e.starts_at}:R>\n${e.duration_min} minutes · ${e.capacity??'No fixed'} signup cap\nID: \`${e.id}\`\n${safeDiscordText219(e.details,500)}`,footer:{text:'Signup preferences are not an organizer roster acceptance. Bench is a request, not a staff decision.'}});
 export async function executeGuildCommand219(env:Env,a:GuildActor219,i:Interaction):Promise<Answer219> {
+ if(isRaidHub222(i))return raidHub222(env,a,i);
  const name=i.data?.name??'',sub=subcommand(i)??'',v=options219(i),host=destination(env)!.host,component=COMPONENT.exec(i.data?.custom_id??'');
  if(component){
   const ok=await rsvpCalendar219(env,a,component[1]!,Number(component[2]),component[3]!);
@@ -89,10 +92,11 @@ export async function executeGuildCommand219(env:Env,a:GuildActor219,i:Interacti
  * persisted, printed, placed in audit fields or passed to an automatic retry. */
 export async function handleGuildCommand219(env:Env,i:Interaction,signedAt:number,defer?:(work:()=>Promise<unknown>)=>void):Promise<Response> {
  if(!isGuildCommand219(i))return reply('Unknown guild command.');
- if(!defer||typeof i.token!=='string'||i.token.length<20||i.token.length>2048||!/^[A-Za-z0-9_.-]+$/.test(i.token))return reply('This command could not start. Open the guild website or run a fresh command.');
+ if(!defer||typeof i.token!=='string'||i.token.length<20||i.token.length>2048||!/^[A-Za-z0-9_.-]+$/.test(i.token))return i.type===4?json({type:8,data:{choices:[]}}):reply('This command could not start. Open the guild website or run a fresh command.');
  let a:GuildActor219;
- try{a=await captureGuildActor219(env,i,now(),signedAt);}catch{return reply('Verify a character and sign in on the Olympus website first. This command needs a current, eligible site account in this server.');}
- if(rateLimited('gc219:'+a.id,30,60))return reply('Too many guild commands in one minute. Wait a moment before trying again.');
+ try{a=await captureGuildActor219(env,i,now(),signedAt);}catch{return i.type===4?json({type:8,data:{choices:[]}}):reply('Verify a character and sign in on the Olympus website first. This command needs a current, eligible site account in this server.');}
+ if(rateLimited('gc219:'+a.id,30,60))return i.type===4?json({type:8,data:{choices:[]}}):reply('Too many guild commands in one minute. Wait a moment before trying again.');
+ try{if(i.type===4&&isRaidHub222(i))return json(await raidAutocomplete222(env,a,i));const modal=isRaidHub222(i)?raidModal222(i,a):null;if(modal)return json(modal);}catch{return i.type===4?json({type:8,data:{choices:[]}}):reply('This private control expired or changed. Run /raid for a fresh hub.');}
  const path=`${API}/webhooks/${env.DISCORD_APP_ID}/${i.token}/messages/@original`;
  defer(async()=>{
   let answer:Answer219;

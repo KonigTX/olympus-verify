@@ -120,6 +120,25 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .222 reverses only its exact owner-authorized prepend and owner-only DTO gate.
+  const release222 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".222\", date: \"2026-11-01\", lines: [",
+    "      \"The private raid hub brings event selection, signup preferences, rosters and organizer forms together; existing reminder and attendance safeguards remain.\",",
+    "      \"Council guides distinguish the Minister of Propaganda from technical architecture, and use consistent portfolio titles without changing appointments or access.\",",
+    "      \"Organization connections use a tree layout with card-border ports. Resource cards use existing game artwork with readable text overlays.\",",
+    "      \"Site updates are owner-only. Applicant portrait consent stays intact, with a neutral fallback and one class badge. The retired external news promotion is removed.\",",
+    "      \"The beta-role and channel-permission audit is recorded separately; membership assignments and live-release activation remain unchanged.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .222 prepend occurs once', originalNews.split(release222).length === 2);
+  originalNews = originalNews.replace(release222, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  const ownerGate222 = "releases: ctx.subject?.discordId === '472099715253796864' ? RELEASE_NOTES.slice(0, 5) : [],";
+  check('owner-only release gate has one exact source occurrence', originalNews.split(ownerGate222).length === 2);
+  originalNews = originalNews.replace(ownerGate222, 'releases: RELEASE_NOTES.slice(0, 5),');
   // .221 reverses only the exact new evergreen note; all older finite inverses stay intact.
   const release221 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
