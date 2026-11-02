@@ -4034,8 +4034,8 @@
     {
       "path": "worker/public/static/governance/organization.json",
       "mode": "100644",
-      "bytes": 440528,
-      "sha256": "71a72a8ac39607de2eb2bdb07e94be1685c6669e5425ff8bd6441d3fd093a4a4"
+      "bytes": 440916,
+      "sha256": "6adca2a2df76692e9de3c35961feec9f9e2fd506d2c4aee15e96d6fdb986a70d"
     },
     {
       "path": "worker/public/static/governance/reconciled-book.md",
@@ -4142,8 +4142,8 @@
     {
       "path": "worker/public/static/role-rank199.js",
       "mode": "100644",
-      "bytes": 151760,
-      "sha256": "96df3a2385afa938d9302de731f857c90973e1e1c68f2bb7b9945ba86e0e2d6b"
+      "bytes": 151930,
+      "sha256": "fed867ad63a2465c818520ac024cb7ee4d782f95f2078ac2ffb0d9cd086f87cc"
     },
     {
       "path": "worker/public/static/royal-writs199.js",

@@ -87,19 +87,22 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
       "V"
     ],
     "department": "Systems and Addons Division",
-    "applicationTrack": "officer",
-    "applicationEligible": false,
+    "applicationTrack": "high_council",
+    "applicationEligible": true,
     "applicationLabel": "Addon / Discord Architect · Systems Architect",
     "applicationAliases": [
       "Systems Architect"
     ],
-    "applicationRoleKeys": [],
+    "applicationRoleKeys": [
+      "office_03"
+    ],
     "statusOverlay": false,
     "acquisition": "Reserved technical appointment; no public officer application.",
     "discordPortal": "Technical contributor access is granted separately; this office carries no Council vote.",
     "cabinetSeatId": "technical-support",
     "ministry": "Systems and Addons Division",
     "councilSeat": "",
+    "applicationMetadataScope": "Historical application and ballot compatibility only; current institutional display and reserved-seat admission are separate.",
     "recommendedNativeSlots": [
       2
     ],

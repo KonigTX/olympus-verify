@@ -62,8 +62,8 @@
       "V"
     ],
     "department": "Systems and Addons Division",
-    "applicationTrack": "officer",
-    "applicationEligible": false,
+    "applicationTrack": "high_council",
+    "applicationEligible": true,
     "statusOverlay": false,
     "acquisition": "Reserved technical appointment; no public officer application.",
     "discordPortal": "Technical contributor access is granted separately; this office carries no Council vote.",
@@ -71,7 +71,10 @@
       "Systems Architect"
     ],
     "applicationLabel": "Addon / Discord Architect · Systems Architect",
-    "applicationRoleKeys": []
+    "applicationRoleKeys": [
+      "office_03"
+    ],
+    "applicationMetadataScope": "Historical application and ballot compatibility only; current institutional display and reserved-seat admission are separate."
   },
   "addedPropaganda": {
     "ordinal": 102,
