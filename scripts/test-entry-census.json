@@ -68,11 +68,11 @@
     },
     {
       "path": "worker/tests/privacy_normal_scheduled_whole_workerd_test.cjs",
-      "kind": "stopped",
+      "kind": "native",
       "owner": "Codex Root / owner",
-      "reason": "Legacy separately bound Job3/ESM-wrapper experiment; current217 authority permits standard Workerd, not the old Job3 controller or an implicit new attempt.",
-      "evidence": "Reviewed source disposition217; historical run records remain separately retained. This inventory supplies no runtime acceptance.",
-      "sha256": "9274b1ab31f61d4554e9736793f079da1ee96c849e13393f017120cd062394b3"
+      "reason": "Separately bound current224 normal Workerd proof under the owner-authorized standard runtime and owned-process controller. Legacy Job3 and permission-loader experiments remain stopped; this is not silently added to the normal CI alias.",
+      "evidence": "Current224 exact-source standalone receipts are required separately. The original missing-input and five-callback failed runs remain retained. Source inventory alone supplies no runtime acceptance.",
+      "sha256": "d89db028092eb5d2aa17e006bdad8d9661c48c2d4e44b65f921b2cf15358f979"
     },
     {
       "path": "worker/tests/privacy_production_control_cut_native_test.cjs",
@@ -97,6 +97,14 @@
       "reason": "Explicit separately configured receipt/interpreter command; not a default CI invocation.",
       "evidence": "Reviewed source disposition217; historical run records remain separately retained. This inventory supplies no runtime acceptance.",
       "sha256": "074521707facd1e6a922dadce349f253ccfa7fa62b8fd80e036a20f4df8532a9"
+    },
+    {
+      "path": "worker/tests/guild_registration224_test.cjs",
+      "kind": "helper",
+      "owner": "Codex Root / owner",
+      "reason": "Fixed sequential child of the normal build224_test.cjs entry. The parent waits for completion and propagates every nonzero exit. The source scanner recognizes require edges, so this spawn-based child has an explicit hash-bound disposition.",
+      "evidence": "build224_test.cjs original fixed spawn plus focused signed-Worker/registration receipts. Final224 aggregate retains this required child; a source disposition alone supplies no runtime acceptance.",
+      "sha256": "8a600e99aee81a142f3057f2ce5280525a37df97cdb218ec342f5e00a3f91814"
     }
   ]
 }
