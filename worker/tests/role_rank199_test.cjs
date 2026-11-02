@@ -13,6 +13,7 @@ const historicalScope218='Historical application and ballot compatibility only; 
 // Only the six explicitly preserved fields of the two reviewed institutions
 // may be reversed. Every other property remains in the original digest.
 function originalTerms218(terms) {
+ terms=require('../../scripts/governance-cabinet224-inverse.cjs').restoreCabinet224(terms,'terms');
  terms=require('../../scripts/governance-role-inverse222.cjs').originalTerms222(terms);
  const specs={office_26:{ordinal:26,label:'Council of Justice',applicationLabel:'Council of Justice',acquisition:'Case-designated judicial institution; chaired by the Lord High Chancellor, with accepted unconflicted members.'},office_94:{ordinal:94,label:'War Head',applicationLabel:'War Directorate (historical shared template)',acquisition:'Historical shared War Head reference; current PvE and PvP portfolios have their own separate appointments.'}};
  const keys=['label','applicationLabel','applicationAliases','applicationEligible','applicationRoleKeys','acquisition'];
@@ -45,7 +46,7 @@ check('all 102 stable offices and all 138 assignable keys have explicit individu
 });
 check('High Council, Officer Corps and member specialisms never share an accidental default classification',()=>{
  const find=key=>server.OFFICE_APPOINTMENTS.find(o=>o.key===key);
- for(const key of ['office_14','office_26','office_28','office_45','office_57','office_58','office_59','office_67','office_94']){assert.equal(find(key).tier,'high_council');assert.equal(find(key).applicationTrack,'high_council');assert.equal(find(key).nativeSlot,1);assert.equal(find(key).applicationEligible,true);}
+ for(const key of ['office_14','office_26','office_28','office_45','office_57','office_58','office_59','office_67','office_94']){assert.equal(find(key).tier,'high_council');assert.equal(find(key).applicationTrack,'high_council');assert.equal(find(key).nativeSlot,1);assert.equal(find(key).applicationEligible,!["office_14","office_58","office_59"].includes(key));}
  for(const key of ['office_02','office_08','office_33','office_44','office_62','office_79','class_lead:warrior']){assert.equal(find(key).tier,'officer_corps');assert.equal(find(key).applicationTrack,'officer');assert.equal(find(key).nativeSlot,2);}
  for(const key of ['office_07','office_27']){assert.equal(find(key).tier,'member_specialist');assert.equal(find(key).applicationTrack,'artisan');assert.deepEqual(find(key).codexTitles,['V']);}
  for(const key of ['office_61','office_64','office_87']){assert.equal(find(key).statusOverlay,true);assert.equal(find(key).applicationEligible,false);assert.equal(find(key).mappingApplies,false);}
@@ -60,9 +61,9 @@ check('reserved executive and Treasury appointments do not fabricate an open sea
 });
 check('aliases and six application tracks keep a single exact source contract',()=>{
  const aliases=JSON.parse(fs.readFileSync(path.join(repo,'docs/governance-office-aliases.json'),'utf8'));
- for(const a of aliases){const row=server.OFFICE_APPOINTMENTS.find(o=>o.key===a.key);assert.equal(row.label,a.label);assert.equal(row.aliasOf,a.aliasOf);if(a.aliasOf){const base=server.OFFICE_APPOINTMENTS.find(o=>o.key===a.aliasOf);assert.equal(row.nativeSlot,base.nativeSlot);assert.equal(row.tier,base.tier);assert.equal(row.applicationTrack,base.applicationTrack);}}
+ for(const a of aliases){const row=server.OFFICE_APPOINTMENTS.find(o=>o.key===a.key);assert.equal(row.label,a.aliasOf&&organization.councilComposition.currentSeats.some(seat=>seat.officeKeys.includes(a.aliasOf))?server.OFFICE_APPOINTMENTS.find(x=>x.key===a.aliasOf).label:a.label);assert.equal(row.aliasOf,a.aliasOf);if(a.aliasOf){const base=server.OFFICE_APPOINTMENTS.find(o=>o.key===a.aliasOf);assert.equal(row.nativeSlot,base.nativeSlot);assert.equal(row.tier,base.tier);assert.equal(row.applicationTrack,base.applicationTrack);}}
  assert.deepEqual(server.APPLICATION_TRACKS_199,organization.applicationTracks);assert.deepEqual(browser.tracks,organization.applicationTracks);assert.deepEqual(browser.tracks.map(t=>t.id),['member','raider','artisan','officer','high_council','patron']);
- for(const [key,alias] of [['office_03','Systems Architect'],['office_14','Intake Minister'],['office_58','Workshop Grand Master'],['office_59','Heraldry Minister']]){const row=server.OFFICE_APPOINTMENTS.find(o=>o.key===key);assert.ok(row.applicationAliases.includes(alias));assert.equal(row.applicationLabel,row.label+' · '+row.applicationAliases[0]);assert.ok(Object.isFrozen(row.applicationAliases));}
+ for(const [key,alias] of [['office_03','Systems Architect'],['office_14','Intake Minister'],['office_58','Workshop Grand Master'],['office_59','Heraldry Minister']]){const row=server.OFFICE_APPOINTMENTS.find(o=>o.key===key);assert.ok(row.applicationAliases.includes(alias));assert.equal(row.applicationLabel,['office_14','office_58','office_59'].includes(key)?row.label:row.label+' · '+row.applicationAliases[0]);assert.ok(Object.isFrozen(row.applicationAliases));}
  for(const [key,alias] of [['office_26','Privy Council / Judiciary'],['office_94','PvE War Council Director']]){const row=server.OFFICE_APPOINTMENTS.find(o=>o.key===key),term=organization.terms.find(o=>o.officeKey===key);assert.equal(row.applicationEligible,true);assert.deepEqual(row.applicationAliases,term.historicalApplicationProfile.applicationAliases);assert.deepEqual(row.applicationRoleKeys,[key]);assert.ok(Object.isFrozen(row.applicationAliases));assert.ok(row.applicationAliases.includes(alias));assert.equal(row.applicationMetadataScope,historicalScope218);assert.equal(row.applicationLabel,term.applicationLabel);assert.equal(row.acquisition,term.acquisition);assert.equal(row.nativeSlot,1);assert.equal(row.mappingApplies,false);}
  for(const ordinal of [97,98,99,100,101]){const row=server.OFFICE_APPOINTMENTS.find(o=>o.key==='office_'+ordinal);assert.ok(row.nativeMappingNote.startsWith('.218 '));assert.equal(row.applicationEligible,false);assert.equal(row.mappingApplies,false);}
  for(const [key,roles] of Object.entries({office_62:['officer'],office_79:['recruitment'],office_21:['community'],office_71:['pvp_leader'],office_51:['loot_council'],office_69:['professions'],office_33:['moderator'],office_73:['raid_assist_na','raid_assist_eu'],office_74:['raid_leader_na','raid_leader_eu']}))assert.deepEqual(server.OFFICE_APPOINTMENTS.find(o=>o.key===key).applicationRoleKeys,roles);
@@ -70,14 +71,14 @@ check('aliases and six application tracks keep a single exact source contract',(
 });
 check('.208 adds one separately reserved Council trading office without repurposing any prior office',()=>{
  const row=server.OFFICE_APPOINTMENTS.find(o=>o.key==='office_96');
- assert.equal(row.label,'Head of Trading & Markets');assert.equal(row.nativeSlot,1);assert.equal(row.nativeRankOrdinal,2);assert.equal(row.tier,'high_council');
+ assert.equal(row.label,'Lord High Factor · Minister of Trading & Markets');assert.equal(row.nativeSlot,1);assert.equal(row.nativeRankOrdinal,2);assert.equal(row.tier,'high_council');
  assert.equal(row.applicationEligible,false);assert.deepEqual(row.applicationRoleKeys,[]);assert.equal(row.mappingApplies,false);
  const originalTerms=JSON.stringify(originalTerms218(organization.terms.slice(0,95)));
  // Preserve the original JSON property order, as JSON.stringify does. The
  // original 95 objects were compared against accepted .207 before pinning.
  assert.equal(require('node:crypto').createHash('sha256').update(originalTerms).digest('hex'),'74fb4f44153a550b7b306789763e73932393e96124d781572c6d2db5c9b87d3b');
  assert.equal(organization.councilComposition.currentSeats.filter(seat=>seat.id==='head-trading'&&seat.familyKey==='head_trading'&&seat.officeKeys.length===1&&seat.officeKeys[0]==='office_96').length,1);
- assert.equal(server.OFFICE_APPOINTMENTS.find(o=>o.key==='office_86').label,'Treasurer (Guild Bank)');
+ assert.equal(server.OFFICE_APPOINTMENTS.find(o=>o.key==='office_86').label,'Lord High Treasurer · Minister of the Imperial Exchequer');
 });
 check('the finite two-institution inverse preserves all96 originals and rejects unscoped or unapproved rewrites',()=>{
  const digest=terms=>require('node:crypto').createHash('sha256').update(JSON.stringify(originalTerms218(terms))).digest('hex');
@@ -119,8 +120,8 @@ check('every office has its current ministry and a real Council portfolio or exp
 });
 check('current Cabinet associations follow the retained remit rather than generic executive fallback',()=>{
  const expected={
-  office_01:['heraldry','heraldry','Department of Heraldry'],
-  office_05:['heraldry','heraldry','Department of Heraldry'],
+  office_01:['propaganda','propaganda','Ministry of Propaganda'],
+  office_05:['propaganda','propaganda','Ministry of Propaganda'],
   office_11:['main-raid-lead','war','Department of War'],
   office_94:['co-gm','war','Department of War']
  };
@@ -129,7 +130,7 @@ check('current Cabinet associations follow the retained remit rather than generi
   assert.deepEqual([overlay.seatId,overlay.ministryId,overlay.ministry],values);
   assert.equal(office.cabinetSeatId,values[0]);assert.equal(office.ministry,values[2]);
  }
- assert.equal(server.OFFICE_APPOINTMENTS.find(row=>row.key==='leveling').cabinetSeatId,'heraldry');
+ assert.equal(server.OFFICE_APPOINTMENTS.find(row=>row.key==='leveling').cabinetSeatId,'propaganda');
  const war=Object.values(organization.cabinet218.offices).filter(row=>['main-raid-lead','main-pvp-lead'].includes(row.seatId));
  assert.equal(war.length,17);assert.ok(war.every(row=>row.ministryId==='war'&&row.ministry==='Department of War'));
  assert.deepEqual(organization.councilComposition.currentSeats.filter(row=>row.id==='main-raid-lead').map(row=>row.officeKeys),[['office_97']]);

@@ -27,9 +27,9 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "statusOverlay": false,
     "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-    "cabinetSeatId": "heraldry",
-    "ministry": "Department of Heraldry",
-    "councilSeat": "Lord High Herald / Minister of Heraldry",
+    "cabinetSeatId": "propaganda",
+    "ministry": "Ministry of Propaganda",
+    "councilSeat": "Lord High Herald · Minister of Propaganda",
     "recommendedNativeSlots": [
       2
     ],
@@ -133,7 +133,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "concordat",
     "ministry": "Grand Alliance Concordat",
-    "councilSeat": "Lord High Envoy / Director of the Concordat",
+    "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
     "recommendedNativeSlots": [
       8
     ],
@@ -163,9 +163,9 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "statusOverlay": false,
     "acquisition": "In-game verification and attended standing review; a title or status does not change native rank.",
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
-    "cabinetSeatId": "heraldry",
-    "ministry": "Department of Heraldry",
-    "councilSeat": "Lord High Herald / Minister of Heraldry",
+    "cabinetSeatId": "propaganda",
+    "ministry": "Ministry of Propaganda",
+    "councilSeat": "Lord High Herald · Minister of Propaganda",
     "recommendedNativeSlots": [
       7
     ],
@@ -198,7 +198,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       2
     ],
@@ -231,7 +231,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "artisanry",
     "ministry": "Association of Artisanry",
-    "councilSeat": "Grand Master Artisan",
+    "councilSeat": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
     "recommendedNativeSlots": [
       7
     ],
@@ -265,7 +265,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "head-justice",
     "ministry": "Council of Justice",
-    "councilSeat": "Lord High Chancellor / Head of Justice",
+    "councilSeat": "Lord High Justiciar · Minister of Justice & The Privy Court",
     "recommendedNativeSlots": [
       2
     ],
@@ -298,7 +298,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "treasurer",
     "ministry": "Federal Treasury",
-    "councilSeat": "Lord High Treasurer",
+    "councilSeat": "Lord High Treasurer · Minister of the Imperial Exchequer",
     "recommendedNativeSlots": [
       2
     ],
@@ -331,7 +331,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "treasurer",
     "ministry": "Federal Treasury",
-    "councilSeat": "Lord High Treasurer",
+    "councilSeat": "Lord High Treasurer · Minister of the Imperial Exchequer",
     "recommendedNativeSlots": [
       2
     ],
@@ -363,7 +363,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       6
     ],
@@ -393,9 +393,9 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "statusOverlay": false,
     "acquisition": "In-game verification and attended standing review; a title or status does not change native rank.",
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
-    "cabinetSeatId": "heraldry",
-    "ministry": "Department of Heraldry",
-    "councilSeat": "Lord High Herald / Minister of Heraldry",
+    "cabinetSeatId": "propaganda",
+    "ministry": "Ministry of Propaganda",
+    "councilSeat": "Lord High Herald · Minister of Propaganda",
     "recommendedNativeSlots": [
       7
     ],
@@ -425,9 +425,9 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "statusOverlay": false,
     "acquisition": "In-game verification and attended standing review; a title or status does not change native rank.",
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
-    "cabinetSeatId": "heraldry",
-    "ministry": "Department of Heraldry",
-    "councilSeat": "Lord High Herald / Minister of Heraldry",
+    "cabinetSeatId": "propaganda",
+    "ministry": "Ministry of Propaganda",
+    "councilSeat": "Lord High Herald · Minister of Propaganda",
     "recommendedNativeSlots": [
       7
     ],
@@ -436,7 +436,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
   },
   {
     "key": "office_14",
-    "label": "Chief of Intake (Gatekeeper, Intake Gatekeeper)",
+    "label": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
     "group": "office",
     "termOrdinal": 14,
     "nativeRankOrdinal": 2,
@@ -450,20 +450,20 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     ],
     "department": "Intake and recruitment",
     "applicationTrack": "high_council",
-    "applicationEligible": true,
-    "applicationLabel": "Chief of Intake (Gatekeeper, Intake Gatekeeper) · Intake Minister",
+    "applicationEligible": false,
+    "applicationLabel": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
     "applicationAliases": [
+      "Chief of Intake (Gatekeeper, Intake Gatekeeper)",
+      "Chief of Intake (Gatekeeper, Intake Gatekeeper) · Intake Minister",
       "Intake Minister"
     ],
-    "applicationRoleKeys": [
-      "office_14"
-    ],
+    "applicationRoleKeys": [],
     "statusOverlay": false,
     "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "intake",
     "ministry": "Intake and recruitment",
-    "councilSeat": "High Minister of the Chancery & Imperial Census",
+    "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
     "recommendedNativeSlots": [
       1
     ],
@@ -497,7 +497,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       2
     ],
@@ -531,7 +531,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       2
     ],
@@ -565,7 +565,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       2
     ],
@@ -607,7 +607,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       2
     ],
@@ -616,7 +616,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
   },
   {
     "key": "office_19",
-    "label": "Co-GM",
+    "label": "Hand of the Sovereign · Co-Guild Master",
     "group": "office",
     "termOrdinal": 19,
     "nativeRankOrdinal": 2,
@@ -631,15 +631,17 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "department": "Co-Guild Master and Vice Guild Master",
     "applicationTrack": "high_council",
     "applicationEligible": false,
-    "applicationLabel": "Co-GM",
-    "applicationAliases": [],
+    "applicationLabel": "Hand of the Sovereign · Co-Guild Master",
+    "applicationAliases": [
+      "Co-GM"
+    ],
     "applicationRoleKeys": [],
     "statusOverlay": false,
     "acquisition": "Royal appointment; no application or payment creates this authority.",
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       1
     ],
@@ -672,7 +674,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       2
     ],
@@ -703,9 +705,9 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "statusOverlay": false,
     "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-    "cabinetSeatId": "heraldry",
-    "ministry": "Department of Heraldry",
-    "councilSeat": "Lord High Herald / Minister of Heraldry",
+    "cabinetSeatId": "propaganda",
+    "ministry": "Ministry of Propaganda",
+    "councilSeat": "Lord High Herald · Minister of Propaganda",
     "recommendedNativeSlots": [
       2
     ],
@@ -737,9 +739,9 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "statusOverlay": false,
     "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-    "cabinetSeatId": "heraldry",
-    "ministry": "Department of Heraldry",
-    "councilSeat": "Lord High Herald / Minister of Heraldry",
+    "cabinetSeatId": "propaganda",
+    "ministry": "Ministry of Propaganda",
+    "councilSeat": "Lord High Herald · Minister of Propaganda",
     "recommendedNativeSlots": [
       2
     ],
@@ -768,9 +770,9 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "statusOverlay": false,
     "acquisition": "In-game verification and attended standing review; a title or status does not change native rank.",
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
-    "cabinetSeatId": "heraldry",
-    "ministry": "Department of Heraldry",
-    "councilSeat": "Lord High Herald / Minister of Heraldry",
+    "cabinetSeatId": "propaganda",
+    "ministry": "Ministry of Propaganda",
+    "councilSeat": "Lord High Herald · Minister of Propaganda",
     "recommendedNativeSlots": [
       7
     ],
@@ -800,9 +802,9 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "statusOverlay": false,
     "acquisition": "In-game verification and attended standing review; a title or status does not change native rank.",
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
-    "cabinetSeatId": "heraldry",
-    "ministry": "Department of Heraldry",
-    "councilSeat": "Lord High Herald / Minister of Heraldry",
+    "cabinetSeatId": "propaganda",
+    "ministry": "Ministry of Propaganda",
+    "councilSeat": "Lord High Herald · Minister of Propaganda",
     "recommendedNativeSlots": [
       7
     ],
@@ -836,7 +838,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       6
     ],
@@ -873,7 +875,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "head-justice",
     "ministry": "Council of Justice",
-    "councilSeat": "Lord High Chancellor / Head of Justice",
+    "councilSeat": "Lord High Justiciar · Minister of Justice & The Privy Court",
     "applicationMetadataScope": "Historical application and ballot compatibility only; current institutional display and reserved-seat admission are separate.",
     "recommendedNativeSlots": [
       1
@@ -907,7 +909,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "artisanry",
     "ministry": "Association of Artisanry",
-    "councilSeat": "Grand Master Artisan",
+    "councilSeat": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
     "recommendedNativeSlots": [
       7
     ],
@@ -941,7 +943,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       1
     ],
@@ -975,7 +977,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       2
     ],
@@ -1008,7 +1010,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       2
     ],
@@ -1041,7 +1043,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       2
     ],
@@ -1110,7 +1112,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "internal-security",
     "ministry": "Internal Security",
-    "councilSeat": "High Inquisitor / Minister of Internal Security",
+    "councilSeat": "Lord High Inquisitor · Minister of Internal Security",
     "recommendedNativeSlots": [
       2
     ],
@@ -1144,7 +1146,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "concordat",
     "ministry": "Grand Alliance Concordat",
-    "councilSeat": "Lord High Envoy / Director of the Concordat",
+    "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
     "recommendedNativeSlots": [
       2
     ],
@@ -1178,7 +1180,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "artisanry",
     "ministry": "Association of Artisanry",
-    "councilSeat": "Grand Master Artisan",
+    "councilSeat": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
     "recommendedNativeSlots": [
       2
     ],
@@ -1212,7 +1214,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "treasurer",
     "ministry": "Federal Treasury",
-    "councilSeat": "Lord High Treasurer",
+    "councilSeat": "Lord High Treasurer · Minister of the Imperial Exchequer",
     "recommendedNativeSlots": [
       2
     ],
@@ -1244,9 +1246,9 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "statusOverlay": false,
     "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-    "cabinetSeatId": "heraldry",
-    "ministry": "Department of Heraldry",
-    "councilSeat": "Lord High Herald / Minister of Heraldry",
+    "cabinetSeatId": "propaganda",
+    "ministry": "Ministry of Propaganda",
+    "councilSeat": "Lord High Herald · Minister of Propaganda",
     "recommendedNativeSlots": [
       2
     ],
@@ -1280,7 +1282,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       2
     ],
@@ -1311,9 +1313,9 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "statusOverlay": false,
     "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-    "cabinetSeatId": "heraldry",
-    "ministry": "Department of Heraldry",
-    "councilSeat": "Lord High Herald / Minister of Heraldry",
+    "cabinetSeatId": "propaganda",
+    "ministry": "Ministry of Propaganda",
+    "councilSeat": "Lord High Herald · Minister of Propaganda",
     "recommendedNativeSlots": [
       2
     ],
@@ -1345,9 +1347,9 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "statusOverlay": false,
     "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-    "cabinetSeatId": "heraldry",
-    "ministry": "Department of Heraldry",
-    "councilSeat": "Lord High Herald / Minister of Heraldry",
+    "cabinetSeatId": "propaganda",
+    "ministry": "Ministry of Propaganda",
+    "councilSeat": "Lord High Herald · Minister of Propaganda",
     "recommendedNativeSlots": [
       2
     ],
@@ -1477,7 +1479,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "intake",
     "ministry": "Intake and recruitment",
-    "councilSeat": "High Minister of the Chancery & Imperial Census",
+    "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
     "recommendedNativeSlots": [
       2
     ],
@@ -1511,7 +1513,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       1
     ],
@@ -1543,7 +1545,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       5
     ],
@@ -1575,7 +1577,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       7
     ],
@@ -1606,7 +1608,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "intake",
     "ministry": "Intake and recruitment",
-    "councilSeat": "High Minister of the Chancery & Imperial Census",
+    "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
     "recommendedNativeSlots": [
       9
     ],
@@ -1640,7 +1642,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       2
     ],
@@ -1672,9 +1674,9 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "statusOverlay": false,
     "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-    "cabinetSeatId": "heraldry",
-    "ministry": "Department of Heraldry",
-    "councilSeat": "Lord High Herald / Minister of Heraldry",
+    "cabinetSeatId": "propaganda",
+    "ministry": "Ministry of Propaganda",
+    "councilSeat": "Lord High Herald · Minister of Propaganda",
     "recommendedNativeSlots": [
       2
     ],
@@ -1708,7 +1710,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       4
     ],
@@ -1742,7 +1744,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       4
     ],
@@ -1773,9 +1775,9 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "statusOverlay": false,
     "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-    "cabinetSeatId": "heraldry",
-    "ministry": "Department of Heraldry",
-    "councilSeat": "Lord High Herald / Minister of Heraldry",
+    "cabinetSeatId": "propaganda",
+    "ministry": "Ministry of Propaganda",
+    "councilSeat": "Lord High Herald · Minister of Propaganda",
     "recommendedNativeSlots": [
       2
     ],
@@ -1806,9 +1808,9 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "statusOverlay": false,
     "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-    "cabinetSeatId": "heraldry",
-    "ministry": "Department of Heraldry",
-    "councilSeat": "Lord High Herald / Minister of Heraldry",
+    "cabinetSeatId": "propaganda",
+    "ministry": "Ministry of Propaganda",
+    "councilSeat": "Lord High Herald · Minister of Propaganda",
     "recommendedNativeSlots": [
       2
     ],
@@ -1839,7 +1841,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "intake",
     "ministry": "Intake and recruitment",
-    "councilSeat": "High Minister of the Chancery & Imperial Census",
+    "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
     "recommendedNativeSlots": [
       7
     ],
@@ -1871,7 +1873,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "artisanry",
     "ministry": "Association of Artisanry",
-    "councilSeat": "Grand Master Artisan",
+    "councilSeat": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
     "recommendedNativeSlots": [
       5
     ],
@@ -1905,7 +1907,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       1
     ],
@@ -1914,7 +1916,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
   },
   {
     "key": "office_58",
-    "label": "Minister of Artisanry",
+    "label": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
     "group": "office",
     "termOrdinal": 58,
     "nativeRankOrdinal": 2,
@@ -1927,20 +1929,20 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     ],
     "department": "Association of Artisanry",
     "applicationTrack": "high_council",
-    "applicationEligible": true,
-    "applicationLabel": "Minister of Artisanry · Workshop Grand Master",
+    "applicationEligible": false,
+    "applicationLabel": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
     "applicationAliases": [
+      "Minister of Artisanry",
+      "Minister of Artisanry · Workshop Grand Master",
       "Workshop Grand Master"
     ],
-    "applicationRoleKeys": [
-      "office_58"
-    ],
+    "applicationRoleKeys": [],
     "statusOverlay": false,
     "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "artisanry",
     "ministry": "Association of Artisanry",
-    "councilSeat": "Grand Master Artisan",
+    "councilSeat": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
     "recommendedNativeSlots": [
       1
     ],
@@ -1949,7 +1951,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
   },
   {
     "key": "office_59",
-    "label": "Minister of Heraldry",
+    "label": "Lord High Seneschal · Minister of Court Protocol & Crown Estates",
     "group": "office",
     "termOrdinal": 59,
     "nativeRankOrdinal": 2,
@@ -1958,24 +1960,25 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "tier": "high_council",
     "tierLabel": "High Council",
     "codexTitles": [
+      "II",
       "V"
     ],
-    "department": "Department of Heraldry",
+    "department": "Court Protocol & Crown Estates",
     "applicationTrack": "high_council",
-    "applicationEligible": true,
-    "applicationLabel": "Minister of Heraldry · Heraldry Minister",
+    "applicationEligible": false,
+    "applicationLabel": "Lord High Seneschal · Minister of Court Protocol & Crown Estates",
     "applicationAliases": [
+      "Minister of Heraldry",
+      "Minister of Heraldry · Heraldry Minister",
       "Heraldry Minister"
     ],
-    "applicationRoleKeys": [
-      "office_59"
-    ],
+    "applicationRoleKeys": [],
     "statusOverlay": false,
     "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "heraldry",
-    "ministry": "Department of Heraldry",
-    "councilSeat": "Lord High Herald / Minister of Heraldry",
+    "ministry": "Court Protocol & Crown Estates",
+    "councilSeat": "Lord High Seneschal · Minister of Court Protocol & Crown Estates",
     "recommendedNativeSlots": [
       1
     ],
@@ -2009,7 +2012,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "internal-security",
     "ministry": "Internal Security",
-    "councilSeat": "High Inquisitor / Minister of Internal Security",
+    "councilSeat": "Lord High Inquisitor · Minister of Internal Security",
     "recommendedNativeSlots": [
       2
     ],
@@ -2041,7 +2044,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "head-justice",
     "ministry": "Council of Justice",
-    "councilSeat": "Lord High Chancellor / Head of Justice",
+    "councilSeat": "Lord High Justiciar · Minister of Justice & The Privy Court",
     "recommendedNativeSlots": [
       7
     ],
@@ -2075,7 +2078,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "concordat",
     "ministry": "Grand Alliance Concordat",
-    "councilSeat": "Lord High Envoy / Director of the Concordat",
+    "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
     "recommendedNativeSlots": [
       2
     ],
@@ -2109,7 +2112,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "concordat",
     "ministry": "Grand Alliance Concordat",
-    "councilSeat": "Lord High Envoy / Director of the Concordat",
+    "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
     "recommendedNativeSlots": [
       3
     ],
@@ -2141,7 +2144,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "head-justice",
     "ministry": "Council of Justice",
-    "councilSeat": "Lord High Chancellor / Head of Justice",
+    "councilSeat": "Lord High Justiciar · Minister of Justice & The Privy Court",
     "recommendedNativeSlots": [
       7
     ],
@@ -2175,7 +2178,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "concordat",
     "ministry": "Grand Alliance Concordat",
-    "councilSeat": "Lord High Envoy / Director of the Concordat",
+    "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
     "recommendedNativeSlots": [
       2
     ],
@@ -2207,7 +2210,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "intake",
     "ministry": "Intake and recruitment",
-    "councilSeat": "High Minister of the Chancery & Imperial Census",
+    "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
     "recommendedNativeSlots": [
       9
     ],
@@ -2243,7 +2246,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "head-justice",
     "ministry": "Council of Justice",
-    "councilSeat": "Lord High Chancellor / Head of Justice",
+    "councilSeat": "Lord High Justiciar · Minister of Justice & The Privy Court",
     "recommendedNativeSlots": [
       1
     ],
@@ -2275,7 +2278,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "head-justice",
     "ministry": "Council of Justice",
-    "councilSeat": "Lord High Chancellor / Head of Justice",
+    "councilSeat": "Lord High Justiciar · Minister of Justice & The Privy Court",
     "recommendedNativeSlots": [
       9
     ],
@@ -2308,7 +2311,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "artisanry",
     "ministry": "Association of Artisanry",
-    "councilSeat": "Grand Master Artisan",
+    "councilSeat": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
     "recommendedNativeSlots": [
       2
     ],
@@ -2342,7 +2345,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-pvp-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvP",
+    "councilSeat": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
     "recommendedNativeSlots": [
       4
     ],
@@ -2376,7 +2379,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-pvp-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvP",
+    "councilSeat": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
     "recommendedNativeSlots": [
       4
     ],
@@ -2409,7 +2412,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "treasurer",
     "ministry": "Federal Treasury",
-    "councilSeat": "Lord High Treasurer",
+    "councilSeat": "Lord High Treasurer · Minister of the Imperial Exchequer",
     "recommendedNativeSlots": [
       2
     ],
@@ -2444,7 +2447,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       4
     ],
@@ -2479,7 +2482,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       4
     ],
@@ -2510,7 +2513,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       6
     ],
@@ -2542,7 +2545,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "intake",
     "ministry": "Intake and recruitment",
-    "councilSeat": "High Minister of the Chancery & Imperial Census",
+    "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
     "recommendedNativeSlots": [
       9
     ],
@@ -2576,7 +2579,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "intake",
     "ministry": "Intake and recruitment",
-    "councilSeat": "High Minister of the Chancery & Imperial Census",
+    "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
     "recommendedNativeSlots": [
       2
     ],
@@ -2610,7 +2613,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "intake",
     "ministry": "Intake and recruitment",
-    "councilSeat": "High Minister of the Chancery & Imperial Census",
+    "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
     "recommendedNativeSlots": [
       2
     ],
@@ -2644,7 +2647,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "intake",
     "ministry": "Intake and recruitment",
-    "councilSeat": "High Minister of the Chancery & Imperial Census",
+    "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
     "recommendedNativeSlots": [
       2
     ],
@@ -2674,9 +2677,9 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "statusOverlay": false,
     "acquisition": "In-game verification and attended standing review; a title or status does not change native rank.",
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
-    "cabinetSeatId": "heraldry",
-    "ministry": "Department of Heraldry",
-    "councilSeat": "Lord High Herald / Minister of Heraldry",
+    "cabinetSeatId": "propaganda",
+    "ministry": "Ministry of Propaganda",
+    "councilSeat": "Lord High Herald · Minister of Propaganda",
     "recommendedNativeSlots": [
       7
     ],
@@ -2810,7 +2813,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "head-justice",
     "ministry": "Council of Justice",
-    "councilSeat": "Lord High Chancellor / Head of Justice",
+    "councilSeat": "Lord High Justiciar · Minister of Justice & The Privy Court",
     "recommendedNativeSlots": [
       1
     ],
@@ -2842,7 +2845,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "treasurer",
     "ministry": "Federal Treasury",
-    "councilSeat": "Lord High Treasurer",
+    "councilSeat": "Lord High Treasurer · Minister of the Imperial Exchequer",
     "recommendedNativeSlots": [
       7
     ],
@@ -2851,7 +2854,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
   },
   {
     "key": "office_86",
-    "label": "Treasurer (Guild Bank)",
+    "label": "Lord High Treasurer · Minister of the Imperial Exchequer",
     "group": "office",
     "termOrdinal": 86,
     "nativeRankOrdinal": 2,
@@ -2866,15 +2869,17 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "department": "Federal Treasury",
     "applicationTrack": "high_council",
     "applicationEligible": false,
-    "applicationLabel": "Treasurer (Guild Bank)",
-    "applicationAliases": [],
+    "applicationLabel": "Lord High Treasurer · Minister of the Imperial Exchequer",
+    "applicationAliases": [
+      "Treasurer (Guild Bank)"
+    ],
     "applicationRoleKeys": [],
     "statusOverlay": false,
     "acquisition": "Royal appointment; no application or payment creates this authority.",
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "treasurer",
     "ministry": "Federal Treasury",
-    "councilSeat": "Lord High Treasurer",
+    "councilSeat": "Lord High Treasurer · Minister of the Imperial Exchequer",
     "recommendedNativeSlots": [
       1
     ],
@@ -2906,7 +2911,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "intake",
     "ministry": "Intake and recruitment",
-    "councilSeat": "High Minister of the Chancery & Imperial Census",
+    "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
     "recommendedNativeSlots": [
       9
     ],
@@ -2940,7 +2945,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "intake",
     "ministry": "Intake and recruitment",
-    "councilSeat": "High Minister of the Chancery & Imperial Census",
+    "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
     "recommendedNativeSlots": [
       2
     ],
@@ -2972,7 +2977,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       6
     ],
@@ -3003,7 +3008,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       5
     ],
@@ -3035,7 +3040,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       5
     ],
@@ -3067,7 +3072,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       1
     ],
@@ -3099,7 +3104,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       7
     ],
@@ -3136,7 +3141,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "co-gm",
     "ministry": "Department of War",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "applicationMetadataScope": "Historical application and ballot compatibility only; current institutional display and reserved-seat admission are separate.",
     "recommendedNativeSlots": [
       1
@@ -3171,7 +3176,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       2
     ],
@@ -3180,7 +3185,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
   },
   {
     "key": "office_96",
-    "label": "Head of Trading & Markets",
+    "label": "Lord High Factor · Minister of Trading & Markets",
     "group": "office",
     "termOrdinal": 96,
     "nativeRankOrdinal": 2,
@@ -3195,15 +3200,17 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "department": "Trading & Markets",
     "applicationTrack": "high_council",
     "applicationEligible": false,
-    "applicationLabel": "Head of Trading & Markets",
-    "applicationAliases": [],
+    "applicationLabel": "Lord High Factor · Minister of Trading & Markets",
+    "applicationAliases": [
+      "Head of Trading & Markets"
+    ],
     "applicationRoleKeys": [],
     "statusOverlay": false,
     "acquisition": "Reserved royal appointment; no public application or payment creates this authority.",
     "discordPortal": "High Council access requires a separately verified current appointment; this portfolio grants no automatic signing, bank, bot or portal permission.",
     "cabinetSeatId": "head-trading",
     "ministry": "Trading & Markets",
-    "councilSeat": "Lord High Merchant / Head of Trading & Markets",
+    "councilSeat": "Lord High Factor · Minister of Trading & Markets",
     "recommendedNativeSlots": [
       1
     ],
@@ -3212,7 +3219,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
   },
   {
     "key": "office_97",
-    "label": "Grand Marshal of PvE",
+    "label": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "group": "office",
     "termOrdinal": 97,
     "nativeRankOrdinal": 2,
@@ -3227,15 +3234,17 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "department": "Department of War — PvE",
     "applicationTrack": "high_council",
     "applicationEligible": false,
-    "applicationLabel": "Grand Marshal of PvE",
-    "applicationAliases": [],
+    "applicationLabel": "Lord High Marshal of PvE · Minister of Raid Campaigns",
+    "applicationAliases": [
+      "Grand Marshal of PvE"
+    ],
     "applicationRoleKeys": [],
     "statusOverlay": false,
     "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       1
     ],
@@ -3244,7 +3253,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
   },
   {
     "key": "office_98",
-    "label": "Grand Marshal of PvP",
+    "label": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
     "group": "office",
     "termOrdinal": 98,
     "nativeRankOrdinal": 2,
@@ -3259,15 +3268,17 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "department": "Department of War — PvP",
     "applicationTrack": "high_council",
     "applicationEligible": false,
-    "applicationLabel": "Grand Marshal of PvP",
-    "applicationAliases": [],
+    "applicationLabel": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
+    "applicationAliases": [
+      "Grand Marshal of PvP"
+    ],
     "applicationRoleKeys": [],
     "statusOverlay": false,
     "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "main-pvp-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvP",
+    "councilSeat": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
     "recommendedNativeSlots": [
       1
     ],
@@ -3276,7 +3287,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
   },
   {
     "key": "office_99",
-    "label": "High Inquisitor / Minister of Internal Security",
+    "label": "Lord High Inquisitor · Minister of Internal Security",
     "group": "office",
     "termOrdinal": 99,
     "nativeRankOrdinal": 2,
@@ -3290,15 +3301,17 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "department": "Internal Security",
     "applicationTrack": "high_council",
     "applicationEligible": false,
-    "applicationLabel": "High Inquisitor / Minister of Internal Security",
-    "applicationAliases": [],
+    "applicationLabel": "Lord High Inquisitor · Minister of Internal Security",
+    "applicationAliases": [
+      "High Inquisitor / Minister of Internal Security"
+    ],
     "applicationRoleKeys": [],
     "statusOverlay": false,
     "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "internal-security",
     "ministry": "Internal Security",
-    "councilSeat": "High Inquisitor / Minister of Internal Security",
+    "councilSeat": "Lord High Inquisitor · Minister of Internal Security",
     "recommendedNativeSlots": [
       1
     ],
@@ -3307,7 +3320,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
   },
   {
     "key": "office_100",
-    "label": "Grand Concordat Director",
+    "label": "Lord High Legate · Minister of the Grand Concordat",
     "group": "office",
     "termOrdinal": 100,
     "nativeRankOrdinal": 2,
@@ -3322,15 +3335,17 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "department": "Grand Alliance Concordat",
     "applicationTrack": "high_council",
     "applicationEligible": false,
-    "applicationLabel": "Grand Concordat Director",
-    "applicationAliases": [],
+    "applicationLabel": "Lord High Legate · Minister of the Grand Concordat",
+    "applicationAliases": [
+      "Grand Concordat Director"
+    ],
     "applicationRoleKeys": [],
     "statusOverlay": false,
     "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "concordat",
     "ministry": "Grand Alliance Concordat",
-    "councilSeat": "Lord High Envoy / Director of the Concordat",
+    "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
     "recommendedNativeSlots": [
       1
     ],
@@ -3339,7 +3354,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
   },
   {
     "key": "office_101",
-    "label": "Lord High Chancellor / Head of Justice",
+    "label": "Lord High Justiciar · Minister of Justice & The Privy Court",
     "group": "office",
     "termOrdinal": 101,
     "nativeRankOrdinal": 2,
@@ -3354,15 +3369,17 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "department": "Privy Court and Justice",
     "applicationTrack": "high_council",
     "applicationEligible": false,
-    "applicationLabel": "Lord High Chancellor / Head of Justice",
-    "applicationAliases": [],
+    "applicationLabel": "Lord High Justiciar · Minister of Justice & The Privy Court",
+    "applicationAliases": [
+      "Lord High Chancellor / Head of Justice"
+    ],
     "applicationRoleKeys": [],
     "statusOverlay": false,
     "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "head-justice",
     "ministry": "Council of Justice",
-    "councilSeat": "Lord High Chancellor / Head of Justice",
+    "councilSeat": "Lord High Justiciar · Minister of Justice & The Privy Court",
     "recommendedNativeSlots": [
       1
     ],
@@ -3371,7 +3388,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
   },
   {
     "key": "office_102",
-    "label": "Minister of Propaganda",
+    "label": "Lord High Herald · Minister of Propaganda",
     "group": "office",
     "termOrdinal": 102,
     "nativeRankOrdinal": 2,
@@ -3386,8 +3403,10 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "department": "Ministry of Propaganda",
     "applicationTrack": "high_council",
     "applicationEligible": false,
-    "applicationLabel": "Minister of Propaganda / Chief Propagandist",
+    "applicationLabel": "Lord High Herald · Minister of Propaganda",
     "applicationAliases": [
+      "Minister of Propaganda",
+      "Minister of Propaganda / Chief Propagandist",
       "Chief Propagandist"
     ],
     "applicationRoleKeys": [],
@@ -3396,7 +3415,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "No automatic Discord, publishing, moderation or bank access.",
     "cabinetSeatId": "propaganda",
     "ministry": "Ministry of Propaganda",
-    "councilSeat": "Minister of Propaganda / Chief Propagandist",
+    "councilSeat": "Lord High Herald · Minister of Propaganda",
     "recommendedNativeSlots": [
       1
     ],
@@ -3405,7 +3424,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
   },
   {
     "key": "co_gm",
-    "label": "Co-Guild Master",
+    "label": "Hand of the Sovereign · Co-Guild Master",
     "group": "leadership",
     "aliasOf": "office_19",
     "nativeRankOrdinal": 2,
@@ -3420,15 +3439,17 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "department": "Co-Guild Master and Vice Guild Master",
     "applicationTrack": "high_council",
     "applicationEligible": false,
-    "applicationLabel": "Co-Guild Master",
-    "applicationAliases": [],
+    "applicationLabel": "Co-Guild Master · Co-GM",
+    "applicationAliases": [
+      "Co-GM"
+    ],
     "applicationRoleKeys": [],
     "statusOverlay": false,
     "acquisition": "Royal appointment; no application or payment creates this authority.",
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       1
     ],
@@ -3437,7 +3458,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
   },
   {
     "key": "guild_master",
-    "label": "Guild Master (Olympus 2 and later)",
+    "label": "Guild Master (GM)",
     "group": "leadership",
     "aliasOf": "office_43",
     "nativeRankOrdinal": 1,
@@ -3494,7 +3515,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "concordat",
     "ministry": "Grand Alliance Concordat",
-    "councilSeat": "Lord High Envoy / Director of the Concordat",
+    "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
     "recommendedNativeSlots": [
       2
     ],
@@ -3528,7 +3549,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       4
     ],
@@ -3562,7 +3583,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       4
     ],
@@ -3596,7 +3617,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       4
     ],
@@ -3630,7 +3651,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       4
     ],
@@ -3664,7 +3685,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "intake",
     "ministry": "Intake and recruitment",
-    "councilSeat": "High Minister of the Chancery & Imperial Census",
+    "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
     "recommendedNativeSlots": [
       2
     ],
@@ -3695,9 +3716,9 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "statusOverlay": false,
     "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-    "cabinetSeatId": "heraldry",
-    "ministry": "Department of Heraldry",
-    "councilSeat": "Lord High Herald / Minister of Heraldry",
+    "cabinetSeatId": "propaganda",
+    "ministry": "Ministry of Propaganda",
+    "councilSeat": "Lord High Herald · Minister of Propaganda",
     "recommendedNativeSlots": [
       2
     ],
@@ -3727,9 +3748,9 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "statusOverlay": false,
     "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-    "cabinetSeatId": "heraldry",
-    "ministry": "Department of Heraldry",
-    "councilSeat": "Lord High Herald / Minister of Heraldry",
+    "cabinetSeatId": "propaganda",
+    "ministry": "Ministry of Propaganda",
+    "councilSeat": "Lord High Herald · Minister of Propaganda",
     "recommendedNativeSlots": [
       2
     ],
@@ -3763,7 +3784,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-pvp-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvP",
+    "councilSeat": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
     "recommendedNativeSlots": [
       4
     ],
@@ -3796,7 +3817,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "concordat",
     "ministry": "Grand Alliance Concordat",
-    "councilSeat": "Lord High Envoy / Director of the Concordat",
+    "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
     "recommendedNativeSlots": [
       2
     ],
@@ -3830,7 +3851,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       4
     ],
@@ -3839,7 +3860,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
   },
   {
     "key": "treasurer",
-    "label": "Treasurer / Guild Bank",
+    "label": "Lord High Treasurer · Minister of the Imperial Exchequer",
     "group": "leadership",
     "aliasOf": "office_86",
     "nativeRankOrdinal": 2,
@@ -3854,15 +3875,17 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "department": "Federal Treasury",
     "applicationTrack": "high_council",
     "applicationEligible": false,
-    "applicationLabel": "Treasurer / Guild Bank",
-    "applicationAliases": [],
+    "applicationLabel": "Treasurer / Guild Bank · Treasurer (Guild Bank)",
+    "applicationAliases": [
+      "Treasurer (Guild Bank)"
+    ],
     "applicationRoleKeys": [],
     "statusOverlay": false,
     "acquisition": "Royal appointment; no application or payment creates this authority.",
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "treasurer",
     "ministry": "Federal Treasury",
-    "councilSeat": "Lord High Treasurer",
+    "councilSeat": "Lord High Treasurer · Minister of the Imperial Exchequer",
     "recommendedNativeSlots": [
       1
     ],
@@ -3895,7 +3918,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "artisanry",
     "ministry": "Association of Artisanry",
-    "councilSeat": "Grand Master Artisan",
+    "councilSeat": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
     "recommendedNativeSlots": [
       2
     ],
@@ -3929,7 +3952,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "internal-security",
     "ministry": "Internal Security",
-    "councilSeat": "High Inquisitor / Minister of Internal Security",
+    "councilSeat": "Lord High Inquisitor · Minister of Internal Security",
     "recommendedNativeSlots": [
       2
     ],
@@ -3963,7 +3986,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       2
     ],
@@ -3997,7 +4020,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       2
     ],
@@ -4031,7 +4054,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       2
     ],
@@ -4065,7 +4088,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       2
     ],
@@ -4099,7 +4122,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       2
     ],
@@ -4133,7 +4156,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       2
     ],
@@ -4167,7 +4190,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       2
     ],
@@ -4201,7 +4224,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       2
     ],
@@ -4235,7 +4258,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       2
     ],
@@ -4299,7 +4322,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       1
     ],
@@ -4331,7 +4354,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "concordat",
     "ministry": "Grand Alliance Concordat",
-    "councilSeat": "Lord High Envoy / Director of the Concordat",
+    "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
     "recommendedNativeSlots": [
       2
     ],
@@ -4363,7 +4386,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "concordat",
     "ministry": "Grand Alliance Concordat",
-    "councilSeat": "Lord High Envoy / Director of the Concordat",
+    "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
     "recommendedNativeSlots": [
       3
     ],
@@ -4395,7 +4418,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       4
     ],
@@ -4426,7 +4449,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "co-gm",
     "ministry": "Co-Guild Master and Vice Guild Master",
-    "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+    "councilSeat": "Hand of the Sovereign · Co-Guild Master",
     "recommendedNativeSlots": [
       5
     ],
@@ -4457,7 +4480,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "main-raid-lead",
     "ministry": "Department of War",
-    "councilSeat": "Grand Marshal of PvE",
+    "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
     "recommendedNativeSlots": [
       6
     ],
@@ -4488,7 +4511,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "intake",
     "ministry": "Intake and recruitment",
-    "councilSeat": "High Minister of the Chancery & Imperial Census",
+    "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
     "recommendedNativeSlots": [
       7
     ],
@@ -4519,7 +4542,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "concordat",
     "ministry": "Grand Alliance Concordat",
-    "councilSeat": "Lord High Envoy / Director of the Concordat",
+    "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
     "recommendedNativeSlots": [
       8
     ],
@@ -4550,7 +4573,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
     "cabinetSeatId": "intake",
     "ministry": "Intake and recruitment",
-    "councilSeat": "High Minister of the Chancery & Imperial Census",
+    "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
     "recommendedNativeSlots": [
       9
     ],
@@ -4574,15 +4597,17 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "department": "Federal Treasury",
     "applicationTrack": "high_council",
     "applicationEligible": false,
-    "applicationLabel": "Treasurer (Guild Bank)",
-    "applicationAliases": [],
+    "applicationLabel": "Lord High Treasurer · Minister of the Imperial Exchequer",
+    "applicationAliases": [
+      "Treasurer (Guild Bank)"
+    ],
     "applicationRoleKeys": [],
     "statusOverlay": false,
     "acquisition": "Royal appointment; no application or payment creates this authority.",
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "treasurer",
     "ministry": "Federal Treasury",
-    "councilSeat": "Lord High Treasurer",
+    "councilSeat": "Lord High Treasurer · Minister of the Imperial Exchequer",
     "recommendedNativeSlots": [
       1
     ],
@@ -4702,7 +4727,7 @@ export const APPLICATION_TRACKS_199 = Object.freeze([
     "id": "high_council",
     "label": "High Council Application",
     "rankPath": "Rank 2 High Council",
-    "description": "Reserved historical category; not open for applications. Current Council portfolios: Co-Guild Master / Hand of the Sovereign; Lord High Treasurer; Lord High Chancellor / Head of Justice; Grand Marshal of PvE; Grand Marshal of PvP; High Inquisitor / Internal Security; High Minister of the Chancery & Imperial Census; Grand Concordat Director; Grand Master Artisan; Minister of Propaganda; Lord High Herald; Head of Trading & Markets. Every appointment and permission requires separate review."
+    "description": "Reserved historical category; not open for applications. Hand of the Sovereign · Co-Guild Master; Lord High Treasurer · Minister of the Imperial Exchequer; Lord High Justiciar · Minister of Justice & The Privy Court; Lord High Marshal of PvE · Minister of Raid Campaigns; Lord High Marshal of PvP · Minister of Battlegrounds & Honor; Lord High Inquisitor · Minister of Internal Security; Lord High Chancellor · Minister of the Chancery & Imperial Census; Lord High Legate · Minister of the Grand Concordat; Lord High Artificer · Minister of Artisanry & The Guild Workshop; Lord High Herald · Minister of Propaganda; Lord High Seneschal · Minister of Court Protocol & Crown Estates; Lord High Factor · Minister of Trading & Markets. Every appointment and permission requires separate review."
   },
   {
     "id": "patron",

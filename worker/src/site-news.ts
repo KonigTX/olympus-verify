@@ -78,6 +78,12 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".224", date: "2026-11-02", lines: [
+      "The twelve reserved High Council portfolios now share a cohesive Imperial Cabinet naming convention, with existing office keys, appointments and historical ballots preserved.",
+      "The private /olympus hub brings verification, guides, talents, opted-in Workshop lookup, branches and guild roles together. Leadership seats stay reserved; Treasury offers remain paused.",
+    ],
+  },
+  {
     build: ".223", date: "2026-11-02", lines: [
       "Applicant cards now show one class icon beside the colored class name. Discord portraits still require the applicant’s separate consent and fall back to the neutral member emblem.",
     ],

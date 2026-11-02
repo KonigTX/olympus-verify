@@ -1,0 +1,4 @@
+// Exact finite inverse used only by historical preservation checks.
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),crypto=require('node:crypto');
+const bytes=fs.readFileSync(path.join(__dirname,'../docs/governance-cabinet224-inverse.json'));assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),'068062dbf24049c720ce9ccb8010a99f972b099ef3a7a1631dc4d1d0d4402888');const specs=JSON.parse(bytes).fields,ids={terms:'officeKey',nodes:'id',officeMandates:null};
+exports.restoreCabinet224=(rows,field)=>{assert.ok(Object.hasOwn(ids,field));return rows.map((row,i)=>{const spec=specs[field].find(x=>x.key===(ids[field]?row[ids[field]]:i));if(!spec)return row;assert.deepEqual(row,spec.after,'exact authorized224 historical delta');return structuredClone(spec.before);});};

@@ -11,7 +11,8 @@ export const NATIVE_ERASURE_ROLE_HTTP_MAX=7;
 export const NATIVE_ERASURE_ROLE_PURPOSE='native_account_erasure_role';
 const INVENTORY='native_account_erasure_inventory',SUFFIX=':native_role_inventory',MAX_TARGETS=64;
 const ID=/^[1-9][0-9]{16,19}$/,HEX=/^[0-9a-f]{32}$/;
-const COUNCIL=Object.freeze(['Olympus Council GM','Olympus Council Officer']);
+// Transitional aliases identify the same two Branch roles; two matches for one semantic role remain ambiguous.
+const COUNCIL=Object.freeze([Object.freeze(['Olympus Council GM','Olympus Branch GM']),Object.freeze(['Olympus Council Officer','Olympus Branch Officer'])]);
 const ATTRIBUTED=Object.freeze(['roster_membership','verified_native_rank','roster_native_rank','verified_privileged_rank','roster_privileged_rank',
   'fresh_roster_membership','fresh_roster_rank','staff_roster_rank','guild_departure','ban','rename_hold','blocking_role','account_erasure','treasury_cosmetic','treasury_cosmetic_expiry']);
 const KEYS=['DB','GUILD_ID','DISCORD_APP_ID','DISCORD_BOT_TOKEN','PRIVACY_NATIVE_ERASURE_ENABLED','PRIVACY_ERASURE_ENABLED',
@@ -74,7 +75,7 @@ export async function cleanupNativeErasureRoles(env:Env,input:AccountErasureProo
     if(!await current())return result('held','request_not_current');
     const roles=roleInventory(await rest(env,'GET',`/guilds/${env.GUILD_ID}/roles`,undefined,1));if(!await current())return result('held','request_not_current');
     const targets=configuredTargets(binding.text,env.GUILD_ID);
-    for(const name of COUNCIL){const matching=roles.filter(x=>x.name===name);if(matching.length>1)return result('held','native_role_council_ambiguous');if(matching[0])targets.add(matching[0].id);}
+    for(const names of COUNCIL){const matching=roles.filter(x=>names.includes(x.name));if(matching.length>1)return result('held','native_role_council_ambiguous');if(matching[0])targets.add(matching[0].id);}
     const history=await env.DB.prepare(`SELECT DISTINCT role_id FROM role_settlements WHERE subject=?2 AND guild_id=?5 AND purpose IN(${ATTRIBUTED.map(literal).join(',')}) AND ${CURRENT_ERASURE_SQL} AND EXISTS(SELECT 1 FROM privacy_serving_jobs j WHERE j.operation_id=?1 AND ${originalErasureJobBirthSql(p)}) LIMIT 65`).bind(...values,env.GUILD_ID).all<{role_id:string}>();check();
     if(history.results.length>MAX_TARGETS)return result('held','native_role_attribution_limit');for(const row of history.results){const id=data(row,'role_id');if(!validId(id))return result('held','native_role_attribution_invalid');targets.add(id);}
     if(targets.size>MAX_TARGETS)return result('held','native_role_attribution_limit');attributed=targets.size;

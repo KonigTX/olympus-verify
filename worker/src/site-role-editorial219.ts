@@ -214,7 +214,7 @@ export const ROLE_EDITORIAL_219 = {
   "worksWith": "Regional PvP Leads, PvP Captains and willing teammates."
 },
   "pvp_leadership": {
-    "definition": "The regional or branch PvP Lead organizes optional battleground premades and agreed competitive events for Olympus’s Alliance community on the PvE ruleset. This Officer Corps role delivers the local programme; the alliance-wide Grand Marshal of PvP remains a separate Council portfolio.",
+    "definition": "The regional or branch PvP Lead organizes optional battleground premades and agreed competitive events for Olympus’s Alliance community on the PvE ruleset. This Officer Corps role delivers the local programme; the alliance-wide Lord High Marshal of PvP · Minister of Battlegrounds & Honor remains a separate Council portfolio.",
     "responsibilities": [
       "Publish optional PvP nights and keep the willing team’s availability, roles and composition current.",
       "Prepare strategy and practice sessions, assign Captains and call or delegate target priorities in voice.",
@@ -227,7 +227,7 @@ export const ROLE_EDITORIAL_219 = {
       "Keep competition voluntary and within guild, platform and game rules."
     ],
     "commitment": "About 5–10 hours a week during an active regional programme, including preparation and review.",
-    "worksWith": "The Grand Marshal of PvP, PvP Captains, the optional PvP Team, Class Leads and Liaison."
+    "worksWith": "The Lord High Marshal of PvP · Minister of Battlegrounds & Honor, PvP Captains, the optional PvP Team, Class Leads and Liaison."
   }
 } as const;
 

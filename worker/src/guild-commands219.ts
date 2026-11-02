@@ -2,6 +2,7 @@
  * explicitly armed one-shot reminder uses the configured public raid channel;
  * local/live registration checks never create a raid or send a test notice. */
 import type { Env } from './env';
+import { isOlympusHub224, olympusHub224, olympusModal224 } from './olympus-hub224';
 import { isRaidHub222, raidHub222, raidModal222, raidAutocomplete222, assertHubRows222, type HubRow222 } from './raid-hub222';
 import { API, credentialFetch, json, reply, subcommand, type Interaction } from './discord';
 import { now } from './db';
@@ -9,7 +10,7 @@ import { rateLimited } from './site-core';
 import { destination, type ActionRow } from './community-event-delivery';
 import { runEventReminders } from './community-event-reminders';
 import { captureGuildActor219, currentGuildActor219, guildActorBatch219, type GuildActor219 } from './guild-command-authority219';
-import { GUILD_COMMAND_NAMES_222 } from './guild-command-definitions222';
+import { GUILD_COMMAND_NAMES_224 } from './guild-command-definitions224';
 import { workshopOrderDraft221 } from './guild-workshop-order221';
 import { createCalendar219, readCalendar219, calendarRoster219, rsvpCalendar219, attendanceCalendar219, eventId219, type CalendarEvent219, ROSTER_PAGE_219 } from './guild-calendar219';
 import { consentCalendarReminder219 } from './guild-reminder219';
@@ -17,9 +18,10 @@ import { RSVP_CHOICES_219 } from './guild-calendar-metadata219';
 import { guideLookup219, workshopLookup219, referenceLookup219, safeDiscordText219, type GuildEmbed219 } from './guild-utilities219';
 
 const COMPONENT=/^raid219:rsvp:([A-Za-z0-9_-]{22}):([1-9][0-9]{0,8}):(tank|healer|melee|ranged|tentative|bench|absent)$/;
-export const isGuildCommand219=(i:Interaction):boolean=>isRaidHub222(i)||(i.type===2&&GUILD_COMMAND_NAMES_222.has(i.data?.name??''))||(i.type===3&&COMPONENT.test(i.data?.custom_id??''));
+export const isGuildCommand219=(i:Interaction):boolean=>isOlympusHub224(i)||isRaidHub222(i)||(i.type===2&&GUILD_COMMAND_NAMES_224.has(i.data?.name??''))||(i.type===3&&COMPONENT.test(i.data?.custom_id??''));
 export function guildCommandReadOnly219(i:Interaction):boolean {
- if(i.type!==2||!GUILD_COMMAND_NAMES_222.has(i.data?.name??''))return false;
+ if(isOlympusHub224(i))return true;
+ if(i.type!==2||!GUILD_COMMAND_NAMES_224.has(i.data?.name??''))return false;
  return !['raid','event'].includes(i.data!.name!)||['list','roster'].includes(subcommand(i)??'');
 }
 const options219=(i:Interaction):Record<string,unknown>=>{
@@ -45,6 +47,7 @@ export function assertGuildAnswer219(answer:Answer219):void {
 }
 const eventEmbed219=(e:CalendarEvent219,host:string):GuildEmbed219=>({title:safeDiscordText219(e.title,80),url:`https://${host}/#/community/calendar/${e.id}`,description:`<t:${e.starts_at}:F> · <t:${e.starts_at}:R>\n${e.duration_min} minutes · ${e.capacity??'No fixed'} signup cap\nID: \`${e.id}\`\n${safeDiscordText219(e.details,500)}`,footer:{text:'Signup preferences are not an organizer roster acceptance. Bench is a request, not a staff decision.'}});
 export async function executeGuildCommand219(env:Env,a:GuildActor219,i:Interaction):Promise<Answer219> {
+ if(isOlympusHub224(i))return olympusHub224(env,a,i);
  if(isRaidHub222(i))return raidHub222(env,a,i);
  const name=i.data?.name??'',sub=subcommand(i)??'',v=options219(i),host=destination(env)!.host,component=COMPONENT.exec(i.data?.custom_id??'');
  if(component){
@@ -96,7 +99,7 @@ export async function handleGuildCommand219(env:Env,i:Interaction,signedAt:numbe
  let a:GuildActor219;
  try{a=await captureGuildActor219(env,i,now(),signedAt);}catch{return i.type===4?json({type:8,data:{choices:[]}}):reply('Verify a character and sign in on the Olympus website first. This command needs a current, eligible site account in this server.');}
  if(rateLimited('gc219:'+a.id,30,60))return i.type===4?json({type:8,data:{choices:[]}}):reply('Too many guild commands in one minute. Wait a moment before trying again.');
- try{if(i.type===4&&isRaidHub222(i))return json(await raidAutocomplete222(env,a,i));const modal=isRaidHub222(i)?raidModal222(i,a):null;if(modal)return json(modal);}catch{return i.type===4?json({type:8,data:{choices:[]}}):reply('This private control expired or changed. Run /raid for a fresh hub.');}
+ try{if(i.type===4&&isRaidHub222(i))return json(await raidAutocomplete222(env,a,i));const modal=isOlympusHub224(i)?olympusModal224(i,a):isRaidHub222(i)?raidModal222(i,a):null;if(modal)return json(modal);}catch{return i.type===4?json({type:8,data:{choices:[]}}):reply('This private control expired or changed. Run /olympus or /raid for a fresh hub.');}
  const path=`${API}/webhooks/${env.DISCORD_APP_ID}/${i.token}/messages/@original`;
  defer(async()=>{
   let answer:Answer219;

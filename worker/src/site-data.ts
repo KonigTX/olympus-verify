@@ -431,9 +431,11 @@ const HISTORICAL_POSITION_COPY: Position[] = [
   },
 ];
 /** Current guide uses one .199 ladder; these mappings do not certify or change the game client. */
+const CABINET_POSITION_KEYS_224 = new Set(["office_19","office_86","office_101","office_97","office_98","office_99","office_14","office_100","office_58","office_102","office_59","office_96"]);
+const HISTORICAL_COUNCIL_POSITION_KEYS_224 = new Set(["office_14","office_58","office_59"]);
 const OFFICE_APPLICATION_POSITIONS_199: Position[] = OFFICE_APPOINTMENTS
-  .filter(row => /^office_[0-9]{2,3}$/.test(row.key) && row.applicationEligible && ['officer', 'high_council'].includes(row.applicationTrack))
-  .filter(row => row.applicationRoleKeys.includes(row.key))
+  .filter(row => /^office_[0-9]{2,3}$/.test(row.key) && (row.applicationEligible || HISTORICAL_COUNCIL_POSITION_KEYS_224.has(row.key)) && ['officer', 'high_council'].includes(row.applicationTrack))
+  .filter(row => row.applicationRoleKeys.includes(row.key) || HISTORICAL_COUNCIL_POSITION_KEYS_224.has(row.key))
   .filter(row => !HISTORICAL_POSITION_COPY.some(position => position.key === row.key))
   .map(row => {
     const guide = OFFICE_ROLE_GUIDES_201[row.key];
@@ -447,7 +449,9 @@ export const POSITIONS: Position[] = [...HISTORICAL_POSITION_COPY, ...OFFICE_APP
     ?? OFFICE_APPOINTMENTS.find(row => row.key === `rank_${position.key}`);
   const rank = office ? NATIVE_RANKS_199.find(row => row.nativeSlot === office.nativeSlot) : NATIVE_RANKS_199[7];
   const game = rank ? `Rank ${rank.nativeRankOrdinal} ${rank.name} (zero-based slot ${rank.nativeSlot}). This is not verification of the holder’s current game rank. Co-Guild Master and Treasurer are appointments, not additional native ranks. Applying grants no rank, moderation, bank permission or addon access; the Guild Master reviews actual game permissions separately.` : 'Actual rank and permissions require separate Guild Master review.';
-  return { ...position, info: { ...position.info, game } };
+  const canonicalKey = office?.aliasOf ?? office?.key;
+  const canonical = canonicalKey && CABINET_POSITION_KEYS_224.has(canonicalKey) ? OFFICE_APPOINTMENTS.find(row => row.key === canonicalKey) : undefined;
+  return { ...position, label: canonical?.label ?? position.label, info: { ...position.info, game } };
 });
 export const POSITION_KEYS = new Set(POSITIONS.map((p) => p.key));
 const POSITION_BY_KEY = new Map(POSITIONS.map((p) => [p.key, p]));

@@ -120,6 +120,20 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .224 reverses only this exact owner-authorized Cabinet and hub release note.
+  const release224 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".224\", date: \"2026-11-02\", lines: [",
+    "      \"The twelve reserved High Council portfolios now share a cohesive Imperial Cabinet naming convention, with existing office keys, appointments and historical ballots preserved.\",",
+    "      \"The private /olympus hub brings verification, guides, talents, opted-in Workshop lookup, branches and guild roles together. Leadership seats stay reserved; Treasury offers remain paused.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .224 prepend occurs once', originalNews.split(release224).length === 2);
+  originalNews = originalNews.replace(release224, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+
   // .223 reverses only the exact class-badge correction release note.
   const release223 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

@@ -16,7 +16,7 @@ for (const alias of aliases) {
   // silently treat an unknown future alias as a member or councillor.
   const canonical = offices.find(o => o.key === (alias.aliasOf || ({leveling:'office_01',liaison:'office_34'})[alias.key]));
   if (!canonical) throw Error('governance_alias_classification');
-  offices.push({ ...alias, ...metadata(canonical), applicationLabel:alias.label+(canonical.applicationAliases.length?' · '+canonical.applicationAliases[0]:''), applicationRoleKeys:canonical.applicationEligible?[alias.key]:[], recommendedNativeSlots: canonical.recommendedNativeSlots, nativeMappingNote: canonical.nativeMappingNote, mappingApplies: false });
+  offices.push({ ...alias, label:organization.councilComposition.currentSeats.some(s=>s.officeKeys.includes(canonical.key))?canonical.label:alias.label, ...metadata(canonical), applicationLabel:alias.label+(canonical.applicationAliases.length?' · '+canonical.applicationAliases[0]:''), applicationRoleKeys:canonical.applicationEligible?[alias.key]:[], recommendedNativeSlots: canonical.recommendedNativeSlots, nativeMappingNote: canonical.nativeMappingNote, mappingApplies: false });
 }
 const nativeKeys = ['guild_master', 'high_council', 'officer', 'officer_alt', 'raid_leader', 'veteran', 'raider', 'member', 'alt', 'initiate'];
 const nativeOfficeKeys = ['office_43','office_45','office_62','office_63','office_74','office_90','office_75','office_55','office_04','office_48'];
@@ -33,7 +33,7 @@ const tracks = [
   {id:'raider',label:'Core Raider & PvE Progression Track',rankPath:'Rank 7 Raider',description:'Progression readiness and event eligibility are reviewed separately from membership.'},
   {id:'artisan',label:'Master Artisan & Guild Workshop Crafter',rankPath:'Title V profession specialist',description:'Opt-in professional service and rare-recipe stewardship; no officer permission follows.'},
   {id:'officer',label:'Officer Corps & Branch Leadership Application',rankPath:'Ranks 3, 4 & 5 · Officer, Officer Alt, Raid Leader',description:'Branch officers, class leads, recruitment, auditing, heraldry, events and moderators.'},
-  {id:'high_council',label:'High Council Application',rankPath:'Rank 2 High Council',description:'Reserved historical category; not open for applications. Current Council portfolios: Co-Guild Master / Hand of the Sovereign; Lord High Treasurer; Lord High Chancellor / Head of Justice; Grand Marshal of PvE; Grand Marshal of PvP; High Inquisitor / Internal Security; High Minister of the Chancery & Imperial Census; Grand Concordat Director; Grand Master Artisan; Minister of Propaganda; Lord High Herald; Head of Trading & Markets. Every appointment and permission requires separate review.'},
+  {id:'high_council',label:'High Council Application',rankPath:'Rank 2 High Council',description:'Reserved historical category; not open for applications. '+organization.councilComposition.currentSeats.filter(s=>s.id!=='gm-chair').map(s=>s.label).join('; ')+'. Every appointment and permission requires separate review.'},
   {id:'patron',label:'Royal Patron & Flagship Olympus I Charter',rankPath:'Treasury gold writ track',description:'Voluntary in-game gold only; officer review and real capacity apply. No rank, permission, moderation outcome or place is purchased automatically.'},
 ];
 if (offices.length !== 138 || new Set(offices.map(o => o.key)).size !== 138) throw Error('governance_key_inventory');

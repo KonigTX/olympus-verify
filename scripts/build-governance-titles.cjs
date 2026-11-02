@@ -62,7 +62,18 @@ function rankBridge(text, inverse = false, keys = null) {
 const current222Bytes = fs.readFileSync(path.join(root, 'docs/governance-current222.json'));
 if (sha256(current222Bytes) !== 'fa1e6503fbd3a38d0591284621a4d1a9083e3bc620142742d02372197282ae3a') throw Error('Governance222 finite manifest changed');
 const current222 = JSON.parse(current222Bytes);
+const cabinet224Bytes=fs.readFileSync(path.join(root,'docs/governance-cabinet224-text.json'));
+if(sha256(cabinet224Bytes)!=='550fb732a45a1f751ddc7a9992a0f92d2ba9826a86b0d96f6ae7b4e12cb3c0c3')throw Error('Cabinet224 finite text manifest changed');
+const cabinet224=JSON.parse(cabinet224Bytes);
+function cabinetBridge224(text,inverse=false,scope='book'){
+ if(!['book','titles'].includes(scope))return text;
+ for(const change of inverse?cabinet224.changes.slice().reverse():cabinet224.changes){
+  const before='\n\n'+change.before+'\n\n',after='\n\n'+change.after+'\n\n',a=text.split(before).length-1,b=text.split(after).length-1;
+  if(a===1&&b===0){if(!inverse)text=text.replace(before,after);}else if(a===0&&b===1){if(inverse)text=text.replace(after,before);}else throw Error('Ambiguous exact Cabinet224 paragraph');
+ }return text;
+}
 function currentBridge222(text, inverse = false, scope = 'book') {
+  if(inverse)text=cabinetBridge224(text,true,scope);
   const applicable = current222.changes.filter(c => scope === 'book' ? c.inBook : scope === 'outside' ? c.inBook && c.scope !== 'titles' : c.scope === scope);
   for (const change of inverse ? applicable.slice().reverse() : applicable) {
     const before = '\n\n' + change.before + '\n\n', after = '\n\n' + change.after + '\n\n';
@@ -71,7 +82,7 @@ function currentBridge222(text, inverse = false, scope = 'book') {
     else if (a === 0 && b === 1) { if (inverse) text = text.replace(after, before); }
     else throw Error('Ambiguous finite governance222 paragraph: ' + change.key);
   }
-  return text;
+  return inverse?text:cabinetBridge224(text,false,scope);
 }
 function projection(book, source) {
   source = currentBridge222(source, true, 'titles');

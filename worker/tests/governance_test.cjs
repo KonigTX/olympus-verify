@@ -12,6 +12,7 @@ const historicalScope218='Historical application and ballot compatibility only; 
 // An exact six-field inverse for only the two reviewed institutional records;
 // all other term properties still participate in the original95/96 digests.
 function originalTerms218(terms) {
+ terms=require('../../scripts/governance-cabinet224-inverse.cjs').restoreCabinet224(terms,'terms');
  terms=require('../../scripts/governance-role-inverse222.cjs').originalTerms222(terms);
  const specs={office_26:{ordinal:26,label:'Council of Justice',applicationLabel:'Council of Justice',acquisition:'Case-designated judicial institution; chaired by the Lord High Chancellor, with accepted unconflicted members.'},office_94:{ordinal:94,label:'War Head',applicationLabel:'War Directorate (historical shared template)',acquisition:'Historical shared War Head reference; current PvE and PvP portfolios have their own separate appointments.'}};
  const keys=['label','applicationLabel','applicationAliases','applicationEligible','applicationRoleKeys','acquisition'];
@@ -58,7 +59,7 @@ check("current privacy distinguishes attributable guild-role cleanup, separate s
 check("current marker summary uses original-decision expiry and bounded generation barriers without anonymous or blanket audit claims", currentPrivacy[1].includes("365 days from the original decision") && currentPrivacy[1].includes("366 days from erasure") && currentPrivacy[1].includes("not promised to be anonymous") && !currentPrivacy[1].includes("audit log is an expressly selected erasure exception") && !currentPrivacy[1].includes("hash of the Discord ID and character") && section("## ORD 15", "## ORD 16").includes("separate rejection marker, active safety cases and original unresolved-effect custody") && !section("## ORD 15", "## ORD 16").includes("banned-or-denied safety marker"));
 check("standalone operational charter is embedded exactly and distinguishes reset preservation from personal erasure", text.includes(charter.trim()) && charter.includes("Reset preservation is distinct from an account owner's authenticated erasure request:") && charter.includes("Completion covers live serving-account cleanup, not every copy."));
 check("superseded source decisions remain explicit history followed by the current owner clarification", text.includes("D11 Historical owner erasure decision — 7 October 2026; superseded for current operation by D13.") && text.includes("D12 Historical owner transition decision — 7 October 2026; superseded by D14.") && text.includes("D13 Current Native erasure clarification — 18 October 2026.") && text.includes("D14 Current beta-reset clarification — 18 October 2026."));
-check("R7 plus owner199five-Title and finite rank reconciliation has exact source bytes and SHA256", bytes.length === 271992 && crypto.createHash("sha256").update(bytes).digest("hex") === "93a557b8a1fbe1752094c1c9bf9dfefc8e61ff51a12e79ff17e67a8050bcf992");
+check("R7 plus owner199five-Title and finite rank reconciliation has exact source bytes and SHA256", bytes.length === 272700 && crypto.createHash("sha256").update(bytes).digest("hex") === "947093b9f1bdaf787c63d875b895821f2ac63d51ca4be240992713f9d346d683");
 check("canonical Titles and finite218/204 plus original17 inverses restore every prior outside-R7 byte", titleStart > 0 && titleEnd > titleStart && titleEdition === titles.trimEnd() + "\n\n" && titleBuilder.currentBridge222(titleBuilder.presentationBridge218(titleBuilder.factsBridge(titleBuilder.rankBridge(precedingEdition))), false, 'outside') === currentOutside && Buffer.byteLength(precedingEdition) === 173953 && crypto.createHash("sha256").update(precedingEdition).digest("hex") === "54b4a8f0676d9cc3fd846d62bbb931f080c31e22017ed716e687197b8ebe4ef5");
 check("finite204 substitutions are idempotent and refuse missing or duplicated corrected paragraphs", (() => {
   const currentFactsOutside218 = titleBuilder.presentationBridge218(titleBuilder.currentBridge222(currentOutside, true, 'outside'), true);
@@ -129,7 +130,7 @@ check("authorized R7 adoption is recorded without issuing appointments, signatur
 const composition = data.councilComposition, previousComposition = composition.previousSeatMap;
 const historicalDirection = fs.readFileSync(path.join(dir, "council-composition-2026-10-19.md"), "utf8");
 const direction = fs.readFileSync(path.join(dir, "council-composition-2026-10-28.md"), "utf8");
-const cabinetDirection = fs.readFileSync(path.join(dir, "council-composition-master218.md"), "utf8");
+const cabinetDirection = fs.readFileSync(path.join(dir, "council-portfolios224.md"), "utf8");
 const historicalCouncilSeats = [
   ["gm-chair", "Guild Master — Council Chair", "leader", "founder", "office_43"],
   ["co-gm", "Co-Guild Master", "co_gm", "executive", "office_19"],
@@ -144,21 +145,99 @@ const historicalCouncilSeats = [
   ["systems", "Systems / Addon Architect", "architect", "systems", "office_03"]
 ];
 const currentCouncilSeats = [
-  ["gm-chair", "Guild Master — Council Chair", "leader", "founder", "office_43"],
-  ["co-gm", "Hand of the Sovereign / Co-Guild Master", "co_gm", "executive", "office_19"],
-  ["treasurer", "Lord High Treasurer", "treasurer", "treasury", "office_86"],
-  ["head-justice", "Lord High Chancellor / Head of Justice", "head_justice", "justice", "office_101"],
-  ["main-raid-lead", "Grand Marshal of PvE", "main_raid", "war-raiding", "office_97"],
-  ["main-pvp-lead", "Grand Marshal of PvP", "main_pvp", "war-pvp", "office_98"],
-  ["internal-security", "High Inquisitor / Minister of Internal Security", "internal_security", "security", "office_99"],
-  ["intake", "High Minister of the Chancery & Imperial Census", "chief_intake", "intake", "office_14"],
-  ["concordat", "Lord High Envoy / Director of the Concordat", "concordat_director", "concordat", "office_100"],
-  ["artisanry", "Grand Master Artisan", "minister_artisanry", "artisanry", "office_58"],
-  ["propaganda", "Minister of Propaganda / Chief Propagandist", "propaganda", "propaganda", "office_102"],
-  ["heraldry", "Lord High Herald / Minister of Heraldry", "minister_heraldry", "heraldry", "office_59"],
-  ["head-trading", "Lord High Merchant / Head of Trading & Markets", "head_trading", "trading", "office_96"]
+  [
+    "gm-chair",
+    "Guild Master — Council Chair",
+    "leader",
+    "founder",
+    "office_43"
+  ],
+  [
+    "co-gm",
+    "Hand of the Sovereign · Co-Guild Master",
+    "co_gm",
+    "executive",
+    "office_19"
+  ],
+  [
+    "treasurer",
+    "Lord High Treasurer · Minister of the Imperial Exchequer",
+    "treasurer",
+    "treasury",
+    "office_86"
+  ],
+  [
+    "head-justice",
+    "Lord High Justiciar · Minister of Justice & The Privy Court",
+    "head_justice",
+    "justice",
+    "office_101"
+  ],
+  [
+    "main-raid-lead",
+    "Lord High Marshal of PvE · Minister of Raid Campaigns",
+    "main_raid",
+    "war-raiding",
+    "office_97"
+  ],
+  [
+    "main-pvp-lead",
+    "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
+    "main_pvp",
+    "war-pvp",
+    "office_98"
+  ],
+  [
+    "internal-security",
+    "Lord High Inquisitor · Minister of Internal Security",
+    "internal_security",
+    "security",
+    "office_99"
+  ],
+  [
+    "intake",
+    "Lord High Chancellor · Minister of the Chancery & Imperial Census",
+    "chief_intake",
+    "intake",
+    "office_14"
+  ],
+  [
+    "concordat",
+    "Lord High Legate · Minister of the Grand Concordat",
+    "concordat_director",
+    "concordat",
+    "office_100"
+  ],
+  [
+    "artisanry",
+    "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
+    "minister_artisanry",
+    "artisanry",
+    "office_58"
+  ],
+  [
+    "propaganda",
+    "Lord High Herald · Minister of Propaganda",
+    "propaganda",
+    "propaganda",
+    "office_102"
+  ],
+  [
+    "heraldry",
+    "Lord High Seneschal · Minister of Court Protocol & Crown Estates",
+    "minister_heraldry",
+    "heraldry",
+    "office_59"
+  ],
+  [
+    "head-trading",
+    "Lord High Factor · Minister of Trading & Markets",
+    "head_trading",
+    "trading",
+    "office_96"
+  ]
 ];
-check("current twelve-portfolio supplement records owner222authority separately from R7 adoption", composition.status === "owner_directed_current222" && composition.recordedAt === "2026-11-01" && composition.authority === "project owner clarification" && composition.sourcePath === "/static/governance/council-portfolios222.md" && composition.cabinetSeatCount === 12 && cabinetDirection.includes("Twelve reserved portfolios and the Guild Master as chair") && cabinetDirection.includes("neither a newly ratified constitution nor issued appointments") && composition.formalStatus.includes("Listing a portfolio appoints no holder") && text.includes("Adoption date: 13 October 2026"));
+check("current twelve-portfolio supplement records owner222authority separately from R7 adoption", composition.status === "owner_directed_current224" && composition.recordedAt === "2026-11-02" && composition.authority === "project owner clarification" && composition.sourcePath === "/static/governance/council-portfolios224.md" && composition.cabinetSeatCount === 12 && cabinetDirection.includes("The Guild Master chairs twelve reserved portfolios") && cabinetDirection.includes("Titles confer no native rank, appointment or platform permission") && composition.formalStatus.includes("Listing a portfolio appoints no holder") && text.includes("Adoption date: 13 October 2026"));
 check("original eleven-remit map remains dated history rather than silently repinned current authority", previousComposition.status === "owner_clarified_20261028" && previousComposition.recordedAt === "2026-10-28" && previousComposition.sourcePath === "/static/governance/council-composition-2026-10-28.md" && JSON.stringify(previousComposition.offices) === JSON.stringify(historicalCouncilSeats.map(row => row[1])) && previousComposition.currentSeats.length === 11 && previousComposition.currentSeats.every((row, i) => JSON.stringify([row.id,row.label,row.familyKey,row.nodeId,...row.officeKeys]) === JSON.stringify(historicalCouncilSeats[i])) && direction.includes("not an adopted R8 charter") && direction.includes("R7 adoption remains 13 October 2026") && direction.includes("style and layout reference") && direction.includes("does not define the current Council roster"));
 check("current Council identifies thirteen exact rows with twelve distinct portfolio keys and one chair", JSON.stringify(composition.offices) === JSON.stringify(currentCouncilSeats.map(row => row[1])) && Array.isArray(composition.currentSeats) && composition.currentSeats.length === 13 && new Set(composition.currentSeats.map(row => row.id)).size === 13 && new Set(composition.currentSeats.flatMap(row => row.officeKeys)).size === 13 && composition.currentSeats.every((row, i) => JSON.stringify([row.id,row.label,row.familyKey,row.nodeId,...row.officeKeys]) === JSON.stringify(currentCouncilSeats[i]) && row.scope === "alliance" && row.description.length > 40 && ids.has(row.nodeId) && row.officeKeys.every(key => data.terms.some(term => term.officeKey === key && term.tier === (row.id === "gm-chair" ? "leader" : "high_council")))));
 check("composition record cannot fabricate constitutional ratification, eligible votes or permissions", composition.recommendationRecorded === false && composition.founderRatificationRecorded === false && composition.eligibleSeatIssued === false && composition.permissionsApplied === false && composition.persistentAppointmentKeysAdded === true && data.appointments.length === 138 && new Set(data.appointments.map(row => row.key)).size === 138 && data.appointments.filter(row => row.key === "office_96").length === 1 && data.appointments.find(row => row.key === "office_96").applicationEligible === false && data.appointments.find(row => row.key === "office_96").mappingApplies === false && data.appointmentsIssued === false && historicalDirection.includes("two thirds of the total non-vacant High Council seats, followed by Founder ratification") && direction.includes("One person does not gain a second vote") && direction.includes("quorum, recusal, conflict review and one-person/one-vote"));
@@ -168,9 +247,9 @@ check("historical MAIN War remits retain their shared template without promoting
 })());
 check("current MAIN War portfolios and Justice have distinct records with no copied holder or rank", (() => {
   const expected = [["main-raid-lead","office_97"],["main-pvp-lead","office_98"],["head-justice","office_101"]];
-  return expected.every(([id,key]) => { const seat = composition.currentSeats.find(row => row.id === id), row = data.appointments.find(row => row.key === key); return JSON.stringify(seat.officeKeys) === JSON.stringify([key]) && !seat.sharedAppointmentTemplate && row.tier === "high_council" && row.nativeSlot === 1 && row.applicationEligible === false && row.mappingApplies === false && !row.aliasOf; }) && cabinetDirection.includes("A prior shared War Head or Council of Justice record is not silently copied") && data.nativeRanks.length === 10;
+  return expected.every(([id,key]) => { const seat = composition.currentSeats.find(row => row.id === id), row = data.appointments.find(row => row.key === key); return JSON.stringify(seat.officeKeys) === JSON.stringify([key]) && !seat.sharedAppointmentTemplate && row.tier === "high_council" && row.nativeSlot === 1 && row.applicationEligible === false && row.mappingApplies === false && !row.aliasOf; }) && cabinetDirection.includes("Existing office keys and holder records remain unchanged") && data.nativeRanks.length === 10;
 })());
-check("Head of Justice is an individual Council remit without automatic votes or case access for panels", composition.currentSeats.find(row => row.id === "head-justice").familyKey === "head_justice" && composition.currentSeats.find(row => row.id === "head-justice").description.includes("not a permanent seat on every case") && direction.includes("panel service does not grant blanket Council membership") && direction.includes("Individual hearing-panel members still need case designation and conflict review") && cabinetDirection.includes("Chancellor assigns unconflicted hearings"));
+check("Head of Justice is an individual Council remit without automatic votes or case access for panels", composition.currentSeats.find(row => row.id === "head-justice").familyKey === "head_justice" && composition.currentSeats.find(row => row.id === "head-justice").description.includes("not a permanent seat on every case") && direction.includes("panel service does not grant blanket Council membership") && direction.includes("Individual hearing-panel members still need case designation and conflict review") && cabinetDirection.includes("each participant still needs case designation, relevant access and conflict review"));
 check("Justice and MAIN War keep their original keys and historical requests without reopening current institutional seats", (() => {
   const justice = data.terms.find(row => row.officeKey === "office_26"), war = data.terms.find(row => row.officeKey === "office_94");
   return justice.label === "Council of Justice" && justice.applicationLabel === "Council of Justice" && ["Head of Justice","Privy Council / Judiciary","Judicial Portfolio"].every(alias => justice.historicalApplicationProfile.applicationAliases.includes(alias)) && war.label === "War Head" && war.applicationLabel === "War Directorate (historical shared template)" && ["MAIN Raid & PvP Leads","PvE War Council Director"].every(alias => war.historicalApplicationProfile.applicationAliases.includes(alias)) && [justice,war].every(term => { const row = data.appointments.find(office => office.key === term.officeKey); return JSON.stringify(row.applicationAliases) === JSON.stringify(term.historicalApplicationProfile.applicationAliases) && JSON.stringify(row.applicationRoleKeys) === JSON.stringify([term.officeKey]) && row.applicationEligible === true && row.applicationMetadataScope === historicalScope218 && term.historicalApplicationProfile.applicationEligible === true && row.applicationLabel === term.applicationLabel && row.acquisition === term.acquisition && row.nativeSlot === 1 && row.tier === "high_council" && row.mappingApplies === false; });
@@ -184,7 +263,7 @@ check("the original95 terms remain exact and the96th trading term stays reserved
   const original = originalTerms218(data.terms.slice(0, 95)), trading = data.terms[95];
   return requested.length === 95 && data.terms.length === 102 && original.every((term, i) => term.label === requested[i] && term.historicalLabel === undefined && term.ordinal === i + 1)
     && crypto.createHash("sha256").update(JSON.stringify(original)).digest("hex") === "74fb4f44153a550b7b306789763e73932393e96124d781572c6d2db5c9b87d3b"
-    && new Set(data.terms.map(term => term.label)).size === 102 && trading.officeKey === "office_96" && trading.ordinal === 96 && trading.label === "Head of Trading & Markets" && trading.nodeId === "trading"
+    && new Set(data.terms.map(term => term.label)).size === 102 && trading.officeKey === "office_96" && trading.ordinal === 96 && trading.label === "Lord High Factor · Minister of Trading & Markets" && trading.nodeId === "trading"
     && trading.tier === "high_council" && trading.nativeSlot === 1 && trading.nativeRankOrdinal === 2 && trading.applicationEligible === false && trading.mappingApplies === false && JSON.stringify(trading.applicationRoleKeys) === "[]";
 })());
 check("all original96 complete term objects retain their pre218 identities through the finite two-record inverse", crypto.createHash("sha256").update(JSON.stringify(originalTerms218(data.terms.slice(0, 96)))).digest("hex") === "edf51ea2b8b757b359fa77b676e56644a641264df3bd06d7393390221e54a5de");
@@ -204,7 +283,7 @@ check("Veteran configuration includes Invite Member plus repairs without applyin
 function originalNodes218(model) {
   const deltaBytes=fs.readFileSync(path.join(root,"../docs/governance-nodes222.json"));
   if(crypto.createHash("sha256").update(deltaBytes).digest("hex")!=="5053da5e5e3d33f29c2d6610954fcf59cee9491d78a93880c5d072e99ea4db31")throw Error("Finite node manifest changed");
-  const delta=JSON.parse(deltaBytes),nodes=model.nodes;
+  const delta=JSON.parse(deltaBytes),nodes=require("../../scripts/governance-cabinet224-inverse.cjs").restoreCabinet224(model.nodes,"nodes");
   if(nodes.length!==42||JSON.stringify(nodes.filter(n=>n.id==="systems"))!==JSON.stringify([delta.systemsAfter])||JSON.stringify(nodes.filter(n=>n.id==="propaganda"))!==JSON.stringify([delta.propaganda]))return null;
   model={...model,nodes:nodes.filter(n=>n.id!=="propaganda").map(n=>n.id==="systems"?delta.systemsBefore:n)};
   const changes = model.cabinet218?.reportingChanges;
@@ -218,15 +297,15 @@ function originalNodes218(model) {
   return prior;
 }
 function preservesOriginalNodes218(model) {
-  const nodes = originalNodes218(model);
+  let nodes;try{nodes=originalNodes218(model);}catch{return false;}
   return !!nodes && nodes.length === 38 && crypto.createHash("sha256").update(JSON.stringify(nodes)).digest("hex") === "62fd12faf62b8529a8679a80a1ee278e2422048502c01738ac2fe7286c677ddf";
 }
 check("42 groups and mandates preserve original38 through the finite intake and222node inverses", (() => {
-  const priorMandates = data.officeMandates.filter(office => !["trading","security","concordat","propaganda"].includes(office.nodeId)), trading = ids.get("trading");
+  const priorMandates = require("../../scripts/governance-cabinet224-inverse.cjs").restoreCabinet224(data.officeMandates,"officeMandates").filter(office => !["trading","security","concordat","propaganda"].includes(office.nodeId)), trading = ids.get("trading");
   return data.nodes.length === 42 && data.officeMandates.length === 42 && preservesOriginalNodes218(data) && priorMandates.length === 38
     && crypto.createHash("sha256").update(JSON.stringify(priorMandates)).digest("hex") === "ae968c007def93478c0bfac5e51169f9a3f4bd62d7abddaaa624210aa267ae2c"
     && new Set(data.officeMandates.map(office => office.title)).size === 42 && data.officeMandates.every(office => ids.has(office.nodeId) && typeof office.title === "string" && office.title.length >= 6 && [office.duty, office.output, office.boundary].every(value => typeof value === "string" && value.length > 10))
-    && trading.parent === "council" && trading.relation === "accountability" && trading.kind === "dedicated High Council portfolio" && JSON.stringify(trading.coordinates) === '["treasury"]' && data.officeMandates.filter(office => office.nodeId === "trading").length === 1 && data.officeMandates.find(office => office.nodeId === "trading").title === "Head of Trading & Markets";
+    && trading.parent === "council" && trading.relation === "accountability" && trading.kind === "dedicated High Council portfolio" && JSON.stringify(trading.coordinates) === '["treasury"]' && data.officeMandates.filter(office => office.nodeId === "trading").length === 1 && data.officeMandates.find(office => office.nodeId === "trading").title === "Lord High Factor · Minister of Trading & Markets";
 })());
 check("historical graph inverse rejects undeclared changes, missing/extra declarations and wrong current parent", (() => {
   const clone = () => JSON.parse(JSON.stringify(data)), unlisted = clone(), missing = clone(), extra = clone(), wrongCurrent = clone(), extraNode = clone();
@@ -238,7 +317,7 @@ check("historical graph inverse rejects undeclared changes, missing/extra declar
   return preservesOriginalNodes218(data) && [unlisted,missing,extra,wrongCurrent,extraNode].every(model => !preservesOriginalNodes218(model));
 })());
 check("five new Council records and two new ministries are finite additions without new rank or permission", JSON.stringify(data.terms.slice(96).map(term => [term.ordinal,term.officeKey])) === JSON.stringify([[97,"office_97"],[98,"office_98"],[99,"office_99"],[100,"office_100"],[101,"office_101"],[102,"office_102"]]) && data.terms.slice(96).every(term => term.tier === "high_council" && term.nativeSlot === 1 && term.nativeRankOrdinal === 2 && term.applicationEligible === false && term.mappingApplies === false && term.applicationRoleKeys.length === 0) && ["security","concordat"].every(id => ids.get(id).parent === "council" && ids.get(id).relation === "accountability" && data.officeMandates.filter(office => office.nodeId === id).length === 1) && data.termGroups.length === 11);
-check("Council portfolio mandates and all nine class heads remain explicit offices", ["War Head for PvP", "War Head for Raiding", "Federal Treasurer", "Minister of Artisanry", "Minister of Heraldry", "Council of Justice", "Independent Bank Auditor", ...["Warrior", "Paladin", "Hunter", "Rogue", "Priest", "Mage", "Warlock", "Shaman", "Druid"].map((name) => name + " Class Head")].every((title) => data.officeMandates.filter((office) => office.title === title).length === 1));
+check("Council portfolio mandates and all nine class heads remain explicit offices", ["War Head for PvP", "War Head for Raiding", "Federal Treasurer", "Minister of Artisanry", "Minister of Heraldry", "Council of Justice", "Independent Bank Auditor", ...["Warrior", "Paladin", "Hunter", "Rogue", "Priest", "Mage", "Warlock", "Shaman", "Druid"].map((name) => name + " Class Head")].every((title) => require("../../scripts/governance-cabinet224-inverse.cjs").restoreCabinet224(data.officeMandates,"officeMandates").filter((office) => office.title === title).length === 1));
 check("Founder->Council and local GM->Officers are accountability links", ids.get("council").parent === "founder" && ids.get("council").relation === "accountability" && ids.get("guilds").parent === "council" && ids.get("officers").parent === "guilds");
 check("four original portfolios and shared Systems preserve non-Council technical support alongside Propaganda", ["war", "treasury", "artisanry", "heraldry"].every((id) => ids.get(id).parent === "council" && ids.get(id).kind === "core portfolio") && data.nodes.filter((node) => node.kind === "core portfolio").length === 4 && ids.get("systems").kind === "shared support division" && ids.get("systems").parent === "council" && ids.get("systems").limits.includes("Technical contributors are outside the High Council") && ids.get("propaganda").parent === "council" && data.terms.find(t=>t.officeKey==="office_03").tier === "officer_corps" && ids.get("systems").limits.includes("grants no Council vote, production access or signing authority"));
 check("Justice and auditor retain independent conflict-exclusion boundaries", ids.get("justice").relation === "independence" && ids.get("auditor").relation === "independence" && ids.get("auditor").limits.includes("Cannot audit their own custody"));
@@ -352,11 +431,11 @@ check(".222 current introduction names102offices and138keys without silently rew
  return intro.includes("all 102 stable offices / 138 assignable keys")&&!intro.includes("all 95 stable offices / 131 assignable keys")&&data.terms.length===102&&data.appointments.length===138
   && precedingEdition.includes("# Reading and Adopting This Book")&&Buffer.byteLength(precedingEdition)===173953&&crypto.createHash("sha256").update(precedingEdition).digest("hex")==="54b4a8f0676d9cc3fd846d62bbb931f080c31e22017ed716e687197b8ebe4ef5";
 })());
-check(".218 member Council reference states current reporting without internal codenames or operator readback",cabinetDirection.includes("Owner-directed Council supplement, 30 October 2026")&&cabinetDirection.includes("preserving the 13 October 2026 R7 adoption and recoverable historical text")&&cabinetDirection.includes("Titles I, II and V. Register key: office_03")&&!/Master218|authenticated rollout readback|Appointment readback and deliberate re-recording|without changing the adopted R7 source/.test(cabinetDirection));
+check(".224 member Cabinet reference distinguishes protocol, communications and unchanged identities",cabinetDirection.includes("The Seneschal oversees court protocol and Crown estates")&&cabinetDirection.includes("The Herald oversees propaganda and official communications")&&cabinetDirection.includes("Historical names remain aliases of the same stored office identities"));
 check(".218 dormant Council payload description names all12portfolios and explicitly offers no applications",(()=>{
  const rows=data.applicationTracks.filter(row=>row.id==="high_council");if(rows.length!==1)return false;
  const description=rows[0].description;
- const portfolios=["Co-Guild Master / Hand of the Sovereign","Lord High Treasurer","Lord High Chancellor / Head of Justice","Grand Marshal of PvE","Grand Marshal of PvP","High Inquisitor / Internal Security","High Minister of the Chancery & Imperial Census","Grand Concordat Director","Grand Master Artisan","Minister of Propaganda","Lord High Herald","Head of Trading & Markets"];
+ const portfolios=["Hand of the Sovereign · Co-Guild Master","Lord High Treasurer · Minister of the Imperial Exchequer","Lord High Justiciar · Minister of Justice & The Privy Court","Lord High Marshal of PvE · Minister of Raid Campaigns","Lord High Marshal of PvP · Minister of Battlegrounds & Honor","Lord High Inquisitor · Minister of Internal Security","Lord High Chancellor · Minister of the Chancery & Imperial Census","Lord High Legate · Minister of the Grand Concordat","Lord High Artificer · Minister of Artisanry & The Guild Workshop","Lord High Herald · Minister of Propaganda","Lord High Seneschal · Minister of Court Protocol & Crown Estates","Lord High Factor · Minister of Trading & Markets"];
  return portfolios.length===12&&portfolios.every(label=>description.split(label).length===2)&&description.startsWith("Reserved historical category; not open for applications.")&&description.includes("Every appointment and permission requires separate review.");
 })());
 
