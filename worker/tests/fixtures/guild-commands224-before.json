@@ -1,0 +1,944 @@
+{
+  "schema": "normalized-discord-guild-command-fixture222/v1",
+  "source": "Read-only .221 command inventory; IDs and response-only metadata omitted",
+  "application": "1550176895671341076",
+  "guild": "236932545793490944",
+  "commands": [
+    {
+      "id": "1554292331924946995",
+      "application_id": "1550176895671341076",
+      "version": "1566453287195246649",
+      "default_member_permissions": "0",
+      "type": 1,
+      "name": "olympus-intros",
+      "description": "Olympus officers: post, update and re-pin the bot's intro in each Olympus channel",
+      "guild_id": "236932545793490944",
+      "options": [
+        {
+          "type": 1,
+          "name": "refresh",
+          "description": "Post missing intros, update changed ones in place, re-pin unpinned ones",
+          "options": [
+            {
+              "type": 7,
+              "name": "channel",
+              "description": "Only this channel or forum (default: all of them)",
+              "channel_types": [
+                0,
+                5,
+                15
+              ]
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "status",
+          "description": "Which intros are posted and current, from the bot's records (changes nothing)"
+        }
+      ],
+      "nsfw": false
+    },
+    {
+      "id": "1554636285015228508",
+      "application_id": "1550176895671341076",
+      "version": "1566453287195246650",
+      "default_member_permissions": "0",
+      "type": 1,
+      "name": "olympus-lookup",
+      "description": "Olympus officers: a member's linked characters and guild-site entries, or who owns a character",
+      "guild_id": "236932545793490944",
+      "options": [
+        {
+          "type": 6,
+          "name": "member",
+          "description": "A member of this server"
+        },
+        {
+          "type": 3,
+          "name": "character",
+          "description": "A character name, as in game (First Last)",
+          "autocomplete": true,
+          "max_length": 32
+        }
+      ],
+      "nsfw": false
+    },
+    {
+      "id": "1554636285413556247",
+      "application_id": "1550176895671341076",
+      "version": "1566453287434190891",
+      "default_member_permissions": "0",
+      "type": 2,
+      "name": "Olympus linked characters",
+      "description": "",
+      "guild_id": "236932545793490944",
+      "nsfw": false
+    },
+    {
+      "id": "1555389762611843112",
+      "application_id": "1550176895671341076",
+      "version": "1566453287434190889",
+      "default_member_permissions": null,
+      "type": 1,
+      "name": "verify",
+      "description": "Get a one-day code to whisper to an officer in game (the character that sends it is linked)",
+      "guild_id": "236932545793490944",
+      "options": [
+        {
+          "type": 3,
+          "name": "character",
+          "description": "Optional: only this character may use the code",
+          "autocomplete": true,
+          "max_length": 32
+        }
+      ],
+      "nsfw": false
+    },
+    {
+      "id": "1555389762611843113",
+      "application_id": "1550176895671341076",
+      "version": "1555708205265584222",
+      "default_member_permissions": null,
+      "type": 1,
+      "name": "verify-status",
+      "description": "Show your verified characters and your Olympus access",
+      "guild_id": "236932545793490944",
+      "nsfw": false
+    },
+    {
+      "id": "1555389762611843115",
+      "application_id": "1550176895671341076",
+      "version": "1566580805906473137",
+      "default_member_permissions": "268435456",
+      "type": 1,
+      "name": "olympus-admin",
+      "description": "Officer tools for the verification bot",
+      "guild_id": "236932545793490944",
+      "options": [
+        {
+          "type": 1,
+          "name": "unbind",
+          "description": "Release a character name from its Discord account",
+          "options": [
+            {
+              "type": 3,
+              "name": "character",
+              "description": "Character",
+              "required": true
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "ban",
+          "description": "Refuse verification for a Discord account and its characters",
+          "options": [
+            {
+              "type": 6,
+              "name": "user",
+              "description": "Member",
+              "required": true
+            },
+            {
+              "type": 3,
+              "name": "reason",
+              "description": "Reason"
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "unban",
+          "description": "Allow verification again",
+          "options": [
+            {
+              "type": 6,
+              "name": "user",
+              "description": "Member",
+              "required": true
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "queue",
+          "description": "Show pending invites"
+        },
+        {
+          "type": 1,
+          "name": "sync",
+          "description": "Re-apply the latest roster export now (grants and removals)"
+        },
+        {
+          "type": 1,
+          "name": "roster",
+          "description": "Last roster export and who in the guild is not verified here"
+        },
+        {
+          "type": 1,
+          "name": "lookup",
+          "description": "Who owns a character, or which characters a member linked",
+          "options": [
+            {
+              "type": 3,
+              "name": "character",
+              "description": "Character name"
+            },
+            {
+              "type": 6,
+              "name": "user",
+              "description": "Member"
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "refresh-guide",
+          "description": "Update the pinned guide in place after a redeploy — keeps the pin, leaves no stale copy",
+          "options": [
+            {
+              "type": 7,
+              "name": "channel",
+              "description": "Channel (default: this one)",
+              "channel_types": [
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "post-guide",
+          "description": "Post the verification guide with its buttons (here, or in the channel given) — pin it afterwards",
+          "options": [
+            {
+              "type": 7,
+              "name": "channel",
+              "description": "Channel (default: this one)",
+              "channel_types": [
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "release",
+          "description": "Release an open request only; an existing character binding is never unlinked",
+          "options": [
+            {
+              "type": 3,
+              "name": "character",
+              "description": "Character with an open verification request",
+              "required": true,
+              "max_length": 32
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "role-sync",
+          "description": "Re-apply the latest admitted roster (same guarded workflow as sync)"
+        }
+      ],
+      "nsfw": false
+    },
+    {
+      "id": "1566453286754586784",
+      "application_id": "1550176895671341076",
+      "version": "1566453287195246644",
+      "default_member_permissions": null,
+      "type": 1,
+      "name": "branches",
+      "description": "Olympus I–X capacity sources and unavailable-feed disclosure",
+      "guild_id": "236932545793490944",
+      "nsfw": false
+    },
+    {
+      "id": "1566453286754586786",
+      "application_id": "1550176895671341076",
+      "version": "1566453287195246645",
+      "default_member_permissions": null,
+      "type": 1,
+      "name": "council",
+      "description": "The ten native ranks and current High Council portfolio guide",
+      "guild_id": "236932545793490944",
+      "nsfw": false
+    },
+    {
+      "id": "1566453286754586787",
+      "application_id": "1550176895671341076",
+      "version": "1566453287195246646",
+      "default_member_permissions": null,
+      "type": 1,
+      "name": "event",
+      "description": "Olympus events (same calendar and controls as /raid)",
+      "guild_id": "236932545793490944",
+      "options": [
+        {
+          "type": 1,
+          "name": "schedule",
+          "description": "Create a guild calendar event (Raid Leader / Officer / Council / Admin)",
+          "options": [
+            {
+              "type": 3,
+              "name": "title",
+              "description": "Event title; no private information",
+              "required": true,
+              "max_length": 80
+            },
+            {
+              "type": 3,
+              "name": "starts",
+              "description": "ISO date/time with Z or UTC offset, e.g. 2026-11-05T01:00:00Z",
+              "required": true,
+              "max_length": 40
+            },
+            {
+              "type": 4,
+              "name": "minutes",
+              "description": "Duration in minutes",
+              "required": true,
+              "min_value": 15,
+              "max_value": 720
+            },
+            {
+              "type": 4,
+              "name": "capacity",
+              "description": "Optional maximum confirmed signups",
+              "min_value": 1,
+              "max_value": 100
+            },
+            {
+              "type": 3,
+              "name": "details",
+              "description": "Preparation notes; visible to verified guild members",
+              "max_length": 500
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "create",
+          "description": "Create a guild calendar event (same as schedule)",
+          "options": [
+            {
+              "type": 3,
+              "name": "title",
+              "description": "Event title; no private information",
+              "required": true,
+              "max_length": 80
+            },
+            {
+              "type": 3,
+              "name": "starts",
+              "description": "ISO date/time with Z or UTC offset, e.g. 2026-11-05T01:00:00Z",
+              "required": true,
+              "max_length": 40
+            },
+            {
+              "type": 4,
+              "name": "minutes",
+              "description": "Duration in minutes",
+              "required": true,
+              "min_value": 15,
+              "max_value": 720
+            },
+            {
+              "type": 4,
+              "name": "capacity",
+              "description": "Optional maximum confirmed signups",
+              "min_value": 1,
+              "max_value": 100
+            },
+            {
+              "type": 3,
+              "name": "details",
+              "description": "Preparation notes; visible to verified guild members",
+              "max_length": 500
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "list",
+          "description": "Upcoming guild events, with private one-click RSVP buttons",
+          "options": [
+            {
+              "type": 4,
+              "name": "page",
+              "description": "Page of upcoming events",
+              "min_value": 1,
+              "max_value": 100
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "roster",
+          "description": "Current signup preferences and recorded attendance",
+          "options": [
+            {
+              "type": 3,
+              "name": "id",
+              "description": "Calendar event ID from /raid list",
+              "required": true,
+              "min_length": 22,
+              "max_length": 22
+            },
+            {
+              "type": 4,
+              "name": "page",
+              "description": "Roster page",
+              "min_value": 1,
+              "max_value": 100
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "rsvp",
+          "description": "Set your own signup preference",
+          "options": [
+            {
+              "type": 3,
+              "name": "id",
+              "description": "Calendar event ID from /raid list",
+              "required": true,
+              "min_length": 22,
+              "max_length": 22
+            },
+            {
+              "type": 3,
+              "name": "choice",
+              "description": "Your preference, not an organizer roster decision",
+              "required": true,
+              "choices": [
+                {
+                  "name": "tank",
+                  "value": "tank"
+                },
+                {
+                  "name": "healer",
+                  "value": "healer"
+                },
+                {
+                  "name": "melee",
+                  "value": "melee"
+                },
+                {
+                  "name": "ranged",
+                  "value": "ranged"
+                },
+                {
+                  "name": "tentative",
+                  "value": "tentative"
+                },
+                {
+                  "name": "bench",
+                  "value": "bench"
+                },
+                {
+                  "name": "absent",
+                  "value": "absent"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "remind",
+          "description": "Arm one reminder; now attempts it only within one hour of the start",
+          "options": [
+            {
+              "type": 3,
+              "name": "id",
+              "description": "Calendar event ID from /raid list",
+              "required": true,
+              "min_length": 22,
+              "max_length": 22
+            },
+            {
+              "type": 3,
+              "name": "mode",
+              "description": "One durable reminder per event; unknown sends never retry",
+              "required": true,
+              "choices": [
+                {
+                  "name": "arm",
+                  "value": "arm"
+                },
+                {
+                  "name": "now",
+                  "value": "now"
+                },
+                {
+                  "name": "cancel",
+                  "value": "cancel"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "attendance",
+          "description": "After start, record one signup or lock the completed attendance record",
+          "options": [
+            {
+              "type": 3,
+              "name": "id",
+              "description": "Calendar event ID from /raid list",
+              "required": true,
+              "min_length": 22,
+              "max_length": 22
+            },
+            {
+              "type": 3,
+              "name": "action",
+              "description": "Record a member or finalize the attendance record",
+              "required": true,
+              "choices": [
+                {
+                  "name": "record",
+                  "value": "record"
+                },
+                {
+                  "name": "lock",
+                  "value": "lock"
+                }
+              ]
+            },
+            {
+              "type": 6,
+              "name": "member",
+              "description": "Existing signup or listed member; required for record"
+            },
+            {
+              "type": 3,
+              "name": "state",
+              "description": "Observed result; never inferred from a missing RSVP",
+              "choices": [
+                {
+                  "name": "present",
+                  "value": "present"
+                },
+                {
+                  "name": "absent",
+                  "value": "absent"
+                },
+                {
+                  "name": "excused",
+                  "value": "excused"
+                },
+                {
+                  "name": "unknown",
+                  "value": "unknown"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "nsfw": false
+    },
+    {
+      "id": "1566453286754586788",
+      "application_id": "1550176895671341076",
+      "version": "1566453287195246647",
+      "default_member_permissions": null,
+      "type": 1,
+      "name": "guide",
+      "description": "Forever guides and pinned talent tools",
+      "guild_id": "236932545793490944",
+      "options": [
+        {
+          "type": 1,
+          "name": "class",
+          "description": "Class and specialization guides with talent preset links",
+          "options": [
+            {
+              "type": 3,
+              "name": "class",
+              "description": "Class name",
+              "required": true,
+              "choices": [
+                {
+                  "name": "warrior",
+                  "value": "warrior"
+                },
+                {
+                  "name": "paladin",
+                  "value": "paladin"
+                },
+                {
+                  "name": "hunter",
+                  "value": "hunter"
+                },
+                {
+                  "name": "rogue",
+                  "value": "rogue"
+                },
+                {
+                  "name": "priest",
+                  "value": "priest"
+                },
+                {
+                  "name": "shaman",
+                  "value": "shaman"
+                },
+                {
+                  "name": "mage",
+                  "value": "mage"
+                },
+                {
+                  "name": "warlock",
+                  "value": "warlock"
+                },
+                {
+                  "name": "druid",
+                  "value": "druid"
+                }
+              ]
+            },
+            {
+              "type": 3,
+              "name": "spec",
+              "description": "Optional specialization name",
+              "max_length": 40
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "talent",
+          "description": "Validate and preview a current Olympus talent code or shared URL",
+          "options": [
+            {
+              "type": 3,
+              "name": "build",
+              "description": "Olympus talent code or exact site share URL",
+              "required": true,
+              "max_length": 512
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "consumes",
+          "description": "Raid consumables and Forever evidence grades"
+        },
+        {
+          "type": 1,
+          "name": "buffs",
+          "description": "World-buff and raid-buff rules; Classic references are labelled"
+        },
+        {
+          "type": 1,
+          "name": "attunement",
+          "description": "Onyxia / MC / BWL preparation and current availability",
+          "options": [
+            {
+              "type": 3,
+              "name": "raid",
+              "description": "Raid name",
+              "required": true,
+              "choices": [
+                {
+                  "name": "Onyxia",
+                  "value": "onyxia"
+                },
+                {
+                  "name": "Molten Core",
+                  "value": "mc"
+                },
+                {
+                  "name": "Blackwing Lair",
+                  "value": "bwl"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "nsfw": false
+    },
+    {
+      "id": "1566453286754586789",
+      "application_id": "1550176895671341076",
+      "version": "1566453287195246648",
+      "default_member_permissions": null,
+      "type": 1,
+      "name": "launch",
+      "description": "November 4 global launch countdown and official reference",
+      "guild_id": "236932545793490944",
+      "nsfw": false
+    },
+    {
+      "id": "1566453286754586791",
+      "application_id": "1550176895671341076",
+      "version": "1566667411292422174",
+      "default_member_permissions": null,
+      "type": 1,
+      "name": "raid",
+      "description": "Open your private raid hub: events, signup, rosters and organizer controls",
+      "guild_id": "236932545793490944",
+      "options": [
+        {
+          "type": 3,
+          "name": "find",
+          "description": "Optional: find an upcoming event, or paste its calendar ID",
+          "autocomplete": true,
+          "min_length": 1,
+          "max_length": 80
+        }
+      ],
+      "nsfw": false
+    },
+    {
+      "id": "1566453286754586792",
+      "application_id": "1550176895671341076",
+      "version": "1566453287195246652",
+      "default_member_permissions": null,
+      "type": 1,
+      "name": "stockades",
+      "description": "Free ordinary appeals and eligible conditional in-game-gold clemency",
+      "guild_id": "236932545793490944",
+      "nsfw": false
+    },
+    {
+      "id": "1566453286754586793",
+      "application_id": "1550176895671341076",
+      "version": "1566453287434190888",
+      "default_member_permissions": null,
+      "type": 1,
+      "name": "treasury",
+      "description": "Treasury policy, Fernmelder and the current Royal Writs switch",
+      "guild_id": "236932545793490944",
+      "nsfw": false
+    },
+    {
+      "id": "1566453287195246643",
+      "application_id": "1550176895671341076",
+      "version": "1566580806128894042",
+      "default_member_permissions": null,
+      "type": 1,
+      "name": "workshop",
+      "description": "Find opted-in crafters or prepare a private commission request",
+      "guild_id": "236932545793490944",
+      "options": [
+        {
+          "type": 1,
+          "name": "search",
+          "description": "Find self-reported recipes and professions from current opted-in guild members",
+          "options": [
+            {
+              "type": 3,
+              "name": "query",
+              "description": "Recipe, profession or crafter name",
+              "max_length": 60
+            },
+            {
+              "type": 4,
+              "name": "page",
+              "description": "Result page",
+              "min_value": 1,
+              "max_value": 100
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "order",
+          "description": "Prepare a private draft to review and send to a crafter yourself",
+          "options": [
+            {
+              "type": 3,
+              "name": "recipe",
+              "description": "Item or recipe requested; no personal information",
+              "required": true,
+              "max_length": 60
+            },
+            {
+              "type": 4,
+              "name": "quantity",
+              "description": "Number requested",
+              "required": true,
+              "min_value": 1,
+              "max_value": 1000
+            },
+            {
+              "type": 3,
+              "name": "when",
+              "description": "Proposed timing; the crafter must agree",
+              "max_length": 80
+            },
+            {
+              "type": 3,
+              "name": "materials",
+              "description": "Materials you can supply; agree any remainder with the crafter",
+              "max_length": 160
+            }
+          ]
+        }
+      ],
+      "nsfw": false
+    },
+    {
+      "id": "1566580805906473131",
+      "application_id": "1550176895671341076",
+      "version": "1566580805906473136",
+      "default_member_permissions": null,
+      "type": 1,
+      "name": "forever",
+      "description": "Forever class guides, talent links, raid preparation and consumables",
+      "guild_id": "236932545793490944",
+      "options": [
+        {
+          "type": 1,
+          "name": "guide",
+          "description": "Class and specialization guides with talent preset links",
+          "options": [
+            {
+              "type": 3,
+              "name": "class",
+              "description": "Class name",
+              "required": true,
+              "choices": [
+                {
+                  "name": "warrior",
+                  "value": "warrior"
+                },
+                {
+                  "name": "paladin",
+                  "value": "paladin"
+                },
+                {
+                  "name": "hunter",
+                  "value": "hunter"
+                },
+                {
+                  "name": "rogue",
+                  "value": "rogue"
+                },
+                {
+                  "name": "priest",
+                  "value": "priest"
+                },
+                {
+                  "name": "shaman",
+                  "value": "shaman"
+                },
+                {
+                  "name": "mage",
+                  "value": "mage"
+                },
+                {
+                  "name": "warlock",
+                  "value": "warlock"
+                },
+                {
+                  "name": "druid",
+                  "value": "druid"
+                }
+              ]
+            },
+            {
+              "type": 3,
+              "name": "spec",
+              "description": "Optional specialization name",
+              "max_length": 40
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "talents",
+          "description": "Validate and preview a current Olympus talent code or shared URL",
+          "options": [
+            {
+              "type": 3,
+              "name": "build",
+              "description": "Olympus talent code or exact site share URL",
+              "required": true,
+              "max_length": 512
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "consumables",
+          "description": "Raid consumables and Forever evidence grades"
+        },
+        {
+          "type": 1,
+          "name": "buffs",
+          "description": "World-buff and raid-buff rules; Classic references are labelled"
+        },
+        {
+          "type": 1,
+          "name": "attunement",
+          "description": "Onyxia / MC / BWL preparation and current availability",
+          "options": [
+            {
+              "type": 3,
+              "name": "raid",
+              "description": "Raid name",
+              "required": true,
+              "choices": [
+                {
+                  "name": "Onyxia",
+                  "value": "onyxia"
+                },
+                {
+                  "name": "Molten Core",
+                  "value": "mc"
+                },
+                {
+                  "name": "Blackwing Lair",
+                  "value": "bwl"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "nsfw": false
+    },
+    {
+      "id": "1566580805906473132",
+      "application_id": "1550176895671341076",
+      "version": "1566580805906473138",
+      "default_member_permissions": null,
+      "type": 1,
+      "name": "olympus-privacy",
+      "description": "Open your account export, erasure and privacy controls",
+      "guild_id": "236932545793490944",
+      "nsfw": false
+    },
+    {
+      "id": "1566580805906473133",
+      "application_id": "1550176895671341076",
+      "version": "1566580805906473139",
+      "default_member_permissions": null,
+      "type": 1,
+      "name": "olympus-status",
+      "description": "Show your verified characters and Olympus access",
+      "guild_id": "236932545793490944",
+      "nsfw": false
+    },
+    {
+      "id": "1566580805906473134",
+      "application_id": "1550176895671341076",
+      "version": "1566580805906473140",
+      "default_member_permissions": null,
+      "type": 1,
+      "name": "olympus-unlink",
+      "description": "Open account-removal and character-unlink instructions; nothing is removed immediately",
+      "guild_id": "236932545793490944",
+      "nsfw": false
+    }
+  ]
+}

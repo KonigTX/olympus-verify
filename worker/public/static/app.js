@@ -1729,7 +1729,7 @@
   // Fixed public assets only: this reader never asks a member/leadership API for identities or permissions.
   const GOVERNANCE_BOOK = "/static/governance/reconciled-book.md";
   const GOVERNANCE_MODEL = "/static/governance/organization.json";
-  const GOVERNANCE_SHA256 = "93a557b8a1fbe1752094c1c9bf9dfefc8e61ff51a12e79ff17e67a8050bcf992";
+  const GOVERNANCE_SHA256 = "947093b9f1bdaf787c63d875b895821f2ac63d51ca4be240992713f9d346d683";
   let governanceBookPromise = null, governanceModelPromise = null;
   async function publicGovernanceBytes(path, cap) {
     const res = await fetch(path, { credentials: "same-origin", redirect: "error" });
@@ -1741,7 +1741,7 @@
   function governanceBook() {
     if (!governanceBookPromise) governanceBookPromise = (async () => {
       const bytes = await publicGovernanceBytes(GOVERNANCE_BOOK, 524288);
-      if (bytes.length !== 271992) throw new Error("The R7 book has an unexpected size.");
+      if (bytes.length !== 272700) throw new Error("The R7 book has an unexpected size.");
       const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)), (b) => b.toString(16).padStart(2, "0")).join("");
       if (digest !== GOVERNANCE_SHA256) throw new Error("The R7 book does not match the reviewed text.");
       return parseGovernanceBook(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
@@ -1753,7 +1753,7 @@
       const bytes = await publicGovernanceBytes(GOVERNANCE_MODEL, 524288);
       const data = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
       if (data.schema !== "olympus-public-organization-v1" || data.revision !== "R7" || data.draft !== false || data.ratified !== true || data.appointmentsIssued !== false ||
-          !data.book || data.book.path !== GOVERNANCE_BOOK || data.book.bytes !== 271992 || data.book.sha256 !== GOVERNANCE_SHA256 ||
+          !data.book || data.book.path !== GOVERNANCE_BOOK || data.book.bytes !== 272700 || data.book.sha256 !== GOVERNANCE_SHA256 ||
           !Array.isArray(data.nodes) || data.nodes.length > 64 || !Array.isArray(data.terms) || data.terms.length !== 102 ||
           !Array.isArray(data.nativeRanks) || data.nativeRanks.length !== 10 || !Array.isArray(data.guildPlaceholders) || data.guildPlaceholders.length !== 10 ||
           !Array.isArray(data.termGroups) || data.directoryRoute !== "#/community/leadership") throw new Error("The organization model has an unexpected shape.");

@@ -6,27 +6,27 @@
   "appointmentsIssued": false,
   "book": {
     "path": "/static/governance/reconciled-book.md",
-    "bytes": 271992,
-    "sha256": "93a557b8a1fbe1752094c1c9bf9dfefc8e61ff51a12e79ff17e67a8050bcf992"
+    "bytes": 272700,
+    "sha256": "947093b9f1bdaf787c63d875b895821f2ac63d51ca4be240992713f9d346d683"
   },
   "councilComposition": {
-    "status": "owner_directed_current222",
-    "recordedAt": "2026-11-01",
+    "status": "owner_directed_current224",
+    "recordedAt": "2026-11-02",
     "authority": "project owner clarification",
     "offices": [
       "Guild Master — Council Chair",
-      "Hand of the Sovereign / Co-Guild Master",
-      "Lord High Treasurer",
-      "Lord High Chancellor / Head of Justice",
-      "Grand Marshal of PvE",
-      "Grand Marshal of PvP",
-      "High Inquisitor / Minister of Internal Security",
-      "High Minister of the Chancery & Imperial Census",
-      "Lord High Envoy / Director of the Concordat",
-      "Grand Master Artisan",
-      "Minister of Propaganda / Chief Propagandist",
-      "Lord High Herald / Minister of Heraldry",
-      "Lord High Merchant / Head of Trading & Markets"
+      "Hand of the Sovereign · Co-Guild Master",
+      "Lord High Treasurer · Minister of the Imperial Exchequer",
+      "Lord High Justiciar · Minister of Justice & The Privy Court",
+      "Lord High Marshal of PvE · Minister of Raid Campaigns",
+      "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
+      "Lord High Inquisitor · Minister of Internal Security",
+      "Lord High Chancellor · Minister of the Chancery & Imperial Census",
+      "Lord High Legate · Minister of the Grand Concordat",
+      "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
+      "Lord High Herald · Minister of Propaganda",
+      "Lord High Seneschal · Minister of Court Protocol & Crown Estates",
+      "Lord High Factor · Minister of Trading & Markets"
     ],
     "summary": "Twelve reserved Council portfolios serve under the Guild Master as chair. Each portfolio has a distinct remit; all share the High Council native rank.",
     "formalStatus": "Council appointments, voting eligibility and actual access are separately recorded. Listing a portfolio appoints no holder.",
@@ -34,7 +34,7 @@
     "founderRatificationRecorded": false,
     "eligibleSeatIssued": false,
     "permissionsApplied": false,
-    "sourcePath": "/static/governance/council-portfolios222.md",
+    "sourcePath": "/static/governance/council-portfolios224.md",
     "currentSeats": [
       {
         "id": "gm-chair",
@@ -49,7 +49,7 @@
       },
       {
         "id": "co-gm",
-        "label": "Hand of the Sovereign / Co-Guild Master",
+        "label": "Hand of the Sovereign · Co-Guild Master",
         "familyKey": "co_gm",
         "nodeId": "executive",
         "officeKeys": [
@@ -61,7 +61,7 @@
       },
       {
         "id": "treasurer",
-        "label": "Lord High Treasurer",
+        "label": "Lord High Treasurer · Minister of the Imperial Exchequer",
         "familyKey": "treasurer",
         "nodeId": "treasury",
         "officeKeys": [
@@ -73,7 +73,7 @@
       },
       {
         "id": "head-justice",
-        "label": "Lord High Chancellor / Head of Justice",
+        "label": "Lord High Justiciar · Minister of Justice & The Privy Court",
         "familyKey": "head_justice",
         "nodeId": "justice",
         "officeKeys": [
@@ -81,11 +81,11 @@
         ],
         "scope": "alliance",
         "codexTitle": "II",
-        "description": "The Lord High Chancellor is the High Council’s individual judicial portfolio holder. The Council of Justice and Privy Court remain institutions with separately designated hearing panels; holding this office is not a permanent seat on every case or a power to judge one’s own enforcement decision. Panel service gives no blanket Council vote, case access or enforcement power; each participant still needs case designation, relevant access and conflict review."
+        "description": "The Lord High Justiciar is the High Council’s individual judicial portfolio holder. The Council of Justice and Privy Court remain institutions with separately designated hearing panels; holding this office is not a permanent seat on every case or a power to judge one’s own enforcement decision. Panel service gives no blanket Council vote, case access or enforcement power; each participant still needs case designation, relevant access and conflict review."
       },
       {
         "id": "main-raid-lead",
-        "label": "Grand Marshal of PvE",
+        "label": "Lord High Marshal of PvE · Minister of Raid Campaigns",
         "familyKey": "main_raid",
         "nodeId": "war-raiding",
         "officeKeys": [
@@ -93,11 +93,11 @@
         ],
         "scope": "alliance",
         "codexTitle": "IV",
-        "description": "The Grand Marshal of PvE directs alliance-wide raid preparation. This is the main raid portfolio on the High Council, distinct from the NA and EU Raid Leaders who command their own scheduled teams."
+        "description": "The Lord High Marshal of PvE directs alliance-wide raid preparation. This is the main raid portfolio on the High Council, distinct from the NA and EU Raid Leaders who command their own scheduled teams."
       },
       {
         "id": "main-pvp-lead",
-        "label": "Grand Marshal of PvP",
+        "label": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
         "familyKey": "main_pvp",
         "nodeId": "war-pvp",
         "officeKeys": [
@@ -105,11 +105,11 @@
         ],
         "scope": "alliance",
         "codexTitle": "IV",
-        "description": "The Grand Marshal of PvP coordinates voluntary battleground teams and world-PvP activity across Olympus. The office supplies strategy and reliable event leadership within a PvE guild; participation in PvP is never a condition of ordinary membership."
+        "description": "The Lord High Marshal of PvP coordinates voluntary battleground teams and world-PvP activity across Olympus. The office supplies strategy and reliable event leadership within a PvE guild; participation in PvP is never a condition of ordinary membership."
       },
       {
         "id": "internal-security",
-        "label": "High Inquisitor / Minister of Internal Security",
+        "label": "Lord High Inquisitor · Minister of Internal Security",
         "familyKey": "internal_security",
         "nodeId": "security",
         "officeKeys": [
@@ -117,11 +117,11 @@
         ],
         "scope": "alliance",
         "codexTitle": "II",
-        "description": "The High Inquisitor leads the preventive safety and conduct programme. The office helps the separately authorized moderation team detect abuse and preserve proportionate evidence; it does not decide its own contested appeals or create a right to inspect private messages."
+        "description": "The Lord High Inquisitor leads the preventive safety and conduct programme. The office helps the separately authorized moderation team detect abuse and preserve proportionate evidence; it does not decide its own contested appeals or create a right to inspect private messages."
       },
       {
         "id": "intake",
-        "label": "High Minister of the Chancery & Imperial Census",
+        "label": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
         "familyKey": "chief_intake",
         "nodeId": "intake",
         "officeKeys": [
@@ -133,7 +133,7 @@
       },
       {
         "id": "concordat",
-        "label": "Lord High Envoy / Director of the Concordat",
+        "label": "Lord High Legate · Minister of the Grand Concordat",
         "familyKey": "concordat_director",
         "nodeId": "concordat",
         "officeKeys": [
@@ -141,11 +141,11 @@
         ],
         "scope": "alliance",
         "codexTitle": "IV",
-        "description": "The Grand Concordat Director coordinates the ten sister branches while preserving each Guild Master’s local command. The office turns dated capacity evidence, branch contacts and member preferences into fair routing proposals; it cannot manufacture seats or issue automatic invitations."
+        "description": "The Lord High Legate coordinates the ten sister branches while preserving each Guild Master’s local command. The office turns dated capacity evidence, branch contacts and member preferences into fair routing proposals; it cannot manufacture seats or issue automatic invitations."
       },
       {
         "id": "artisanry",
-        "label": "Grand Master Artisan",
+        "label": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
         "familyKey": "minister_artisanry",
         "nodeId": "artisanry",
         "officeKeys": [
@@ -157,7 +157,7 @@
       },
       {
         "id": "propaganda",
-        "label": "Minister of Propaganda / Chief Propagandist",
+        "label": "Lord High Herald · Minister of Propaganda",
         "familyKey": "propaganda",
         "nodeId": "propaganda",
         "officeKeys": [
@@ -169,7 +169,7 @@
       },
       {
         "id": "heraldry",
-        "label": "Lord High Herald / Minister of Heraldry",
+        "label": "Lord High Seneschal · Minister of Court Protocol & Crown Estates",
         "familyKey": "minister_heraldry",
         "nodeId": "heraldry",
         "officeKeys": [
@@ -177,11 +177,11 @@
         ],
         "scope": "alliance",
         "codexTitle": "V",
-        "description": "Alliance identity, approved communications and publication standards, coordinated through responsible local editors and emissaries."
+        "description": "Court protocol, ceremonial precedence, the court calendar and Crown facilities stewardship. Ownership, treasury custody, publicity and judicial decisions remain separately assigned."
       },
       {
         "id": "head-trading",
-        "label": "Lord High Merchant / Head of Trading & Markets",
+        "label": "Lord High Factor · Minister of Trading & Markets",
         "familyKey": "head_trading",
         "nodeId": "trading",
         "officeKeys": [
@@ -599,13 +599,13 @@
     },
     {
       "id": "heraldry",
-      "title": "Department of Heraldry",
+      "title": "Court Protocol & Crown Estates",
       "parent": "council",
       "relation": "accountability",
       "kind": "core portfolio",
       "icon": "community",
-      "remit": "Approved announcements, events, recruitment communications and participation.",
-      "limits": "Publicity needs verified facts and appropriate consent.",
+      "remit": "Court calendar, ceremonial precedence, Crown venues and the estates register; practical arrangements rather than publicity or enforcement.",
+      "limits": "No ownership, bank withdrawal, title sale or platform permission is created by this portfolio.",
       "coordinates": [],
       "chapter": "organisation-and-offices"
     },
@@ -624,7 +624,7 @@
     {
       "id": "media",
       "title": "Media and communications",
-      "parent": "heraldry",
+      "parent": "propaganda",
       "relation": "accountability",
       "kind": "shared appointment",
       "icon": "community",
@@ -636,7 +636,7 @@
     {
       "id": "events",
       "title": "Events and training",
-      "parent": "heraldry",
+      "parent": "propaganda",
       "relation": "accountability",
       "kind": "shared appointments",
       "icon": "leveling",
@@ -1447,7 +1447,7 @@
     },
     {
       "ordinal": 14,
-      "label": "Chief of Intake (Gatekeeper, Intake Gatekeeper)",
+      "label": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
       "classification": "shared",
       "nodeId": "intake",
       "note": "Duty, appointment or alias requires its own scope and acceptance; publication appoints nobody.",
@@ -1469,17 +1469,17 @@
       ],
       "department": "Intake and recruitment",
       "applicationTrack": "high_council",
-      "applicationEligible": true,
+      "applicationEligible": false,
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "applicationAliases": [
+        "Chief of Intake (Gatekeeper, Intake Gatekeeper)",
+        "Chief of Intake (Gatekeeper, Intake Gatekeeper) · Intake Minister",
         "Intake Minister"
       ],
-      "applicationLabel": "Chief of Intake (Gatekeeper, Intake Gatekeeper) · Intake Minister",
-      "applicationRoleKeys": [
-        "office_14"
-      ]
+      "applicationLabel": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
+      "applicationRoleKeys": []
     },
     {
       "ordinal": 15,
@@ -1627,7 +1627,7 @@
     },
     {
       "ordinal": 19,
-      "label": "Co-GM",
+      "label": "Hand of the Sovereign · Co-Guild Master",
       "classification": "leadership",
       "nodeId": "executive",
       "note": "Duty, appointment or alias requires its own scope and acceptance; publication appoints nobody.",
@@ -1653,8 +1653,10 @@
       "statusOverlay": false,
       "acquisition": "Royal appointment; no application or payment creates this authority.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
-      "applicationAliases": [],
-      "applicationLabel": "Co-GM",
+      "applicationAliases": [
+        "Co-GM"
+      ],
+      "applicationLabel": "Hand of the Sovereign · Co-Guild Master",
       "applicationRoleKeys": []
     },
     {
@@ -2939,7 +2941,7 @@
     },
     {
       "ordinal": 58,
-      "label": "Minister of Artisanry",
+      "label": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
       "classification": "portfolios",
       "nodeId": "artisanry",
       "note": "Duty, appointment or alias requires its own scope and acceptance; publication appoints nobody.",
@@ -2960,24 +2962,24 @@
       ],
       "department": "Association of Artisanry",
       "applicationTrack": "high_council",
-      "applicationEligible": true,
+      "applicationEligible": false,
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "applicationAliases": [
+        "Minister of Artisanry",
+        "Minister of Artisanry · Workshop Grand Master",
         "Workshop Grand Master"
       ],
-      "applicationLabel": "Minister of Artisanry · Workshop Grand Master",
-      "applicationRoleKeys": [
-        "office_58"
-      ]
+      "applicationLabel": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
+      "applicationRoleKeys": []
     },
     {
       "ordinal": 59,
-      "label": "Minister of Heraldry",
+      "label": "Lord High Seneschal · Minister of Court Protocol & Crown Estates",
       "classification": "portfolios",
       "nodeId": "heraldry",
-      "note": "Duty, appointment or alias requires its own scope and acceptance; publication appoints nobody.",
+      "note": "Reserved Council stewardship of court protocol, ceremonial precedence, Crown venues and the estates register. Event participation, creative campaigns and public communications remain coordinated with the Lord High Herald; no property, bank or moderation permission follows.",
       "nativeSlot": 1,
       "nativeRelationship": ".199 display association: Rank 2 High Council, zero-based slot 1; no automatic appointment, vote, sanction, rank change or permission.",
       "recommendedNativeSlots": [
@@ -2991,21 +2993,22 @@
       "tier": "high_council",
       "tierLabel": "High Council",
       "codexTitles": [
+        "II",
         "V"
       ],
-      "department": "Department of Heraldry",
+      "department": "Court Protocol & Crown Estates",
       "applicationTrack": "high_council",
-      "applicationEligible": true,
+      "applicationEligible": false,
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "applicationAliases": [
+        "Minister of Heraldry",
+        "Minister of Heraldry · Heraldry Minister",
         "Heraldry Minister"
       ],
-      "applicationLabel": "Minister of Heraldry · Heraldry Minister",
-      "applicationRoleKeys": [
-        "office_59"
-      ]
+      "applicationLabel": "Lord High Seneschal · Minister of Court Protocol & Crown Estates",
+      "applicationRoleKeys": []
     },
     {
       "ordinal": 60,
@@ -3876,7 +3879,7 @@
     },
     {
       "ordinal": 86,
-      "label": "Treasurer (Guild Bank)",
+      "label": "Lord High Treasurer · Minister of the Imperial Exchequer",
       "classification": "portfolios",
       "nodeId": "treasury",
       "note": "Treasurer is an appointed High Council office associated with Rank 2, zero-based slot 1; it is not an additional native rank. Bank custody, permissions, independent audit and eligible vote require separate records.",
@@ -3902,8 +3905,10 @@
       "statusOverlay": false,
       "acquisition": "Royal appointment; no application or payment creates this authority.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
-      "applicationAliases": [],
-      "applicationLabel": "Treasurer (Guild Bank)",
+      "applicationAliases": [
+        "Treasurer (Guild Bank)"
+      ],
+      "applicationLabel": "Lord High Treasurer · Minister of the Imperial Exchequer",
       "applicationRoleKeys": []
     },
     {
@@ -4218,7 +4223,7 @@
     },
     {
       "ordinal": 96,
-      "label": "Head of Trading & Markets",
+      "label": "Lord High Factor · Minister of Trading & Markets",
       "classification": "portfolios",
       "nodeId": "trading",
       "note": "Owner-directed Build .208 High Council portfolio dedicated solely to Auction House, direct trades and market economics. Publication records a reserved office, not a holder, bank access, eligible vote or issued appointment.",
@@ -4244,13 +4249,15 @@
       "statusOverlay": false,
       "acquisition": "Reserved royal appointment; no public application or payment creates this authority.",
       "discordPortal": "High Council access requires a separately verified current appointment; this portfolio grants no automatic signing, bank, bot or portal permission.",
-      "applicationAliases": [],
-      "applicationLabel": "Head of Trading & Markets",
+      "applicationAliases": [
+        "Head of Trading & Markets"
+      ],
+      "applicationLabel": "Lord High Factor · Minister of Trading & Markets",
       "applicationRoleKeys": []
     },
     {
       "ordinal": 97,
-      "label": "Grand Marshal of PvE",
+      "label": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "classification": "portfolios",
       "nodeId": "war-raiding",
       "note": "Individual reserved Council portfolio; no appointment or permissions are issued by publication.",
@@ -4276,13 +4283,15 @@
       "statusOverlay": false,
       "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
-      "applicationAliases": [],
-      "applicationLabel": "Grand Marshal of PvE",
+      "applicationAliases": [
+        "Grand Marshal of PvE"
+      ],
+      "applicationLabel": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "applicationRoleKeys": []
     },
     {
       "ordinal": 98,
-      "label": "Grand Marshal of PvP",
+      "label": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
       "classification": "portfolios",
       "nodeId": "war-pvp",
       "note": "Individual reserved Council portfolio; no appointment or permissions are issued by publication.",
@@ -4308,13 +4317,15 @@
       "statusOverlay": false,
       "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
-      "applicationAliases": [],
-      "applicationLabel": "Grand Marshal of PvP",
+      "applicationAliases": [
+        "Grand Marshal of PvP"
+      ],
+      "applicationLabel": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
       "applicationRoleKeys": []
     },
     {
       "ordinal": 99,
-      "label": "High Inquisitor / Minister of Internal Security",
+      "label": "Lord High Inquisitor · Minister of Internal Security",
       "classification": "portfolios",
       "nodeId": "security",
       "note": "Individual reserved Council portfolio; no appointment or permissions are issued by publication.",
@@ -4339,13 +4350,15 @@
       "statusOverlay": false,
       "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
-      "applicationAliases": [],
-      "applicationLabel": "High Inquisitor / Minister of Internal Security",
+      "applicationAliases": [
+        "High Inquisitor / Minister of Internal Security"
+      ],
+      "applicationLabel": "Lord High Inquisitor · Minister of Internal Security",
       "applicationRoleKeys": []
     },
     {
       "ordinal": 100,
-      "label": "Grand Concordat Director",
+      "label": "Lord High Legate · Minister of the Grand Concordat",
       "classification": "portfolios",
       "nodeId": "concordat",
       "note": "Individual reserved Council portfolio; no appointment or permissions are issued by publication.",
@@ -4371,13 +4384,15 @@
       "statusOverlay": false,
       "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
-      "applicationAliases": [],
-      "applicationLabel": "Grand Concordat Director",
+      "applicationAliases": [
+        "Grand Concordat Director"
+      ],
+      "applicationLabel": "Lord High Legate · Minister of the Grand Concordat",
       "applicationRoleKeys": []
     },
     {
       "ordinal": 101,
-      "label": "Lord High Chancellor / Head of Justice",
+      "label": "Lord High Justiciar · Minister of Justice & The Privy Court",
       "classification": "portfolios",
       "nodeId": "justice",
       "note": "Individual reserved Council portfolio; no appointment or permissions are issued by publication.",
@@ -4403,13 +4418,15 @@
       "statusOverlay": false,
       "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
-      "applicationAliases": [],
-      "applicationLabel": "Lord High Chancellor / Head of Justice",
+      "applicationAliases": [
+        "Lord High Chancellor / Head of Justice"
+      ],
+      "applicationLabel": "Lord High Justiciar · Minister of Justice & The Privy Court",
       "applicationRoleKeys": []
     },
     {
       "ordinal": 102,
-      "label": "Minister of Propaganda",
+      "label": "Lord High Herald · Minister of Propaganda",
       "classification": "portfolios",
       "nodeId": "propaganda",
       "note": "Duty, appointment or alias requires its own scope and acceptance; publication appoints nobody.",
@@ -4436,9 +4453,11 @@
       "acquisition": "Reserved Council appointment by accepted warrant; no public application.",
       "discordPortal": "No automatic Discord, publishing, moderation or bank access.",
       "applicationAliases": [
+        "Minister of Propaganda",
+        "Minister of Propaganda / Chief Propagandist",
         "Chief Propagandist"
       ],
-      "applicationLabel": "Minister of Propaganda / Chief Propagandist",
+      "applicationLabel": "Lord High Herald · Minister of Propaganda",
       "applicationRoleKeys": []
     }
   ],
@@ -4606,42 +4625,42 @@
     },
     {
       "nodeId": "war-pvp",
-      "title": "War Head for PvP",
+      "title": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
       "duty": "Coordinates shared readiness, PvP emissaries and legitimate operational planning.",
       "output": "Readiness brief, participating guild agreement and post-operation lessons.",
       "boundary": "A local Captain commands only the named event; chart references do not appoint a holder."
     },
     {
       "nodeId": "war-raiding",
-      "title": "War Head for Raiding",
+      "title": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "duty": "Coordinates raid standards, emissaries, encounter research and training.",
       "output": "Published preparation standards and event reviews.",
       "boundary": "Local Raid Leaders own their events; no implicit loot, bank or demotion power."
     },
     {
       "nodeId": "treasury",
-      "title": "Federal Treasurer",
+      "title": "Lord High Treasurer · Minister of the Imperial Exchequer",
       "duty": "Reconciles actual receipts, agreed budgets and finance correspondence.",
       "output": "Aggregate budget, commitments and reconciliation exceptions.",
       "boundary": "Treasurer is an appointed High Council office associated with Rank 2, zero-based slot 1, not a separate native rank; the holder never independently audits their own custody."
     },
     {
       "nodeId": "artisanry",
-      "title": "Minister of Artisanry",
+      "title": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
       "duty": "Coordinates willing crafters, supply requests and approved procurement.",
       "output": "Confirmed craft requests, material ownership and delivery commitments.",
       "boundary": "No forced free labour, ownership of private materials or bank access by title."
     },
     {
       "nodeId": "heraldry",
-      "title": "Minister of Heraldry",
-      "duty": "Coordinates the welcome, calendar, recruitment communication and public voice.",
-      "output": "Verified notices, event owners and clear member handoffs.",
-      "boundary": "Confidential cases and private financial details stay outside publicity."
+      "title": "Lord High Seneschal · Minister of Court Protocol & Crown Estates",
+      "duty": "Court protocol, ceremonial precedence, the court calendar and Crown facilities stewardship. Ownership, treasury custody, publicity and judicial decisions remain separately assigned.",
+      "output": "A current ceremonial calendar, precedence list, venue handover and estates register.",
+      "boundary": "No bank custody, property ownership, moderation permission or paid service is created by this guide."
     },
     {
       "nodeId": "justice",
-      "title": "Council of Justice",
+      "title": "Lord High Justiciar · Minister of Justice & The Privy Court",
       "duty": "Provides unconflicted case panels and independent appeal review.",
       "output": "Reasoned decisions, recusals, correction and appeal routes.",
       "boundary": "Default Council membership does not itself designate a case panel or grant moderation powers."
@@ -4683,7 +4702,7 @@
     },
     {
       "nodeId": "intake",
-      "title": "Chief of Intake and Recruitment Lead",
+      "title": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
       "duty": "Keeps applications moving between applicant, local Recruiter and reviewer.",
       "output": "Named contact, next step, required information and review date.",
       "boundary": "An application acceptance is not an invitation, verified link or staff appointment."
@@ -4844,28 +4863,28 @@
     },
     {
       "nodeId": "trading",
-      "title": "Head of Trading & Markets",
+      "title": "Lord High Factor · Minister of Trading & Markets",
       "duty": "Researches prices and liquidity, negotiates direct trades and manages only expressly authorized trading inventory within recorded capital, concentration and loss limits.",
       "output": "Weekly realized trading profit and loss, acquisition costs, fees, failed-auction deposits, cash, inventory age and exceptions handed to the Treasurer and independent auditor.",
       "boundary": "Dedicated trading portfolio only; no financial custody, self-audit, unrestricted capital, public application, paid guild rights or automated game actions follow from the office."
     },
     {
       "nodeId": "security",
-      "title": "High Inquisitor / Minister of Internal Security",
+      "title": "Lord High Inquisitor · Minister of Internal Security",
       "duty": "Maintains incident triage, proportionate evidence access and separately authorized enforcement handovers.",
       "output": "A documented coverage rota, case handovers, unresolved safety risks and unconflicted review requests.",
       "boundary": "No private-message surveillance, credentials, self-adjudication of appeals or payment-driven discipline."
     },
     {
       "nodeId": "concordat",
-      "title": "Grand Concordat Director",
+      "title": "Lord High Legate · Minister of the Grand Concordat",
       "duty": "Coordinates branch contacts, dated capacity evidence, fair overflow proposals and Main/Verified Alt handovers for Olympus I–X.",
       "output": "A current branch contact register, dated availability notes and an attended transfer handover with the receiving Guild Master.",
       "boundary": "No fabricated live capacity, automatic invite, purchased seat, merged branch authority or extra vote."
     },
     {
       "nodeId": "propaganda",
-      "title": "Minister of Propaganda",
+      "title": "Lord High Herald · Minister of Propaganda",
       "duty": "Set accurate, distinctive guild campaigns and recruitment storytelling.",
       "output": "A dated editorial calendar, approved creative briefs and measured campaign results.",
       "boundary": "No fabricated claims, harassment, private-data disclosure, moderation powers or paid membership promises."
@@ -5080,9 +5099,9 @@
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-      "cabinetSeatId": "heraldry",
-      "ministry": "Department of Heraldry",
-      "councilSeat": "Lord High Herald / Minister of Heraldry",
+      "cabinetSeatId": "propaganda",
+      "ministry": "Ministry of Propaganda",
+      "councilSeat": "Lord High Herald · Minister of Propaganda",
       "recommendedNativeSlots": [
         2
       ],
@@ -5186,7 +5205,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Lord High Envoy / Director of the Concordat",
+      "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
       "recommendedNativeSlots": [
         8
       ],
@@ -5216,9 +5235,9 @@
       "statusOverlay": false,
       "acquisition": "In-game verification and attended standing review; a title or status does not change native rank.",
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
-      "cabinetSeatId": "heraldry",
-      "ministry": "Department of Heraldry",
-      "councilSeat": "Lord High Herald / Minister of Heraldry",
+      "cabinetSeatId": "propaganda",
+      "ministry": "Ministry of Propaganda",
+      "councilSeat": "Lord High Herald · Minister of Propaganda",
       "recommendedNativeSlots": [
         7
       ],
@@ -5251,7 +5270,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         2
       ],
@@ -5284,7 +5303,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "artisanry",
       "ministry": "Association of Artisanry",
-      "councilSeat": "Grand Master Artisan",
+      "councilSeat": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
       "recommendedNativeSlots": [
         7
       ],
@@ -5318,7 +5337,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "head-justice",
       "ministry": "Council of Justice",
-      "councilSeat": "Lord High Chancellor / Head of Justice",
+      "councilSeat": "Lord High Justiciar · Minister of Justice & The Privy Court",
       "recommendedNativeSlots": [
         2
       ],
@@ -5351,7 +5370,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "treasurer",
       "ministry": "Federal Treasury",
-      "councilSeat": "Lord High Treasurer",
+      "councilSeat": "Lord High Treasurer · Minister of the Imperial Exchequer",
       "recommendedNativeSlots": [
         2
       ],
@@ -5384,7 +5403,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "treasurer",
       "ministry": "Federal Treasury",
-      "councilSeat": "Lord High Treasurer",
+      "councilSeat": "Lord High Treasurer · Minister of the Imperial Exchequer",
       "recommendedNativeSlots": [
         2
       ],
@@ -5416,7 +5435,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         6
       ],
@@ -5446,9 +5465,9 @@
       "statusOverlay": false,
       "acquisition": "In-game verification and attended standing review; a title or status does not change native rank.",
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
-      "cabinetSeatId": "heraldry",
-      "ministry": "Department of Heraldry",
-      "councilSeat": "Lord High Herald / Minister of Heraldry",
+      "cabinetSeatId": "propaganda",
+      "ministry": "Ministry of Propaganda",
+      "councilSeat": "Lord High Herald · Minister of Propaganda",
       "recommendedNativeSlots": [
         7
       ],
@@ -5478,9 +5497,9 @@
       "statusOverlay": false,
       "acquisition": "In-game verification and attended standing review; a title or status does not change native rank.",
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
-      "cabinetSeatId": "heraldry",
-      "ministry": "Department of Heraldry",
-      "councilSeat": "Lord High Herald / Minister of Heraldry",
+      "cabinetSeatId": "propaganda",
+      "ministry": "Ministry of Propaganda",
+      "councilSeat": "Lord High Herald · Minister of Propaganda",
       "recommendedNativeSlots": [
         7
       ],
@@ -5489,7 +5508,7 @@
     },
     {
       "key": "office_14",
-      "label": "Chief of Intake (Gatekeeper, Intake Gatekeeper)",
+      "label": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
       "group": "office",
       "termOrdinal": 14,
       "nativeRankOrdinal": 2,
@@ -5503,20 +5522,20 @@
       ],
       "department": "Intake and recruitment",
       "applicationTrack": "high_council",
-      "applicationEligible": true,
-      "applicationLabel": "Chief of Intake (Gatekeeper, Intake Gatekeeper) · Intake Minister",
+      "applicationEligible": false,
+      "applicationLabel": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
       "applicationAliases": [
+        "Chief of Intake (Gatekeeper, Intake Gatekeeper)",
+        "Chief of Intake (Gatekeeper, Intake Gatekeeper) · Intake Minister",
         "Intake Minister"
       ],
-      "applicationRoleKeys": [
-        "office_14"
-      ],
+      "applicationRoleKeys": [],
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "intake",
       "ministry": "Intake and recruitment",
-      "councilSeat": "High Minister of the Chancery & Imperial Census",
+      "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
       "recommendedNativeSlots": [
         1
       ],
@@ -5550,7 +5569,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         2
       ],
@@ -5584,7 +5603,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         2
       ],
@@ -5618,7 +5637,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         2
       ],
@@ -5660,7 +5679,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         2
       ],
@@ -5669,7 +5688,7 @@
     },
     {
       "key": "office_19",
-      "label": "Co-GM",
+      "label": "Hand of the Sovereign · Co-Guild Master",
       "group": "office",
       "termOrdinal": 19,
       "nativeRankOrdinal": 2,
@@ -5684,15 +5703,17 @@
       "department": "Co-Guild Master and Vice Guild Master",
       "applicationTrack": "high_council",
       "applicationEligible": false,
-      "applicationLabel": "Co-GM",
-      "applicationAliases": [],
+      "applicationLabel": "Hand of the Sovereign · Co-Guild Master",
+      "applicationAliases": [
+        "Co-GM"
+      ],
       "applicationRoleKeys": [],
       "statusOverlay": false,
       "acquisition": "Royal appointment; no application or payment creates this authority.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         1
       ],
@@ -5725,7 +5746,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         2
       ],
@@ -5756,9 +5777,9 @@
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-      "cabinetSeatId": "heraldry",
-      "ministry": "Department of Heraldry",
-      "councilSeat": "Lord High Herald / Minister of Heraldry",
+      "cabinetSeatId": "propaganda",
+      "ministry": "Ministry of Propaganda",
+      "councilSeat": "Lord High Herald · Minister of Propaganda",
       "recommendedNativeSlots": [
         2
       ],
@@ -5790,9 +5811,9 @@
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-      "cabinetSeatId": "heraldry",
-      "ministry": "Department of Heraldry",
-      "councilSeat": "Lord High Herald / Minister of Heraldry",
+      "cabinetSeatId": "propaganda",
+      "ministry": "Ministry of Propaganda",
+      "councilSeat": "Lord High Herald · Minister of Propaganda",
       "recommendedNativeSlots": [
         2
       ],
@@ -5821,9 +5842,9 @@
       "statusOverlay": false,
       "acquisition": "In-game verification and attended standing review; a title or status does not change native rank.",
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
-      "cabinetSeatId": "heraldry",
-      "ministry": "Department of Heraldry",
-      "councilSeat": "Lord High Herald / Minister of Heraldry",
+      "cabinetSeatId": "propaganda",
+      "ministry": "Ministry of Propaganda",
+      "councilSeat": "Lord High Herald · Minister of Propaganda",
       "recommendedNativeSlots": [
         7
       ],
@@ -5853,9 +5874,9 @@
       "statusOverlay": false,
       "acquisition": "In-game verification and attended standing review; a title or status does not change native rank.",
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
-      "cabinetSeatId": "heraldry",
-      "ministry": "Department of Heraldry",
-      "councilSeat": "Lord High Herald / Minister of Heraldry",
+      "cabinetSeatId": "propaganda",
+      "ministry": "Ministry of Propaganda",
+      "councilSeat": "Lord High Herald · Minister of Propaganda",
       "recommendedNativeSlots": [
         7
       ],
@@ -5889,7 +5910,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         6
       ],
@@ -5926,7 +5947,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "head-justice",
       "ministry": "Council of Justice",
-      "councilSeat": "Lord High Chancellor / Head of Justice",
+      "councilSeat": "Lord High Justiciar · Minister of Justice & The Privy Court",
       "applicationMetadataScope": "Historical application and ballot compatibility only; current institutional display and reserved-seat admission are separate.",
       "recommendedNativeSlots": [
         1
@@ -5960,7 +5981,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "artisanry",
       "ministry": "Association of Artisanry",
-      "councilSeat": "Grand Master Artisan",
+      "councilSeat": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
       "recommendedNativeSlots": [
         7
       ],
@@ -5994,7 +6015,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         1
       ],
@@ -6028,7 +6049,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         2
       ],
@@ -6061,7 +6082,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         2
       ],
@@ -6094,7 +6115,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         2
       ],
@@ -6163,7 +6184,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "internal-security",
       "ministry": "Internal Security",
-      "councilSeat": "High Inquisitor / Minister of Internal Security",
+      "councilSeat": "Lord High Inquisitor · Minister of Internal Security",
       "recommendedNativeSlots": [
         2
       ],
@@ -6197,7 +6218,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Lord High Envoy / Director of the Concordat",
+      "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
       "recommendedNativeSlots": [
         2
       ],
@@ -6231,7 +6252,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "artisanry",
       "ministry": "Association of Artisanry",
-      "councilSeat": "Grand Master Artisan",
+      "councilSeat": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
       "recommendedNativeSlots": [
         2
       ],
@@ -6265,7 +6286,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "treasurer",
       "ministry": "Federal Treasury",
-      "councilSeat": "Lord High Treasurer",
+      "councilSeat": "Lord High Treasurer · Minister of the Imperial Exchequer",
       "recommendedNativeSlots": [
         2
       ],
@@ -6297,9 +6318,9 @@
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-      "cabinetSeatId": "heraldry",
-      "ministry": "Department of Heraldry",
-      "councilSeat": "Lord High Herald / Minister of Heraldry",
+      "cabinetSeatId": "propaganda",
+      "ministry": "Ministry of Propaganda",
+      "councilSeat": "Lord High Herald · Minister of Propaganda",
       "recommendedNativeSlots": [
         2
       ],
@@ -6333,7 +6354,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         2
       ],
@@ -6364,9 +6385,9 @@
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-      "cabinetSeatId": "heraldry",
-      "ministry": "Department of Heraldry",
-      "councilSeat": "Lord High Herald / Minister of Heraldry",
+      "cabinetSeatId": "propaganda",
+      "ministry": "Ministry of Propaganda",
+      "councilSeat": "Lord High Herald · Minister of Propaganda",
       "recommendedNativeSlots": [
         2
       ],
@@ -6398,9 +6419,9 @@
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-      "cabinetSeatId": "heraldry",
-      "ministry": "Department of Heraldry",
-      "councilSeat": "Lord High Herald / Minister of Heraldry",
+      "cabinetSeatId": "propaganda",
+      "ministry": "Ministry of Propaganda",
+      "councilSeat": "Lord High Herald · Minister of Propaganda",
       "recommendedNativeSlots": [
         2
       ],
@@ -6530,7 +6551,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "intake",
       "ministry": "Intake and recruitment",
-      "councilSeat": "High Minister of the Chancery & Imperial Census",
+      "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
       "recommendedNativeSlots": [
         2
       ],
@@ -6564,7 +6585,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         1
       ],
@@ -6596,7 +6617,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         5
       ],
@@ -6628,7 +6649,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         7
       ],
@@ -6659,7 +6680,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "intake",
       "ministry": "Intake and recruitment",
-      "councilSeat": "High Minister of the Chancery & Imperial Census",
+      "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
       "recommendedNativeSlots": [
         9
       ],
@@ -6693,7 +6714,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         2
       ],
@@ -6725,9 +6746,9 @@
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-      "cabinetSeatId": "heraldry",
-      "ministry": "Department of Heraldry",
-      "councilSeat": "Lord High Herald / Minister of Heraldry",
+      "cabinetSeatId": "propaganda",
+      "ministry": "Ministry of Propaganda",
+      "councilSeat": "Lord High Herald · Minister of Propaganda",
       "recommendedNativeSlots": [
         2
       ],
@@ -6761,7 +6782,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         4
       ],
@@ -6795,7 +6816,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         4
       ],
@@ -6826,9 +6847,9 @@
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-      "cabinetSeatId": "heraldry",
-      "ministry": "Department of Heraldry",
-      "councilSeat": "Lord High Herald / Minister of Heraldry",
+      "cabinetSeatId": "propaganda",
+      "ministry": "Ministry of Propaganda",
+      "councilSeat": "Lord High Herald · Minister of Propaganda",
       "recommendedNativeSlots": [
         2
       ],
@@ -6859,9 +6880,9 @@
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-      "cabinetSeatId": "heraldry",
-      "ministry": "Department of Heraldry",
-      "councilSeat": "Lord High Herald / Minister of Heraldry",
+      "cabinetSeatId": "propaganda",
+      "ministry": "Ministry of Propaganda",
+      "councilSeat": "Lord High Herald · Minister of Propaganda",
       "recommendedNativeSlots": [
         2
       ],
@@ -6892,7 +6913,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "intake",
       "ministry": "Intake and recruitment",
-      "councilSeat": "High Minister of the Chancery & Imperial Census",
+      "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
       "recommendedNativeSlots": [
         7
       ],
@@ -6924,7 +6945,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "artisanry",
       "ministry": "Association of Artisanry",
-      "councilSeat": "Grand Master Artisan",
+      "councilSeat": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
       "recommendedNativeSlots": [
         5
       ],
@@ -6958,7 +6979,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         1
       ],
@@ -6967,7 +6988,7 @@
     },
     {
       "key": "office_58",
-      "label": "Minister of Artisanry",
+      "label": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
       "group": "office",
       "termOrdinal": 58,
       "nativeRankOrdinal": 2,
@@ -6980,20 +7001,20 @@
       ],
       "department": "Association of Artisanry",
       "applicationTrack": "high_council",
-      "applicationEligible": true,
-      "applicationLabel": "Minister of Artisanry · Workshop Grand Master",
+      "applicationEligible": false,
+      "applicationLabel": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
       "applicationAliases": [
+        "Minister of Artisanry",
+        "Minister of Artisanry · Workshop Grand Master",
         "Workshop Grand Master"
       ],
-      "applicationRoleKeys": [
-        "office_58"
-      ],
+      "applicationRoleKeys": [],
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "artisanry",
       "ministry": "Association of Artisanry",
-      "councilSeat": "Grand Master Artisan",
+      "councilSeat": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
       "recommendedNativeSlots": [
         1
       ],
@@ -7002,7 +7023,7 @@
     },
     {
       "key": "office_59",
-      "label": "Minister of Heraldry",
+      "label": "Lord High Seneschal · Minister of Court Protocol & Crown Estates",
       "group": "office",
       "termOrdinal": 59,
       "nativeRankOrdinal": 2,
@@ -7011,24 +7032,25 @@
       "tier": "high_council",
       "tierLabel": "High Council",
       "codexTitles": [
+        "II",
         "V"
       ],
-      "department": "Department of Heraldry",
+      "department": "Court Protocol & Crown Estates",
       "applicationTrack": "high_council",
-      "applicationEligible": true,
-      "applicationLabel": "Minister of Heraldry · Heraldry Minister",
+      "applicationEligible": false,
+      "applicationLabel": "Lord High Seneschal · Minister of Court Protocol & Crown Estates",
       "applicationAliases": [
+        "Minister of Heraldry",
+        "Minister of Heraldry · Heraldry Minister",
         "Heraldry Minister"
       ],
-      "applicationRoleKeys": [
-        "office_59"
-      ],
+      "applicationRoleKeys": [],
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "heraldry",
-      "ministry": "Department of Heraldry",
-      "councilSeat": "Lord High Herald / Minister of Heraldry",
+      "ministry": "Court Protocol & Crown Estates",
+      "councilSeat": "Lord High Seneschal · Minister of Court Protocol & Crown Estates",
       "recommendedNativeSlots": [
         1
       ],
@@ -7062,7 +7084,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "internal-security",
       "ministry": "Internal Security",
-      "councilSeat": "High Inquisitor / Minister of Internal Security",
+      "councilSeat": "Lord High Inquisitor · Minister of Internal Security",
       "recommendedNativeSlots": [
         2
       ],
@@ -7094,7 +7116,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "head-justice",
       "ministry": "Council of Justice",
-      "councilSeat": "Lord High Chancellor / Head of Justice",
+      "councilSeat": "Lord High Justiciar · Minister of Justice & The Privy Court",
       "recommendedNativeSlots": [
         7
       ],
@@ -7128,7 +7150,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Lord High Envoy / Director of the Concordat",
+      "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
       "recommendedNativeSlots": [
         2
       ],
@@ -7162,7 +7184,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Lord High Envoy / Director of the Concordat",
+      "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
       "recommendedNativeSlots": [
         3
       ],
@@ -7194,7 +7216,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "head-justice",
       "ministry": "Council of Justice",
-      "councilSeat": "Lord High Chancellor / Head of Justice",
+      "councilSeat": "Lord High Justiciar · Minister of Justice & The Privy Court",
       "recommendedNativeSlots": [
         7
       ],
@@ -7228,7 +7250,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Lord High Envoy / Director of the Concordat",
+      "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
       "recommendedNativeSlots": [
         2
       ],
@@ -7260,7 +7282,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "intake",
       "ministry": "Intake and recruitment",
-      "councilSeat": "High Minister of the Chancery & Imperial Census",
+      "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
       "recommendedNativeSlots": [
         9
       ],
@@ -7296,7 +7318,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "head-justice",
       "ministry": "Council of Justice",
-      "councilSeat": "Lord High Chancellor / Head of Justice",
+      "councilSeat": "Lord High Justiciar · Minister of Justice & The Privy Court",
       "recommendedNativeSlots": [
         1
       ],
@@ -7328,7 +7350,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "head-justice",
       "ministry": "Council of Justice",
-      "councilSeat": "Lord High Chancellor / Head of Justice",
+      "councilSeat": "Lord High Justiciar · Minister of Justice & The Privy Court",
       "recommendedNativeSlots": [
         9
       ],
@@ -7361,7 +7383,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "artisanry",
       "ministry": "Association of Artisanry",
-      "councilSeat": "Grand Master Artisan",
+      "councilSeat": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
       "recommendedNativeSlots": [
         2
       ],
@@ -7395,7 +7417,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-pvp-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvP",
+      "councilSeat": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
       "recommendedNativeSlots": [
         4
       ],
@@ -7429,7 +7451,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-pvp-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvP",
+      "councilSeat": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
       "recommendedNativeSlots": [
         4
       ],
@@ -7462,7 +7484,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "treasurer",
       "ministry": "Federal Treasury",
-      "councilSeat": "Lord High Treasurer",
+      "councilSeat": "Lord High Treasurer · Minister of the Imperial Exchequer",
       "recommendedNativeSlots": [
         2
       ],
@@ -7497,7 +7519,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         4
       ],
@@ -7532,7 +7554,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         4
       ],
@@ -7563,7 +7585,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         6
       ],
@@ -7595,7 +7617,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "intake",
       "ministry": "Intake and recruitment",
-      "councilSeat": "High Minister of the Chancery & Imperial Census",
+      "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
       "recommendedNativeSlots": [
         9
       ],
@@ -7629,7 +7651,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "intake",
       "ministry": "Intake and recruitment",
-      "councilSeat": "High Minister of the Chancery & Imperial Census",
+      "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
       "recommendedNativeSlots": [
         2
       ],
@@ -7663,7 +7685,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "intake",
       "ministry": "Intake and recruitment",
-      "councilSeat": "High Minister of the Chancery & Imperial Census",
+      "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
       "recommendedNativeSlots": [
         2
       ],
@@ -7697,7 +7719,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "intake",
       "ministry": "Intake and recruitment",
-      "councilSeat": "High Minister of the Chancery & Imperial Census",
+      "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
       "recommendedNativeSlots": [
         2
       ],
@@ -7727,9 +7749,9 @@
       "statusOverlay": false,
       "acquisition": "In-game verification and attended standing review; a title or status does not change native rank.",
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
-      "cabinetSeatId": "heraldry",
-      "ministry": "Department of Heraldry",
-      "councilSeat": "Lord High Herald / Minister of Heraldry",
+      "cabinetSeatId": "propaganda",
+      "ministry": "Ministry of Propaganda",
+      "councilSeat": "Lord High Herald · Minister of Propaganda",
       "recommendedNativeSlots": [
         7
       ],
@@ -7863,7 +7885,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "head-justice",
       "ministry": "Council of Justice",
-      "councilSeat": "Lord High Chancellor / Head of Justice",
+      "councilSeat": "Lord High Justiciar · Minister of Justice & The Privy Court",
       "recommendedNativeSlots": [
         1
       ],
@@ -7895,7 +7917,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "treasurer",
       "ministry": "Federal Treasury",
-      "councilSeat": "Lord High Treasurer",
+      "councilSeat": "Lord High Treasurer · Minister of the Imperial Exchequer",
       "recommendedNativeSlots": [
         7
       ],
@@ -7904,7 +7926,7 @@
     },
     {
       "key": "office_86",
-      "label": "Treasurer (Guild Bank)",
+      "label": "Lord High Treasurer · Minister of the Imperial Exchequer",
       "group": "office",
       "termOrdinal": 86,
       "nativeRankOrdinal": 2,
@@ -7919,15 +7941,17 @@
       "department": "Federal Treasury",
       "applicationTrack": "high_council",
       "applicationEligible": false,
-      "applicationLabel": "Treasurer (Guild Bank)",
-      "applicationAliases": [],
+      "applicationLabel": "Lord High Treasurer · Minister of the Imperial Exchequer",
+      "applicationAliases": [
+        "Treasurer (Guild Bank)"
+      ],
       "applicationRoleKeys": [],
       "statusOverlay": false,
       "acquisition": "Royal appointment; no application or payment creates this authority.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "treasurer",
       "ministry": "Federal Treasury",
-      "councilSeat": "Lord High Treasurer",
+      "councilSeat": "Lord High Treasurer · Minister of the Imperial Exchequer",
       "recommendedNativeSlots": [
         1
       ],
@@ -7959,7 +7983,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "intake",
       "ministry": "Intake and recruitment",
-      "councilSeat": "High Minister of the Chancery & Imperial Census",
+      "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
       "recommendedNativeSlots": [
         9
       ],
@@ -7993,7 +8017,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "intake",
       "ministry": "Intake and recruitment",
-      "councilSeat": "High Minister of the Chancery & Imperial Census",
+      "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
       "recommendedNativeSlots": [
         2
       ],
@@ -8025,7 +8049,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         6
       ],
@@ -8056,7 +8080,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         5
       ],
@@ -8088,7 +8112,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         5
       ],
@@ -8120,7 +8144,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         1
       ],
@@ -8152,7 +8176,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         7
       ],
@@ -8189,7 +8213,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "co-gm",
       "ministry": "Department of War",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "applicationMetadataScope": "Historical application and ballot compatibility only; current institutional display and reserved-seat admission are separate.",
       "recommendedNativeSlots": [
         1
@@ -8224,7 +8248,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         2
       ],
@@ -8233,7 +8257,7 @@
     },
     {
       "key": "office_96",
-      "label": "Head of Trading & Markets",
+      "label": "Lord High Factor · Minister of Trading & Markets",
       "group": "office",
       "termOrdinal": 96,
       "nativeRankOrdinal": 2,
@@ -8248,15 +8272,17 @@
       "department": "Trading & Markets",
       "applicationTrack": "high_council",
       "applicationEligible": false,
-      "applicationLabel": "Head of Trading & Markets",
-      "applicationAliases": [],
+      "applicationLabel": "Lord High Factor · Minister of Trading & Markets",
+      "applicationAliases": [
+        "Head of Trading & Markets"
+      ],
       "applicationRoleKeys": [],
       "statusOverlay": false,
       "acquisition": "Reserved royal appointment; no public application or payment creates this authority.",
       "discordPortal": "High Council access requires a separately verified current appointment; this portfolio grants no automatic signing, bank, bot or portal permission.",
       "cabinetSeatId": "head-trading",
       "ministry": "Trading & Markets",
-      "councilSeat": "Lord High Merchant / Head of Trading & Markets",
+      "councilSeat": "Lord High Factor · Minister of Trading & Markets",
       "recommendedNativeSlots": [
         1
       ],
@@ -8265,7 +8291,7 @@
     },
     {
       "key": "office_97",
-      "label": "Grand Marshal of PvE",
+      "label": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "group": "office",
       "termOrdinal": 97,
       "nativeRankOrdinal": 2,
@@ -8280,15 +8306,17 @@
       "department": "Department of War — PvE",
       "applicationTrack": "high_council",
       "applicationEligible": false,
-      "applicationLabel": "Grand Marshal of PvE",
-      "applicationAliases": [],
+      "applicationLabel": "Lord High Marshal of PvE · Minister of Raid Campaigns",
+      "applicationAliases": [
+        "Grand Marshal of PvE"
+      ],
       "applicationRoleKeys": [],
       "statusOverlay": false,
       "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         1
       ],
@@ -8297,7 +8325,7 @@
     },
     {
       "key": "office_98",
-      "label": "Grand Marshal of PvP",
+      "label": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
       "group": "office",
       "termOrdinal": 98,
       "nativeRankOrdinal": 2,
@@ -8312,15 +8340,17 @@
       "department": "Department of War — PvP",
       "applicationTrack": "high_council",
       "applicationEligible": false,
-      "applicationLabel": "Grand Marshal of PvP",
-      "applicationAliases": [],
+      "applicationLabel": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
+      "applicationAliases": [
+        "Grand Marshal of PvP"
+      ],
       "applicationRoleKeys": [],
       "statusOverlay": false,
       "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "main-pvp-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvP",
+      "councilSeat": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
       "recommendedNativeSlots": [
         1
       ],
@@ -8329,7 +8359,7 @@
     },
     {
       "key": "office_99",
-      "label": "High Inquisitor / Minister of Internal Security",
+      "label": "Lord High Inquisitor · Minister of Internal Security",
       "group": "office",
       "termOrdinal": 99,
       "nativeRankOrdinal": 2,
@@ -8343,15 +8373,17 @@
       "department": "Internal Security",
       "applicationTrack": "high_council",
       "applicationEligible": false,
-      "applicationLabel": "High Inquisitor / Minister of Internal Security",
-      "applicationAliases": [],
+      "applicationLabel": "Lord High Inquisitor · Minister of Internal Security",
+      "applicationAliases": [
+        "High Inquisitor / Minister of Internal Security"
+      ],
       "applicationRoleKeys": [],
       "statusOverlay": false,
       "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "internal-security",
       "ministry": "Internal Security",
-      "councilSeat": "High Inquisitor / Minister of Internal Security",
+      "councilSeat": "Lord High Inquisitor · Minister of Internal Security",
       "recommendedNativeSlots": [
         1
       ],
@@ -8360,7 +8392,7 @@
     },
     {
       "key": "office_100",
-      "label": "Grand Concordat Director",
+      "label": "Lord High Legate · Minister of the Grand Concordat",
       "group": "office",
       "termOrdinal": 100,
       "nativeRankOrdinal": 2,
@@ -8375,15 +8407,17 @@
       "department": "Grand Alliance Concordat",
       "applicationTrack": "high_council",
       "applicationEligible": false,
-      "applicationLabel": "Grand Concordat Director",
-      "applicationAliases": [],
+      "applicationLabel": "Lord High Legate · Minister of the Grand Concordat",
+      "applicationAliases": [
+        "Grand Concordat Director"
+      ],
       "applicationRoleKeys": [],
       "statusOverlay": false,
       "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Lord High Envoy / Director of the Concordat",
+      "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
       "recommendedNativeSlots": [
         1
       ],
@@ -8392,7 +8426,7 @@
     },
     {
       "key": "office_101",
-      "label": "Lord High Chancellor / Head of Justice",
+      "label": "Lord High Justiciar · Minister of Justice & The Privy Court",
       "group": "office",
       "termOrdinal": 101,
       "nativeRankOrdinal": 2,
@@ -8407,15 +8441,17 @@
       "department": "Privy Court and Justice",
       "applicationTrack": "high_council",
       "applicationEligible": false,
-      "applicationLabel": "Lord High Chancellor / Head of Justice",
-      "applicationAliases": [],
+      "applicationLabel": "Lord High Justiciar · Minister of Justice & The Privy Court",
+      "applicationAliases": [
+        "Lord High Chancellor / Head of Justice"
+      ],
       "applicationRoleKeys": [],
       "statusOverlay": false,
       "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "head-justice",
       "ministry": "Council of Justice",
-      "councilSeat": "Lord High Chancellor / Head of Justice",
+      "councilSeat": "Lord High Justiciar · Minister of Justice & The Privy Court",
       "recommendedNativeSlots": [
         1
       ],
@@ -8424,7 +8460,7 @@
     },
     {
       "key": "office_102",
-      "label": "Minister of Propaganda",
+      "label": "Lord High Herald · Minister of Propaganda",
       "group": "office",
       "termOrdinal": 102,
       "nativeRankOrdinal": 2,
@@ -8439,8 +8475,10 @@
       "department": "Ministry of Propaganda",
       "applicationTrack": "high_council",
       "applicationEligible": false,
-      "applicationLabel": "Minister of Propaganda / Chief Propagandist",
+      "applicationLabel": "Lord High Herald · Minister of Propaganda",
       "applicationAliases": [
+        "Minister of Propaganda",
+        "Minister of Propaganda / Chief Propagandist",
         "Chief Propagandist"
       ],
       "applicationRoleKeys": [],
@@ -8449,7 +8487,7 @@
       "discordPortal": "No automatic Discord, publishing, moderation or bank access.",
       "cabinetSeatId": "propaganda",
       "ministry": "Ministry of Propaganda",
-      "councilSeat": "Minister of Propaganda / Chief Propagandist",
+      "councilSeat": "Lord High Herald · Minister of Propaganda",
       "recommendedNativeSlots": [
         1
       ],
@@ -8458,7 +8496,7 @@
     },
     {
       "key": "co_gm",
-      "label": "Co-Guild Master",
+      "label": "Hand of the Sovereign · Co-Guild Master",
       "group": "leadership",
       "aliasOf": "office_19",
       "nativeRankOrdinal": 2,
@@ -8473,15 +8511,17 @@
       "department": "Co-Guild Master and Vice Guild Master",
       "applicationTrack": "high_council",
       "applicationEligible": false,
-      "applicationLabel": "Co-Guild Master",
-      "applicationAliases": [],
+      "applicationLabel": "Co-Guild Master · Co-GM",
+      "applicationAliases": [
+        "Co-GM"
+      ],
       "applicationRoleKeys": [],
       "statusOverlay": false,
       "acquisition": "Royal appointment; no application or payment creates this authority.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         1
       ],
@@ -8490,7 +8530,7 @@
     },
     {
       "key": "guild_master",
-      "label": "Guild Master (Olympus 2 and later)",
+      "label": "Guild Master (GM)",
       "group": "leadership",
       "aliasOf": "office_43",
       "nativeRankOrdinal": 1,
@@ -8547,7 +8587,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Lord High Envoy / Director of the Concordat",
+      "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
       "recommendedNativeSlots": [
         2
       ],
@@ -8581,7 +8621,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         4
       ],
@@ -8615,7 +8655,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         4
       ],
@@ -8649,7 +8689,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         4
       ],
@@ -8683,7 +8723,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         4
       ],
@@ -8717,7 +8757,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "intake",
       "ministry": "Intake and recruitment",
-      "councilSeat": "High Minister of the Chancery & Imperial Census",
+      "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
       "recommendedNativeSlots": [
         2
       ],
@@ -8748,9 +8788,9 @@
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-      "cabinetSeatId": "heraldry",
-      "ministry": "Department of Heraldry",
-      "councilSeat": "Lord High Herald / Minister of Heraldry",
+      "cabinetSeatId": "propaganda",
+      "ministry": "Ministry of Propaganda",
+      "councilSeat": "Lord High Herald · Minister of Propaganda",
       "recommendedNativeSlots": [
         2
       ],
@@ -8780,9 +8820,9 @@
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-      "cabinetSeatId": "heraldry",
-      "ministry": "Department of Heraldry",
-      "councilSeat": "Lord High Herald / Minister of Heraldry",
+      "cabinetSeatId": "propaganda",
+      "ministry": "Ministry of Propaganda",
+      "councilSeat": "Lord High Herald · Minister of Propaganda",
       "recommendedNativeSlots": [
         2
       ],
@@ -8816,7 +8856,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-pvp-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvP",
+      "councilSeat": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
       "recommendedNativeSlots": [
         4
       ],
@@ -8849,7 +8889,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Lord High Envoy / Director of the Concordat",
+      "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
       "recommendedNativeSlots": [
         2
       ],
@@ -8883,7 +8923,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         4
       ],
@@ -8892,7 +8932,7 @@
     },
     {
       "key": "treasurer",
-      "label": "Treasurer / Guild Bank",
+      "label": "Lord High Treasurer · Minister of the Imperial Exchequer",
       "group": "leadership",
       "aliasOf": "office_86",
       "nativeRankOrdinal": 2,
@@ -8907,15 +8947,17 @@
       "department": "Federal Treasury",
       "applicationTrack": "high_council",
       "applicationEligible": false,
-      "applicationLabel": "Treasurer / Guild Bank",
-      "applicationAliases": [],
+      "applicationLabel": "Treasurer / Guild Bank · Treasurer (Guild Bank)",
+      "applicationAliases": [
+        "Treasurer (Guild Bank)"
+      ],
       "applicationRoleKeys": [],
       "statusOverlay": false,
       "acquisition": "Royal appointment; no application or payment creates this authority.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "treasurer",
       "ministry": "Federal Treasury",
-      "councilSeat": "Lord High Treasurer",
+      "councilSeat": "Lord High Treasurer · Minister of the Imperial Exchequer",
       "recommendedNativeSlots": [
         1
       ],
@@ -8948,7 +8990,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "artisanry",
       "ministry": "Association of Artisanry",
-      "councilSeat": "Grand Master Artisan",
+      "councilSeat": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
       "recommendedNativeSlots": [
         2
       ],
@@ -8982,7 +9024,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "internal-security",
       "ministry": "Internal Security",
-      "councilSeat": "High Inquisitor / Minister of Internal Security",
+      "councilSeat": "Lord High Inquisitor · Minister of Internal Security",
       "recommendedNativeSlots": [
         2
       ],
@@ -9016,7 +9058,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         2
       ],
@@ -9050,7 +9092,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         2
       ],
@@ -9084,7 +9126,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         2
       ],
@@ -9118,7 +9160,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         2
       ],
@@ -9152,7 +9194,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         2
       ],
@@ -9186,7 +9228,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         2
       ],
@@ -9220,7 +9262,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         2
       ],
@@ -9254,7 +9296,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         2
       ],
@@ -9288,7 +9330,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         2
       ],
@@ -9352,7 +9394,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         1
       ],
@@ -9384,7 +9426,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Lord High Envoy / Director of the Concordat",
+      "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
       "recommendedNativeSlots": [
         2
       ],
@@ -9416,7 +9458,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Lord High Envoy / Director of the Concordat",
+      "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
       "recommendedNativeSlots": [
         3
       ],
@@ -9448,7 +9490,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         4
       ],
@@ -9479,7 +9521,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
+      "councilSeat": "Hand of the Sovereign · Co-Guild Master",
       "recommendedNativeSlots": [
         5
       ],
@@ -9510,7 +9552,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "main-raid-lead",
       "ministry": "Department of War",
-      "councilSeat": "Grand Marshal of PvE",
+      "councilSeat": "Lord High Marshal of PvE · Minister of Raid Campaigns",
       "recommendedNativeSlots": [
         6
       ],
@@ -9541,7 +9583,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "intake",
       "ministry": "Intake and recruitment",
-      "councilSeat": "High Minister of the Chancery & Imperial Census",
+      "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
       "recommendedNativeSlots": [
         7
       ],
@@ -9572,7 +9614,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Lord High Envoy / Director of the Concordat",
+      "councilSeat": "Lord High Legate · Minister of the Grand Concordat",
       "recommendedNativeSlots": [
         8
       ],
@@ -9603,7 +9645,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "intake",
       "ministry": "Intake and recruitment",
-      "councilSeat": "High Minister of the Chancery & Imperial Census",
+      "councilSeat": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
       "recommendedNativeSlots": [
         9
       ],
@@ -9627,15 +9669,17 @@
       "department": "Federal Treasury",
       "applicationTrack": "high_council",
       "applicationEligible": false,
-      "applicationLabel": "Treasurer (Guild Bank)",
-      "applicationAliases": [],
+      "applicationLabel": "Lord High Treasurer · Minister of the Imperial Exchequer",
+      "applicationAliases": [
+        "Treasurer (Guild Bank)"
+      ],
       "applicationRoleKeys": [],
       "statusOverlay": false,
       "acquisition": "Royal appointment; no application or payment creates this authority.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "treasurer",
       "ministry": "Federal Treasury",
-      "councilSeat": "Lord High Treasurer",
+      "councilSeat": "Lord High Treasurer · Minister of the Imperial Exchequer",
       "recommendedNativeSlots": [
         1
       ],
@@ -9672,7 +9716,7 @@
       "id": "high_council",
       "label": "High Council Application",
       "rankPath": "Rank 2 High Council",
-      "description": "Reserved historical category; not open for applications. Current Council portfolios: Co-Guild Master / Hand of the Sovereign; Lord High Treasurer; Lord High Chancellor / Head of Justice; Grand Marshal of PvE; Grand Marshal of PvP; High Inquisitor / Internal Security; High Minister of the Chancery & Imperial Census; Grand Concordat Director; Grand Master Artisan; Minister of Propaganda; Lord High Herald; Head of Trading & Markets. Every appointment and permission requires separate review."
+      "description": "Reserved historical category; not open for applications. Hand of the Sovereign · Co-Guild Master; Lord High Treasurer · Minister of the Imperial Exchequer; Lord High Justiciar · Minister of Justice & The Privy Court; Lord High Marshal of PvE · Minister of Raid Campaigns; Lord High Marshal of PvP · Minister of Battlegrounds & Honor; Lord High Inquisitor · Minister of Internal Security; Lord High Chancellor · Minister of the Chancery & Imperial Census; Lord High Legate · Minister of the Grand Concordat; Lord High Artificer · Minister of Artisanry & The Guild Workshop; Lord High Herald · Minister of Propaganda; Lord High Seneschal · Minister of Court Protocol & Crown Estates; Lord High Factor · Minister of Trading & Markets. Every appointment and permission requires separate review."
     },
     {
       "id": "patron",
@@ -9688,10 +9732,10 @@
     "permissionsApplied": false,
     "offices": {
       "office_01": {
-        "seatId": "heraldry",
-        "seatLabel": "Lord High Herald / Minister of Heraldry",
-        "ministryId": "heraldry",
-        "ministry": "Department of Heraldry",
+        "seatId": "propaganda",
+        "seatLabel": "Lord High Herald · Minister of Propaganda",
+        "ministryId": "propaganda",
+        "ministry": "Ministry of Propaganda",
         "codexTitles": [
           "V"
         ],
@@ -9723,7 +9767,7 @@
       },
       "office_04": {
         "seatId": "concordat",
-        "seatLabel": "Lord High Envoy / Director of the Concordat",
+        "seatLabel": "Lord High Legate · Minister of the Grand Concordat",
         "ministryId": "concordat",
         "ministry": "Grand Alliance Concordat",
         "codexTitles": [
@@ -9732,10 +9776,10 @@
         "independentReview": false
       },
       "office_05": {
-        "seatId": "heraldry",
-        "seatLabel": "Lord High Herald / Minister of Heraldry",
-        "ministryId": "heraldry",
-        "ministry": "Department of Heraldry",
+        "seatId": "propaganda",
+        "seatLabel": "Lord High Herald · Minister of Propaganda",
+        "ministryId": "propaganda",
+        "ministry": "Ministry of Propaganda",
         "codexTitles": [
           "IV",
           "V"
@@ -9744,7 +9788,7 @@
       },
       "office_06": {
         "seatId": "co-gm",
-        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
+        "seatLabel": "Hand of the Sovereign · Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -9754,7 +9798,7 @@
       },
       "office_07": {
         "seatId": "artisanry",
-        "seatLabel": "Grand Master Artisan",
+        "seatLabel": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
         "ministryId": "artisanry",
         "ministry": "Association of Artisanry",
         "codexTitles": [
@@ -9764,7 +9808,7 @@
       },
       "office_08": {
         "seatId": "head-justice",
-        "seatLabel": "Lord High Chancellor / Head of Justice",
+        "seatLabel": "Lord High Justiciar · Minister of Justice & The Privy Court",
         "ministryId": "justice",
         "ministry": "Council of Justice",
         "codexTitles": [
@@ -9775,7 +9819,7 @@
       },
       "office_09": {
         "seatId": "treasurer",
-        "seatLabel": "Lord High Treasurer",
+        "seatLabel": "Lord High Treasurer · Minister of the Imperial Exchequer",
         "ministryId": "treasury",
         "ministry": "Federal Treasury",
         "codexTitles": [
@@ -9785,7 +9829,7 @@
       },
       "office_10": {
         "seatId": "treasurer",
-        "seatLabel": "Lord High Treasurer",
+        "seatLabel": "Lord High Treasurer · Minister of the Imperial Exchequer",
         "ministryId": "treasury",
         "ministry": "Federal Treasury",
         "codexTitles": [
@@ -9795,7 +9839,7 @@
       },
       "office_11": {
         "seatId": "main-raid-lead",
-        "seatLabel": "Grand Marshal of PvE",
+        "seatLabel": "Lord High Marshal of PvE · Minister of Raid Campaigns",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -9805,10 +9849,10 @@
         "independentReview": false
       },
       "office_12": {
-        "seatId": "heraldry",
-        "seatLabel": "Lord High Herald / Minister of Heraldry",
-        "ministryId": "heraldry",
-        "ministry": "Department of Heraldry",
+        "seatId": "propaganda",
+        "seatLabel": "Lord High Herald · Minister of Propaganda",
+        "ministryId": "propaganda",
+        "ministry": "Ministry of Propaganda",
         "codexTitles": [
           "II",
           "V"
@@ -9816,10 +9860,10 @@
         "independentReview": false
       },
       "office_13": {
-        "seatId": "heraldry",
-        "seatLabel": "Lord High Herald / Minister of Heraldry",
-        "ministryId": "heraldry",
-        "ministry": "Department of Heraldry",
+        "seatId": "propaganda",
+        "seatLabel": "Lord High Herald · Minister of Propaganda",
+        "ministryId": "propaganda",
+        "ministry": "Ministry of Propaganda",
         "codexTitles": [
           "IV",
           "V"
@@ -9828,7 +9872,7 @@
       },
       "office_14": {
         "seatId": "intake",
-        "seatLabel": "High Minister of the Chancery & Imperial Census",
+        "seatLabel": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
         "ministryId": "intake",
         "ministry": "Intake and recruitment",
         "codexTitles": [
@@ -9839,7 +9883,7 @@
       },
       "office_15": {
         "seatId": "co-gm",
-        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
+        "seatLabel": "Hand of the Sovereign · Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -9850,7 +9894,7 @@
       },
       "office_16": {
         "seatId": "main-raid-lead",
-        "seatLabel": "Grand Marshal of PvE",
+        "seatLabel": "Lord High Marshal of PvE · Minister of Raid Campaigns",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -9861,7 +9905,7 @@
       },
       "office_17": {
         "seatId": "main-raid-lead",
-        "seatLabel": "Grand Marshal of PvE",
+        "seatLabel": "Lord High Marshal of PvE · Minister of Raid Campaigns",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -9872,7 +9916,7 @@
       },
       "office_18": {
         "seatId": "main-raid-lead",
-        "seatLabel": "Grand Marshal of PvE",
+        "seatLabel": "Lord High Marshal of PvE · Minister of Raid Campaigns",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -9883,7 +9927,7 @@
       },
       "office_19": {
         "seatId": "co-gm",
-        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
+        "seatLabel": "Hand of the Sovereign · Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -9894,7 +9938,7 @@
       },
       "office_20": {
         "seatId": "co-gm",
-        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
+        "seatLabel": "Hand of the Sovereign · Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -9903,20 +9947,20 @@
         "independentReview": false
       },
       "office_21": {
-        "seatId": "heraldry",
-        "seatLabel": "Lord High Herald / Minister of Heraldry",
-        "ministryId": "heraldry",
-        "ministry": "Department of Heraldry",
+        "seatId": "propaganda",
+        "seatLabel": "Lord High Herald · Minister of Propaganda",
+        "ministryId": "propaganda",
+        "ministry": "Ministry of Propaganda",
         "codexTitles": [
           "V"
         ],
         "independentReview": false
       },
       "office_22": {
-        "seatId": "heraldry",
-        "seatLabel": "Lord High Herald / Minister of Heraldry",
-        "ministryId": "heraldry",
-        "ministry": "Department of Heraldry",
+        "seatId": "propaganda",
+        "seatLabel": "Lord High Herald · Minister of Propaganda",
+        "ministryId": "propaganda",
+        "ministry": "Ministry of Propaganda",
         "codexTitles": [
           "II",
           "V"
@@ -9924,20 +9968,20 @@
         "independentReview": false
       },
       "office_23": {
-        "seatId": "heraldry",
-        "seatLabel": "Lord High Herald / Minister of Heraldry",
-        "ministryId": "heraldry",
-        "ministry": "Department of Heraldry",
+        "seatId": "propaganda",
+        "seatLabel": "Lord High Herald · Minister of Propaganda",
+        "ministryId": "propaganda",
+        "ministry": "Ministry of Propaganda",
         "codexTitles": [
           "V"
         ],
         "independentReview": false
       },
       "office_24": {
-        "seatId": "heraldry",
-        "seatLabel": "Lord High Herald / Minister of Heraldry",
-        "ministryId": "heraldry",
-        "ministry": "Department of Heraldry",
+        "seatId": "propaganda",
+        "seatLabel": "Lord High Herald · Minister of Propaganda",
+        "ministryId": "propaganda",
+        "ministry": "Ministry of Propaganda",
         "codexTitles": [
           "II",
           "V"
@@ -9946,7 +9990,7 @@
       },
       "office_25": {
         "seatId": "main-raid-lead",
-        "seatLabel": "Grand Marshal of PvE",
+        "seatLabel": "Lord High Marshal of PvE · Minister of Raid Campaigns",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -9957,7 +10001,7 @@
       },
       "office_26": {
         "seatId": "head-justice",
-        "seatLabel": "Lord High Chancellor / Head of Justice",
+        "seatLabel": "Lord High Justiciar · Minister of Justice & The Privy Court",
         "ministryId": "justice",
         "ministry": "Council of Justice",
         "codexTitles": [
@@ -9967,7 +10011,7 @@
       },
       "office_27": {
         "seatId": "artisanry",
-        "seatLabel": "Grand Master Artisan",
+        "seatLabel": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
         "ministryId": "artisanry",
         "ministry": "Association of Artisanry",
         "codexTitles": [
@@ -9977,7 +10021,7 @@
       },
       "office_28": {
         "seatId": "co-gm",
-        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
+        "seatLabel": "Hand of the Sovereign · Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -9988,7 +10032,7 @@
       },
       "office_29": {
         "seatId": "co-gm",
-        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
+        "seatLabel": "Hand of the Sovereign · Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -9999,7 +10043,7 @@
       },
       "office_30": {
         "seatId": "co-gm",
-        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
+        "seatLabel": "Hand of the Sovereign · Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10009,7 +10053,7 @@
       },
       "office_31": {
         "seatId": "co-gm",
-        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
+        "seatLabel": "Hand of the Sovereign · Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10031,7 +10075,7 @@
       },
       "office_33": {
         "seatId": "internal-security",
-        "seatLabel": "High Inquisitor / Minister of Internal Security",
+        "seatLabel": "Lord High Inquisitor · Minister of Internal Security",
         "ministryId": "security",
         "ministry": "Internal Security",
         "codexTitles": [
@@ -10042,7 +10086,7 @@
       },
       "office_34": {
         "seatId": "concordat",
-        "seatLabel": "Lord High Envoy / Director of the Concordat",
+        "seatLabel": "Lord High Legate · Minister of the Grand Concordat",
         "ministryId": "concordat",
         "ministry": "Grand Alliance Concordat",
         "codexTitles": [
@@ -10053,7 +10097,7 @@
       },
       "office_35": {
         "seatId": "artisanry",
-        "seatLabel": "Grand Master Artisan",
+        "seatLabel": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
         "ministryId": "artisanry",
         "ministry": "Association of Artisanry",
         "codexTitles": [
@@ -10064,7 +10108,7 @@
       },
       "office_36": {
         "seatId": "treasurer",
-        "seatLabel": "Lord High Treasurer",
+        "seatLabel": "Lord High Treasurer · Minister of the Imperial Exchequer",
         "ministryId": "treasury",
         "ministry": "Federal Treasury",
         "codexTitles": [
@@ -10074,10 +10118,10 @@
         "independentReview": false
       },
       "office_37": {
-        "seatId": "heraldry",
-        "seatLabel": "Lord High Herald / Minister of Heraldry",
-        "ministryId": "heraldry",
-        "ministry": "Department of Heraldry",
+        "seatId": "propaganda",
+        "seatLabel": "Lord High Herald · Minister of Propaganda",
+        "ministryId": "propaganda",
+        "ministry": "Ministry of Propaganda",
         "codexTitles": [
           "IV",
           "V"
@@ -10086,7 +10130,7 @@
       },
       "office_38": {
         "seatId": "main-raid-lead",
-        "seatLabel": "Grand Marshal of PvE",
+        "seatLabel": "Lord High Marshal of PvE · Minister of Raid Campaigns",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -10096,20 +10140,20 @@
         "independentReview": false
       },
       "office_39": {
-        "seatId": "heraldry",
-        "seatLabel": "Lord High Herald / Minister of Heraldry",
-        "ministryId": "heraldry",
-        "ministry": "Department of Heraldry",
+        "seatId": "propaganda",
+        "seatLabel": "Lord High Herald · Minister of Propaganda",
+        "ministryId": "propaganda",
+        "ministry": "Ministry of Propaganda",
         "codexTitles": [
           "V"
         ],
         "independentReview": false
       },
       "office_40": {
-        "seatId": "heraldry",
-        "seatLabel": "Lord High Herald / Minister of Heraldry",
-        "ministryId": "heraldry",
-        "ministry": "Department of Heraldry",
+        "seatId": "propaganda",
+        "seatLabel": "Lord High Herald · Minister of Propaganda",
+        "ministryId": "propaganda",
+        "ministry": "Ministry of Propaganda",
         "codexTitles": [
           "II",
           "V"
@@ -10151,7 +10195,7 @@
       },
       "office_44": {
         "seatId": "intake",
-        "seatLabel": "High Minister of the Chancery & Imperial Census",
+        "seatLabel": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
         "ministryId": "intake",
         "ministry": "Intake and recruitment",
         "codexTitles": [
@@ -10162,7 +10206,7 @@
       },
       "office_45": {
         "seatId": "co-gm",
-        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
+        "seatLabel": "Hand of the Sovereign · Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10173,7 +10217,7 @@
       },
       "office_46": {
         "seatId": "co-gm",
-        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
+        "seatLabel": "Hand of the Sovereign · Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10184,7 +10228,7 @@
       },
       "office_47": {
         "seatId": "co-gm",
-        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
+        "seatLabel": "Hand of the Sovereign · Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10195,7 +10239,7 @@
       },
       "office_48": {
         "seatId": "intake",
-        "seatLabel": "High Minister of the Chancery & Imperial Census",
+        "seatLabel": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
         "ministryId": "intake",
         "ministry": "Intake and recruitment",
         "codexTitles": [
@@ -10205,7 +10249,7 @@
       },
       "office_49": {
         "seatId": "main-raid-lead",
-        "seatLabel": "Grand Marshal of PvE",
+        "seatLabel": "Lord High Marshal of PvE · Minister of Raid Campaigns",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -10215,10 +10259,10 @@
         "independentReview": false
       },
       "office_50": {
-        "seatId": "heraldry",
-        "seatLabel": "Lord High Herald / Minister of Heraldry",
-        "ministryId": "heraldry",
-        "ministry": "Department of Heraldry",
+        "seatId": "propaganda",
+        "seatLabel": "Lord High Herald · Minister of Propaganda",
+        "ministryId": "propaganda",
+        "ministry": "Ministry of Propaganda",
         "codexTitles": [
           "IV",
           "V"
@@ -10227,7 +10271,7 @@
       },
       "office_51": {
         "seatId": "main-raid-lead",
-        "seatLabel": "Grand Marshal of PvE",
+        "seatLabel": "Lord High Marshal of PvE · Minister of Raid Campaigns",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -10238,7 +10282,7 @@
       },
       "office_52": {
         "seatId": "main-raid-lead",
-        "seatLabel": "Grand Marshal of PvE",
+        "seatLabel": "Lord High Marshal of PvE · Minister of Raid Campaigns",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -10248,20 +10292,20 @@
         "independentReview": false
       },
       "office_53": {
-        "seatId": "heraldry",
-        "seatLabel": "Lord High Herald / Minister of Heraldry",
-        "ministryId": "heraldry",
-        "ministry": "Department of Heraldry",
+        "seatId": "propaganda",
+        "seatLabel": "Lord High Herald · Minister of Propaganda",
+        "ministryId": "propaganda",
+        "ministry": "Ministry of Propaganda",
         "codexTitles": [
           "V"
         ],
         "independentReview": false
       },
       "office_54": {
-        "seatId": "heraldry",
-        "seatLabel": "Lord High Herald / Minister of Heraldry",
-        "ministryId": "heraldry",
-        "ministry": "Department of Heraldry",
+        "seatId": "propaganda",
+        "seatLabel": "Lord High Herald · Minister of Propaganda",
+        "ministryId": "propaganda",
+        "ministry": "Ministry of Propaganda",
         "codexTitles": [
           "V"
         ],
@@ -10269,7 +10313,7 @@
       },
       "office_55": {
         "seatId": "intake",
-        "seatLabel": "High Minister of the Chancery & Imperial Census",
+        "seatLabel": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
         "ministryId": "intake",
         "ministry": "Intake and recruitment",
         "codexTitles": [
@@ -10279,7 +10323,7 @@
       },
       "office_56": {
         "seatId": "artisanry",
-        "seatLabel": "Grand Master Artisan",
+        "seatLabel": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
         "ministryId": "artisanry",
         "ministry": "Association of Artisanry",
         "codexTitles": [
@@ -10290,7 +10334,7 @@
       },
       "office_57": {
         "seatId": "co-gm",
-        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
+        "seatLabel": "Hand of the Sovereign · Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10301,7 +10345,7 @@
       },
       "office_58": {
         "seatId": "artisanry",
-        "seatLabel": "Grand Master Artisan",
+        "seatLabel": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
         "ministryId": "artisanry",
         "ministry": "Association of Artisanry",
         "codexTitles": [
@@ -10311,17 +10355,18 @@
       },
       "office_59": {
         "seatId": "heraldry",
-        "seatLabel": "Lord High Herald / Minister of Heraldry",
+        "seatLabel": "Lord High Seneschal · Minister of Court Protocol & Crown Estates",
         "ministryId": "heraldry",
-        "ministry": "Department of Heraldry",
+        "ministry": "Court Protocol & Crown Estates",
         "codexTitles": [
+          "II",
           "V"
         ],
         "independentReview": false
       },
       "office_60": {
         "seatId": "internal-security",
-        "seatLabel": "High Inquisitor / Minister of Internal Security",
+        "seatLabel": "Lord High Inquisitor · Minister of Internal Security",
         "ministryId": "security",
         "ministry": "Internal Security",
         "codexTitles": [
@@ -10332,7 +10377,7 @@
       },
       "office_61": {
         "seatId": "head-justice",
-        "seatLabel": "Lord High Chancellor / Head of Justice",
+        "seatLabel": "Lord High Justiciar · Minister of Justice & The Privy Court",
         "ministryId": "justice",
         "ministry": "Council of Justice",
         "codexTitles": [
@@ -10343,7 +10388,7 @@
       },
       "office_62": {
         "seatId": "concordat",
-        "seatLabel": "Lord High Envoy / Director of the Concordat",
+        "seatLabel": "Lord High Legate · Minister of the Grand Concordat",
         "ministryId": "concordat",
         "ministry": "Grand Alliance Concordat",
         "codexTitles": [
@@ -10354,7 +10399,7 @@
       },
       "office_63": {
         "seatId": "concordat",
-        "seatLabel": "Lord High Envoy / Director of the Concordat",
+        "seatLabel": "Lord High Legate · Minister of the Grand Concordat",
         "ministryId": "concordat",
         "ministry": "Grand Alliance Concordat",
         "codexTitles": [
@@ -10365,7 +10410,7 @@
       },
       "office_64": {
         "seatId": "head-justice",
-        "seatLabel": "Lord High Chancellor / Head of Justice",
+        "seatLabel": "Lord High Justiciar · Minister of Justice & The Privy Court",
         "ministryId": "justice",
         "ministry": "Council of Justice",
         "codexTitles": [
@@ -10376,7 +10421,7 @@
       },
       "office_65": {
         "seatId": "concordat",
-        "seatLabel": "Lord High Envoy / Director of the Concordat",
+        "seatLabel": "Lord High Legate · Minister of the Grand Concordat",
         "ministryId": "concordat",
         "ministry": "Grand Alliance Concordat",
         "codexTitles": [
@@ -10387,7 +10432,7 @@
       },
       "office_66": {
         "seatId": "intake",
-        "seatLabel": "High Minister of the Chancery & Imperial Census",
+        "seatLabel": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
         "ministryId": "intake",
         "ministry": "Intake and recruitment",
         "codexTitles": [
@@ -10398,7 +10443,7 @@
       },
       "office_67": {
         "seatId": "head-justice",
-        "seatLabel": "Lord High Chancellor / Head of Justice",
+        "seatLabel": "Lord High Justiciar · Minister of Justice & The Privy Court",
         "ministryId": "justice",
         "ministry": "Council of Justice",
         "codexTitles": [
@@ -10409,7 +10454,7 @@
       },
       "office_68": {
         "seatId": "head-justice",
-        "seatLabel": "Lord High Chancellor / Head of Justice",
+        "seatLabel": "Lord High Justiciar · Minister of Justice & The Privy Court",
         "ministryId": "justice",
         "ministry": "Council of Justice",
         "codexTitles": [
@@ -10420,7 +10465,7 @@
       },
       "office_69": {
         "seatId": "artisanry",
-        "seatLabel": "Grand Master Artisan",
+        "seatLabel": "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
         "ministryId": "artisanry",
         "ministry": "Association of Artisanry",
         "codexTitles": [
@@ -10430,7 +10475,7 @@
       },
       "office_70": {
         "seatId": "main-pvp-lead",
-        "seatLabel": "Grand Marshal of PvP",
+        "seatLabel": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -10441,7 +10486,7 @@
       },
       "office_71": {
         "seatId": "main-pvp-lead",
-        "seatLabel": "Grand Marshal of PvP",
+        "seatLabel": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -10452,7 +10497,7 @@
       },
       "office_72": {
         "seatId": "treasurer",
-        "seatLabel": "Lord High Treasurer",
+        "seatLabel": "Lord High Treasurer · Minister of the Imperial Exchequer",
         "ministryId": "treasury",
         "ministry": "Federal Treasury",
         "codexTitles": [
@@ -10462,7 +10507,7 @@
       },
       "office_73": {
         "seatId": "main-raid-lead",
-        "seatLabel": "Grand Marshal of PvE",
+        "seatLabel": "Lord High Marshal of PvE · Minister of Raid Campaigns",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -10473,7 +10518,7 @@
       },
       "office_74": {
         "seatId": "main-raid-lead",
-        "seatLabel": "Grand Marshal of PvE",
+        "seatLabel": "Lord High Marshal of PvE · Minister of Raid Campaigns",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -10484,7 +10529,7 @@
       },
       "office_75": {
         "seatId": "main-raid-lead",
-        "seatLabel": "Grand Marshal of PvE",
+        "seatLabel": "Lord High Marshal of PvE · Minister of Raid Campaigns",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -10494,7 +10539,7 @@
       },
       "office_76": {
         "seatId": "intake",
-        "seatLabel": "High Minister of the Chancery & Imperial Census",
+        "seatLabel": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
         "ministryId": "intake",
         "ministry": "Intake and recruitment",
         "codexTitles": [
@@ -10505,7 +10550,7 @@
       },
       "office_77": {
         "seatId": "intake",
-        "seatLabel": "High Minister of the Chancery & Imperial Census",
+        "seatLabel": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
         "ministryId": "intake",
         "ministry": "Intake and recruitment",
         "codexTitles": [
@@ -10516,7 +10561,7 @@
       },
       "office_78": {
         "seatId": "intake",
-        "seatLabel": "High Minister of the Chancery & Imperial Census",
+        "seatLabel": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
         "ministryId": "intake",
         "ministry": "Intake and recruitment",
         "codexTitles": [
@@ -10527,7 +10572,7 @@
       },
       "office_79": {
         "seatId": "intake",
-        "seatLabel": "High Minister of the Chancery & Imperial Census",
+        "seatLabel": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
         "ministryId": "intake",
         "ministry": "Intake and recruitment",
         "codexTitles": [
@@ -10537,10 +10582,10 @@
         "independentReview": false
       },
       "office_80": {
-        "seatId": "heraldry",
-        "seatLabel": "Lord High Herald / Minister of Heraldry",
-        "ministryId": "heraldry",
-        "ministry": "Department of Heraldry",
+        "seatId": "propaganda",
+        "seatLabel": "Lord High Herald · Minister of Propaganda",
+        "ministryId": "propaganda",
+        "ministry": "Ministry of Propaganda",
         "codexTitles": [
           "IV",
           "V"
@@ -10584,7 +10629,7 @@
       },
       "office_84": {
         "seatId": "head-justice",
-        "seatLabel": "Lord High Chancellor / Head of Justice",
+        "seatLabel": "Lord High Justiciar · Minister of Justice & The Privy Court",
         "ministryId": "justice",
         "ministry": "Council of Justice",
         "codexTitles": [
@@ -10595,7 +10640,7 @@
       },
       "office_85": {
         "seatId": "treasurer",
-        "seatLabel": "Lord High Treasurer",
+        "seatLabel": "Lord High Treasurer · Minister of the Imperial Exchequer",
         "ministryId": "treasury",
         "ministry": "Federal Treasury",
         "codexTitles": [
@@ -10606,7 +10651,7 @@
       },
       "office_86": {
         "seatId": "treasurer",
-        "seatLabel": "Lord High Treasurer",
+        "seatLabel": "Lord High Treasurer · Minister of the Imperial Exchequer",
         "ministryId": "treasury",
         "ministry": "Federal Treasury",
         "codexTitles": [
@@ -10617,7 +10662,7 @@
       },
       "office_87": {
         "seatId": "intake",
-        "seatLabel": "High Minister of the Chancery & Imperial Census",
+        "seatLabel": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
         "ministryId": "intake",
         "ministry": "Intake and recruitment",
         "codexTitles": [
@@ -10628,7 +10673,7 @@
       },
       "office_88": {
         "seatId": "intake",
-        "seatLabel": "High Minister of the Chancery & Imperial Census",
+        "seatLabel": "Lord High Chancellor · Minister of the Chancery & Imperial Census",
         "ministryId": "intake",
         "ministry": "Intake and recruitment",
         "codexTitles": [
@@ -10639,7 +10684,7 @@
       },
       "office_89": {
         "seatId": "main-raid-lead",
-        "seatLabel": "Grand Marshal of PvE",
+        "seatLabel": "Lord High Marshal of PvE · Minister of Raid Campaigns",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -10650,7 +10695,7 @@
       },
       "office_90": {
         "seatId": "co-gm",
-        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
+        "seatLabel": "Hand of the Sovereign · Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10660,7 +10705,7 @@
       },
       "office_91": {
         "seatId": "co-gm",
-        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
+        "seatLabel": "Hand of the Sovereign · Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10671,7 +10716,7 @@
       },
       "office_92": {
         "seatId": "co-gm",
-        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
+        "seatLabel": "Hand of the Sovereign · Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10682,7 +10727,7 @@
       },
       "office_93": {
         "seatId": "co-gm",
-        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
+        "seatLabel": "Hand of the Sovereign · Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10693,7 +10738,7 @@
       },
       "office_94": {
         "seatId": "co-gm",
-        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
+        "seatLabel": "Hand of the Sovereign · Co-Guild Master",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -10704,7 +10749,7 @@
       },
       "office_95": {
         "seatId": "co-gm",
-        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
+        "seatLabel": "Hand of the Sovereign · Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10715,7 +10760,7 @@
       },
       "office_96": {
         "seatId": "head-trading",
-        "seatLabel": "Lord High Merchant / Head of Trading & Markets",
+        "seatLabel": "Lord High Factor · Minister of Trading & Markets",
         "ministryId": "trading",
         "ministry": "Trading & Markets",
         "codexTitles": [
@@ -10726,7 +10771,7 @@
       },
       "office_97": {
         "seatId": "main-raid-lead",
-        "seatLabel": "Grand Marshal of PvE",
+        "seatLabel": "Lord High Marshal of PvE · Minister of Raid Campaigns",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -10737,7 +10782,7 @@
       },
       "office_98": {
         "seatId": "main-pvp-lead",
-        "seatLabel": "Grand Marshal of PvP",
+        "seatLabel": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -10748,7 +10793,7 @@
       },
       "office_99": {
         "seatId": "internal-security",
-        "seatLabel": "High Inquisitor / Minister of Internal Security",
+        "seatLabel": "Lord High Inquisitor · Minister of Internal Security",
         "ministryId": "security",
         "ministry": "Internal Security",
         "codexTitles": [
@@ -10758,7 +10803,7 @@
       },
       "office_100": {
         "seatId": "concordat",
-        "seatLabel": "Lord High Envoy / Director of the Concordat",
+        "seatLabel": "Lord High Legate · Minister of the Grand Concordat",
         "ministryId": "concordat",
         "ministry": "Grand Alliance Concordat",
         "codexTitles": [
@@ -10769,7 +10814,7 @@
       },
       "office_101": {
         "seatId": "head-justice",
-        "seatLabel": "Lord High Chancellor / Head of Justice",
+        "seatLabel": "Lord High Justiciar · Minister of Justice & The Privy Court",
         "ministryId": "justice",
         "ministry": "Council of Justice",
         "codexTitles": [
@@ -10780,7 +10825,7 @@
       },
       "office_102": {
         "seatId": "propaganda",
-        "seatLabel": "Minister of Propaganda / Chief Propagandist",
+        "seatLabel": "Lord High Herald · Minister of Propaganda",
         "ministryId": "propaganda",
         "ministry": "Ministry of Propaganda",
         "codexTitles": [

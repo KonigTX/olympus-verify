@@ -2746,6 +2746,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     check(".208 actual private R7-bound model preserves original38/95 arrays and retains Trading and adds five separate Council portfolio records", (() => {
       const assert=require('node:assert/strict'), historicalScope218='Historical application and ballot compatibility only; current institutional display and reserved-seat admission are separate.';
 function originalTerms218(terms) {
+ terms=require('../../scripts/governance-cabinet224-inverse.cjs').restoreCabinet224(terms,'terms');
  terms=require('../../scripts/governance-role-inverse222.cjs').originalTerms222(terms);
  const specs={office_26:{ordinal:26,label:'Council of Justice',applicationLabel:'Council of Justice',acquisition:'Case-designated judicial institution; chaired by the Lord High Chancellor, with accepted unconflicted members.'},office_94:{ordinal:94,label:'War Head',applicationLabel:'War Directorate (historical shared template)',acquisition:'Historical shared War Head reference; current PvE and PvP portfolios have their own separate appointments.'}};
  const keys=['label','applicationLabel','applicationAliases','applicationEligible','applicationRoleKeys','acquisition'];
@@ -2766,12 +2767,12 @@ function originalTerms218(terms) {
       const digest = value => require("node:crypto").createHash("sha256").update(JSON.stringify(value)).digest("hex"), trading = model.terms[95];
       return modelResponse.status === 200 && modelResponse.headers.get("Cache-Control") === "private, no-store, no-transform" && model.revision === "R7" && model.draft === false && model.ratified === true && model.appointmentsIssued === false
         && model.nodes.length === 42 && nodes.size === 42 && model.terms.length === 102 && new Set(model.terms.map(term => term.label)).size === 102 && model.nativeRanks.length === 10 && model.officeMandates.length === 42
-        && digest(model.nodes.filter(node => !["trading","security","concordat","propaganda"].includes(node.id)).map(node=>node.id==="intake"?{...node,parent:"heraldry"}:node.id==="systems"?JSON.parse(fs.readFileSync(path.join(root,"../docs/governance-nodes222.json"),"utf8")).systemsBefore:node)) === "62fd12faf62b8529a8679a80a1ee278e2422048502c01738ac2fe7286c677ddf"
-        && digest(model.officeMandates.filter(office => !["trading","security","concordat","propaganda"].includes(office.nodeId))) === "ae968c007def93478c0bfac5e51169f9a3f4bd62d7abddaaa624210aa267ae2c"
+        && digest(require("../../scripts/governance-cabinet224-inverse.cjs").restoreCabinet224(model.nodes,"nodes").filter(node => !["trading","security","concordat","propaganda"].includes(node.id)).map(node=>node.id==="intake"?{...node,parent:"heraldry"}:node.id==="systems"?JSON.parse(fs.readFileSync(path.join(root,"../docs/governance-nodes222.json"),"utf8")).systemsBefore:node)) === "62fd12faf62b8529a8679a80a1ee278e2422048502c01738ac2fe7286c677ddf"
+        && digest(require("../../scripts/governance-cabinet224-inverse.cjs").restoreCabinet224(model.officeMandates,"officeMandates").filter(office => !["trading","security","concordat","propaganda"].includes(office.nodeId))) === "ae968c007def93478c0bfac5e51169f9a3f4bd62d7abddaaa624210aa267ae2c"
         && digest(originalTerms218(model.terms.slice(0, 95))) === "74fb4f44153a550b7b306789763e73932393e96124d781572c6d2db5c9b87d3b"
-        && model.book.bytes === 271992 && model.book.sha256 === "93a557b8a1fbe1752094c1c9bf9dfefc8e61ff51a12e79ff17e67a8050bcf992"
+        && model.book.bytes === 272700 && model.book.sha256 === "947093b9f1bdaf787c63d875b895821f2ac63d51ca4be240992713f9d346d683"
         && model.appointments.length === 138 && new Set(model.appointments.map(row => row.key)).size === 138 && model.councilComposition.currentSeats.length === 13
-        && trading.officeKey === "office_96" && trading.ordinal === 96 && trading.label === "Head of Trading & Markets" && trading.tier === "high_council" && trading.nativeSlot === 1 && trading.applicationEligible === false && trading.mappingApplies === false;
+        && trading.officeKey === "office_96" && trading.ordinal === 96 && trading.label === "Lord High Factor · Minister of Trading & Markets" && trading.tier === "high_council" && trading.nativeSlot === 1 && trading.applicationEligible === false && trading.mappingApplies === false;
     })());
     check(".154 actual model keeps hierarchy, independent review and the five liaison remits", nodes.get("council").parent === "founder" && nodes.get("council").relation === "accountability" && nodes.get("war").parent === "council" && nodes.get("officers").parent === "guilds" && nodes.get("justice").relation === "independence" && nodes.get("auditor").relation === "independence" && model.nodes.filter((node) => node.parent === "emissaries").length === 5 && nodes.get("emissary-heraldry").coordinates.includes("heraldry"));
     const marshal = model.terms.find((term) => term.label === "Marshall");

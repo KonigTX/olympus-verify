@@ -38,6 +38,10 @@ if (!APP || !TOKEN) {
   console.error("DISCORD_APP_ID and DISCORD_BOT_TOKEN are required — set them in the environment or in worker/.dev.vars");
   process.exit(1);
 }
+if (APP === '1550176895671341076') {
+  console.error('Use the current reviewed guild-command-plan224 and single-purpose registration operator; this legacy broad script must not replace the production command inventory.');
+  process.exit(1);
+}
 const API = "https://discord.com/api/v10";
 const headers = { Authorization: `Bot ${TOKEN}`, "Content-Type": "application/json" };
 

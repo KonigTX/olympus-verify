@@ -15,7 +15,7 @@
       "path": "worker/public/static/app.js",
       "mode": "100644",
       "bytes": 729538,
-      "sha256": "e7c9b95a154d897a2f371a9ed18b3428e77c46baf75541ed9185ed137d914d33"
+      "sha256": "14853fb44150418929e184b9de5ceee35c97db9daeba8cb4621ef6bb5e453191"
     },
     {
       "path": "worker/public/static/olympus-icon.png",
@@ -3818,8 +3818,8 @@
     {
       "path": "worker/src/site-data.ts",
       "mode": "100644",
-      "bytes": 60038,
-      "sha256": "6657bc72fa1c8528478b3e2b6e82c2d22cb4ea7292ce90ce16f12fc537edb549"
+      "bytes": 60683,
+      "sha256": "513010f528059124e7e5458cb5dcfcf6b07b6313e49ef8d0d694c62b43648df4"
     },
     {
       "path": "worker/src/site-ranks.ts",
@@ -3831,7 +3831,7 @@
       "path": "worker/public/static/app.js",
       "mode": "100644",
       "bytes": 729538,
-      "sha256": "e7c9b95a154d897a2f371a9ed18b3428e77c46baf75541ed9185ed137d914d33"
+      "sha256": "14853fb44150418929e184b9de5ceee35c97db9daeba8cb4621ef6bb5e453191"
     },
     {
       "path": "worker/public/static/rank-planner/app.js",
@@ -4034,14 +4034,14 @@
     {
       "path": "worker/public/static/governance/organization.json",
       "mode": "100644",
-      "bytes": 440916,
-      "sha256": "6adca2a2df76692e9de3c35961feec9f9e2fd506d2c4aee15e96d6fdb986a70d"
+      "bytes": 449626,
+      "sha256": "47900b1e91e19e5e790299458fbcfaeaa31dd63e75ac0cea6a34a17d7bc0670b"
     },
     {
       "path": "worker/public/static/governance/reconciled-book.md",
       "mode": "100644",
-      "bytes": 271992,
-      "sha256": "93a557b8a1fbe1752094c1c9bf9dfefc8e61ff51a12e79ff17e67a8050bcf992"
+      "bytes": 272700,
+      "sha256": "947093b9f1bdaf787c63d875b895821f2ac63d51ca4be240992713f9d346d683"
     },
     {
       "path": "worker/public/static/guides218.css",
@@ -4142,8 +4142,8 @@
     {
       "path": "worker/public/static/role-rank199.js",
       "mode": "100644",
-      "bytes": 151930,
-      "sha256": "fed867ad63a2465c818520ac024cb7ee4d782f95f2078ac2ffb0d9cd086f87cc"
+      "bytes": 156055,
+      "sha256": "de79f898ae985cecba9f97c229fcb8048dfcb89ed95a98816b01d78f2d3e459f"
     },
     {
       "path": "worker/public/static/royal-writs199.js",
@@ -4252,6 +4252,12 @@
       "mode": "100644",
       "bytes": 4137,
       "sha256": "91a8b0ff9577399e935beb9dc8d357c2ffa15b3a331e4bb8f1c5e7dbe0f31c3e"
+    },
+    {
+      "path": "worker/public/static/governance/council-portfolios224.md",
+      "mode": "100644",
+      "bytes": 4327,
+      "sha256": "08366d752ba82dccedf460c9a237ac888bdf8270bb21d11e7227fd33fad90a76"
     }
   ],
   "login_art_exception": {

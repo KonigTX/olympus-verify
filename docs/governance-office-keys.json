@@ -53,7 +53,7 @@
   },
   {
     "key": "office_14",
-    "label": "Chief of Intake (Gatekeeper, Intake Gatekeeper)"
+    "label": "Lord High Chancellor · Minister of the Chancery & Imperial Census"
   },
   {
     "key": "office_15",
@@ -73,7 +73,7 @@
   },
   {
     "key": "office_19",
-    "label": "Co-GM"
+    "label": "Hand of the Sovereign · Co-Guild Master"
   },
   {
     "key": "office_20",
@@ -229,11 +229,11 @@
   },
   {
     "key": "office_58",
-    "label": "Minister of Artisanry"
+    "label": "Lord High Artificer · Minister of Artisanry & The Guild Workshop"
   },
   {
     "key": "office_59",
-    "label": "Minister of Heraldry"
+    "label": "Lord High Seneschal · Minister of Court Protocol & Crown Estates"
   },
   {
     "key": "office_60",
@@ -341,7 +341,7 @@
   },
   {
     "key": "office_86",
-    "label": "Treasurer (Guild Bank)"
+    "label": "Lord High Treasurer · Minister of the Imperial Exchequer"
   },
   {
     "key": "office_87",
@@ -381,30 +381,30 @@
   },
   {
     "key": "office_96",
-    "label": "Head of Trading & Markets"
+    "label": "Lord High Factor · Minister of Trading & Markets"
   },
   {
     "key": "office_97",
-    "label": "Grand Marshal of PvE"
+    "label": "Lord High Marshal of PvE · Minister of Raid Campaigns"
   },
   {
     "key": "office_98",
-    "label": "Grand Marshal of PvP"
+    "label": "Lord High Marshal of PvP · Minister of Battlegrounds & Honor"
   },
   {
     "key": "office_99",
-    "label": "High Inquisitor / Minister of Internal Security"
+    "label": "Lord High Inquisitor · Minister of Internal Security"
   },
   {
     "key": "office_100",
-    "label": "Grand Concordat Director"
+    "label": "Lord High Legate · Minister of the Grand Concordat"
   },
   {
     "key": "office_101",
-    "label": "Lord High Chancellor / Head of Justice"
+    "label": "Lord High Justiciar · Minister of Justice & The Privy Court"
   },
   {
     "key": "office_102",
-    "label": "Minister of Propaganda"
+    "label": "Lord High Herald · Minister of Propaganda"
   }
 ]
