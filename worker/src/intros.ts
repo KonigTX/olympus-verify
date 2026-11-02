@@ -285,7 +285,7 @@ export const INTROS: Intro[] = [
       title: "Olympus I–X Council",
       color: GOLD,
       description: [
-        "Shared coordination for Guild Masters and officers across Olympus I–X. These Council channels retain private access. The separate Olympus Council GM and Olympus Council Officer roles remain unassigned.",
+        "Shared coordination for Guild Masters and officers across Olympus I–X. These Council channels retain private access. The separate Olympus Branch GM and Olympus Branch Officer roles coordinate branches, not High Council seats. Their assignments and access are managed separately.",
         "",
         "**Governance adopted.** The Olympus governance book (R7) was adopted on 13 October 2026 by the Olympus guild administration and is published on the guild site. Council seats, votes and permissions exist only through recorded appointments; this channel creates none. Existing Olympus I leadership and permissions remain separate.",
         "",
