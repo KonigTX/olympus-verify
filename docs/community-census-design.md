@@ -1,3 +1,5 @@
+> Current policy, 1 November 2026: the external-news links and association are retired. This dated research is retained only as historical context; it recommends no current link or integration. Original evidence remains in Git history and the local release archive.
+
 # Shared community census: proposed contract
 
 Draft, 20 October 2026. The owner authorized preparing this design before uploads or activation. This document proposes a future implementation; it creates no route, table, setting, flag, publisher connection, upload, retention job or reporting permission. Production settings, Native E2, safeguards and launch gates remain unchanged.
@@ -121,9 +123,9 @@ No simultaneous all-Olympus online number, unique-player total, account membersh
 
 ## Source provenance and reuse
 
-The owner's 20 October 2026 local census research supplied the source boundaries below. Its private research receipts remain local; this design does not require unpublished talent or production-frontend changes. Normal attributed links to [Olympus Guild on CurseForge](https://www.curseforge.com/wow/addons/olympus-guild) and [ONN's Army page](https://olympusnewsnetwork.com/army) are distinct from integration permission.
+The owner's 20 October 2026 local census research supplied the source boundaries below. Its private research receipts remain local; this design does not require unpublished talent or production-frontend changes. Normal attributed links to [Olympus Guild on CurseForge](https://www.curseforge.com/wow/addons/olympus-guild) and retired external news outlet's Army page (external link retired) are distinct from integration permission.
 
-No reusable publisher census HTTP contract was verified in that research. Olympus Guild's supported public addon API excluded census data; software licensing is not consent to export or republish player data. ONN's inspected terms require written permission for census reuse/internal feeds, and the supplied Companion source is review-only. Do not scrape pages, use internal endpoints, redirect a publisher's uploads, copy proprietary Companion code or contact a publisher without separate authorization. A future supported aggregate feed needs actual current documentation, field/coverage/freshness/retention terms and permission before implementation.
+No reusable publisher census HTTP contract was verified in that research. Olympus Guild's supported public addon API excluded census data; software licensing is not consent to export or republish player data. retired external news outlet's inspected terms require written permission for census reuse/internal feeds, and the supplied Companion source is review-only. Do not scrape pages, use internal endpoints, redirect a publisher's uploads, copy proprietary Companion code or contact a publisher without separate authorization. A future supported aggregate feed needs actual current documentation, field/coverage/freshness/retention terms and permission before implementation.
 
 The standalone pilot is original local code with an unchanged vendored jsQR decoder and retained notices. Any code or asset reused in a future implementation must retain its required notices and join source/publication coverage. This document grants no source or trademark license.
 

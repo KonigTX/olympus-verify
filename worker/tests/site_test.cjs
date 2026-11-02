@@ -426,8 +426,8 @@ async function legacySchemaHeld(old) {
     })(avatarSource);
     let guardedPictures = false;
     if (avatarParts.rule && avatarParts.discordAvatar && avatarParts.ownAvatar) {
-      const picture = (_tag, attributes) => ({ attributes: { ...attributes }, events: {}, setAttribute(key, value) { this.attributes[key] = value; }, getAttribute(key) { return this.attributes[key] ?? null; }, addEventListener(key, listener) { this.events[key] = listener; } });
-      const helpers = new Function("h", "accountArt", "const " + avatarParts.rule.getText(avatarSource) + ";\n" + avatarParts.discordAvatar.getText(avatarSource) + "\n" + avatarParts.ownAvatar.getText(avatarSource) + "\nreturn { discordAvatar, ownAvatar };")(picture, () => "/static/wow/pos-member.png");
+      const picture = (_tag, attributes) => ({ attributes: { ...attributes }, events: {}, setAttribute(key, value) { this.attributes[key] = value; }, getAttribute(key) { return this.attributes[key] ?? null; }, removeAttribute(key) { delete this.attributes[key]; }, addEventListener(key, listener) { this.events[key] = listener; } });
+      const helpers = new Function("h", "art", "const " + avatarParts.rule.getText(avatarSource) + ";\n" + avatarParts.discordAvatar.getText(avatarSource) + "\n" + avatarParts.ownAvatar.getText(avatarSource) + "\nreturn { discordAvatar, ownAvatar };")(picture, () => "/static/wow/pos-member.png");
       const allowed = ["https://cdn.discordapp.com/avatars/300000000000000003/0123456789abcdef0123456789abcdef.png?size=64", "https://cdn.discordapp.com/avatars/300000000000000003/a_0123456789abcdef0123456789abcdef.png?size=64", "https://cdn.discordapp.com/guilds/236932545793490944/users/300000000000000003/avatars/0123456789abcdef0123456789abcdef.png?size=64", "https://cdn.discordapp.com/embed/avatars/3.png"];
       const refused = ["https://evil.example/embed/avatars/3.png", "http://cdn.discordapp.com/embed/avatars/3.png", "https://cdn.discordapp.com.evil.example/embed/avatars/3.png", "//cdn.discordapp.com/embed/avatars/3.png", "https://cdn.discordapp.com/attachments/1/2/x.png", "https://cdn.discordapp.com/embed/avatars/9.png", allowed[0] + "&x=1", "data:image/png;base64,aA==", "javascript:alert(1)", ""];
       const failed = helpers.discordAvatar({ avatarUrl: allowed[0] }), ownPicture = helpers.ownAvatar({ avatarUrl: allowed[0] });
@@ -1556,7 +1556,7 @@ async function legacySchemaHeld(old) {
   check("/queue/unverified carries the verified list for the watcher", Array.isArray(out.verified) && out.verified[0].username === "grace_new" && out.members.some((m) => m.name === "Nobody Here"));
   res = await index.fetch(new Request("https://verify.example/health", { headers: { Authorization: "Bearer watcher-token-for-tests-only-0123456789" } }), rawEnv(), ctx);
   out = await res.json();
-  check("/health names the build and the site (to the watcher's bearer, since .49)", out.build === "2026-11-01.221 Guild guides and command workflows" && out.site.host === "guild.example" && out.site.admins === 1);
+  check("/health names the build and the site (to the watcher's bearer, since .49)", out.build === "2026-11-01.222 Guild organization and private raid hub" && out.site.host === "guild.example" && out.site.admins === 1);
 
   console.log("\n== the addon-facing queue still works for an old-style caller ==");
   res = await ingest.getQueue(env(), "");

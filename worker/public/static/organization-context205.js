@@ -63,6 +63,12 @@ export const ORGANIZATION_LANES205 = Object.freeze([
     boundary: "Publicity needs verified facts and appropriate consent. Private cases, chat logs and financial receipts stay outside publicity; a title grants no moderation or publishing access."
   },
   {
+    key: "propaganda", rootId: "propaganda", title: "Ministry of Propaganda",
+    summary: "Truthful guild campaigns, recruitment storytelling and broadcaster-safe promotion.",
+    duties: ["Prepare an approved campaign calendar and clear creative briefs.", "Coordinate accurate recruitment messages with Intake and identity standards with Heraldry.", "Measure useful participation, obtain member consent and correct inaccurate claims."],
+    boundary: "Campaign direction grants no moderation or publishing access. Heraldry keeps official records; broadcasters retain their Stream Shield and consent choices."
+  },
+  {
     key: "systems",
     rootId: "systems",
     title: "Systems and Addons Division",
@@ -72,7 +78,7 @@ export const ORGANIZATION_LANES205 = Object.freeze([
       "Review privacy, compatibility and recovery plans before proposed releases.",
       "Help branch operators diagnose issues and verify installed versions."
     ],
-    boundary: "The architect portfolio is classified with High Council; engineering support is Officer Corps. Titles grant no production, signing, platform, bank or protected game-action permission."
+    boundary: "Architecture and engineering are technical support appointments outside the High Council. Titles grant no production, signing, platform, bank or protected game-action permission."
   }
 ].map(lane => Object.freeze({ ...lane, duties: Object.freeze(lane.duties) })));
 

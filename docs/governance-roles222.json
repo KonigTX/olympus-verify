@@ -1,0 +1,113 @@
+{
+  "schema": "olympus-role222-finite-v1",
+  "base": "98bd84d80015636221321e9ec962de7430e807d6",
+  "beforeArchitect": {
+    "ordinal": 3,
+    "label": "Addon / Discord Architect",
+    "classification": "shared",
+    "nodeId": "systems",
+    "note": "Duty, appointment or alias requires its own scope and acceptance; publication appoints nobody.",
+    "nativeSlot": 1,
+    "nativeRelationship": ".199 display association: Rank 2 High Council, zero-based slot 1; no automatic appointment, vote, sanction, rank change or permission.",
+    "recommendedNativeSlots": [
+      1
+    ],
+    "nativeMappingNote": ".199 owner-directed Rank 2 High Council (zero-based slot 1) planning association. An accepted office, real native rank, eligible vote and actual permissions are separate; nothing is applied by this catalogue.",
+    "mappingApplies": false,
+    "officeKey": "office_03",
+    "nativeRankOrdinal": 2,
+    "nativeRankName": "High Council",
+    "tier": "high_council",
+    "tierLabel": "High Council",
+    "codexTitles": [
+      "I",
+      "II",
+      "V"
+    ],
+    "department": "Systems and Addons Division",
+    "applicationTrack": "high_council",
+    "applicationEligible": true,
+    "statusOverlay": false,
+    "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
+    "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
+    "applicationAliases": [
+      "Systems Architect"
+    ],
+    "applicationLabel": "Addon / Discord Architect · Systems Architect",
+    "applicationRoleKeys": [
+      "office_03"
+    ]
+  },
+  "afterArchitect": {
+    "ordinal": 3,
+    "label": "Addon / Discord Architect",
+    "classification": "shared",
+    "nodeId": "systems",
+    "note": "Duty, appointment or alias requires its own scope and acceptance; publication appoints nobody.",
+    "nativeSlot": 2,
+    "nativeRelationship": "Officer Corps technical appointment, associated with native Officer slot 2.",
+    "recommendedNativeSlots": [
+      2
+    ],
+    "nativeMappingNote": "The Architect is a technical support office outside the High Council. Existing appointment records remain distinct; publication promotes nobody.",
+    "mappingApplies": false,
+    "officeKey": "office_03",
+    "nativeRankOrdinal": 3,
+    "nativeRankName": "Officer",
+    "tier": "officer_corps",
+    "tierLabel": "Officer Corps",
+    "codexTitles": [
+      "I",
+      "II",
+      "V"
+    ],
+    "department": "Systems and Addons Division",
+    "applicationTrack": "high_council",
+    "applicationEligible": true,
+    "statusOverlay": false,
+    "acquisition": "Reserved technical appointment; no public officer application.",
+    "discordPortal": "Technical contributor access is granted separately; this office carries no Council vote.",
+    "applicationAliases": [
+      "Systems Architect"
+    ],
+    "applicationLabel": "Addon / Discord Architect · Systems Architect",
+    "applicationRoleKeys": [
+      "office_03"
+    ],
+    "applicationMetadataScope": "Historical application and ballot compatibility only; current institutional display and reserved-seat admission are separate."
+  },
+  "addedPropaganda": {
+    "ordinal": 102,
+    "label": "Minister of Propaganda",
+    "classification": "portfolios",
+    "nodeId": "propaganda",
+    "note": "Duty, appointment or alias requires its own scope and acceptance; publication appoints nobody.",
+    "nativeSlot": 1,
+    "nativeRelationship": "High Council portfolio associated with native slot 1.",
+    "recommendedNativeSlots": [
+      1
+    ],
+    "nativeMappingNote": "A reserved Council portfolio; the title alone confers no vote, appointment or actual permission.",
+    "mappingApplies": false,
+    "officeKey": "office_102",
+    "nativeRankOrdinal": 2,
+    "nativeRankName": "High Council",
+    "tier": "high_council",
+    "tierLabel": "High Council",
+    "codexTitles": [
+      "II",
+      "V"
+    ],
+    "department": "Ministry of Propaganda",
+    "applicationTrack": "high_council",
+    "applicationEligible": false,
+    "statusOverlay": false,
+    "acquisition": "Reserved Council appointment by accepted warrant; no public application.",
+    "discordPortal": "No automatic Discord, publishing, moderation or bank access.",
+    "applicationAliases": [
+      "Chief Propagandist"
+    ],
+    "applicationLabel": "Minister of Propaganda / Chief Propagandist",
+    "applicationRoleKeys": []
+  }
+}

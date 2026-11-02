@@ -61,3 +61,31 @@
 }
 @media (prefers-reduced-motion:reduce){.guides218 *{transition:none!important;animation:none!important}}
 @media (forced-colors:active){.guides218-grade,.guides218-status,.guides218-card,.guides218-preset,.guides218-total{border-color:CanvasText;color:CanvasText}}
+
+/* Existing client art: dark text scrim and visible keyboard focus. */
+.guides218-card:is(.guides222-class,.guides222-profession,.guides222-tool){position:relative;isolation:isolate;min-height:148px;overflow:hidden;background:#141719;box-shadow:inset 0 0 0 1px #8d744c55}
+.guides218-card:is(.guides222-class,.guides222-profession,.guides222-tool)::before{content:"";position:absolute;inset:0;z-index:-1;background-image:linear-gradient(90deg,#05080bf0,#05080ba8),var(--resource-art);background-size:cover;background-position:center;opacity:.92;transition:opacity .18s}
+.guides218-card:focus-within{outline:2px solid var(--gold,#d8bb71);outline-offset:3px}.guides218-card:hover::before{opacity:1}
+.guides222-class[data-theme="warrior"]{--resource-art:url("/static/wow/talents/bg-161.jpg")}
+.guides222-class[data-theme="paladin"]{--resource-art:url("/static/wow/talents/bg-381.jpg")}
+.guides222-class[data-theme="hunter"]{--resource-art:url("/static/wow/talents/bg-361.jpg")}
+.guides222-class[data-theme="rogue"]{--resource-art:url("/static/wow/talents/bg-183.jpg")}
+.guides222-class[data-theme="priest"]{--resource-art:url("/static/wow/talents/bg-203.jpg")}
+.guides222-class[data-theme="shaman"]{--resource-art:url("/static/wow/talents/bg-261.jpg")}
+.guides222-class[data-theme="mage"]{--resource-art:url("/static/wow/talents/bg-81.jpg")}
+.guides222-class[data-theme="warlock"]{--resource-art:url("/static/wow/talents/bg-303.jpg")}
+.guides222-class[data-theme="druid"]{--resource-art:url("/static/wow/talents/bg-283.jpg")}
+.guides222-profession[data-theme="alchemy"]{--resource-art:url("/static/wow/prof-alchemy.png")}
+.guides222-profession[data-theme="blacksmithing"]{--resource-art:url("/static/wow/prof-blacksmithing.png")}
+.guides222-profession[data-theme="cooking"]{--resource-art:url("/static/wow/prof-cooking.png")}
+.guides222-profession[data-theme="enchanting"]{--resource-art:url("/static/wow/prof-enchanting.png")}
+.guides222-profession[data-theme="engineering"]{--resource-art:url("/static/wow/prof-engineering.png")}
+.guides222-profession[data-theme="first-aid"]{--resource-art:url("/static/wow/prof-first_aid.png")}
+.guides222-profession[data-theme="fishing"]{--resource-art:url("/static/wow/prof-fishing.png")}
+.guides222-profession[data-theme="herbalism"]{--resource-art:url("/static/wow/prof-herbalism.png")}
+.guides222-profession[data-theme="leatherworking"]{--resource-art:url("/static/wow/prof-leatherworking.png")}
+.guides222-profession[data-theme="mining"]{--resource-art:url("/static/wow/prof-mining.png")}
+.guides222-profession[data-theme="skinning"]{--resource-art:url("/static/wow/prof-skinning.png")}
+.guides222-profession[data-theme="tailoring"]{--resource-art:url("/static/wow/prof-tailoring.png")}
+.guides222-profession::before{background-size:auto,148px 148px!important;background-repeat:no-repeat;background-position:center,right center!important}.guides222-tool{--resource-art:url("/static/wow/molten-core.jpg")}
+@media(forced-colors:active){.guides218-card::before{display:none}.guides218-card{background:Canvas;color:CanvasText}}

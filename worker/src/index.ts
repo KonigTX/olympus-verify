@@ -493,6 +493,8 @@ async function route(request: Request, env: Env, path: string, schemaReady = tru
     if (!(await verifyInteraction(env, request, body))) return new Response("bad signature", { status: 401 });
     const i = JSON.parse(body) as Interaction;
     if (env.DISCORD_APP_ID && i.application_id !== env.DISCORD_APP_ID) return new Response("wrong application", { status: 400 });
+    const interactionGuild = env.SITE_GUILD_ID || env.GUILD_ID;
+    if (i.type !== 1 && (!interactionGuild || i.guild_id !== interactionGuild)) return new Response(null, { status: 204 });
     if (!schemaReady && i.type !== 1) return reply("The bot is updating its database \u2014 please try again in a minute.");
     const privacyActor=i.member?.user??i.user;
     const privacyCapture=privacyActor&&/^\d{17,20}$/.test(privacyActor.id)?await readPrivacySubject(env,privacyActor.id):undefined;
@@ -648,7 +650,7 @@ async function freshRegistrationRefused(env: Env, trigger: string): Promise<void
 }
 
 /** Bumped with every change that needs a redeploy, so GET /health shows which build is live. */
-const BUILD = "2026-11-01.221 Guild guides and command workflows";
+const BUILD = "2026-11-01.222 Guild organization and private raid hub";
 
 /**
  * Presence of each secret (never the value) and a D1 round trip — enough to tell a missing `wrangler secret put` from a

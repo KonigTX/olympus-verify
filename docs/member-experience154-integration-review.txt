@@ -1,3 +1,5 @@
+> Current policy, 1 November 2026: the external-news links and association are retired. This dated research is retained only as historical context; it recommends no current link or integration. Original evidence remains in Git history and the local release archive.
+
 MEMBER EXPERIENCE 154 — SAVED DISCORD AND EXTERNAL INTEGRATION REVIEW
 Reviewed 13 October 2026 (America/Chicago)
 Author: Codex /root/floor_v3_native_gate_review/status_phase2_schema_census
@@ -82,36 +84,36 @@ C. docs/asmongold-category-2026-09-28.md:39,62–64 in this worktree.
    council-category consolidation preserving channel overwrites; it does not
    authorize deletion of these placeholders.
 
-2. ONN — LINK AND LEARN; DO NOT IMPORT ITS COMMUNITY OR CLAIM ENDORSEMENT
+2. retired external news outlet — LINK AND LEARN; DO NOT IMPORT ITS COMMUNITY OR CLAIM ENDORSEMENT
 
-https://olympusnewsnetwork.com/
-https://olympusnewsnetwork.com/about
+(external link retired)
+(external link retired)
 
-ONN describes an independent fan service operated by Archway Point LLC. Its
+retired external news outlet describes an independent fan service operated by Archway Point LLC. Its
 public navigation includes curated news, an archive, guides and community tools.
 The member guide describes availability/timezone profiles, officer-approved guild
 spaces, event responses and raid sign-ups. These are transferable product ideas:
 clear pending/approved membership, optional availability, role-aware sign-ups and
 timezone presentation. Use our own text, access checks and storage rather than
-copying ONN's interface or member data. Its self-claimed figures were not audited.
-https://olympusnewsnetwork.com/guide
+copying retired external news outlet's interface or member data. Its self-claimed figures were not audited.
+(external link retired)
 
 The footer advertises RSS. The research reader could not validate its linked XML
 or a stable endpoint; no feed URL or general public API contract is confirmed.
 Do not guess an API, scrape signed-in pages, import private profiles or mirror
-articles. Start with an attributed external ONN link and original short editorial
+articles. Start with an attributed external retired external news outlet link and original short editorial
 summaries linking to their source. A feed integration needs its exact published
 URL, response/license terms and bounded polling verified first.
 
-ONN's terms prohibit bulk scraping; user posts remain their authors' property.
+retired external news outlet's terms prohibit bulk scraping; user posts remain their authors' property.
 Its footer reserves rights, and the site explicitly disclaims affiliation with
 the Olympus guild, Asmongold and Blizzard. Public availability does not establish
 permission to copy its articles, artwork, brand, private data or software.
-https://olympusnewsnetwork.com/terms
+(external link retired)
 
-The officer guide itself instructs leaders to check characters in game; an ONN
+The officer guide itself instructs leaders to check characters in game; an retired external news outlet
 profile is not proof of character control or a local office appointment.
-https://olympusnewsnetwork.com/guide/officers
+(external link retired)
 
 3. OLYMPUS GUILD ADDON — ATTRIBUTED, VERSION-PINNED INTEROPERABILITY
 

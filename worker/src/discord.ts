@@ -296,6 +296,7 @@ export interface Interaction {
     target_id?: string; // user id for a user context-menu command
     custom_id?: string;
     component_type?: number;
+    values?: string[];
     options?: Array<{ name: string; type: number; value?: string | number | boolean; focused?: boolean; options?: any[] }>;
     components?: Array<{ type: number; components?: Array<{ type: number; custom_id?: string; value?: string }> }>; // modal submit
   };

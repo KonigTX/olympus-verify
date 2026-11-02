@@ -17,10 +17,10 @@ const directoryCoverage203 = page => {
   const model=page.boot.meta.roleDirectory203, expected=[...page.boot.meta.appointments.map(row=>row.key),"member","raider","pvp_team"].sort();
   const declared=model.families.flatMap(family=>family.sourceKeys).sort(),visible=model.families.flatMap(family=>[family.primaryKey,...family.variants.filter(row=>['office','region','class'].includes(row.presentation)).map(row=>row.key)]).sort();
   const actual=page.app.querySelectorAll("[data-role-key201]").map(row=>row.getAttribute("data-role-key201")).sort();
-  return model?.version===1 && model.sourceKeyCount===140 && expected.length===140 && JSON.stringify(declared)===JSON.stringify(expected)
+  return model?.version===1 && model.sourceKeyCount===141 && expected.length===141 && JSON.stringify(declared)===JSON.stringify(expected)
     && expected.every(key=>model.families.find(family=>family.key===model.keyToFamily[key])?.sourceKeys.includes(key))
-    && visible.length===115 && JSON.stringify(actual)===JSON.stringify(visible)
-    && page.app.querySelectorAll("details.role-family203").length===70;
+    && visible.length===116 && JSON.stringify(actual)===JSON.stringify(visible)
+    && page.app.querySelectorAll("details.role-family203").length===71;
 };
 (async () => {
   await siteUser(MEMBER, { global_name: "Mia" }); await character(MEMBER, "Mia One", "Player-1-0001");
@@ -123,7 +123,7 @@ const directoryCoverage203 = page => {
 
   const appointments = await openPage(MEMBER, {}, { bootTransform: boot => { boot.settings.appointed = { officer: "richwcampbell.", treasurer: "Appointed member" }; } });
   await appointments.go("#/roles");
-  check("canonical role families retain all140 source identities and115 real specifications while defaulting to collapsed reading", directoryCoverage203(appointments) && appointments.app.querySelectorAll("details.role-family203").every(d => !d.open && d.querySelector('.role-primary203').querySelectorAll('.role-guide201').length===1 && d.textContent.includes("Responsibilities") && d.textContent.includes("Expectations")));
+  check("canonical role families retain all141 source identities and116 real specifications while defaulting to collapsed reading", directoryCoverage203(appointments) && appointments.app.querySelectorAll("details.role-family203").every(d => !d.open && d.querySelector('.role-primary203').querySelectorAll('.role-guide201').length===1 && d.textContent.includes("Responsibilities") && d.textContent.includes("Expectations")));
   check("appointment labels retain a trailing-period username once and use an identity-free fallback", appointments.app.textContent.includes("Appointed: richwcampbell.") && !appointments.app.textContent.includes("richwcampbell..") && appointments.app.textContent.includes("Filled by appointment") && !appointments.app.textContent.includes("Appointed: Appointed member"));
   await appointments.go("#/roles/officer");
   const officerFamily218=appointments.app.querySelector('[data-role-family203="officer"]'),officerGuide218=appointments.boot.meta.roleGuides201.officer;
@@ -141,12 +141,12 @@ const directoryCoverage203 = page => {
   await member.go("#/governance");
   await waitFor(() => member.app.querySelectorAll("details.governance-chapter").length === 20, ".174 complete current governance reader");
   const archive = member.app.querySelector("details.governance-archive"), adoption = member.app.querySelector("details.governance-draft");
-  check("current book actions remain primary while all six historical/preparation downloads stay in Archive", !!archive && !archive.open && archive.querySelectorAll("a[download]").length === 6 && byText(member.app, "a", "Download current R7 source")?.getAttribute("href") === "/static/governance/reconciled-book.md" && !archive.contains(byText(member.app, "a", "Download current R7 source")));
+  check("current book actions remain primary without a reader-facing archive or editorial update panel", !archive && !member.app.querySelector("#trading-portfolio208") && !member.app.textContent.includes("Archive and release records") && byText(member.app, "a", "Download current R7 source")?.getAttribute("href") === "/static/governance/reconciled-book.md");
   check("adoption qualifications remain intact and blank instrument fields are explicitly unexecuted", !!adoption && adoption.textContent.includes("Adoption issues no individual appointment or named signature") && adoption.textContent.includes("changes no native rank, bank limit or platform permission") && member.app.querySelector('[data-chapter="2-royal-charter-of-olympus"] .governance-instrument-note')?.textContent.includes("A blank field is not a completed record") && member.app.textContent.includes("Article S12a") && member.app.textContent.includes("Independent auditor warrant"));
   const instrumentNoteIndices = member.app.querySelectorAll("details.governance-chapter").map((chapter, index) => chapter.querySelector(".governance-instrument-note") ? index : null).filter(index => index !== null);
   const instrumentNoteIds = member.app.querySelectorAll("details.governance-chapter").filter(chapter => chapter.querySelector(".governance-instrument-note")).map(chapter => chapter.getAttribute("data-chapter")).sort();
   const instrumentIdsDigest = require("node:crypto").createHash("sha256").update(JSON.stringify(instrumentNoteIds)).digest("hex"), reviewedBookDigest = require("node:crypto").createHash("sha256").update(fs.readFileSync(path.join(root, "public/static/governance/reconciled-book.md"))).digest("hex");
-  check(".196 current book's four instrument-note placements and execution limits remain exact", reviewedBookDigest === "0495d02d98aa1f31a64a575c6bc88caee4864e0c17db1140235f5aa8d416215b" && instrumentIdsDigest === "a5cf89f9778efa8f188b4af0db64ab6fb02ca02a177206f7d8247034f47636cf" && JSON.stringify(instrumentNoteIndices) === "[2,3,17,18]" && member.app.querySelectorAll(".governance-instrument-note").every(note => note.textContent.includes("A blank field is not a completed record")));
+  check(".196 current book's four instrument-note placements and execution limits remain exact", reviewedBookDigest === "93a557b8a1fbe1752094c1c9bf9dfefc8e61ff51a12e79ff17e67a8050bcf992" && instrumentIdsDigest === "a5cf89f9778efa8f188b4af0db64ab6fb02ca02a177206f7d8247034f47636cf" && JSON.stringify(instrumentNoteIndices) === "[2,3,17,18]" && member.app.querySelectorAll(".governance-instrument-note").every(note => note.textContent.includes("A blank field is not a completed record")));
   // Search through the real reviewed book, including its genuine strong/plain
   // inline boundary. Mark fragments share one logical match index; neither
   // generated reader controls nor adoption/instrument qualifications are hits.
@@ -190,7 +190,7 @@ const directoryCoverage203 = page => {
   searchGovernance("tReAsUrEr");
   const treasurerGroups = governanceGroups(), matchingChapters = member.app.querySelectorAll("details.governance-chapter").filter(chapter => !chapter.hidden);
   check("literal case-insensitive governance search marks source text and announces occurrence and chapter counts without moving typing focus", treasurerGroups.length > 8 && governanceMarks().every(mark => mark.textContent.toLowerCase() === "treasurer" && !!mark.closest("details.governance-chapter")) && matchingChapters.length === 12 && member.app.querySelector('.governance-controls p[role="status"]').textContent.includes("12 of 20 chapters") && /Match 1 of /i.test(matchStatus()) && matchStatus().includes(String(treasurerGroups.length)) && !matchNavigation.hidden && !previousMatch.disabled && !nextMatch.disabled && currentGovernanceGroup().length === 1 && currentGovernanceGroup()[0] === treasurerGroups[0] && member.document.activeElement === governanceSearch);
-  check("governance highlights do not alter any rendered chapter text or inline emphasis", JSON.stringify(governanceSourceText()) === unmarkedGovernanceText && member.app.querySelectorAll(".governance-prose strong").length > 5 && !member.app.querySelector(".governance-toc mark") && !adoption.querySelector("mark") && !archive.querySelector("mark") && !member.app.querySelector(".governance-instrument-note mark"));
+  check("governance highlights do not alter any rendered chapter text or inline emphasis", JSON.stringify(governanceSourceText()) === unmarkedGovernanceText && member.app.querySelectorAll(".governance-prose strong").length > 5 && !member.app.querySelector(".governance-toc mark") && !adoption.querySelector("mark") && !member.app.querySelector(".governance-archive mark") && !member.app.querySelector(".governance-instrument-note mark"));
   previousMatch.click();
   check("Previous match wraps from the first occurrence to the last without leaving the chapter route", currentGovernanceGroup()[0] === treasurerGroups.at(-1) && member.location.hash === "#/governance");
   nextMatch.click();
@@ -258,7 +258,7 @@ const directoryCoverage203 = page => {
   searchGovernance("Treasurer");
   check(".192 a known office has its exact occurrence count, equal to an independent count of the unmarked source", governanceGroups().length === 49 && independentCount192("Treasurer", "giu") === 49 && matchStatus().includes("Match 1 of 49") && governanceMarks().every(mark => mark.textContent.toLowerCase() === "treasurer"));
   searchGovernance("access");
-  check(".192 the exact count includes list items, table cells, headings and several hits in one block", governanceGroups().length === 104 && independentCount192("access", "giu") === 104 && markedTagCounts192() === sourceTagCounts192("access") && markedTagCounts192() === JSON.stringify([["H3", 3], ["LI", 2], ["P", 98], ["TD", 1]]) && member.app.querySelectorAll(".governance-prose p, .governance-prose li, .governance-prose td, .governance-prose h3").some(block => new Set(block.querySelectorAll("mark.governance-search-match").map(groupOf192)).size > 1) && matchStatus().includes("Match 1 of 104"));
+  check(".192 the exact count includes list items, table cells, headings and several hits in one block", governanceGroups().length === 105 && independentCount192("access", "giu") === 105 && markedTagCounts192() === sourceTagCounts192("access") && markedTagCounts192() === JSON.stringify([["H3", 3], ["LI", 2], ["P", 99], ["TD", 1]]) && member.app.querySelectorAll(".governance-prose p, .governance-prose li, .governance-prose td, .governance-prose h3").some(block => new Set(block.querySelectorAll("mark.governance-search-match").map(groupOf192)).size > 1) && matchStatus().includes("Match 1 of 105"));
   searchGovernance("No.");
   const literalHit192 = governanceMarks();
   check(".192 a query that a regular expression would read differently is matched literally", independentCount192("No.", "giu") > 100 && governanceGroups().length === 1 && literalHit192.length === 1 && literalHit192[0].textContent === "No." && blockTag192(literalHit192[0]) === "TH" && matchStatus().includes("Match 1 of 1") && JSON.stringify(governanceSourceText()) === unmarkedGovernanceText);
@@ -407,7 +407,7 @@ const directoryCoverage203 = page => {
   const readerState = () => JSON.stringify({ scopeOpen: adoption.open, search: bookSearch.value, count: searchStatus.textContent, chapters: nativeChapters.map(chapter => ({ open: chapter.open, hidden: chapter.hidden })) });
   const beforeButtonPrint = readerState();
   const filteredBeforePrint = member.app.querySelectorAll("details.governance-chapter").filter(chapter => !chapter.hidden).length === 1 && !adoption.open;
-  member.window.print = () => { member.window.dispatchEvent(new Event("beforeprint")); printStates.push({ scopeOpen: adoption.open, scopeText: adoption.textContent, chapters: member.app.querySelectorAll("details.governance-chapter").map(chapter => ({ open: chapter.open, hidden: chapter.hidden })), archiveOpen: archive.open }); };
+  member.window.print = () => { member.window.dispatchEvent(new Event("beforeprint")); printStates.push({ scopeOpen: adoption.open, scopeText: adoption.textContent, chapters: member.app.querySelectorAll("details.governance-chapter").map(chapter => ({ open: chapter.open, hidden: chapter.hidden })), archiveOpen: archive?.open ?? false }); };
   byText(member.app, "button", "Print current R7 book").click();
   member.window.print = originalPrint;
   check("printing a filtered book opens all current chapters and the full adoption scope before the print dialog", filteredBeforePrint && printStates.length === 1 && printStates[0].scopeOpen === true && printStates[0].scopeText.includes("Adoption issues no individual appointment or named signature") && printStates[0].scopeText.includes("changes no native rank, bank limit or platform permission") && printStates[0].chapters.length === 20 && printStates[0].chapters.every(chapter => chapter.open && !chapter.hidden) && printStates[0].archiveOpen === false);
@@ -417,7 +417,7 @@ const directoryCoverage203 = page => {
   adoption.open = true; bookSearch.value = "Independent auditor warrant"; fire(bookSearch, "input");
   const beforeNativePrint = readerState();
   member.window.dispatchEvent(new Event("beforeprint"));
-  check("native browser printing expands the live book and adoption scope without the page Print button", adoption.open === true && nativeChapters.every(chapter => chapter.open && !chapter.hidden) && archive.open === false && member.window.listeners.beforeprint.length === 1);
+  check("native browser printing expands the live book and adoption scope without the page Print button", adoption.open === true && nativeChapters.every(chapter => chapter.open && !chapter.hidden) && !archive && member.window.listeners.beforeprint.length === 1);
   member.window.dispatchEvent(new Event("afterprint"));
   check("native print close or cancel restores current search/count and every previous open/hidden state", readerState() === beforeNativePrint && adoption.open === true);
   member.window.dispatchEvent(new Event("beforeprint"));

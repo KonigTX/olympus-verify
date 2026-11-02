@@ -301,3 +301,6 @@ details[open] > summary.org-alliance-card-heading::after { content: '\2212'; }
 @media (max-width: 560px) { .org-alliance-council-seats { grid-template-columns: minmax(0, 1fr); } .org-alliance-current-council { padding: .75rem; } }
 
 .org-alliance-institutions > .org-alliance-families{grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr))}
+
+/* Continuous connections terminate at card borders. */
+.org-edge{stroke-width:2.8;opacity:.86;stroke-linejoin:round}.org-edge-coordination{opacity:.68}.org-edge-active{stroke-width:4;opacity:1}

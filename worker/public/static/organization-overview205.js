@@ -54,7 +54,7 @@ export function buildAllianceOverview205(data, directory) {
   }
   if (sourceKeys.size !== directory.sourceKeyCount || directory.ranks.length !== 10 || directory.ranks.some((rank, slot) => rank.nativeSlot !== slot || rank.nativeRankOrdinal !== slot + 1)) throw new Error("Incomplete canonical role or rank coverage.");
   const councilSeats = data.councilComposition?.currentSeats;
-  const seatIds = ["gm-chair", "co-gm", "treasurer", "head-trading", "main-raid-lead", "main-pvp-lead", "head-justice", "artisanry", "heraldry", "intake", "systems", "internal-security", "concordat"];
+  const seatIds = ["gm-chair", "co-gm", "treasurer", "head-trading", "main-raid-lead", "main-pvp-lead", "head-justice", "artisanry", "heraldry", "intake", "propaganda", "internal-security", "concordat"];
   const canonicalFamilies = new Map(directory.families.map(family => [family.key, family]));
   if (!Array.isArray(councilSeats) || councilSeats.length !== seatIds.length || new Set(councilSeats.map(seat => seat.id)).size !== seatIds.length || seatIds.some(id => !councilSeats.some(seat => seat.id === id)) || councilSeats.some(seat => {
     const family = canonicalFamilies.get(seat.familyKey);

@@ -405,8 +405,10 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
   const recoverySources=recovery217.sourceChecks(SRC);
   check('.217 recovery successor binds the exact current interactions source',Object.values(recoverySources).every(Boolean),recoverySources);
   const sources211 = source211.sourceChecks(SRC, PINS);
-  check('.211 identity reconstruction binds both exact current sources, accepted H16 bytes and all restriction support', Object.values(sources211).every(Boolean), sources211);
-  for (const row of source211.driftControls(SRC)) check('.211 identity reconstruction refuses ' + row.source + ' ' + row.name, row.refused);
+  const discord222=require('./source222-discord-type-projection.cjs').checks(SRC);
+  check('.222 identity retains original211 stages and Treasury restrictions with an exact erased-type Discord successor', Object.entries(sources211).filter(([key])=>key!=='discord:exact-reviewed-support').every(([,ok])=>ok)&&sources211['discord:exact-reviewed-support']===false&&discord222.qualified&&discord222.negativeControls,{sources211,discord222});
+  console.log('RETAINED211_DISCORD_RAW_SEAL false; finite222 type-only runtime parity '+discord222.qualified);
+  for (const row of require('./source222-discord-type-projection.cjs').driftControls222(SRC)) check('.211 identity reconstruction refuses ' + row.source + ' ' + row.name, row.refused);
 
   // --- static: whole reviewed .164 integrated sources; the lane modules are never part of a module-load cycle
   for (const name of PROTECTED) check(['role-settlements', 'privacy-global-serving-origin'].includes(name) ? `${name}.ts reconstructs accepted H16 through exact .211 contexts before unchanged historical whole seals` : SOURCE196_COMPAT[name] ? `${name}.ts reconstructs the reviewed .164 whole source through exact pinned .196 contextual reversals only` : `${name}.ts is byte-identical to the reviewed .164 integrated source`, sourceDigest(name) === PINS.files[name]);

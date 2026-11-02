@@ -109,8 +109,8 @@ const body183 = String.raw`
     const remaining183=[...catalogRows183].sort((a,b)=>a.role<b.role?-1:a.role>b.role?1:0).filter(row=>row.role>after183),page183=remaining183.slice(0,32);
     return {scope:'qualified_community_readers',revision:'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',identities:page183,nextCursor:remaining183.length>32?page183[page183.length-1].role:null,complete:remaining183.length<=32};
   });
-  await catalogPage183.go('#/roles');await waitFor(()=>hasNames183(catalogPage183.app)&&catalogPage183.app.querySelector('[data-office-assignment="officer"]')?.textContent.includes('Office officer'),'all137 appointed identity projection');
-  check('all137 admitted appointment keys retain CoGM Treasurer and a further supported Roles identity',catalogRows183.length===137&&hasNames183(catalogPage183.app)&&catalogPage183.app.querySelector('[data-office-assignment="officer"]').textContent.includes('Office officer'));
+  await catalogPage183.go('#/roles');await waitFor(()=>hasNames183(catalogPage183.app)&&catalogPage183.app.querySelector('[data-office-assignment="officer"]')?.textContent.includes('Office officer'),'all138 appointed identity projection');
+  check('all138 admitted appointment keys retain CoGM Treasurer and a further supported Roles identity',catalogRows183.length===138&&hasNames183(catalogPage183.app)&&catalogPage183.app.querySelector('[data-office-assignment="officer"]').textContent.includes('Office officer'));
   catalogPage183.answer(path=>path==='/api/appointed-identities'?{scope:'qualified_community_readers', revision:'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',nextCursor:null,complete:true,identities:[...catalogRows183,{...co183,role:'unregistered_office'}]}:null);
   await catalogPage183.go('#/');await catalogPage183.go('#/roles');await settle();
   check('a response above the actual137-key appointment catalogue fails closed without private labels',!hasNames183(catalogPage183.app)&&!catalogPage183.app.textContent.includes('Office officer'));

@@ -86,12 +86,13 @@
   // other image attributes on the site; recommendation results now use the same closed CDN guard.
   const DISCORD_AVATAR = /^https:\/\/cdn\.discordapp\.com\/(?:avatars\/\d{17,20}\/(?:a_)?[0-9a-f]{32}\.png\?size=64|guilds\/\d{17,20}\/users\/\d{17,20}\/avatars\/(?:a_)?[0-9a-f]{32}\.png\?size=64|embed\/avatars\/[0-5]\.png)$/;
   function discordAvatar(user, attributes = {}) {
-    const fallback = accountArt(user || {});
-    const img = h("img", { ...attributes, src: fallback, alt: "", referrerpolicy: "no-referrer" });
+    const fallback = art("pos-member");
+    const img = h("img", { ...attributes, src: fallback, alt: "", referrerpolicy: "no-referrer", title: "Discord portrait unavailable or not shared" });
     const url = user && typeof user.avatarUrl === "string" ? user.avatarUrl : "";
     if (DISCORD_AVATAR.test(url)) {
       img.addEventListener("error", () => { if (img.getAttribute("src") !== fallback) img.setAttribute("src", fallback); });
       img.setAttribute("src", url);
+      img.removeAttribute("title");
     }
     return img;
   }
@@ -203,7 +204,7 @@
     const directory = roleDirectory203();
     const headings = ["In-Game Rank Number & Name", "Tier & Statutory Codex Title", "Organization Department & Branch Offices", "Discord Role & Portal Access", "How to Attain It"];
     return h("details", { class: "card rosetta199", id: "role-rosetta-stone", tabindex: "-1", open }, h("summary", { text: "Olympus Role & Rank Rosetta Stone" }),
-      h("p", { text: "101 stable offices and 137 assignable keys share this bridge, including the dedicated High Council Head of Trading & Markets. Display classification and an application do not confer an office, game rank, Discord role or portal access. Olympus Link remains OFF; /oly discord is a future qualified verification path, not a currently active admission shortcut." }),
+      h("p", { text: "102 stable offices and 138 assignable keys share this bridge, including the dedicated High Council Head of Trading & Markets. Display classification and an application do not confer an office, game rank, Discord role or portal access. Olympus Link remains OFF; /oly discord is a future qualified verification path, not a currently active admission shortcut." }),
       h("table", { class: "rosetta-table199" }, h("thead", null, h("tr", null, headings.map(text => h("th", { scope: "col", text })))), h("tbody", null, ranks199().map(rank => {
         const rows = offices199().filter(row => row.nativeSlot === rank.nativeSlot), tiers = [...new Set(rows.map(row => row.tierLabel))], titleOrder = ["I", "II", "III", "IV", "V"], titles = [...new Set(rows.flatMap(row => row.codexTitles || []))].sort((a,b) => titleOrder.indexOf(a) - titleOrder.indexOf(b));
         const cells = [h("strong", { text: `Rank ${rank.nativeRankOrdinal} ${rank.name}` }), h("div", null, tiers.join(" / "), h("br"), h("a", { href: "#/governance", text: `Title ${titles.join(" / ") || "I–V"}` })),
@@ -249,13 +250,13 @@
   // .203 groups presentation only: original application, appointment and history keys stay exact.
   function roleDirectory203() {
     const directory = M().roleDirectory203, guides = M().roleGuides201 || {};
-    if (!directory || directory.version !== 1 || directory.sourceKeyCount !== 140 || !Array.isArray(directory.families)
+    if (!directory || directory.version !== 1 || directory.sourceKeyCount !== 141 || !Array.isArray(directory.families)
       || !directory.families.length || !Array.isArray(directory.ranks) || directory.ranks.length !== 10
       || !directory.keyToFamily || typeof directory.keyToFamily !== "object") return null;
     const registry = M().appointments;
-    if (!Array.isArray(registry) || registry.length !== 137) return null;
+    if (!Array.isArray(registry) || registry.length !== 138) return null;
     const registeredKeys = registry.map(row => row?.key);
-    if (new Set(registeredKeys).size !== 137 || registeredKeys.some(key => typeof key !== "string"
+    if (new Set(registeredKeys).size !== 138 || registeredKeys.some(key => typeof key !== "string"
       || ["member", "raider", "pvp_team"].includes(key) || !Object.prototype.hasOwnProperty.call(directory.keyToFamily, key))) return null;
     const keys = [], familyKeys = new Set();
     for (const family of directory.families) {
@@ -538,7 +539,7 @@
   function officeAssignmentPanel() {
     const offices = M().appointments;
     const groups = [["native", "Native-rank display records"], ["leadership", "Leadership display records"], ["class", "Class display records"], ["office", "Extended offices and display aliases"]];
-    const valid = Array.isArray(offices) && offices.length > 0 && offices.length <= 137 && new Set(offices.map(office => office?.key)).size === offices.length && offices.every(office =>
+    const valid = Array.isArray(offices) && offices.length > 0 && offices.length <= 138 && new Set(offices.map(office => office?.key)).size === offices.length && offices.every(office =>
       office && typeof office.key === "string" && /^[a-z][a-z0-9_:]{0,79}$/.test(office.key) && typeof office.label === "string" && office.label.length > 0 && office.label.length <= 160 && groups.some(([group]) => group === office.group));
     if (!valid) return frame("Office and rank display records", null, h("p", { class: "muted", text: "The display catalogue is unavailable. No holder identities were loaded." }));
     if (!S.signedIn || S.denied || !communityReader()) return frame("Office and rank display records", null, h("p", { class: "muted", text: "A qualified current guild reader can view the separately consented website holder records." }));
@@ -577,7 +578,7 @@
     if (!labels.length && !titles.length) return () => {};
     const user = S.user, settings = S.settings, context = COM(), route = currentRoute();
     const offices = M().appointments;
-    if (!Array.isArray(offices) || offices.length < 1 || offices.length > 137 || offices.some(office => !office || typeof office.key !== "string")) return () => {};
+    if (!Array.isArray(offices) || offices.length < 1 || offices.length > 138 || offices.some(office => !office || typeof office.key !== "string")) return () => {};
     const appointmentKeys = new Set(offices.map(office => office.key));
     if (appointmentKeys.size !== offices.length) return () => {};
     const referencedKeys = new Set([...labels.map(node => node.getAttribute("data-appointment-label")), ...titles.map(node => node.getAttribute("data-appointment-title"))].filter(key => appointmentKeys.has(key) && Object.prototype.hasOwnProperty.call(settings?.appointed || {}, key)));
@@ -1728,7 +1729,7 @@
   // Fixed public assets only: this reader never asks a member/leadership API for identities or permissions.
   const GOVERNANCE_BOOK = "/static/governance/reconciled-book.md";
   const GOVERNANCE_MODEL = "/static/governance/organization.json";
-  const GOVERNANCE_SHA256 = "0495d02d98aa1f31a64a575c6bc88caee4864e0c17db1140235f5aa8d416215b";
+  const GOVERNANCE_SHA256 = "93a557b8a1fbe1752094c1c9bf9dfefc8e61ff51a12e79ff17e67a8050bcf992";
   let governanceBookPromise = null, governanceModelPromise = null;
   async function publicGovernanceBytes(path, cap) {
     const res = await fetch(path, { credentials: "same-origin", redirect: "error" });
@@ -1740,7 +1741,7 @@
   function governanceBook() {
     if (!governanceBookPromise) governanceBookPromise = (async () => {
       const bytes = await publicGovernanceBytes(GOVERNANCE_BOOK, 524288);
-      if (bytes.length !== 271522) throw new Error("The R7 book has an unexpected size.");
+      if (bytes.length !== 271992) throw new Error("The R7 book has an unexpected size.");
       const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)), (b) => b.toString(16).padStart(2, "0")).join("");
       if (digest !== GOVERNANCE_SHA256) throw new Error("The R7 book does not match the reviewed text.");
       return parseGovernanceBook(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
@@ -1752,14 +1753,14 @@
       const bytes = await publicGovernanceBytes(GOVERNANCE_MODEL, 524288);
       const data = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
       if (data.schema !== "olympus-public-organization-v1" || data.revision !== "R7" || data.draft !== false || data.ratified !== true || data.appointmentsIssued !== false ||
-          !data.book || data.book.path !== GOVERNANCE_BOOK || data.book.bytes !== 271522 || data.book.sha256 !== GOVERNANCE_SHA256 ||
-          !Array.isArray(data.nodes) || data.nodes.length > 64 || !Array.isArray(data.terms) || data.terms.length !== 101 ||
+          !data.book || data.book.path !== GOVERNANCE_BOOK || data.book.bytes !== 271992 || data.book.sha256 !== GOVERNANCE_SHA256 ||
+          !Array.isArray(data.nodes) || data.nodes.length > 64 || !Array.isArray(data.terms) || data.terms.length !== 102 ||
           !Array.isArray(data.nativeRanks) || data.nativeRanks.length !== 10 || !Array.isArray(data.guildPlaceholders) || data.guildPlaceholders.length !== 10 ||
           !Array.isArray(data.termGroups) || data.directoryRoute !== "#/community/leadership") throw new Error("The organization model has an unexpected shape.");
       const ids = new Set(data.nodes.map((n) => n.id));
       if (ids.size !== data.nodes.length || data.nodes.some((n) => !/^[a-z][a-z0-9-]*$/.test(n.id) || (n.parent !== null && !ids.has(n.parent)) ||
           !own(data.legend, n.relation) || !Array.isArray(n.coordinates) || n.coordinates.some((id) => !ids.has(id))) ||
-          data.terms.some((t, i) => t.ordinal !== i + 1 || typeof t.label !== "string" || !ids.has(t.nodeId)) || new Set(data.terms.map((t) => t.label)).size !== 101) throw new Error("The organization model has an invalid relation.");
+          data.terms.some((t, i) => t.ordinal !== i + 1 || typeof t.label !== "string" || !ids.has(t.nodeId)) || new Set(data.terms.map((t) => t.label)).size !== 102) throw new Error("The organization model has an invalid relation.");
       // A corrupt static file must not turn recursive rendering into a loop.
       for (const n of data.nodes) {
         const seen = new Set(); let current = n;
@@ -2039,16 +2040,8 @@
       moveMatch(event.shiftKey ? -1 : 1);
     });
     add(main, [h("section", { class: "governance-hero" }, posIcon("guild_master"), h("div", null,
-      h("h1", { text: "The Governance of Olympus" }), h("p", { text: "The adopted R7 book and its 25 October five-Title expansion: sovereign decrees, Council and Court procedure, Treasury stewardship, the Grand Alliance Concordat, and the Artisans' and Heralds' accords." }))), governanceDraftNotice(),
+      h("h1", { text: "The Governance of Olympus" }), h("p", { text: "The guild code covers sovereign decrees, Council and Court procedure, Treasury stewardship, the Grand Alliance Concordat, and the Artisans' and Heralds' accords." }))), governanceDraftNotice(),
       noticeBox("info", "pos-officer", h("p", { text: reservedNotice201 }), h("p", null, "The adopted book retains its constitutional and historical procedures. For current eligibility and the individual duties of every office, see the ", h("a", { href: "#/roles", text: "complete role directory" }), ".")),
-      h("section", { class: "card", id: "trading-portfolio208", "aria-label": "Current High Council trading portfolio" },
-        h("h2", { text: "Head of Trading & Markets · High Council" }),
-        h("p", { text: "Owner direction recorded 28 October 2026: a dedicated reserved Council portfolio for auction-house trading, direct item trades and the guild's market strategy. This is a current office clarification alongside the adopted R7 book, not a newly ratified charter or a named appointment." }),
-        h("p", { text: "Its sole remit is trading performance: research actual prices and demand, choose funded buy/sell opportunities, negotiate direct trades and manage inventory and execution. Measure realised net profit after item costs, auction fees, lost deposits and agreed costs; turnover and unsold stock are not guild profit." }),
-        h("p", { text: "The Treasurer retains custody, authorised budgets, payment controls and reconciliation. Independent audit remains separate. Trading capital, position limits and stop rules need separate approval; this title grants no withdrawal, signing, Discord, website or provider permission. Donations, dues, appeals, discipline and Workshop commission administration are outside this portfolio." }),
-        h("p", { class: "small muted", text: "The current catalogue has 101 offices and 137 assignment keys. The adopted R7 book retains its historical 95-office register and ten native ranks. The twelve reserved Council portfolios share native High Council slot 1; they do not add ranks or open leadership applications." }),
-        h("a", { class: "btn", href: "#/roles/head_trading", text: "Read the complete trading responsibilities & expectations" }), " ",
-        h("a", { class: "btn small", href: "/static/governance/council-composition-master218.md", text: "Current Council portfolios & reporting lines" })),
       h("nav", { class: "governance-quicklinks", "aria-label": "Start reading" },
         h("a", { class: "btn", href: "#/governance/reading-and-adopting-this-book", text: "Start here" }),
         h("a", { class: "btn", href: "#/governance/adoption-and-office-registers", text: "Adoption checklist" }),
@@ -2064,15 +2057,6 @@
         h("a", { class: "btn", href: "#/governance/title-v-the-guild-workshop-artisans-charter-and-the-heralds-accord", text: "Title V · Artisans & Heralds" }),
         h("button", { class: "btn small", type: "button", text: "Print current R7 book", onclick: () => { preparePrint(); window.print(); } }),
         h("a", { class: "btn small", href: GOVERNANCE_BOOK, download: "Olympus Governance R7.md", text: "Download current R7 source" })),
-      h("details", { class: "governance-archive" }, h("summary", { text: "Archive and release records" }),
-        h("p", { class: "small muted", text: "Historical R6 drafts and preparation documents retain their dated status. For current guild rules, use the R7 reader above." }),
-        h("div", { class: "btn-row" },
-        h("a", { class: "btn small", href: "/static/governance/olympus-governance-r6.pdf", download: "Olympus Guild Governance - Successor Draft.pdf", text: "Historical R6 PDF" }),
-        h("a", { class: "btn small", href: "/static/governance/olympus-governance-r6.zip", download: "Olympus Governance - Successor Draft.zip", text: "Historical R6 package" }),
-        h("a", { class: "btn small", href: "/static/governance/olympus-guide-r6.pdf", download: "Olympus Guild Guide - Draft R6.pdf", text: "Historical R6 guide" }),
-        h("a", { class: "btn small", href: "/static/governance/olympus-adoption-checklist-r6.pdf", download: "Olympus Adoption Checklist - Draft R6.pdf", text: "Historical R6 checklist" }),
-        h("a", { class: "btn small", href: "/static/governance/olympus-templates-r6.pdf", download: "Olympus Appointment and News Templates - Draft R6.pdf", text: "Historical R6 templates" }),
-        h("a", { class: "btn small", href: "/static/governance/olympus-release-preparation.pdf", download: "Olympus Release Preparation Checklist.pdf", text: "Release preparation PDF" }))),
       h("div", { class: "governance-controls" }, h("label", { for: "governance-search", text: "Find a rule or office" }), search,
         h("button", { class: "btn small", type: "button", text: "Clear search", onclick: () => { search.value = ""; filter(); } }),
         h("button", { class: "btn small", type: "button", text: "Expand all chapters", onclick: () => { for (const section of details.values()) if (!section.hidden) section.open = true; } }),
@@ -3515,7 +3499,7 @@
           h("div", { class: "cand-name" }, c.label, " ", c.self ? h("span", { class: "badge", text: "you" }) : null, " ", h("span", { class: "badge " + (c.choice === 1 ? "green" : "muted"), text: c.choice === 1 ? "First choice" : "Backup choice" })),
           h("div", { class: "cand-meta" },
             c.class ? h("span", null, icon("class-" + c.class, "s"), " ", clsLabel(c.class)) : null,
-            c.role ? h("span", null, roleIcon(c.role), labelOf(meta.roles, c.role)) : null,
+            c.role ? h("span", { text: labelOf(meta.roles, c.role) }) : null,
             c.region ? h("span", { text: labelOf(meta.regions, c.region) }) : null,
             fitView(c.fit))),
         h("div", { class: "votes" }, forBtn, againstBtn)),
@@ -3980,7 +3964,7 @@
     }) : [h("p",{class:"muted small",text:"Family grouping is unavailable. The original scoped controls below remain unchanged."}),
       h("div",{class:"group-label",text:"Leadership"}),appointedGrid("leadership"),h("div",{class:"group-label",text:"Class leads"}),appointedGrid("class"),
       h("details",{class:"mt"},h("summary",{text:"Ten native rank display assignments"}),appointedGrid("native")),
-      h("details",{class:"mt"},h("summary",{text:"All 101 extended offices and historical aliases"}),appointedGrid("office"))];
+      h("details",{class:"mt"},h("summary",{text:"All 102 extended offices and historical aliases"}),appointedGrid("office"))];
     // .115 (Viktor's item C, 2 Oct 2026): a name is typed only after that person agreed; the Worker refuses a new or changed
     // name without this tick (400 confirm_names, shown in words). Each save asks again: the box is cleared after it.
     const [namesOk, namesOkRow] = box(false, "Each person I name has agreed to be named on the signed-in guild site and in account settings. A valid existing account session can still view settings after leaving the server or being denied.");
@@ -4890,7 +4874,7 @@
     add(body, [
       message ? noticeBox("warn", "icon-warning", h("p", { text: message })) : null,
       frame("News", h("span", { class: "badge " + (d.newsOn ? "green" : "muted"), text: d.newsOn ? "on" : "off" }),
-        h("p", { class: "muted small", text: "Community → News for guild members and site administrators: your notices, whether Olympus I has room, the guild in figures (counts only), the next events, when the leadership directory changed, the road to launch and the site's updates. Switch it in Admin → Settings." }),
+        h("p", { class: "muted small", text: "Community → News for guild members and site administrators: your notices, whether Olympus I has room, the guild in figures (counts only), the next events, when the leadership directory changed, the road to launch. Site updates are visible only to the owner. Switch it in Admin → Settings." }),
         d.newsOn ? null : noticeBox("info", "icon-clock", h("p", { text: "News is switched off (Admin → Settings); notices cannot be posted while it is off." })),
         kv([["Shown now", `${notices.length} of ${limits.liveMax || 20}`], ["Past their time, awaiting the cleanup", String(d.awaitingCleanup || 0)], ["Operation records kept (120 days each)", String(d.operationRecords || 0)]])),
       frame("Notices shown now", null, list.length ? list : h("p", { class: "muted small", text: "No notice is shown right now." })),
@@ -5971,7 +5955,6 @@
       frame("The Herald's desk", null,
         h("p", { text: "Guild dispatches, game news and practical references, with sources kept visible." }),
         h("ul", null,
-          h("li", null, h("a", { href: "https://olympusnewsnetwork.com/", target: "_blank", rel: "noopener noreferrer", text: "Olympus News Network — independent community news" })),
           h("li", null, h("a", { href: "https://www.curseforge.com/wow/addons/olympus-guild", target: "_blank", rel: "noopener noreferrer", text: "Olympus Guild — census and federation AddOn" })),
           h("li", null, h("a", { href: "#/governance", text: "Guild law, the Heraldry office and daily dispatch procedure" }))),
         h("p", { class: "muted small", text: "External reporting is separate from official guild decisions. Open the original source for its current article, date and corrections. A Town Crier appointment will appear only after it is accepted and recorded." })),

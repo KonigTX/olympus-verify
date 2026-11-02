@@ -1,0 +1,44 @@
+{
+  "schema": "olympus-governance-nodes222-finite-v1",
+  "base": "98bd84d80015636221321e9ec962de7430e807d6",
+  "systemsBefore": {
+    "id": "systems",
+    "title": "Systems and Addons Division",
+    "parent": "council",
+    "relation": "accountability",
+    "kind": "shared support division",
+    "icon": "liaison",
+    "remit": "Systems Architect portfolio, addon engineering and technical support within individually accepted warrants.",
+    "limits": "The architect portfolio is classified with High Council; engineering support is Officer Corps. Neither classification appoints a holder or grants signing, platform or bank access.",
+    "coordinates": [],
+    "chapter": "organisation-and-offices"
+  },
+  "systemsAfter": {
+    "id": "systems",
+    "title": "Systems and Addons Division",
+    "parent": "council",
+    "relation": "accountability",
+    "kind": "shared support division",
+    "icon": "liaison",
+    "remit": "Architecture, addon engineering and technical support under individually accepted technical appointments.",
+    "limits": "Technical contributors are outside the High Council. A support appointment grants no Council vote, production access or signing authority.",
+    "coordinates": [],
+    "chapter": "organisation-and-offices"
+  },
+  "propaganda": {
+    "id": "propaganda",
+    "title": "Ministry of Propaganda",
+    "parent": "council",
+    "relation": "accountability",
+    "kind": "High Council portfolio",
+    "icon": "herald",
+    "remit": "Guild campaigns, recruitment storytelling and broadcaster-safe creative direction, with accurate claims and attributable sources.",
+    "limits": "The Minister approves campaign direction within the accepted warrant. Heraldry owns official records and publication standards; editors and platform operators retain separately granted access. No harassment, deceptive impersonation or private-information disclosure.",
+    "coordinates": [
+      "heraldry",
+      "intake",
+      "media"
+    ],
+    "chapter": "organisation-and-offices"
+  }
+}

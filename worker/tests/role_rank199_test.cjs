@@ -13,6 +13,7 @@ const historicalScope218='Historical application and ballot compatibility only; 
 // Only the six explicitly preserved fields of the two reviewed institutions
 // may be reversed. Every other property remains in the original digest.
 function originalTerms218(terms) {
+ terms=require('../../scripts/governance-role-inverse222.cjs').originalTerms222(terms);
  const specs={office_26:{ordinal:26,label:'Council of Justice',applicationLabel:'Council of Justice',acquisition:'Case-designated judicial institution; chaired by the Lord High Chancellor, with accepted unconflicted members.'},office_94:{ordinal:94,label:'War Head',applicationLabel:'War Directorate (historical shared template)',acquisition:'Historical shared War Head reference; current PvE and PvP portfolios have their own separate appointments.'}};
  const keys=['label','applicationLabel','applicationAliases','applicationEligible','applicationRoleKeys','acquisition'];
  return terms.map(current=>{
@@ -32,8 +33,8 @@ function originalTerms218(terms) {
 check('all three .199 rank projections agree on exact order and zero-based slots',()=>{
  for(const rows of [organization.nativeRanks,browser.ranks,server.NATIVE_RANKS_199]){assert.deepEqual(rows.map(r=>r.name),names);assert.deepEqual(rows.map(r=>r.nativeSlot),[0,1,2,3,4,5,6,7,8,9]);assert.ok(rows.every((r,i)=>r.nativeRankOrdinal===i+1&&r.mappingApplies===false));}
 });
-check('all 101 stable offices and all 137 assignable keys have explicit individual classifications',()=>{
- assert.equal(organization.terms.length,101);assert.equal(server.OFFICE_APPOINTMENTS.length,137);assert.equal(new Set(server.OFFICE_APPOINTMENT_KEYS).size,137);
+check('all 102 stable offices and all 138 assignable keys have explicit individual classifications',()=>{
+ assert.equal(organization.terms.length,102);assert.equal(server.OFFICE_APPOINTMENTS.length,138);assert.equal(new Set(server.OFFICE_APPOINTMENT_KEYS).size,138);
  assert.deepEqual(server.OFFICE_APPOINTMENTS,organization.appointments);assert.deepEqual(browser.offices,organization.appointments);
  const stable=JSON.parse(fs.readFileSync(path.join(repo,'docs/governance-office-keys.json'),'utf8'));
  assert.deepEqual(server.OFFICE_APPOINTMENTS.filter(o=>o.termOrdinal).map(o=>({key:o.key,label:o.label})),stable);
@@ -44,7 +45,7 @@ check('all 101 stable offices and all 137 assignable keys have explicit individu
 });
 check('High Council, Officer Corps and member specialisms never share an accidental default classification',()=>{
  const find=key=>server.OFFICE_APPOINTMENTS.find(o=>o.key===key);
- for(const key of ['office_03','office_14','office_26','office_28','office_45','office_57','office_58','office_59','office_67','office_94']){assert.equal(find(key).tier,'high_council');assert.equal(find(key).applicationTrack,'high_council');assert.equal(find(key).nativeSlot,1);assert.equal(find(key).applicationEligible,true);}
+ for(const key of ['office_14','office_26','office_28','office_45','office_57','office_58','office_59','office_67','office_94']){assert.equal(find(key).tier,'high_council');assert.equal(find(key).applicationTrack,'high_council');assert.equal(find(key).nativeSlot,1);assert.equal(find(key).applicationEligible,true);}
  for(const key of ['office_02','office_08','office_33','office_44','office_62','office_79','class_lead:warrior']){assert.equal(find(key).tier,'officer_corps');assert.equal(find(key).applicationTrack,'officer');assert.equal(find(key).nativeSlot,2);}
  for(const key of ['office_07','office_27']){assert.equal(find(key).tier,'member_specialist');assert.equal(find(key).applicationTrack,'artisan');assert.deepEqual(find(key).codexTitles,['V']);}
  for(const key of ['office_61','office_64','office_87']){assert.equal(find(key).statusOverlay,true);assert.equal(find(key).applicationEligible,false);assert.equal(find(key).mappingApplies,false);}
@@ -103,16 +104,16 @@ check('Master218 has twelve independent Council portfolios plus the existing Lea
  assert.equal(organization.councilComposition.previousSeatMap.currentSeats.filter(s=>s.officeKeys.includes('office_94')).length,2);
  assert.equal(seats.filter(s=>s.officeKeys.includes('office_94')).length,0);
 });
-check('every office and retained assignment has an explicit current ministry and Council portfolio',()=>{
+check('every office has its current ministry and a real Council portfolio or explicit technical-support classification',()=>{
  const seats=new Map(organization.councilComposition.currentSeats.map(s=>[s.id,s]));
- assert.equal(Object.keys(organization.cabinet218.offices).length,101);
+ assert.equal(Object.keys(organization.cabinet218.offices).length,102);
  for(const office of server.OFFICE_APPOINTMENTS){
-  assert.ok(seats.has(office.cabinetSeatId));assert.equal(office.councilSeat,seats.get(office.cabinetSeatId).label);
+  if(office.cabinetSeatId==='technical-support'){assert.equal(office.councilSeat,'');assert.notEqual(office.tier,'high_council');}else{assert.ok(seats.has(office.cabinetSeatId));assert.equal(office.councilSeat,seats.get(office.cabinetSeatId).label);}
   assert.ok(organization.nodes.some(node=>node.title===office.ministry));
  }
  assert.notEqual(organization.cabinet218.offices.office_08.seatId,'treasurer');
  assert.equal(organization.cabinet218.offices.office_08.independentReview,true);
- assert.equal(organization.roleRank199.officeCount,101);assert.equal(organization.roleRank199.assignableKeyCount,137);
+ assert.equal(organization.roleRank199.officeCount,102);assert.equal(organization.roleRank199.assignableKeyCount,138);
  assert.deepEqual(organization.cabinet218.reportingChanges,[{nodeId:'intake',field:'parent',before:'heraldry',after:'council',reason:'Chancery is now a distinct reserved Council portfolio; Heraldry remains a coordinating communications partner.'}]);
  assert.equal(organization.nodes.find(n=>n.id==='intake').parent,'council');
 });

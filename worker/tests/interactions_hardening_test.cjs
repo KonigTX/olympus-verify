@@ -249,7 +249,7 @@ const check = (name, cond, ...why) => { n++; if (cond) ok++; else if (why.length
   res = await post({ ...command("900000000000000062", "olympus-admin"), data: { name: "olympus-admin", options: [{ name: "unban", type: 1, options: [{ name: "user", type: 3, value: USER }] }] } });
   check("  while /olympus-admin unban, which writes, is ledgered", res.status === 200 && rows().some((r) => r.id === "900000000000000062"), res.status);
   res = await post({ ...command("900000000000000063"), guild_id: undefined, type: 5, data: { custom_id: "guide:verify-modal", components: [{ type: 1, components: [{ type: 4, custom_id: "character", value: "Sneaky Modal" }] }] } });
-  check("a modal without a guild id is refused like any other interaction outside the configured guild (.58, Codex 01:35)", res.status === 200 && /only serves Olympus/.test((await res.json()).data?.content ?? "") && !db.prepare("SELECT 1 FROM pending WHERE name_key = 'sneaky modal'").get());
+  check("a modal without a guild id is silently ignored before replay or name effects", res.status === 204 && await res.text() === "" && !rows().some(r=>r.id==="900000000000000063") && !db.prepare("SELECT 1 FROM pending WHERE name_key = 'sneaky modal'").get());
   res = await post({ ...command("nope"), id: "not-a-snowflake" });
   check("a command without a snowflake id is refused with 400", res.status === 400, res.status);
   res = await post({ ...command("900000000000000030"), id: undefined });
@@ -318,8 +318,8 @@ const check = (name, cond, ...why) => { n++; if (cond) ok++; else if (why.length
   console.log("\n== the purge ==");
   T += 3600 - 10; // exactly one hour after the first ledgered id
   await indexMod.purgeSeenInteractions(env());
-  // 9 since .50: the ledgered /olympus-admin unban above (the read-only cases add nothing); 10 since .58: the refused modal is ledgered too.
-  check("ids exactly an hour old are forgotten, newer ones kept", rows().length === 10 && rows().every((r) => r.id !== "900000000000000010"), JSON.stringify(rows().map((r) => r.id)));
+  // .222: nine admitted writes remain; the missing-guild modal is ignored before the ledger.
+  check("ids exactly an hour old are forgotten, newer ones kept", rows().length === 9 && rows().every((r) => r.id !== "900000000000000010"), JSON.stringify(rows().map((r) => r.id)));
   res = await post(command("900000000000000010"));
   check("  so a forgotten id would be accepted again (its old signature is long past the window anyway)", res.status === 200, res.status);
   T += 7200;

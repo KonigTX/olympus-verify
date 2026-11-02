@@ -242,7 +242,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   r = await newsGet(MEMBER);
   check("a confirmed member: 200 with exactly the DTO keys", r.status === 200 && keys(r.body) === "beta,events,figures,leadership,notices,now,releases,seats", r.body && keys(r.body));
   check("  the seat state is the members' shape (no reason, no exact time)", keys(r.body.seats) === "asOf,cap,free,members,source,state,visitorsUrl" && r.body.seats.state === "unknown", r.body.seats);
-  check("  no figures yet (null), no notices, release notes and the later announced beta shutdown", r.body.figures === null && r.body.notices.length === 0 && r.body.releases.length >= 1 && r.body.beta.announcedClosureAt === 1792774800 && r.body.beta.scheduleStatus === "announced-plan-not-observed" && !Object.hasOwn(r.body.beta, "lastFullDay"));
+  check("  no figures yet (null), no notices, release notes and the later announced beta shutdown", r.body.figures === null && r.body.notices.length === 0 && r.body.releases.length === 0 && r.body.beta.announcedClosureAt === 1792774800 && r.body.beta.scheduleStatus === "announced-plan-not-observed" && !Object.hasOwn(r.body.beta, "lastFullDay"));
   check("  no digest field and no author anywhere", !/digest/i.test(JSON.stringify(r.body)) && !JSON.stringify(r.body).includes("createdBy"));
   // standing lost between the context read and the admitted batch: the probe is prepared last, just before the batch runs
   HOOK = async (sql, phase) => { if (phase === "prepare" && /^SELECT \(EXISTS\(SELECT 1 FROM site_users fu/.test(sql)) { await run("UPDATE characters SET status = 'left' WHERE discord_id = ?", MEMBER); HOOK = null; } };
@@ -507,7 +507,10 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   r = await newsGet(MEMBER);
   check("leadership.updatedAt is the directory row's updated_at rounded down to the hour (review of 3 Oct 2026), and no name from the directory appears in the News JSON", r.body.leadership.updatedAt === Math.floor(lrow.updated_at / H) * H && r.body.leadership.updatedAt % H === 0 && !JSON.stringify(r.body).includes("Zed Leader") && !JSON.stringify(r.body).includes("Quill Officer"), r.body.leadership, lrow);
   check("beta: exact later official schedule DTO, no observed-closure claim, and launchAt from member settings", keys(r.body.beta) === "announcedClosureAt,announcementDate,launchAt,scheduleStatus,source" && r.body.beta.announcedClosureAt === Date.UTC(2026, 9, 23, 17) / 1000 && r.body.beta.announcementDate === "2026-10-20" && r.body.beta.scheduleStatus === "announced-plan-not-observed" && r.body.beta.source === "https://us.forums.blizzard.com/en/wow/t/heads-up-wow-forever-stress-test-on-october-21/2387920" && r.body.beta.launchAt === (await http("GET", "/api/public", { who: MEMBER })).body.settings.launchAt);
-  check("releases: the newest first, at most 5, plain {build, date, lines}", r.body.releases.length >= 1 && r.body.releases.length <= 5 && r.body.releases.every((x) => keys(x) === "build,date,lines"));
+  check("ordinary members receive no owner-only release history", r.body.releases.length === 0);
+  check("non-owner administrators receive no owner-only release history", (await newsGet(ADMIN2)).body.releases.length === 0);
+  r = await newsGet(ADMIN);
+  check("owner releases: newest first, at most 5, plain {build, date, lines}", r.body.releases.length >= 1 && r.body.releases.length <= 5 && r.body.releases.every((x) => keys(x) === "build,date,lines"));
 
   console.log("\n== the figures ==");
   fresh(); await people(); await newsOnRow();
@@ -1153,6 +1156,80 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
     "historicalParagraph": "          h(\"p\", null, rank.nativeSlot < 5 ? \"Reserved appointment — no applications for Leader, High Council or Officer Corps seats.\" : \"Membership, raiding and artisan work use the role directory; other standing and titles require their own review. \", rank.nativeSlot >= 5 ? h(\"a\", {href:\"#/vote\",text:\"Explore the role directory\"}) : null, \" In-game verification via /oly discord remains subject to separate Link activation.\")];"
   }
 ]);
+  const RETAINED_CONTEXTS222 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-01.221 Guild guides and command workflows\";",
+    "singleLine": true,
+    "paragraphSha256": "cbd275af4a1a6783ff84b52981226926064ba3d277a1dd8d5942f2a90d1cd858",
+    "paragraphBytes": 66,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 221,
+    "purpose": "Owner evergreen release: exact current build label only, no new guarded-vocabulary allowance.",
+    "predecessorSHA256": "f07de5c926c34a288989535d4c6e9935e2a89a2079cc4cab270e191bee19cbb4",
+    "predecessorRelease": 220,
+    "currentBuild": true,
+    "historicalParagraph": "const BUILD = \"2026-11-01.221 Guild guides and command workflows\";",
+    "superseded222": true
+  },
+  {
+    "file": "worker/public/static/app.js",
+    "startMarker": "      h(\"p\", { text: \"101 stable offices and 137 assignable keys share this bridge, including the dedicated High Council Head of Trading & Markets. Display classification and an application do not confer an office, game rank, Discord role or portal access. Olympus Link remains OFF; /oly discord is a future qualified verification path, not a currently active admission shortcut.\" }),",
+    "singleLine": true,
+    "paragraphSha256": "5b095c3d145f13afe1d2e0398e16122573973069dd219fdc4a3b7208b49dcc40",
+    "paragraphBytes": 384,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 218,
+    "purpose": "Owner Master218 role bridge census; reviewed Root e925c1e/033bcb2 plus genuine Claude b9fd746 integration. Exact source only; no global allowance.",
+    "predecessorSHA256": "a228b5b9908b5163cb8094f18bc9b01f16e5af985bfe156323969c1369632c0c",
+    "predecessorRelease": 208,
+    "historicalParagraph": "      h(\"p\", { text: \"101 stable offices and 137 assignable keys share this bridge, including the dedicated High Council Head of Trading & Markets. Display classification and an application do not confer an office, game rank, Discord role or portal access. Olympus Link remains OFF; /oly discord is a future qualified verification path, not a currently active admission shortcut.\" }),",
+    "superseded222": true
+  },
+  {
+    "file": "worker/public/static/app.js",
+    "startMarker": "      h(\"section\", { class: \"card\", id: \"trading-portfolio208\", \"aria-label\": \"Current High Council trading portfolio\" },",
+    "singleLine": true,
+    "paragraphSha256": "60d7ca9214564adea24a5cfb2752c45c8343b62b1f976153f38dfb2ad3bbb65e",
+    "paragraphBytes": 121,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 208,
+    "purpose": "Owner208 dedicated Council trading portfolio: exact unique source line only; no general vocabulary allowance.",
+    "historicalParagraph": "      h(\"section\", { class: \"card\", id: \"trading-portfolio208\", \"aria-label\": \"Current High Council trading portfolio\" },",
+    "retirement222": "Removed reader-facing editorial block; no current credit"
+  },
+  {
+    "file": "worker/public/static/app.js",
+    "startMarker": "        h(\"h2\", { text: \"Head of Trading & Markets · High Council\" }),",
+    "singleLine": true,
+    "paragraphSha256": "afc1507d07e8b8e575108afe0007feb4242a95be7053cba94f4fc1f6ea9dfe2f",
+    "paragraphBytes": 71,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 208,
+    "purpose": "Owner208 dedicated Council trading portfolio: exact unique source line only; no general vocabulary allowance.",
+    "historicalParagraph": "        h(\"h2\", { text: \"Head of Trading & Markets · High Council\" }),",
+    "retirement222": "Removed reader-facing editorial block; no current credit"
+  },
+  {
+    "file": "worker/public/static/app.js",
+    "startMarker": "        h(\"p\", { class: \"small muted\", text: \"The current catalogue has 101 offices and 137 assignment keys. The adopted R7 book retains its historical 95-office register and ten native ranks. The twelve reserved Council portfolios share native High Council slot 1; they do not add ranks or open leadership applications.\" }),",
+    "singleLine": true,
+    "paragraphSha256": "cdaf5190bd80d63f55633889bab5a73c5de1dce1f55350a32b7058dfabf81da1",
+    "paragraphBytes": 325,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 218,
+    "purpose": "Owner Master218 dedicated trading portfolio census; reviewed Root e925c1e/033bcb2 plus genuine Claude b9fd746 integration. Exact source only; no global allowance.",
+    "predecessorSHA256": "5bc941c59f320250420eada7460ce61c89cd5b7c79267ea6305995f51d5cba50",
+    "predecessorRelease": 208,
+    "historicalParagraph": "        h(\"p\", { class: \"small muted\", text: \"The current catalogue has 101 offices and 137 assignment keys. The adopted R7 book retains its historical 95-office register and ten native ranks. The twelve reserved Council portfolios share native High Council slot 1; they do not add ranks or open leadership applications.\" }),",
+    "retirement222": "Removed reader-facing editorial block; no current credit"
+  }
+]);
   const CURRENT_CONTEXTS = Object.freeze([
   {
     "file": "docs/launch-runbook.md",
@@ -1507,65 +1584,34 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   },
   {
     "file": "worker/src/index.ts",
-    "startMarker": "const BUILD = \"2026-11-01.221 Guild guides and command workflows\";",
+    "startMarker": "const BUILD = \"2026-11-01.222 Guild organization and private raid hub\";",
     "singleLine": true,
-    "paragraphSha256": "cbd275af4a1a6783ff84b52981226926064ba3d277a1dd8d5942f2a90d1cd858",
-    "paragraphBytes": 66,
+    "paragraphSha256": "8b921050f0c433f24fca39d50a3373ed0cab33e05e9f4c8e14a302149c70b457",
+    "paragraphBytes": 71,
     "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
     "count": 0,
-    "ownerRelease": 221,
-    "purpose": "Owner evergreen release: exact current build label only, no new guarded-vocabulary allowance.",
-    "predecessorSHA256": "f07de5c926c34a288989535d4c6e9935e2a89a2079cc4cab270e191bee19cbb4",
-    "predecessorRelease": 220,
-    "currentBuild": true
+    "ownerRelease": 222,
+    "purpose": "Exact owner-requested .222 current copy; original global GUARD and ALLOWED are unchanged.",
+    "predecessorSHA256": "cbd275af4a1a6783ff84b52981226926064ba3d277a1dd8d5942f2a90d1cd858",
+    "predecessorRelease": 221,
+    "currentBuild": true,
+    "editorialRelease": 222,
+    "editorialPredecessorSHA256": "cbd275af4a1a6783ff84b52981226926064ba3d277a1dd8d5942f2a90d1cd858"
   },
   {
     "file": "worker/public/static/app.js",
-    "startMarker": "      h(\"p\", { text: \"101 stable offices and 137 assignable keys share this bridge, including the dedicated High Council Head of Trading & Markets. Display classification and an application do not confer an office, game rank, Discord role or portal access. Olympus Link remains OFF; /oly discord is a future qualified verification path, not a currently active admission shortcut.\" }),",
+    "startMarker": "      h(\"p\", { text: \"102 stable offices and 138 assignable keys share this bridge, including the dedicated High Council Head of Trading & Markets. Display classification and an application do not confer an office, game rank, Discord role or portal access. Olympus Link remains OFF; /oly discord is a future qualified verification path, not a currently active admission shortcut.\" }),",
     "singleLine": true,
-    "paragraphSha256": "5b095c3d145f13afe1d2e0398e16122573973069dd219fdc4a3b7208b49dcc40",
+    "paragraphSha256": "2ee764da31653756dd6b4da25d6c75039fb5a8375c1598a20ec7fa5120ea3f58",
     "paragraphBytes": 384,
     "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
     "count": 1,
     "ownerRelease": 218,
-    "purpose": "Owner Master218 role bridge census; reviewed Root e925c1e/033bcb2 plus genuine Claude b9fd746 integration. Exact source only; no global allowance.",
+    "purpose": "Exact owner-requested .222 current copy; original global GUARD and ALLOWED are unchanged.",
     "predecessorSHA256": "a228b5b9908b5163cb8094f18bc9b01f16e5af985bfe156323969c1369632c0c",
-    "predecessorRelease": 208
-  },
-  {
-    "file": "worker/public/static/app.js",
-    "startMarker": "      h(\"section\", { class: \"card\", id: \"trading-portfolio208\", \"aria-label\": \"Current High Council trading portfolio\" },",
-    "singleLine": true,
-    "paragraphSha256": "60d7ca9214564adea24a5cfb2752c45c8343b62b1f976153f38dfb2ad3bbb65e",
-    "paragraphBytes": 121,
-    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
-    "count": 1,
-    "ownerRelease": 208,
-    "purpose": "Owner208 dedicated Council trading portfolio: exact unique source line only; no general vocabulary allowance."
-  },
-  {
-    "file": "worker/public/static/app.js",
-    "startMarker": "        h(\"h2\", { text: \"Head of Trading & Markets · High Council\" }),",
-    "singleLine": true,
-    "paragraphSha256": "afc1507d07e8b8e575108afe0007feb4242a95be7053cba94f4fc1f6ea9dfe2f",
-    "paragraphBytes": 71,
-    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
-    "count": 1,
-    "ownerRelease": 208,
-    "purpose": "Owner208 dedicated Council trading portfolio: exact unique source line only; no general vocabulary allowance."
-  },
-  {
-    "file": "worker/public/static/app.js",
-    "startMarker": "        h(\"p\", { class: \"small muted\", text: \"The current catalogue has 101 offices and 137 assignment keys. The adopted R7 book retains its historical 95-office register and ten native ranks. The twelve reserved Council portfolios share native High Council slot 1; they do not add ranks or open leadership applications.\" }),",
-    "singleLine": true,
-    "paragraphSha256": "cdaf5190bd80d63f55633889bab5a73c5de1dce1f55350a32b7058dfabf81da1",
-    "paragraphBytes": 325,
-    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
-    "count": 1,
-    "ownerRelease": 218,
-    "purpose": "Owner Master218 dedicated trading portfolio census; reviewed Root e925c1e/033bcb2 plus genuine Claude b9fd746 integration. Exact source only; no global allowance.",
-    "predecessorSHA256": "5bc941c59f320250420eada7460ce61c89cd5b7c79267ea6305995f51d5cba50",
-    "predecessorRelease": 208
+    "predecessorRelease": 208,
+    "editorialRelease": 222,
+    "editorialPredecessorSHA256": "5b095c3d145f13afe1d2e0398e16122573973069dd219fdc4a3b7208b49dcc40"
   },
   {
     "file": "worker/public/static/app.js",
@@ -1714,15 +1760,15 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   const iconText = guarded.find(([file]) => file === iconFile)[1];
   const qualifiedIcon = currentContextQualification(iconFile, iconText);
   const originalIconContext = qualifiedIcon.paragraphs[0] || "";
-  check("current app contexts qualify exactly30 pinned lineage and Master218 reporting contexts", qualifiedIcon.errors.length === 0 && qualifiedIcon.paragraphs.length === 30 && qualifiedIcon.credits[currentDigest] === 32 && Object.keys(qualifiedIcon.credits).length === 1);
+  check("current app contexts qualify exactly27 pinned lineage and Master218 reporting contexts", qualifiedIcon.errors.length === 0 && qualifiedIcon.paragraphs.length === 27 && qualifiedIcon.credits[currentDigest] === 29 && Object.keys(qualifiedIcon.credits).length === 1);
   const extraIconText = `${iconText}\n\n${approvedGram}`;
   const extraIconQualification = currentContextQualification(iconFile, extraIconText);
-  check("an extra occurrence outside the30 exact approved app contexts remains restricted", !!approvedGram && extraIconQualification.errors.length === 0 && extraIconQualification.credits[currentDigest] === 32 && vocabularyOverages(iconFile, extraIconText).some((s) => s.includes(`${currentDigest.slice(0, 12)} x1`)));
+  check("an extra occurrence outside the27 exact approved app contexts remains restricted", !!approvedGram && extraIconQualification.errors.length === 0 && extraIconQualification.credits[currentDigest] === 29 && vocabularyOverages(iconFile, extraIconText).some((s) => s.includes(`${currentDigest.slice(0, 12)} x1`)));
   const changedIconContext = originalIconContext ? `${originalIconContext.slice(0, -1)}!` : "";
   check("an icon-context byte edit cannot borrow the fixed qualification", !!originalIconContext && currentContextQualification(iconFile, iconText.replace(originalIconContext, changedIconContext)).errors.length > 0 && vocabularyOverages(iconFile, iconText.replace(originalIconContext, changedIconContext)).length > 0);
   check("a duplicate icon context cannot create another qualification", !!originalIconContext && currentContextQualification(iconFile, `${iconText}\n\n${originalIconContext}`).errors.length > 0 && vocabularyOverages(iconFile, `${iconText}\n\n${originalIconContext}`).length > 0);
   check("approved icon bytes in another guarded file receive no qualification", !!originalIconContext && vocabularyOverages("README.md", originalIconContext).some((s) => s.includes(currentDigest.slice(0, 12))) && Object.keys(currentContextQualification("README.md", originalIconContext).credits).length === 0);
-  const otherIconDigestOver = overOriginalVocabularyAllowance(iconFile, { [currentDigest]: 32, [otherDigest]: 1 }, qualifiedIcon);
+  const otherIconDigestOver = overOriginalVocabularyAllowance(iconFile, { [currentDigest]: 29, [otherDigest]: 1 }, qualifiedIcon);
   check("every other icon-file digest retains its original allowance", !!otherDigest && [...GUARD].filter((d) => d !== currentDigest).every((d) => qualifiedIcon.credits[d] === undefined) && otherIconDigestOver.length === 1 && otherIconDigestOver.some((s) => s.includes(otherDigest.slice(0, 12))) && !otherIconDigestOver.some(s => s.includes("credit exceeds")));
   const titleIISpec = CURRENT_CONTEXTS.find(spec => spec.singleLine), titleIIContext = qualifiedIcon.paragraphs.find(text => text.startsWith(titleIISpec.startMarker)) || "";
   check(".198 Title II qualification is one exact 146-byte line with only its single approved digest", titleIISpec.singleLine === true && Buffer.byteLength(titleIIContext, "utf8") === 146 && sha(titleIIContext) === titleIISpec.paragraphSha256 && titleIIContext.split("\n").length === 1 && JSON.stringify(guardedCounts(titleIIContext)) === JSON.stringify({ [currentDigest]: 1 }));
@@ -1732,7 +1778,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   check(".198 exact Title II link bytes in another file receive no context credit", !!titleIIContext && Object.keys(currentContextQualification("README.md", titleIIContext).credits).length === 0 && vocabularyOverages("README.md", titleIIContext).some(s => s.includes(currentDigest.slice(0, 12))));
 
   const ownerContexts199 = CURRENT_CONTEXTS.filter(spec => spec.ownerRelease === 199 || spec.predecessorRelease === 199);
-  check(".199 retains its12-context lineage in four files, including two explicit Master218 successors, with all28 original digests intact", ownerContexts199.length === 12 && GUARD.size === 28 && ownerContexts199.every(spec => spec.digest === currentDigest) && JSON.stringify([...new Set(ownerContexts199.map(spec => spec.file))].sort()) === JSON.stringify(["CLAUDE.md", "worker/public/static/app.js", "worker/src/site-api.ts", "worker/src/site-data.ts"].sort()));
+  check(".199 retains its12-context lineage in four files, including two explicit Master218 successors, with all28 original digests intact", ownerContexts199.length + 0 === 12 && GUARD.size === 28 && ownerContexts199.every(spec => spec.digest === currentDigest) && JSON.stringify([...new Set(ownerContexts199.map(spec => spec.file))].sort()) === JSON.stringify(["CLAUDE.md", "worker/public/static/app.js", "worker/src/site-api.ts", "worker/src/site-data.ts"].sort()));
   for (const spec of ownerContexts199) {
     const text = guarded.find(([file]) => file === spec.file)[1], qualified = currentContextQualification(spec.file, text);
     const paragraph = qualified.paragraphs.find(value => value.startsWith(spec.startMarker)) || "";
@@ -1753,10 +1799,10 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   // cross-file negative controls, with the original GUARD and ALLOWED unchanged.
   const ownerContexts201 = CURRENT_CONTEXTS.filter(spec => spec.ownerRelease === 201 || spec.predecessorRelease === 201);
   const retiredNativeAlias201=RETIRED_CONTEXTS218.filter(spec=>spec.paragraphSha256==='c58fa50d176a4d413750ec8f47eef7c115a101a270d38ee501c82523a08a95ea');
-  check('.201 retains all14 context lineages as13 current plus one removed native-alias paragraph without raising any original allowance',ownerContexts201.length === 13 && retiredNativeAlias201.length===1 && retiredNativeAlias201[0].ownerRelease===201 && retiredNativeAlias201[0].digest===currentDigest && retiredNativeAlias201[0].count===1 && GUARD.size === 28 && ownerContexts201.every(spec=>spec.digest===currentDigest));
+  check('.201 retains all14 context lineages as13 current plus one removed native-alias paragraph without raising any original allowance',ownerContexts201.length + 0 === 13 && retiredNativeAlias201.length===1 && retiredNativeAlias201[0].ownerRelease===201 && retiredNativeAlias201[0].digest===currentDigest && retiredNativeAlias201[0].count===1 && GUARD.size === 28 && ownerContexts201.every(spec=>spec.digest===currentDigest));
   const retiredNativeText201=retiredNativeAlias201[0]?.historicalParagraph||'';
-  check('.218 retired native-alias bytes and their punctuation edit receive no current credit',!!retiredNativeText201&&[retiredNativeText201,retiredNativeText201.slice(0,-1)+'!'].every(line=>{const value=iconText+'\n'+line,q=currentContextQualification(iconFile,value);return q.errors.length===0&&q.credits[currentDigest]===32&&!q.paragraphs.includes(line)&&vocabularyOverages(iconFile,value).some(value=>value===iconFile+': digest '+currentDigest.slice(0,12)+' x1');}));
-  check('.218 duplicated retired native-alias bytes cannot multiply a current credit',!!retiredNativeText201&&currentContextQualification(iconFile,iconText+'\n'+retiredNativeText201+'\n'+retiredNativeText201).credits[currentDigest]===32&&vocabularyOverages(iconFile,iconText+'\n'+retiredNativeText201+'\n'+retiredNativeText201).some(value=>value===iconFile+': digest '+currentDigest.slice(0,12)+' x2'));
+  check('.218 retired native-alias bytes and their punctuation edit receive no current credit',!!retiredNativeText201&&[retiredNativeText201,retiredNativeText201.slice(0,-1)+'!'].every(line=>{const value=iconText+'\n'+line,q=currentContextQualification(iconFile,value);return q.errors.length===0&&q.credits[currentDigest]===29&&!q.paragraphs.includes(line)&&vocabularyOverages(iconFile,value).some(value=>value===iconFile+': digest '+currentDigest.slice(0,12)+' x1');}));
+  check('.218 duplicated retired native-alias bytes cannot multiply a current credit',!!retiredNativeText201&&currentContextQualification(iconFile,iconText+'\n'+retiredNativeText201+'\n'+retiredNativeText201).credits[currentDigest]===29&&vocabularyOverages(iconFile,iconText+'\n'+retiredNativeText201+'\n'+retiredNativeText201).some(value=>value===iconFile+': digest '+currentDigest.slice(0,12)+' x2'));
   check('.218 retired native-alias bytes in another file remain unqualified',!!retiredNativeText201&&Object.keys(currentContextQualification('README.md',retiredNativeText201).credits).length===0&&vocabularyOverages('README.md',retiredNativeText201).some(value=>value==='README.md: digest '+currentDigest.slice(0,12)+' x1'));
   for(const spec of ownerContexts201){
     const text=guarded.find(([file])=>file===spec.file)[1],qualified=currentContextQualification(spec.file,text),paragraph=qualified.paragraphs.find(value=>value.startsWith(spec.startMarker))||'',changed=paragraph?paragraph.slice(0,-1)+'!':'';
@@ -1781,7 +1827,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
 
   // .208's four newly authorised display lines keep exact byte and negative-case gates.
   const tradingContexts208=CURRENT_CONTEXTS.filter(spec=>(spec.ownerRelease===208 || spec.predecessorRelease===208) && spec.file===iconFile);
-  check('.208 retains four exact trading-display contexts, including two Master218 census successors, with one credit each',tradingContexts208.length===4 && tradingContexts208.every(spec=>spec.singleLine===true && spec.count===1 && spec.digest===currentDigest) && GUARD.size===28);
+  check('.208 retains all four trading-context lineages across current and explicitly retired reader blocks',tradingContexts208.length+RETAINED_CONTEXTS222.filter(spec=>spec.retirement222&&(spec.ownerRelease===208||spec.predecessorRelease===208)).length===4 && tradingContexts208.every(spec=>spec.singleLine===true && spec.count===1 && spec.digest===currentDigest) && GUARD.size===28);
   for(const spec of tradingContexts208){
     const paragraph=qualifiedIcon.paragraphs.find(value=>value.startsWith(spec.startMarker))||'',changed=paragraph.slice(0,-1)+'!';
     check('.208 trading display qualifies its exact source bytes '+spec.paragraphSha256.slice(0,12),qualifiedIcon.errors.length===0 && Buffer.byteLength(paragraph,'utf8')===spec.paragraphBytes && sha(paragraph)===spec.paragraphSha256 && (guardedCounts(paragraph)[currentDigest]||0)===1);
@@ -1791,7 +1837,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
 
   // .218's exact release label contains no guarded rank term, so it grants zero credit.
   // Keep the byte, duplicate, planted-term and wrong-file refusals without raising ALLOWED or changing GUARD.
-  const buildSpecs217 = CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===221 && spec.currentBuild===true && spec.file==='worker/src/index.ts'), buildFile217='worker/src/index.ts';
+  const buildSpecs217 = CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===222 && spec.currentBuild===true && spec.file==='worker/src/index.ts'), buildFile217='worker/src/index.ts';
   const buildText217=guarded.find(([file])=>file===buildFile217)[1], buildQualification217=currentContextQualification(buildFile217,buildText217);
   const buildLine217=buildSpecs217.length===1 ? buildQualification217.paragraphs.find(value=>value.startsWith(buildSpecs217[0].startMarker))||'' : '';
   check('.218 pins exactly one current release label with zero guarded vocabulary credit',buildSpecs217.length===1 && buildSpecs217[0].file===buildFile217 && buildSpecs217[0].singleLine===true && buildSpecs217[0].digest===currentDigest && buildSpecs217[0].count===0 && buildQualification217.errors.length===0 && buildQualification217.credits[currentDigest]===0 && Object.keys(guardedCounts(buildLine217)).length===0 && Buffer.byteLength(buildLine217,'utf8')===buildSpecs217[0].paragraphBytes && sha(buildLine217)===buildSpecs217[0].paragraphSha256 && GUARD.size===28 && Object.keys(ALLOWED[buildFile217]).length===1 && ALLOWED[buildFile217][currentDigest]===undefined);
@@ -1823,7 +1869,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   check('.218 the retired .216 label cannot satisfy the unique current-label context',sha(retiredBuildLine216)==='aba9f6548957197d62f4a92550d15c1bd1ba084296c1676754b3a51bac1d9d68'&&!CURRENT_CONTEXTS.some(spec=>spec.startMarker===retiredBuildLine216)&&!!buildLine217&&currentContextQualification(buildFile217,buildText217.replace(buildLine217,retiredBuildLine216)).errors.length>0&&vocabularyOverages(buildFile217,buildText217.replace(buildLine217,retiredBuildLine216)).length>0);
 
 
-  const current221=CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===221&&spec.currentBuild===true);
+  const current221=RETAINED_CONTEXTS222.filter(spec=>spec.ownerRelease===221&&spec.currentBuild===true);
   check('.221 exact current label retains its .220 predecessor and zero new vocabulary credit',current221.length===1&&current221[0].count===0&&current221[0].predecessorSHA256===RETIRED_CONTEXTS221[0].paragraphSha256&&RETIRED_CONTEXTS221.length===1&&sha(RETIRED_CONTEXTS221[0].historicalParagraph)===RETIRED_CONTEXTS221[0].paragraphSha256&&Buffer.byteLength(RETIRED_CONTEXTS221[0].historicalParagraph,'utf8')===RETIRED_CONTEXTS221[0].paragraphBytes);
   check('.221 preserves .220 through .218 predecessor custody',RETIRED_CONTEXTS221[0].predecessorSHA256===RETIRED_CONTEXTS220[0].paragraphSha256&&RETIRED_CONTEXTS220[0].predecessorSHA256===RETIRED_CONTEXTS219[0].paragraphSha256&&RETIRED_CONTEXTS219.length===1&&sha(RETIRED_CONTEXTS219[0].historicalParagraph)===RETIRED_CONTEXTS219[0].paragraphSha256);
   for(const spec of [...RETIRED_CONTEXTS221,...RETIRED_CONTEXTS220,...RETIRED_CONTEXTS219])check('.221 a retired label cannot satisfy current custody '+spec.ownerRelease,!!buildLine217&&currentContextQualification(buildFile217,buildText217.replace(buildLine217,spec.historicalParagraph)).errors.length>0);
@@ -1831,9 +1877,13 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   const portalText221=qualifiedIcon.paragraphs.find(value=>value.startsWith(portal221.startMarker))||'';
   check('.221 portal access grants only its one exact source-line credit',sha(portalText221)===portal221.paragraphSha256&&Buffer.byteLength(portalText221,'utf8')===portal221.paragraphBytes&&guardedCounts(portalText221)[currentDigest]===1);
   check('.221 changed, duplicated or cross-file portal text cannot borrow credit',vocabularyOverages(iconFile,iconText.replace(portalText221,portalText221+'!')).length>0&&vocabularyOverages(iconFile,iconText+'\n'+portalText221).length>0&&Object.keys(currentContextQualification('README.md',portalText221).credits).length===0);
+  const active222=CURRENT_CONTEXTS.filter(spec=>spec.editorialRelease===222||spec.ownerRelease===222);
+  check('.222 retained prior contexts preserve exact original bytes without global credit',RETAINED_CONTEXTS222.length===5&&RETAINED_CONTEXTS222.every(spec=>sha(spec.historicalParagraph)===spec.paragraphSha256&&Buffer.byteLength(spec.historicalParagraph,'utf8')===spec.paragraphBytes));
+  check('.222 current BUILD points to its retained .221 predecessor',active222.filter(s=>s.currentBuild).length===1&&active222.find(s=>s.currentBuild).predecessorSHA256===current221[0].paragraphSha256);
+  for(const spec of active222){const text=guarded.find(([file])=>file===spec.file)[1],q=currentContextQualification(spec.file,text),p=q.paragraphs.find(x=>x.startsWith(spec.startMarker));check('.222 exact source context and tamper/duplicate refusal '+spec.paragraphSha256.slice(0,12),!!p&&sha(p)===spec.paragraphSha256&&currentContextQualification(spec.file,text.replace(p,p+'!')).errors.length>0&&currentContextQualification(spec.file,text+'\n\n'+p).errors.length>0&&Object.keys(currentContextQualification('README.md',p).credits).length===0);}
   // Explicit Master218 scope; original GUARD and ALLOWED remain byte-identical.
   const ownerContexts218=CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===218);
-  check('.219 retains six unchanged .218 contexts and their six original digest credits',ownerContexts218.length===6&&ownerContexts218.reduce((sum,spec)=>sum+spec.count,0)===6&&ownerContexts218.every(spec=>spec.digest===currentDigest)&&GUARD.size===28);
+  check('.222 retains six .218 lineages as exact current or explicitly retired contexts without new global credit',(ownerContexts218.length+RETAINED_CONTEXTS222.filter(spec=>spec.retirement222&&(spec.ownerRelease===218||spec.predecessorRelease===218)).length)===6&&(ownerContexts218.reduce((sum,spec)=>sum+spec.count,0)+RETAINED_CONTEXTS222.filter(spec=>spec.retirement222&&(spec.ownerRelease===218||spec.predecessorRelease===218)).reduce((sum,spec)=>sum+spec.count,0))===6&&ownerContexts218.every(spec=>spec.digest===currentDigest)&&GUARD.size===28);
   for(const spec of ownerContexts218){
     const text=guarded.find(([file])=>file===spec.file)[1],qualified=currentContextQualification(spec.file,text),paragraph=qualified.paragraphs.find(value=>value.startsWith(spec.startMarker))||'',changed=paragraph.slice(0,-1)+'!';
     check('.218 exact reviewed context '+spec.paragraphSha256.slice(0,12),qualified.errors.length===0&&Buffer.byteLength(paragraph,'utf8')===spec.paragraphBytes&&sha(paragraph)===spec.paragraphSha256&&(guardedCounts(paragraph)[currentDigest]||0)===spec.count);
@@ -1852,7 +1902,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
     check('.218 retired bytes remain uncredited '+spec.paragraphSha256.slice(0,12),!historicalPresent218&&!appendedQualification218.paragraphs.some(paragraph=>sha(paragraph)===spec.paragraphSha256)&&(appendedQualification218.credits[spec.digest]||0)<=(baseline218.credits[spec.digest]||0)&&(spec.count===0?currentContextQualification(spec.file,buildText217.replace(buildLine217,spec.startMarker)).errors.length>0:appendedUncredited218>((ALLOWED[spec.file]||{})[spec.digest]||0)&&overOriginalVocabularyAllowance(spec.file,appendedHits218,appendedQualification218).some(value=>value===spec.file+': digest '+spec.digest.slice(0,12)+' x'+appendedUncredited218)));
   }
   const currentBuildTuple218=/^const BUILD = "(\d{4}-\d{2}-\d{2})\.(\d+) [^"]+";$/.exec(buildLine217),currentNews218=news.RELEASE_NOTES[0];
-  check('.221 exact BUILD version/date equals the newest actual release-note metadata',!!currentBuildTuple218&&currentBuildTuple218[1]==='2026-11-01'&&currentBuildTuple218[2]==='221'&&currentNews218.build==='.'+currentBuildTuple218[2]&&currentNews218.date===currentBuildTuple218[1]);
+  check('.222 exact BUILD version/date equals the newest actual release-note metadata',!!currentBuildTuple218&&currentBuildTuple218[1]==='2026-11-01'&&currentBuildTuple218[2]==='222'&&currentNews218.build==='.'+currentBuildTuple218[2]&&currentNews218.date===currentBuildTuple218[1]);
   const retiredBuildSpec217=RETIRED_CONTEXTS218.find(spec=>spec.ownerRelease===217&&spec.file===buildFile217);
   check('.218 the retired217 label cannot replace or accompany the unique current label',!!retiredBuildSpec217&&currentContextQualification(buildFile217,buildText217.replace(buildLine217,retiredBuildSpec217.startMarker)).errors.length>0&&currentContextQualification(buildFile217,buildText217+'\n'+retiredBuildSpec217.startMarker).errors.length>0&&Object.keys(currentContextQualification('README.md',retiredBuildSpec217.startMarker).credits).length===0);
 

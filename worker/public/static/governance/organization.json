@@ -6,35 +6,35 @@
   "appointmentsIssued": false,
   "book": {
     "path": "/static/governance/reconciled-book.md",
-    "bytes": 271522,
-    "sha256": "0495d02d98aa1f31a64a575c6bc88caee4864e0c17db1140235f5aa8d416215b"
+    "bytes": 271992,
+    "sha256": "93a557b8a1fbe1752094c1c9bf9dfefc8e61ff51a12e79ff17e67a8050bcf992"
   },
   "councilComposition": {
-    "status": "owner_clarified_master218",
-    "recordedAt": "2026-10-30",
+    "status": "owner_directed_current222",
+    "recordedAt": "2026-11-01",
     "authority": "project owner clarification",
     "offices": [
       "Guild Master — Council Chair",
-      "Co-Guild Master / Hand of the Sovereign",
-      "Lord High Treasurer / Imperial Exchequer",
+      "Hand of the Sovereign / Co-Guild Master",
+      "Lord High Treasurer",
       "Lord High Chancellor / Head of Justice",
       "Grand Marshal of PvE",
       "Grand Marshal of PvP",
       "High Inquisitor / Minister of Internal Security",
       "High Minister of the Chancery & Imperial Census",
-      "Grand Concordat Director",
+      "Lord High Envoy / Director of the Concordat",
       "Grand Master Artisan",
-      "High Architect of Systems",
+      "Minister of Propaganda / Chief Propagandist",
       "Lord High Herald / Minister of Heraldry",
-      "Head of Trading & Markets"
+      "Lord High Merchant / Head of Trading & Markets"
     ],
-    "summary": "Twelve distinct reserved Council portfolios serve under the Guild Master as chair. Trading and Heraldry keep their own seats; PvE, PvP, Justice, Internal Security and branch coordination have individual records. The number of portfolios does not add native ranks or imply that a holder has been appointed.",
-    "formalStatus": "The current twelve-portfolio supplement records the owner’s Master218 direction on 30 October 2026, retaining dedicated Trading and Heraldry seats. R7 adoption remains 13 October 2026. No new constitutional vote, Founder ratification, appointment, eligible vote or permissions are represented by this publication.",
+    "summary": "Twelve reserved Council portfolios serve under the Guild Master as chair. Each portfolio has a distinct remit; all share the High Council native rank.",
+    "formalStatus": "Council appointments, voting eligibility and actual access are separately recorded. Listing a portfolio appoints no holder.",
     "recommendationRecorded": false,
     "founderRatificationRecorded": false,
     "eligibleSeatIssued": false,
     "permissionsApplied": false,
-    "sourcePath": "/static/governance/council-composition-master218.md",
+    "sourcePath": "/static/governance/council-portfolios222.md",
     "currentSeats": [
       {
         "id": "gm-chair",
@@ -49,7 +49,7 @@
       },
       {
         "id": "co-gm",
-        "label": "Co-Guild Master / Hand of the Sovereign",
+        "label": "Hand of the Sovereign / Co-Guild Master",
         "familyKey": "co_gm",
         "nodeId": "executive",
         "officeKeys": [
@@ -61,7 +61,7 @@
       },
       {
         "id": "treasurer",
-        "label": "Lord High Treasurer / Imperial Exchequer",
+        "label": "Lord High Treasurer",
         "familyKey": "treasurer",
         "nodeId": "treasury",
         "officeKeys": [
@@ -133,7 +133,7 @@
       },
       {
         "id": "concordat",
-        "label": "Grand Concordat Director",
+        "label": "Lord High Envoy / Director of the Concordat",
         "familyKey": "concordat_director",
         "nodeId": "concordat",
         "officeKeys": [
@@ -156,16 +156,16 @@
         "description": "Alliance profession policy, voluntary craft coordination and Workshop stewardship, with local suppliers and emissaries keeping their own remits."
       },
       {
-        "id": "systems",
-        "label": "High Architect of Systems",
-        "familyKey": "architect",
-        "nodeId": "systems",
+        "id": "propaganda",
+        "label": "Minister of Propaganda / Chief Propagandist",
+        "familyKey": "propaganda",
+        "nodeId": "propaganda",
         "officeKeys": [
-          "office_03"
+          "office_102"
         ],
         "scope": "alliance",
         "codexTitle": "V",
-        "description": "Alliance architecture, compatibility, privacy and recovery planning across the addon, website and Discord tools. Engineering support remains Officer Corps; the title grants no production or signing access."
+        "description": "Leads recruitment campaigns, guild storytelling, promotional art and broadcaster-safe messaging. Agrees creative direction with the Council, verifies claims with the responsible office and hands official records to Heraldry. The office grants no moderation, Council vote or publishing access by itself."
       },
       {
         "id": "heraldry",
@@ -181,7 +181,7 @@
       },
       {
         "id": "head-trading",
-        "label": "Head of Trading & Markets",
+        "label": "Lord High Merchant / Head of Trading & Markets",
         "familyKey": "head_trading",
         "nodeId": "trading",
         "officeKeys": [
@@ -652,8 +652,8 @@
       "relation": "accountability",
       "kind": "shared support division",
       "icon": "liaison",
-      "remit": "Systems Architect portfolio, addon engineering and technical support within individually accepted warrants.",
-      "limits": "The architect portfolio is classified with High Council; engineering support is Officer Corps. Neither classification appoints a holder or grants signing, platform or bank access.",
+      "remit": "Architecture, addon engineering and technical support under individually accepted technical appointments.",
+      "limits": "Technical contributors are outside the High Council. A support appointment grants no Council vote, production access or signing authority.",
       "coordinates": [],
       "chapter": "organisation-and-offices"
     },
@@ -949,6 +949,22 @@
       "limits": "Publication grants no appointment, native rank, permissions or operational activation.",
       "coordinates": [],
       "chapter": "organisation-and-offices"
+    },
+    {
+      "id": "propaganda",
+      "title": "Ministry of Propaganda",
+      "parent": "council",
+      "relation": "accountability",
+      "kind": "High Council portfolio",
+      "icon": "herald",
+      "remit": "Guild campaigns, recruitment storytelling and broadcaster-safe creative direction, with accurate claims and attributable sources.",
+      "limits": "The Minister approves campaign direction within the accepted warrant. Heraldry owns official records and publication standards; editors and platform operators retain separately granted access. No harassment, deceptive impersonation or private-information disclosure.",
+      "coordinates": [
+        "heraldry",
+        "intake",
+        "media"
+      ],
+      "chapter": "organisation-and-offices"
     }
   ],
   "termGroups": [
@@ -1072,18 +1088,18 @@
       "classification": "shared",
       "nodeId": "systems",
       "note": "Duty, appointment or alias requires its own scope and acceptance; publication appoints nobody.",
-      "nativeSlot": 1,
-      "nativeRelationship": ".199 display association: Rank 2 High Council, zero-based slot 1; no automatic appointment, vote, sanction, rank change or permission.",
+      "nativeSlot": 2,
+      "nativeRelationship": "Officer Corps technical appointment, associated with native Officer slot 2.",
       "recommendedNativeSlots": [
-        1
+        2
       ],
-      "nativeMappingNote": ".199 owner-directed Rank 2 High Council (zero-based slot 1) planning association. An accepted office, real native rank, eligible vote and actual permissions are separate; nothing is applied by this catalogue.",
+      "nativeMappingNote": "The Architect is a technical support office outside the High Council. Existing appointment records remain distinct; publication promotes nobody.",
       "mappingApplies": false,
       "officeKey": "office_03",
-      "nativeRankOrdinal": 2,
-      "nativeRankName": "High Council",
-      "tier": "high_council",
-      "tierLabel": "High Council",
+      "nativeRankOrdinal": 3,
+      "nativeRankName": "Officer",
+      "tier": "officer_corps",
+      "tierLabel": "Officer Corps",
       "codexTitles": [
         "I",
         "II",
@@ -1093,15 +1109,16 @@
       "applicationTrack": "high_council",
       "applicationEligible": true,
       "statusOverlay": false,
-      "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
-      "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
+      "acquisition": "Reserved technical appointment; no public officer application.",
+      "discordPortal": "Technical contributor access is granted separately; this office carries no Council vote.",
       "applicationAliases": [
         "Systems Architect"
       ],
       "applicationLabel": "Addon / Discord Architect · Systems Architect",
       "applicationRoleKeys": [
         "office_03"
-      ]
+      ],
+      "applicationMetadataScope": "Historical application and ballot compatibility only; current institutional display and reserved-seat admission are separate."
     },
     {
       "ordinal": 4,
@@ -4389,6 +4406,40 @@
       "applicationAliases": [],
       "applicationLabel": "Lord High Chancellor / Head of Justice",
       "applicationRoleKeys": []
+    },
+    {
+      "ordinal": 102,
+      "label": "Minister of Propaganda",
+      "classification": "portfolios",
+      "nodeId": "propaganda",
+      "note": "Duty, appointment or alias requires its own scope and acceptance; publication appoints nobody.",
+      "nativeSlot": 1,
+      "nativeRelationship": "High Council portfolio associated with native slot 1.",
+      "recommendedNativeSlots": [
+        1
+      ],
+      "nativeMappingNote": "A reserved Council portfolio; the title alone confers no vote, appointment or actual permission.",
+      "mappingApplies": false,
+      "officeKey": "office_102",
+      "nativeRankOrdinal": 2,
+      "nativeRankName": "High Council",
+      "tier": "high_council",
+      "tierLabel": "High Council",
+      "codexTitles": [
+        "II",
+        "V"
+      ],
+      "department": "Ministry of Propaganda",
+      "applicationTrack": "high_council",
+      "applicationEligible": false,
+      "statusOverlay": false,
+      "acquisition": "Reserved Council appointment by accepted warrant; no public application.",
+      "discordPortal": "No automatic Discord, publishing, moderation or bank access.",
+      "applicationAliases": [
+        "Chief Propagandist"
+      ],
+      "applicationLabel": "Minister of Propaganda / Chief Propagandist",
+      "applicationRoleKeys": []
     }
   ],
   "nativeRanks": [
@@ -4811,6 +4862,13 @@
       "duty": "Coordinates branch contacts, dated capacity evidence, fair overflow proposals and Main/Verified Alt handovers for Olympus I–X.",
       "output": "A current branch contact register, dated availability notes and an attended transfer handover with the receiving Guild Master.",
       "boundary": "No fabricated live capacity, automatic invite, purchased seat, merged branch authority or extra vote."
+    },
+    {
+      "nodeId": "propaganda",
+      "title": "Minister of Propaganda",
+      "duty": "Set accurate, distinctive guild campaigns and recruitment storytelling.",
+      "output": "A dated editorial calendar, approved creative briefs and measured campaign results.",
+      "boundary": "No fabricated claims, harassment, private-data disclosure, moderation powers or paid membership promises."
     }
   ],
   "currentOwnerDirection": {
@@ -4858,8 +4916,8 @@
   "statutoryExpansion": {
     "source": "docs/master199-governance-titles.md",
     "supersedes": "docs/master198-governance-titles.md",
-    "recordedAt": "2026-10-30",
-    "authority": "explicit owner Master218 direction; prior .199 statutory text retained",
+    "recordedAt": "2026-11-01",
+    "authority": "explicit owner .222 Council direction; prior statutory text retained through finite inverse",
     "titles": 5,
     "articles": 36,
     "sections": 72,
@@ -4992,8 +5050,8 @@
     "schema": "olympus-role-rank-199/v1",
     "ownerConfirmedSlotBase": "zero-based",
     "nativeApplied": false,
-    "officeCount": 101,
-    "assignableKeyCount": 137,
+    "officeCount": 102,
+    "assignableKeyCount": 138,
     "availability": "This static register lists application routes, not vacancies. Current appointed/withheld holders and eligibility are checked by the portal; no seat is claimed open here.",
     "historicalProfileNote": "The beta-five observation and older ten-rank drafts are preserved as historical evidence, not competing current recommendations. Native adoption and key-signing profiles remain separately unverified."
   },
@@ -5057,9 +5115,9 @@
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-      "cabinetSeatId": "systems",
+      "cabinetSeatId": "technical-support",
       "ministry": "Systems and Addons Division",
-      "councilSeat": "High Architect of Systems",
+      "councilSeat": "",
       "recommendedNativeSlots": [
         2
       ],
@@ -5071,11 +5129,11 @@
       "label": "Addon / Discord Architect",
       "group": "office",
       "termOrdinal": 3,
-      "nativeRankOrdinal": 2,
-      "nativeSlot": 1,
-      "nativeRankName": "High Council",
-      "tier": "high_council",
-      "tierLabel": "High Council",
+      "nativeRankOrdinal": 3,
+      "nativeSlot": 2,
+      "nativeRankName": "Officer",
+      "tier": "officer_corps",
+      "tierLabel": "Officer Corps",
       "codexTitles": [
         "I",
         "II",
@@ -5092,15 +5150,16 @@
         "office_03"
       ],
       "statusOverlay": false,
-      "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
-      "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
-      "cabinetSeatId": "systems",
+      "acquisition": "Reserved technical appointment; no public officer application.",
+      "discordPortal": "Technical contributor access is granted separately; this office carries no Council vote.",
+      "cabinetSeatId": "technical-support",
       "ministry": "Systems and Addons Division",
-      "councilSeat": "High Architect of Systems",
+      "councilSeat": "",
+      "applicationMetadataScope": "Historical application and ballot compatibility only; current institutional display and reserved-seat admission are separate.",
       "recommendedNativeSlots": [
-        1
+        2
       ],
-      "nativeMappingNote": ".199 owner-directed Rank 2 High Council (zero-based slot 1) planning association. An accepted office, real native rank, eligible vote and actual permissions are separate; nothing is applied by this catalogue.",
+      "nativeMappingNote": "The Architect is a technical support office outside the High Council. Existing appointment records remain distinct; publication promotes nobody.",
       "mappingApplies": false
     },
     {
@@ -5127,7 +5186,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Grand Concordat Director",
+      "councilSeat": "Lord High Envoy / Director of the Concordat",
       "recommendedNativeSlots": [
         8
       ],
@@ -5192,7 +5251,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         2
       ],
@@ -5292,7 +5351,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "treasurer",
       "ministry": "Federal Treasury",
-      "councilSeat": "Lord High Treasurer / Imperial Exchequer",
+      "councilSeat": "Lord High Treasurer",
       "recommendedNativeSlots": [
         2
       ],
@@ -5325,7 +5384,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "treasurer",
       "ministry": "Federal Treasury",
-      "councilSeat": "Lord High Treasurer / Imperial Exchequer",
+      "councilSeat": "Lord High Treasurer",
       "recommendedNativeSlots": [
         2
       ],
@@ -5491,7 +5550,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         2
       ],
@@ -5633,7 +5692,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         1
       ],
@@ -5666,7 +5725,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         2
       ],
@@ -5935,7 +5994,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         1
       ],
@@ -5969,7 +6028,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         2
       ],
@@ -6002,7 +6061,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         2
       ],
@@ -6035,7 +6094,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         2
       ],
@@ -6068,9 +6127,9 @@
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-      "cabinetSeatId": "systems",
+      "cabinetSeatId": "technical-support",
       "ministry": "Systems and Addons Division",
-      "councilSeat": "High Architect of Systems",
+      "councilSeat": "",
       "recommendedNativeSlots": [
         2
       ],
@@ -6138,7 +6197,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Grand Concordat Director",
+      "councilSeat": "Lord High Envoy / Director of the Concordat",
       "recommendedNativeSlots": [
         2
       ],
@@ -6206,7 +6265,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "treasurer",
       "ministry": "Federal Treasury",
-      "councilSeat": "Lord High Treasurer / Imperial Exchequer",
+      "councilSeat": "Lord High Treasurer",
       "recommendedNativeSlots": [
         2
       ],
@@ -6505,7 +6564,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         1
       ],
@@ -6537,7 +6596,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         5
       ],
@@ -6569,7 +6628,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         7
       ],
@@ -6899,7 +6958,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         1
       ],
@@ -7069,7 +7128,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Grand Concordat Director",
+      "councilSeat": "Lord High Envoy / Director of the Concordat",
       "recommendedNativeSlots": [
         2
       ],
@@ -7103,7 +7162,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Grand Concordat Director",
+      "councilSeat": "Lord High Envoy / Director of the Concordat",
       "recommendedNativeSlots": [
         3
       ],
@@ -7169,7 +7228,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Grand Concordat Director",
+      "councilSeat": "Lord High Envoy / Director of the Concordat",
       "recommendedNativeSlots": [
         2
       ],
@@ -7403,7 +7462,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "treasurer",
       "ministry": "Federal Treasury",
-      "councilSeat": "Lord High Treasurer / Imperial Exchequer",
+      "councilSeat": "Lord High Treasurer",
       "recommendedNativeSlots": [
         2
       ],
@@ -7735,9 +7794,9 @@
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-      "cabinetSeatId": "systems",
+      "cabinetSeatId": "technical-support",
       "ministry": "Systems and Addons Division",
-      "councilSeat": "High Architect of Systems",
+      "councilSeat": "",
       "recommendedNativeSlots": [
         2
       ],
@@ -7770,9 +7829,9 @@
       "statusOverlay": false,
       "acquisition": "Apply on /#/vote; acceptance, appointment and access require separate officer review.",
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
-      "cabinetSeatId": "systems",
+      "cabinetSeatId": "technical-support",
       "ministry": "Systems and Addons Division",
-      "councilSeat": "High Architect of Systems",
+      "councilSeat": "",
       "recommendedNativeSlots": [
         2
       ],
@@ -7836,7 +7895,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "treasurer",
       "ministry": "Federal Treasury",
-      "councilSeat": "Lord High Treasurer / Imperial Exchequer",
+      "councilSeat": "Lord High Treasurer",
       "recommendedNativeSlots": [
         7
       ],
@@ -7868,7 +7927,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "treasurer",
       "ministry": "Federal Treasury",
-      "councilSeat": "Lord High Treasurer / Imperial Exchequer",
+      "councilSeat": "Lord High Treasurer",
       "recommendedNativeSlots": [
         1
       ],
@@ -7997,7 +8056,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         5
       ],
@@ -8029,7 +8088,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         5
       ],
@@ -8061,7 +8120,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         1
       ],
@@ -8093,7 +8152,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         7
       ],
@@ -8130,7 +8189,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "co-gm",
       "ministry": "Department of War",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "applicationMetadataScope": "Historical application and ballot compatibility only; current institutional display and reserved-seat admission are separate.",
       "recommendedNativeSlots": [
         1
@@ -8165,7 +8224,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         2
       ],
@@ -8197,7 +8256,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; this portfolio grants no automatic signing, bank, bot or portal permission.",
       "cabinetSeatId": "head-trading",
       "ministry": "Trading & Markets",
-      "councilSeat": "Head of Trading & Markets",
+      "councilSeat": "Lord High Merchant / Head of Trading & Markets",
       "recommendedNativeSlots": [
         1
       ],
@@ -8324,7 +8383,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Grand Concordat Director",
+      "councilSeat": "Lord High Envoy / Director of the Concordat",
       "recommendedNativeSlots": [
         1
       ],
@@ -8364,6 +8423,40 @@
       "mappingApplies": false
     },
     {
+      "key": "office_102",
+      "label": "Minister of Propaganda",
+      "group": "office",
+      "termOrdinal": 102,
+      "nativeRankOrdinal": 2,
+      "nativeSlot": 1,
+      "nativeRankName": "High Council",
+      "tier": "high_council",
+      "tierLabel": "High Council",
+      "codexTitles": [
+        "II",
+        "V"
+      ],
+      "department": "Ministry of Propaganda",
+      "applicationTrack": "high_council",
+      "applicationEligible": false,
+      "applicationLabel": "Minister of Propaganda / Chief Propagandist",
+      "applicationAliases": [
+        "Chief Propagandist"
+      ],
+      "applicationRoleKeys": [],
+      "statusOverlay": false,
+      "acquisition": "Reserved Council appointment by accepted warrant; no public application.",
+      "discordPortal": "No automatic Discord, publishing, moderation or bank access.",
+      "cabinetSeatId": "propaganda",
+      "ministry": "Ministry of Propaganda",
+      "councilSeat": "Minister of Propaganda / Chief Propagandist",
+      "recommendedNativeSlots": [
+        1
+      ],
+      "nativeMappingNote": "A reserved Council portfolio; the title alone confers no vote, appointment or actual permission.",
+      "mappingApplies": false
+    },
+    {
       "key": "co_gm",
       "label": "Co-Guild Master",
       "group": "leadership",
@@ -8388,7 +8481,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         1
       ],
@@ -8454,7 +8547,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Grand Concordat Director",
+      "councilSeat": "Lord High Envoy / Director of the Concordat",
       "recommendedNativeSlots": [
         2
       ],
@@ -8756,7 +8849,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Grand Concordat Director",
+      "councilSeat": "Lord High Envoy / Director of the Concordat",
       "recommendedNativeSlots": [
         2
       ],
@@ -8822,7 +8915,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "treasurer",
       "ministry": "Federal Treasury",
-      "councilSeat": "Lord High Treasurer / Imperial Exchequer",
+      "councilSeat": "Lord High Treasurer",
       "recommendedNativeSlots": [
         1
       ],
@@ -9259,7 +9352,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         1
       ],
@@ -9291,7 +9384,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Grand Concordat Director",
+      "councilSeat": "Lord High Envoy / Director of the Concordat",
       "recommendedNativeSlots": [
         2
       ],
@@ -9323,7 +9416,7 @@
       "discordPortal": "Officer or Raid Leader access requires a separately recorded current remit and permission review.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Grand Concordat Director",
+      "councilSeat": "Lord High Envoy / Director of the Concordat",
       "recommendedNativeSlots": [
         3
       ],
@@ -9386,7 +9479,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "co-gm",
       "ministry": "Co-Guild Master and Vice Guild Master",
-      "councilSeat": "Co-Guild Master / Hand of the Sovereign",
+      "councilSeat": "Hand of the Sovereign / Co-Guild Master",
       "recommendedNativeSlots": [
         5
       ],
@@ -9479,7 +9572,7 @@
       "discordPortal": "Olympus Guild Member admission remains separate. Cosmetic Tithe Tiers and Broadcaster / Stream Shield do not grant officer authority.",
       "cabinetSeatId": "concordat",
       "ministry": "Grand Alliance Concordat",
-      "councilSeat": "Grand Concordat Director",
+      "councilSeat": "Lord High Envoy / Director of the Concordat",
       "recommendedNativeSlots": [
         8
       ],
@@ -9542,7 +9635,7 @@
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "treasurer",
       "ministry": "Federal Treasury",
-      "councilSeat": "Lord High Treasurer / Imperial Exchequer",
+      "councilSeat": "Lord High Treasurer",
       "recommendedNativeSlots": [
         1
       ],
@@ -9579,7 +9672,7 @@
       "id": "high_council",
       "label": "High Council Application",
       "rankPath": "Rank 2 High Council",
-      "description": "Reserved historical category; not open for applications. Current Council portfolios: Co-Guild Master / Hand of the Sovereign; Lord High Treasurer; Lord High Chancellor / Head of Justice; Grand Marshal of PvE; Grand Marshal of PvP; High Inquisitor / Internal Security; High Minister of the Chancery & Imperial Census; Grand Concordat Director; Grand Master Artisan; High Architect of Systems; Lord High Herald; Head of Trading & Markets. Every appointment and permission requires separate review."
+      "description": "Reserved historical category; not open for applications. Current Council portfolios: Co-Guild Master / Hand of the Sovereign; Lord High Treasurer; Lord High Chancellor / Head of Justice; Grand Marshal of PvE; Grand Marshal of PvP; High Inquisitor / Internal Security; High Minister of the Chancery & Imperial Census; Grand Concordat Director; Grand Master Artisan; Minister of Propaganda; Lord High Herald; Head of Trading & Markets. Every appointment and permission requires separate review."
     },
     {
       "id": "patron",
@@ -9605,8 +9698,8 @@
         "independentReview": false
       },
       "office_02": {
-        "seatId": "systems",
-        "seatLabel": "High Architect of Systems",
+        "seatId": "technical-support",
+        "seatLabel": "",
         "ministryId": "systems",
         "ministry": "Systems and Addons Division",
         "codexTitles": [
@@ -9617,8 +9710,8 @@
         "independentReview": false
       },
       "office_03": {
-        "seatId": "systems",
-        "seatLabel": "High Architect of Systems",
+        "seatId": "technical-support",
+        "seatLabel": "",
         "ministryId": "systems",
         "ministry": "Systems and Addons Division",
         "codexTitles": [
@@ -9630,7 +9723,7 @@
       },
       "office_04": {
         "seatId": "concordat",
-        "seatLabel": "Grand Concordat Director",
+        "seatLabel": "Lord High Envoy / Director of the Concordat",
         "ministryId": "concordat",
         "ministry": "Grand Alliance Concordat",
         "codexTitles": [
@@ -9651,7 +9744,7 @@
       },
       "office_06": {
         "seatId": "co-gm",
-        "seatLabel": "Co-Guild Master / Hand of the Sovereign",
+        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -9682,7 +9775,7 @@
       },
       "office_09": {
         "seatId": "treasurer",
-        "seatLabel": "Lord High Treasurer / Imperial Exchequer",
+        "seatLabel": "Lord High Treasurer",
         "ministryId": "treasury",
         "ministry": "Federal Treasury",
         "codexTitles": [
@@ -9692,7 +9785,7 @@
       },
       "office_10": {
         "seatId": "treasurer",
-        "seatLabel": "Lord High Treasurer / Imperial Exchequer",
+        "seatLabel": "Lord High Treasurer",
         "ministryId": "treasury",
         "ministry": "Federal Treasury",
         "codexTitles": [
@@ -9746,7 +9839,7 @@
       },
       "office_15": {
         "seatId": "co-gm",
-        "seatLabel": "Co-Guild Master / Hand of the Sovereign",
+        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -9790,7 +9883,7 @@
       },
       "office_19": {
         "seatId": "co-gm",
-        "seatLabel": "Co-Guild Master / Hand of the Sovereign",
+        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -9801,7 +9894,7 @@
       },
       "office_20": {
         "seatId": "co-gm",
-        "seatLabel": "Co-Guild Master / Hand of the Sovereign",
+        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -9884,7 +9977,7 @@
       },
       "office_28": {
         "seatId": "co-gm",
-        "seatLabel": "Co-Guild Master / Hand of the Sovereign",
+        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -9895,7 +9988,7 @@
       },
       "office_29": {
         "seatId": "co-gm",
-        "seatLabel": "Co-Guild Master / Hand of the Sovereign",
+        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -9906,7 +9999,7 @@
       },
       "office_30": {
         "seatId": "co-gm",
-        "seatLabel": "Co-Guild Master / Hand of the Sovereign",
+        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -9916,7 +10009,7 @@
       },
       "office_31": {
         "seatId": "co-gm",
-        "seatLabel": "Co-Guild Master / Hand of the Sovereign",
+        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -9925,8 +10018,8 @@
         "independentReview": false
       },
       "office_32": {
-        "seatId": "systems",
-        "seatLabel": "High Architect of Systems",
+        "seatId": "technical-support",
+        "seatLabel": "",
         "ministryId": "systems",
         "ministry": "Systems and Addons Division",
         "codexTitles": [
@@ -9949,7 +10042,7 @@
       },
       "office_34": {
         "seatId": "concordat",
-        "seatLabel": "Grand Concordat Director",
+        "seatLabel": "Lord High Envoy / Director of the Concordat",
         "ministryId": "concordat",
         "ministry": "Grand Alliance Concordat",
         "codexTitles": [
@@ -9971,7 +10064,7 @@
       },
       "office_36": {
         "seatId": "treasurer",
-        "seatLabel": "Lord High Treasurer / Imperial Exchequer",
+        "seatLabel": "Lord High Treasurer",
         "ministryId": "treasury",
         "ministry": "Federal Treasury",
         "codexTitles": [
@@ -10069,7 +10162,7 @@
       },
       "office_45": {
         "seatId": "co-gm",
-        "seatLabel": "Co-Guild Master / Hand of the Sovereign",
+        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10080,7 +10173,7 @@
       },
       "office_46": {
         "seatId": "co-gm",
-        "seatLabel": "Co-Guild Master / Hand of the Sovereign",
+        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10091,7 +10184,7 @@
       },
       "office_47": {
         "seatId": "co-gm",
-        "seatLabel": "Co-Guild Master / Hand of the Sovereign",
+        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10197,7 +10290,7 @@
       },
       "office_57": {
         "seatId": "co-gm",
-        "seatLabel": "Co-Guild Master / Hand of the Sovereign",
+        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10250,7 +10343,7 @@
       },
       "office_62": {
         "seatId": "concordat",
-        "seatLabel": "Grand Concordat Director",
+        "seatLabel": "Lord High Envoy / Director of the Concordat",
         "ministryId": "concordat",
         "ministry": "Grand Alliance Concordat",
         "codexTitles": [
@@ -10261,7 +10354,7 @@
       },
       "office_63": {
         "seatId": "concordat",
-        "seatLabel": "Grand Concordat Director",
+        "seatLabel": "Lord High Envoy / Director of the Concordat",
         "ministryId": "concordat",
         "ministry": "Grand Alliance Concordat",
         "codexTitles": [
@@ -10283,7 +10376,7 @@
       },
       "office_65": {
         "seatId": "concordat",
-        "seatLabel": "Grand Concordat Director",
+        "seatLabel": "Lord High Envoy / Director of the Concordat",
         "ministryId": "concordat",
         "ministry": "Grand Alliance Concordat",
         "codexTitles": [
@@ -10359,7 +10452,7 @@
       },
       "office_72": {
         "seatId": "treasurer",
-        "seatLabel": "Lord High Treasurer / Imperial Exchequer",
+        "seatLabel": "Lord High Treasurer",
         "ministryId": "treasury",
         "ministry": "Federal Treasury",
         "codexTitles": [
@@ -10466,8 +10559,8 @@
         "independentReview": false
       },
       "office_82": {
-        "seatId": "systems",
-        "seatLabel": "High Architect of Systems",
+        "seatId": "technical-support",
+        "seatLabel": "",
         "ministryId": "systems",
         "ministry": "Systems and Addons Division",
         "codexTitles": [
@@ -10478,8 +10571,8 @@
         "independentReview": false
       },
       "office_83": {
-        "seatId": "systems",
-        "seatLabel": "High Architect of Systems",
+        "seatId": "technical-support",
+        "seatLabel": "",
         "ministryId": "systems",
         "ministry": "Systems and Addons Division",
         "codexTitles": [
@@ -10502,7 +10595,7 @@
       },
       "office_85": {
         "seatId": "treasurer",
-        "seatLabel": "Lord High Treasurer / Imperial Exchequer",
+        "seatLabel": "Lord High Treasurer",
         "ministryId": "treasury",
         "ministry": "Federal Treasury",
         "codexTitles": [
@@ -10513,7 +10606,7 @@
       },
       "office_86": {
         "seatId": "treasurer",
-        "seatLabel": "Lord High Treasurer / Imperial Exchequer",
+        "seatLabel": "Lord High Treasurer",
         "ministryId": "treasury",
         "ministry": "Federal Treasury",
         "codexTitles": [
@@ -10557,7 +10650,7 @@
       },
       "office_90": {
         "seatId": "co-gm",
-        "seatLabel": "Co-Guild Master / Hand of the Sovereign",
+        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10567,7 +10660,7 @@
       },
       "office_91": {
         "seatId": "co-gm",
-        "seatLabel": "Co-Guild Master / Hand of the Sovereign",
+        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10578,7 +10671,7 @@
       },
       "office_92": {
         "seatId": "co-gm",
-        "seatLabel": "Co-Guild Master / Hand of the Sovereign",
+        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10589,7 +10682,7 @@
       },
       "office_93": {
         "seatId": "co-gm",
-        "seatLabel": "Co-Guild Master / Hand of the Sovereign",
+        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10600,7 +10693,7 @@
       },
       "office_94": {
         "seatId": "co-gm",
-        "seatLabel": "Co-Guild Master / Hand of the Sovereign",
+        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
         "ministryId": "war",
         "ministry": "Department of War",
         "codexTitles": [
@@ -10611,7 +10704,7 @@
       },
       "office_95": {
         "seatId": "co-gm",
-        "seatLabel": "Co-Guild Master / Hand of the Sovereign",
+        "seatLabel": "Hand of the Sovereign / Co-Guild Master",
         "ministryId": "executive",
         "ministry": "Co-Guild Master and Vice Guild Master",
         "codexTitles": [
@@ -10622,7 +10715,7 @@
       },
       "office_96": {
         "seatId": "head-trading",
-        "seatLabel": "Head of Trading & Markets",
+        "seatLabel": "Lord High Merchant / Head of Trading & Markets",
         "ministryId": "trading",
         "ministry": "Trading & Markets",
         "codexTitles": [
@@ -10665,7 +10758,7 @@
       },
       "office_100": {
         "seatId": "concordat",
-        "seatLabel": "Grand Concordat Director",
+        "seatLabel": "Lord High Envoy / Director of the Concordat",
         "ministryId": "concordat",
         "ministry": "Grand Alliance Concordat",
         "codexTitles": [
@@ -10684,6 +10777,17 @@
           "III"
         ],
         "independentReview": true
+      },
+      "office_102": {
+        "seatId": "propaganda",
+        "seatLabel": "Minister of Propaganda / Chief Propagandist",
+        "ministryId": "propaganda",
+        "ministry": "Ministry of Propaganda",
+        "codexTitles": [
+          "II",
+          "V"
+        ],
+        "independentReview": false
       }
     },
     "reportingChanges": [

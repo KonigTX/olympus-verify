@@ -165,12 +165,12 @@
 
     function hub(data) {
       const frag = [header(data, "Olympus guides & tools", null, "Class, spec and profession guides written for Olympus, plus raid-preparation tools.")];
-      frag.push(section("Class guides", el("div", { class: "guides218-grid" }, data.classes.map(c => el("article", { class: "guides218-card" },
+      frag.push(section("Class guides", el("div", { class: "guides218-grid" }, data.classes.map(c => el("article", { class: "guides218-card guides222-class", "data-theme": c.id },
         el("h3", null, icon("class-" + c.id), " ", link("#/guides/class/" + c.id, c.name)),
         el("p", { class: "small" }, c.specs.map((s, i) => [i ? " · " : "", link("#/guides/class/" + c.id + "/" + s.id, s.name)])))))));
-      frag.push(section("Profession guides", el("div", { class: "guides218-grid" }, data.professions.map(p => el("article", { class: "guides218-card" },
+      frag.push(section("Profession guides", el("div", { class: "guides218-grid" }, data.professions.map(p => el("article", { class: "guides218-card guides222-profession", "data-theme": p.key },
         el("h3", null, icon("prof-" + p.key.replace("-", "_")), " ", link("#/guides/profession/" + p.key, p.name)), el("p", { class: "small muted", text: p.type }))))));
-      frag.push(section("Raid preparation tools", el("div", { class: "guides218-grid" }, TOOLS.map(([id, name, text]) => el("article", { class: "guides218-card" },
+      frag.push(section("Raid preparation tools", el("div", { class: "guides218-grid" }, TOOLS.map(([id, name, text]) => el("article", { class: "guides218-card guides222-tool", "data-theme": id },
         el("h3", null, link("#/guides/tools/" + id, name)), el("p", { class: "small", text }))))));
       frag.push(section("More resources", el("ul", { class: "guides218-list" },
         el("li", null, link("#/talents", "Talent calculator"), " — plan a build and compare it with Classic."),

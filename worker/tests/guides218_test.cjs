@@ -64,7 +64,10 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   // 1. Source policy.
   check('the renderer has no HTML-string, style, eval, storage or randomness sink', !/innerHTML|outerHTML|insertAdjacentHTML|\.style\b|setAttribute\(["']style|eval\(|new Function|localStorage|sessionStorage|Math\.random|document\.write/.test(SOURCE));
   check('the renderer fetches only its own catalogue, same-origin, refusing redirects', (SOURCE.match(/fetch\(/g) || []).length === 1 && SOURCE.includes('const DATA_URL = "/static/guides218.json"') && SOURCE.includes('redirect: "error"') && SOURCE.includes('credentials: "same-origin"'));
-  check('the stylesheet loads nothing remote and carries reduced-motion and forced-colors rules', !/url\(|@import/i.test(CSS) && CSS.includes('prefers-reduced-motion') && CSS.includes('forced-colors'));
+  const art222=new Set(JSON.parse(fs.readFileSync(path.join(__dirname,'../../scripts/official_asset_reference.json'),'utf8')).assets.map(row=>row.path)),urls222=[...CSS.matchAll(/url\(([^)]+)\)/g)].map(m=>m[1].trim().replace(/^['\"]|['\"]$/g,''));
+  const safeCSS222=css=>!/@import/i.test(css)&&[...css.matchAll(/url\(([^)]+)\)/g)].every(m=>{const u=m[1].trim().replace(/^['\"]|['\"]$/g,'');return u.startsWith('/static/wow/')&&art222.has('worker/public'+u)&&/\.(?:png|jpg)$/.test(u);});
+  check('the stylesheet uses only pinned local game artwork and retains reduced-motion/forced-colors rules',urls222.length===22&&safeCSS222(CSS)&&CSS.includes('prefers-reduced-motion')&&CSS.includes('forced-colors'));
+  check('the CSS artwork boundary rejects remote, data and unlisted local URLs',!safeCSS222(CSS+'url(https://example.invalid/x.png)')&&!safeCSS222(CSS+'url(data:image/png;base64,AA)')&&!safeCSS222(CSS+'url(/static/wow/unlisted.png)'));
 
   // 2. Closed validation of the real catalogue and refusals of altered copies.
   const api = page(ok(DATA)).api;
