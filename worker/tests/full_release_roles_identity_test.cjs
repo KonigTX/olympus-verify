@@ -406,9 +406,10 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
   check('.217 recovery successor binds the exact current interactions source',Object.values(recoverySources).every(Boolean),recoverySources);
   const sources211 = source211.sourceChecks(SRC, PINS);
   const discord222=require('./source222-discord-type-projection.cjs').checks(SRC);
-  check('.222 identity retains original211 stages and Treasury restrictions with an exact erased-type Discord successor', Object.entries(sources211).filter(([key])=>key!=='discord:exact-reviewed-support').every(([,ok])=>ok)&&sources211['discord:exact-reviewed-support']===false&&discord222.qualified&&discord222.negativeControls,{sources211,discord222});
+  const branch224=require('./source224-branch-name-projection.cjs').checks(SRC);
+  check('.224 identity retains original211 restrictions with exact222 erased-type and224 protected Branch-alias successors', Object.entries(sources211).filter(([key])=>!['discord:exact-reviewed-support','treasury-cosmetic:exact-reviewed-support'].includes(key)).every(([,ok])=>ok)&&sources211['discord:exact-reviewed-support']===false&&sources211['treasury-cosmetic:exact-reviewed-support']===false&&discord222.qualified&&discord222.negativeControls&&branch224.qualified&&branch224.negativeControls,{sources211,discord222,branch224});
   console.log('RETAINED211_DISCORD_RAW_SEAL false; finite222 type-only runtime parity '+discord222.qualified);
-  for (const row of require('./source222-discord-type-projection.cjs').driftControls222(SRC)) check('.211 identity reconstruction refuses ' + row.source + ' ' + row.name, row.refused);
+  for (const row of require('./source224-branch-name-projection.cjs').driftControls224(SRC)) check('.211 identity reconstruction refuses ' + row.source + ' ' + row.name, row.refused);
 
   // --- static: whole reviewed .164 integrated sources; the lane modules are never part of a module-load cycle
   for (const name of PROTECTED) check(['role-settlements', 'privacy-global-serving-origin'].includes(name) ? `${name}.ts reconstructs accepted H16 through exact .211 contexts before unchanged historical whole seals` : SOURCE196_COMPAT[name] ? `${name}.ts reconstructs the reviewed .164 whole source through exact pinned .196 contextual reversals only` : `${name}.ts is byte-identical to the reviewed .164 integrated source`, sourceDigest(name) === PINS.files[name]);
