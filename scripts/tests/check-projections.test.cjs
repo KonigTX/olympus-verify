@@ -24,8 +24,13 @@ function fixture(changes = new Map(), repin = false) {
   return { ...base, get };
 }
 check('real staged projection graph passes', verify(base).result === 'PASS');
-for (const replacement of ['build: ".223", date: "2026-11-01"', 'build: ".222", date: "2026-10-31"']) {
-  rejects('current release note cannot drift from runtime build/date: ' + replacement, () => verify(fixture(changed('worker/src/site-news.ts', s => s.replace('build: ".222", date: "2026-11-01"', replacement)))), /current release note exactly matches runtime BUILD/);
+const releaseTuple223=/^const BUILD = "(\d{4}-\d{2}-\d{2})\.(\d+) [^"\r\n]+";$/m.exec(base.get('worker/src/index.ts').toString('utf8'));
+if(!releaseTuple223)throw Error('One current BUILD tuple required for negative controls');
+const currentNewsTuple223='build: ".'+releaseTuple223[2]+'", date: "'+releaseTuple223[1]+'"';
+if(base.get('worker/src/site-news.ts').toString('utf8').split(currentNewsTuple223).length!==2)throw Error('Unique current News tuple required for negative controls');
+const priorDay223=new Date(Date.parse(releaseTuple223[1]+'T00:00:00Z')-86400000).toISOString().slice(0,10);
+for (const replacement of ['build: ".'+(Number(releaseTuple223[2])+1)+'", date: "'+releaseTuple223[1]+'"', 'build: ".'+releaseTuple223[2]+'", date: "'+priorDay223+'"']) {
+  rejects('current release note cannot drift from runtime build/date: ' + replacement, () => verify(fixture(changed('worker/src/site-news.ts', text => text.replace(currentNewsTuple223, replacement)))), /current release note exactly matches runtime BUILD/);
 }
 const council218 = 'worker/public/static/governance/council-composition-master218.md';
 rejects('Master218 Cabinet document byte drift is refused', () => verify(fixture(changed(council218, s => s + '\n'))), /byte pin drift/);

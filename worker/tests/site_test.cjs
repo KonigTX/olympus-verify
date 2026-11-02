@@ -435,7 +435,7 @@ async function legacySchemaHeld(old) {
       guardedPictures = allowed.every(avatarUrl => { const image = helpers.discordAvatar({ avatarUrl }); return image.attributes.src === avatarUrl && image.attributes.referrerpolicy === "no-referrer" && image.attributes.alt === "" && typeof image.events.error === "function"; }) && refused.every(avatarUrl => { const image = helpers.discordAvatar({ avatarUrl }); return image.attributes.src === "/static/wow/pos-member.png" && image.attributes.referrerpolicy === "no-referrer"; }) && failed.attributes.src === "/static/wow/pos-member.png" && ownPicture.attributes.src === allowed[0] && ownPicture.attributes.referrerpolicy === "no-referrer";
     }
     check("  .196: owner-approved applicant, admin and current-directory portraits share the original strict Discord CDN guard and retain class art",
-      guardedPictures && !/src:\s*[a-z.]*avatarUrl/.test(appJs) && (appJs.match(/ownAvatar\(/g) || []).length === 3 && /it\.typed \? h\("img",[^\n]+: discordAvatar\(it\)/.test(appJs) && appJs.includes('discordAvatar(c, { class: "avatar", width: "44", height: "44", loading: "lazy" })') && appJs.includes('discordAvatar(u, { class: "av", width: "32"') && appJs.includes('discordAvatar(member, { class: "av", width: "40"') && appJs.includes("c.class ? h(\"span\", null, icon(\"class-\" + c.class, \"s\"), \" \", clsLabel(c.class)) : null") && !appJs.includes("DISCORD_SVG"));
+      guardedPictures && !/src:\s*[a-z.]*avatarUrl/.test(appJs) && (appJs.match(/ownAvatar\(/g) || []).length === 3 && /it\.typed \? h\("img",[^\n]+: discordAvatar\(it\)/.test(appJs) && appJs.includes('discordAvatar(c, { class: "avatar", width: "44", height: "44", loading: "lazy" })') && appJs.includes('discordAvatar(u, { class: "av", width: "32"') && appJs.includes('discordAvatar(member, { class: "av", width: "40"') && appJs.includes("c.class ? clsLabel(c.class) : null") && !appJs.includes("c.class ? h(\"span\", null, icon(\"class-\" + c.class") && !appJs.includes("DISCORD_SVG"));
   }
   res = await call("POST", "/interactions", { body: {} });
   check("bot routes disclose nothing on the signed-out site host", res.status === 401);
@@ -1556,7 +1556,7 @@ async function legacySchemaHeld(old) {
   check("/queue/unverified carries the verified list for the watcher", Array.isArray(out.verified) && out.verified[0].username === "grace_new" && out.members.some((m) => m.name === "Nobody Here"));
   res = await index.fetch(new Request("https://verify.example/health", { headers: { Authorization: "Bearer watcher-token-for-tests-only-0123456789" } }), rawEnv(), ctx);
   out = await res.json();
-  check("/health names the build and the site (to the watcher's bearer, since .49)", out.build === "2026-11-01.222 Guild organization and private raid hub" && out.site.host === "guild.example" && out.site.admins === 1);
+  check("/health names the build and the site (to the watcher's bearer, since .49)", out.build === "2026-11-02.223 Applicant portrait and class clarity" && out.site.host === "guild.example" && out.site.admins === 1);
 
   console.log("\n== the addon-facing queue still works for an old-style caller ==");
   res = await ingest.getQueue(env(), "");
