@@ -3824,8 +3824,8 @@
     {
       "path": "worker/src/site-ranks.ts",
       "mode": "100644",
-      "bytes": 15658,
-      "sha256": "3edf9200eb20f0b2d62218d7720c0ce2648ee093841f29a9dacc8d502c235829"
+      "bytes": 15908,
+      "sha256": "8af8b77eaf2a4d72d0868501f653ba54fd93eb306b02a3b6e2e616c5ae257e29"
     },
     {
       "path": "worker/public/static/app.js",

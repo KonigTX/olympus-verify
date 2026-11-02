@@ -113,7 +113,7 @@ function deferred() { let resolve, reject; const promise = new Promise((a, b) =>
       assert.ok(panel, 'current reference exists');
       assert.equal((panel.match(/<li>/g) || []).length, 12);
       for (const seat of current) assert.ok(panel.includes('href="/#/roles/' + seat.familyKey + '"') && panel.includes(seat.label.replace(/&/g, '&amp;')), seat.id);
-      assert.ok(panel.includes('/static/governance/council-composition-master218.md'));
+      assert.ok(panel.includes('/static/governance/council-portfolios224.md') && panel.includes('All 102 offices and 138 assignment keys'));
       assert.ok(markup.indexOf(panel) < markup.indexOf('Historical &amp; Draft-Only Rank Ideas'));
     }
   });
