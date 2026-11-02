@@ -90,7 +90,7 @@ async function fixture() {
     const status = (await identities.appointmentAccountStatuses(f.env, [target])).get(target);
     const r = await f.call('PUT', '/api/admin/settings', ADMIN, { appointed: { co_gm: '<@' + HOLDER + '>', treasurer: '<@' + target + '>' }, notice: 'all or none', namesConfirmed: true, appointedCharactersConfirmed: true });
     check('.175 ' + state + ' picker hint agrees with the actual save guard without requiring character proof', status === expected && (expected === 'eligible' ? r.status === 200 : r.status === 409 && r.body.error === 'appointed_account_unavailable' && r.body.role === 'treasurer' && r.body.accountStatus === expected && !f.db.prepare("SELECT 1 FROM site_settings WHERE key='notice'").get()));
-    if (expected !== 'eligible') check('.175 ' + state + ' refusal names only the appointment role without private identity details', r.body.message.startsWith('Treasurer / Guild Bank:') && !JSON.stringify(r.body).includes(target) && !JSON.stringify(r.body).includes('holder-two') && !JSON.stringify(r.body).includes('privacy_subjects'));
+    if (expected !== 'eligible') check('.175 ' + state + ' refusal names only the appointment role without private identity details', r.body.message.startsWith('Lord High Treasurer · Minister of the Imperial Exchequer:') && !JSON.stringify(r.body).includes(target) && !JSON.stringify(r.body).includes('holder-two') && !JSON.stringify(r.body).includes('privacy_subjects'));
     if (state === 'absent') check('.176 a real current Discord member can be associated without inventing a site profile', r.status === 200 && !f.db.prepare('SELECT 1 FROM site_users WHERE discord_id=?').get(target));
     f.close();
   }

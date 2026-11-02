@@ -133,7 +133,7 @@ const recordTool169 = (page, namespace, calls) => {
   const appointmentPage = await openPage(STAFF);
   await appointmentPage.go("#/admin/settings");
   await waitFor(() => !!appointmentPage.app.querySelector('[data-appointment-status="co_gm"]'), "appointment settings");
-  const coInput175 = appointmentPage.app.querySelector('input[aria-label="Co-Guild Master: appointed to"]');
+  const coInput175 = appointmentPage.app.querySelector('[data-appointment-field203="co_gm"] input');
   const coRow175 = coInput175.closest(".appointed-row"), coPicker175 = coRow175.querySelector(".picker"), coSearch175 = coPicker175.querySelector('[role="combobox"]');
   const publication175 = appointmentPage.app.querySelector("#appointed-characters-ok"), names175 = appointmentPage.app.querySelector("#appointed-names-ok");
   const absent175 = "300000000000000175";
@@ -167,7 +167,7 @@ const recordTool169 = (page, namespace, calls) => {
   await fixtureRun("UPDATE site_users SET denied=1 WHERE discord_id=?", OTHER);
   names175.checked = true; publication175.checked = true;
   byText(appointmentPage.app, "button", "Save settings").click();
-  await waitFor(() => coRow175.querySelector('[data-appointment-status="co_gm"]').textContent.includes("Co-Guild Master: The selected account is not currently eligible"), "role-specific real save refusal");
+  await waitFor(() => coRow175.querySelector('[data-appointment-status="co_gm"]').textContent.includes("Hand of the Sovereign · Co-Guild Master: The selected account is not currently eligible"), "role-specific real save refusal");
   check(".175 a changed selected account is named by office at its field and the real Worker refuses the whole save", one("SELECT value FROM site_settings WHERE key='appointed'")?.value === appointedBefore175 && !publication175.checked && coInput175.focusCalls === 1 && !coRow175.querySelector('[data-appointment-status="co_gm"]').textContent.includes(OTHER));
   await fixtureRun("UPDATE site_users SET denied=0 WHERE discord_id=?", OTHER);
   const lookup175 = await openPage(STAFF);

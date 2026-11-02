@@ -8,6 +8,10 @@ const invalid = (field: string, message: string): InvalidIntent => ({ error: 'in
 const tracks = new Set<string>(APPLICATION_TRACKS_199.map(row => row.id));
 const officeByKey = new Map<string, (typeof OFFICE_APPOINTMENTS)[number]>(OFFICE_APPOINTMENTS.map(row => [row.key, row]));
 const noApplicationRoles199:readonly string[] = Object.freeze([]);
+// .224: these three stored historical ballot identities survive the current
+// reserved-seat metadata correction. Current saves still pass reservedApplication201.
+const historicalCouncilRoles224:Readonly<Record<string,readonly string[]>>=Object.freeze(Object.fromEntries(['office_14','office_58','office_59'].map(key=>[key,Object.freeze([key])])));
+const historicallyEligible224=(key:string)=>Object.hasOwn(historicalCouncilRoles224,key);
 const reservedTiers201 = new Set(['leader', 'high_council', 'officer_corps']);
 const reservedRoleKeys201 = new Set<string>([
   // The owner made these seats appointment-only on 2026-10-26. Keep their
@@ -40,7 +44,7 @@ export function reservedApplication201(body: Record<string, unknown>): ReservedA
 /** Canonical title intents reuse existing regional/class ballots rather than making duplicate seats. */
 export function applicationRoleKeys199(targetOffice:unknown):readonly string[] {
   if (typeof targetOffice !== 'string') return noApplicationRoles199;
-  return officeByKey.get(targetOffice)?.applicationRoleKeys ?? noApplicationRoles199;
+  return Object.hasOwn(historicalCouncilRoles224,targetOffice)?historicalCouncilRoles224[targetOffice]!:officeByKey.get(targetOffice)?.applicationRoleKeys ?? noApplicationRoles199;
 }
 
 export function validateApplicationIntent199(track: unknown, office: unknown, taken: (key: string) => boolean): ApplicationIntent199 | InvalidIntent | null {
@@ -51,7 +55,7 @@ export function validateApplicationIntent199(track: unknown, office: unknown, ta
   if (key.length > 80) return invalid('targetOffice', 'That office key is too long.');
   if (track === 'officer' || track === 'high_council') {
     const target = officeByKey.get(key);
-    if (!target || !target.applicationEligible || target.applicationTrack !== track) return invalid('targetOffice', 'Choose a specific eligible office in this application track.');
+    if (!target || (!target.applicationEligible && !historicallyEligible224(key)) || target.applicationTrack !== track) return invalid('targetOffice', 'Choose a specific eligible office in this application track.');
     if (taken(key)) return invalid('targetOffice', 'This office has an appointment recorded. Choose another seat or ask leadership to review its availability.');
   } else if (key) {
     const target = officeByKey.get(key);
