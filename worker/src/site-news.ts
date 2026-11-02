@@ -78,6 +78,11 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".223", date: "2026-11-02", lines: [
+      "Applicant cards now show one class icon beside the colored class name. Discord portraits still require the applicant’s separate consent and fall back to the neutral member emblem.",
+    ],
+  },
+  {
     build: ".222", date: "2026-11-01", lines: [
       "The private raid hub brings event selection, signup preferences, rosters and organizer forms together; existing reminder and attendance safeguards remain.",
       "Council guides distinguish the Minister of Propaganda from technical architecture, and use consistent portfolio titles without changing appointments or access.",

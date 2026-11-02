@@ -120,6 +120,19 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .223 reverses only the exact class-badge correction release note.
+  const release223 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".223\", date: \"2026-11-02\", lines: [",
+    "      \"Applicant cards now show one class icon beside the colored class name. Discord portraits still require the applicant’s separate consent and fall back to the neutral member emblem.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .223 prepend occurs once', originalNews.split(release223).length === 2);
+  originalNews = originalNews.replace(release223, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+
   // .222 reverses only its exact owner-authorized prepend and owner-only DTO gate.
   const release222 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

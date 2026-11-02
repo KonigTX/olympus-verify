@@ -3498,7 +3498,7 @@
         h("div", null,
           h("div", { class: "cand-name" }, c.label, " ", c.self ? h("span", { class: "badge", text: "you" }) : null, " ", h("span", { class: "badge " + (c.choice === 1 ? "green" : "muted"), text: c.choice === 1 ? "First choice" : "Backup choice" })),
           h("div", { class: "cand-meta" },
-            c.class ? h("span", null, icon("class-" + c.class, "s"), " ", clsLabel(c.class)) : null,
+            c.class ? clsLabel(c.class) : null,
             c.role ? h("span", { text: labelOf(meta.roles, c.role) }) : null,
             c.region ? h("span", { text: labelOf(meta.regions, c.region) }) : null,
             fitView(c.fit))),

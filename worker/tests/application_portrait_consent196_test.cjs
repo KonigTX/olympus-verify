@@ -30,12 +30,21 @@ async function portraitConsent196(){
  check('the pre-existing legacy board row has no newly inferred portrait flag',!Object.hasOwn(stored().answers,'boardPortraitOptIn'));
  const originalBoardAt=stored().boardAt,legacyCard=await candidate();
  check('legacy board_at alone cannot expose the stored Discord picture',legacyCard?.avatarUrl===null&&legacyCard?.label==='Mia (@u03)'&&legacyCard?.class==='mage',legacyCard);
+ const renderedLegacy223=await openPage(OTHER);await renderedLegacy223.go('#/vote/officer');await waitFor(()=>renderedLegacy223.app.querySelector('.cand'),'legacy candidate is rendered');
+ const renderedCard223=renderedLegacy223.app.querySelector('.cand');
+ check('.223 current real SPA renders the admitted historical candidate',!!renderedCard223&&renderedLegacy223.app.querySelectorAll('.cand').length===1);
+ const classImages223=card=>card?card.querySelectorAll('img').filter(image=>image.getAttribute('src')==='/static/wow/class-mage.png'):[];
+ check('.223 actual legacy candidate has one class badge, without duplication inside the coloured label',classImages223(renderedCard223).length===1,1,classImages223(renderedCard223).length);
+ check('.223 actual legacy candidate retains one neutral portrait without inferred picture consent',renderedCard223?.querySelectorAll('img.avatar').length===1&&renderedCard223.querySelector('img.avatar').getAttribute('src')==='/static/wow/pos-member.png');
  saved=await historicalFixture196({...body,answers:{...body.answers,boardPortraitOptIn:true}});
  check('a forged client answers flag is ignored by server normalization',saved.response.status===200&&stored().answers.boardPortraitOptIn===false&&(await candidate()).avatarUrl===null);
  saved=await historicalFixture196({...body,boardPortrait:true});
  check('historical parser fixture records its explicit separate portrait choice',saved.response.status===200&&saved.body.application.answers.boardPortraitOptIn===true&&stored().boardAt===originalBoardAt);
  const opted=await candidate();
  check('only the opted-in card receives the bounded stored Discord avatar URL',opted.avatarUrl==='https://cdn.discordapp.com/avatars/'+MEMBER+'/'+'a'.repeat(32)+'.png?size=64',opted);
+ const renderedOpted223=await openPage(OTHER);await renderedOpted223.go('#/vote/officer');await waitFor(()=>renderedOpted223.app.querySelector('.cand'),'opted-in candidate is rendered');const optedCard223=renderedOpted223.app.querySelector('.cand');
+ check('.223 actual opted-in candidate keeps one permitted Discord portrait and exactly one class badge',!!optedCard223&&optedCard223.querySelectorAll('img.avatar').length===1&&optedCard223.querySelector('img.avatar').getAttribute('src')===opted.avatarUrl&&classImages223(optedCard223).length===1);
+ if(optedCard223){const portrait223=optedCard223.querySelector('img.avatar');fire(portrait223,'error');check('.223 failed opted-in picture falls back neutrally without adding a class badge',portrait223.getAttribute('src')==='/static/wow/pos-member.png'&&classImages223(optedCard223).length===1);}
  console.log('PORTRAIT196_SYNTHETIC_BOARD_CARDS '+JSON.stringify({legacy:legacyCard,optedIn:opted}));
  check('the public board still exposes only original written board answers',!Object.hasOwn(opted.answers,'boardPortraitOptIn')&&!Object.hasOwn(opted.answers,'ackAt')&&!Object.hasOwn(opted,'boardAt'));
  const own=await request('GET','/api/me/export');
