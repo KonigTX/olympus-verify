@@ -590,6 +590,7 @@ local function BuildToolbar()
   -- read from /verify-status. It is not locked, though — the roster re-exports about once a minute, so an officer
   -- who has just watched someone leave would otherwise be told "full" by a stale count. One click arms, the next sends.
   sendButton = Button(panel, "Send next invite", 214, 24, function()
+      if API.Status().membershipOnly then UI.Refresh() return end
       -- Nobody confirmed online and guildless yet: the click goes on the next /who instead. Never both -- each is a
       -- protected call, and a click buys exactly one.
       local p = UI.presence
@@ -828,6 +829,11 @@ local function RefreshHeader(s, pc)
   end
   UI.version:SetText(p and (YELLOW .. "sample data|r") or (GREY .. "v" .. tostring(s.version or "?") .. "|r"))
   if s.alertUntil and time() < s.alertUntil then UI.newBadge:Show() else UI.newBadge:Hide() end
+  if s.membershipOnly then
+    UI.newBadge:Hide()
+    UI.summary:SetText(YELLOW .. "Verification only|r" .. GREY .. "  ·  Legacy invite records retained, read-only|r")
+    return
+  end
 
   -- The number of key presses still owed, and how long the oldest applicant has been waiting, are the two facts an
   -- officer needs at a glance, so they get the line under the title rather than a place in the list.
@@ -886,6 +892,8 @@ local function RefreshTiles(s)
 end
 
 local function RefreshQueue(s, pc, filtering)
+  if s.membershipOnly then filtering = false; fullArmedUntil = 0 end
+  if UI.clearButton then SetEnabled(UI.clearButton, not s.membershipOnly) end
   -- Queue rows: waiting first, then invited, joined, failed. The waiting group is a work list and goes in the order
   -- the invites will actually go out; the rest are a log and stay newest-first.
   local order = { queued = 1, invited = 2, failed = 3, joined = 4 }
@@ -936,7 +944,9 @@ local function RefreshQueue(s, pc, filtering)
   if offset > maxOffset then offset = maxOffset end
   if offset < 0 then offset = 0 end
   local more = #list > ROWS and string.format(" — %d–%d, scroll", offset + 1, math.min(#list, offset + ROWS)) or ""
-  if filtering then
+  if s.membershipOnly then
+    queueHeader:SetText(GOLD .. "Legacy invite queue — held|r" .. GREY .. string.format("   %d retained record(s)", #list) .. "|r")
+  elseif filtering then
     queueHeader:SetText(string.format("%sInvite queue|r   %s%d ready of %d%s|r", GOLD, (pc.ready > 0 and GREEN or GREY), pc.ready, s.queued, more))
   else
     queueHeader:SetText(string.format("%sInvite queue|r   %s%d waiting, %d total%s%s|r", GOLD, GREY, s.queued, #list,
@@ -944,10 +954,14 @@ local function RefreshQueue(s, pc, filtering)
   end
   if checkButton then
     checkButton:SetText(pc.filtering and string.format("Check (%d)", (pc.unchecked or 0)) or "Check")
-    SetEnabled(checkButton, pc.filtering and (pc.unchecked or 0) > 0 and (pc.checking or 0) == 0)
+    SetEnabled(checkButton, not s.membershipOnly and pc.filtering and (pc.unchecked or 0) > 0 and (pc.checking or 0) == 0)
     if pc.filtering then checkButton:Show() else checkButton:Hide() end
   end
-  if pc.filtering and pc.ready == 0 then
+  if s.membershipOnly then
+    sendButton:SetText("Verification only")
+    SetTone(sendButton, "quiet")
+    SetEnabled(sendButton, false)
+  elseif pc.filtering and pc.ready == 0 then
     -- Nobody to invite yet, so the big button is the Check button: same /who, one per click.
     sendButton:SetText((pc.unchecked or 0) > 0 and string.format("Check next (%d)", pc.unchecked) or "Nobody ready")
     SetTone(sendButton, "primary")
@@ -990,7 +1004,9 @@ local function RefreshQueue(s, pc, filtering)
         r.invite:Hide()
       end
       -- Greyed rather than hidden: the queue should still read as a queue at the cap, just not an actionable one.
-      SetEnabled(r.invite, not fullBlocked)
+      if s.membershipOnly then r.invite:SetText("Held") end
+      SetEnabled(r.invite, not s.membershipOnly and not fullBlocked)
+      SetEnabled(r.remove, not s.membershipOnly)
       r:Show()
     else
       r.entry = nil
@@ -1014,7 +1030,9 @@ local function RefreshQueue(s, pc, filtering)
   local text = type(API.Text) == "table" and API.Text or nil
   local takenOff = text and text.TakenOff and text.TakenOff(pc) or nil
   local canCheck = (pc.unchecked or 0) > 0   -- somebody a press would look up; otherwise the answers have to age out
-  if #list == 0 and filtering and (s.queued or 0) > 0 then
+  if s.membershipOnly then
+    emptyLabel:SetText("Verification-only mode. Legacy invite records are preserved and cannot be sent, retried, removed or re-imported here.")
+  elseif #list == 0 and filtering and (s.queued or 0) > 0 then
     -- The list is empty because of the filter, not because nobody is waiting: say who is where, and what to press.
     local breakdown = text and text.Breakdown and text.Breakdown(pc)
       or string.format("%d not checked, %d offline", pc.unchecked or 0, pc.offline or 0)

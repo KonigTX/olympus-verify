@@ -127,6 +127,8 @@ jobs:
           python3 tests/test_custody196.py
           python3 tests/test_attended_custody196.py
           python3 tests/test_restart197.py
+          python3 tests/test_treasury227.py
+          python3 tests/test_native_membership227.py
         working-directory: watcher
       - name: Operator tools (each test is a standalone script with a fake Worker on 127.0.0.1)
         run: |
@@ -135,7 +137,7 @@ jobs:
       - name: Stockades fixed-scope reset contract (offline fake Discord)
         run: python3 tools/tests/test_stockades_role_reset.py
 
-  # The addon's eighteen declared offline Lua suites, through Lupa's bundled LuaJIT 2.1: the same Lupa version as the local venv
+  # The addon's declared offline Lua suites, through Lupa's bundled LuaJIT 2.1: the same Lupa version as the local venv
   # that runs them on this PC (2.8, observed 30 Sep 2026), so results are comparable.
   addon:
     name: addon

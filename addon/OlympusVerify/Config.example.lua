@@ -17,6 +17,13 @@ OlympusVerifyConfig = {
   -- set this false if you would rather the addon never touch your mailbox; senders must then put !verify CODE in the
   -- SUBJECT for mail verification to work.
   readMail = true,
+  -- Launch verification-only mode. Mirror Worker VERIFY_MEMBERSHIP_ONLY=true; a code never queues an invite.
+  -- Only a fresh trusted approved-guild roster on the Worker can grant the corresponding Discord roles.
+  membershipOnly = true,
+  -- Observation only: no trade/mail action, tithe credit or role. Match the full collector character exactly;
+  -- include its realm suffix here if the live client's resolved name includes one. Other characters are inactive.
+  treasuryTracking = true,
+  treasuryRecipient = "Fern Melder",
   -- Freeing a seat when the guild is full. The addon never removes anyone by itself: it ranks candidates in the
   -- officer panel and each removal takes two clicks. These are the guards on that ranking — loosen them carefully,
   -- because a removed member also loses their Discord access (the roster diff sees the departure).

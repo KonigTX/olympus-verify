@@ -29,7 +29,7 @@ local L = OlympusHmac
 local cfg = OlympusVerifyConfig or {}
 
 BINDING_HEADER_OLYMPUSVERIFY = "Olympus Verify"
-BINDING_NAME_OLYMPUSVERIFY_FLUSH = "Send queued guild invites"
+BINDING_NAME_OLYMPUSVERIFY_FLUSH = cfg.membershipOnly == true and "Invite queue (held: verification only)" or "Send queued guild invites"
 
 local SECRET = cfg.secret
 -- 0.6.12: the example's placeholder is public, so a Config.lua copied without replacing it must not accept codes made from it.
@@ -366,8 +366,34 @@ local function HandleCode(source, sender, text, guid)
   code = code or string.sub(string.upper(token), 1, 12)
   local member = ok and InGuildAlready(sender, base) or false
   guid = ok and Presence.IsGuid(guid) and guid or nil
-  Event({ type = source, name = base, target = sender, code = code, ok = ok, inGuild = member, kind = kind, guid = guid })
+  local nativeMembership
+  if ok and cfg.membershipOnly == true and source == "whisper" and guid then
+    local captured, proof = pcall(Presence.NativeMembershipProof, sender, guid, code)
+    if captured then nativeMembership = proof end
+  end
+  local eventMember = member
+  if cfg.membershipOnly == true then eventMember = nativeMembership and nativeMembership.member end
+  Event({ type = source, name = base, target = sender, code = code, ok = ok, inGuild = eventMember, kind = kind, guid = guid, nativeMembership = nativeMembership })
   if ok then
+    if cfg.membershipOnly == true then
+      -- .227: a valid code proves control, not current guild membership. Keep the old invite workflow opt-in.
+      Print(string.format("%s from %s: code confirmed; Worker membership confirmation pending. No invite queued.", source, base))
+      if source == "whisper" then
+        if (lastReply[key] or 0) + REPLY_RATE <= time() then
+          lastReply[key] = time()
+          local reply = "Olympus: code received; a current approved Olympus roster could not be confirmed. No role or invite was granted. Retry once the roster is available or use your sister guild's QR verification."
+          if nativeMembership and nativeMembership.member then
+            reply = "Olympus: code and current guild membership observed. Discord access still needs the Worker's roster and account checks; this whisper alone grants no role or invite."
+          elseif nativeMembership and nativeMembership.member == false then
+            reply = "Olympus: you are not on this officer's current guild roster; no role was granted. For an Olympus sister guild, use its QR verification. Otherwise join an affiliated guild, then request a fresh code."
+          end
+          SendChatMessage(reply, "WHISPER", nil, sender)
+        end
+        if guid then Presence.Safely("noting the whisperer's character", Presence.NoteIdentity, base, guid) end
+      end
+      frame:UpdateButton()
+      return
+    end
     Unverified.session[key] = true  -- verified now: the unverified list on disk predates this
     if kickMacroTarget and L.normalizeCharacter(kickMacroTarget) == key and Unverified.aim[key] == "unverified" then
       Unverified.DisarmMacro()
@@ -531,8 +557,23 @@ local function ShowOfflineMembers(exportAfter)
   return RequestRoster(exportAfter)
 end
 
+-- .227: role proofs bind the officer's native own-guild roster to its actual guild and realm.
+-- Config strings, /who text and names in a whisper are never substitutes for these client APIs.
+function Presence.NativeRosterScope()
+  local function read(fn, ...)
+    if type(fn) ~= "function" then return nil end
+    local ok, value = pcall(fn, ...)
+    value = ok and Presence.Readable(value) or nil
+    if not value or value == "" or #value > 128 or value:find("[%c<>]") or value:find("^%s") or value:find("%s$") then return nil end
+    return value
+  end
+  return read(rawget(_G, "GetGuildInfo"), "player"), read(rawget(_G, "GetRealmName"))
+end
+
 ExportRoster = function(force, rosterAlreadyAsked)
   if not IsInGuild() then return end
+  local nativeGuild, nativeRealm = Presence.NativeRosterScope()
+  if cfg.membershipOnly == true and not (nativeGuild and nativeRealm) then return nil end
   local now = time()
   if not force and now - lastRosterExport < ROSTER_THROTTLE then return end
   if not rosterAlreadyAsked and not ShowOfflineMembers(not force) and not force then return end
@@ -557,6 +598,8 @@ ExportRoster = function(force, rosterAlreadyAsked)
   -- short. Reject a partial FIRST/forced export too: a 46-of-50 list passes the
   -- original90% comparison. Keep the original snapshot/timestamp unchanged.
   if #members ~= total or not RosterVisibilityCurrent() then return nil end
+  local finalGuild, finalRealm = Presence.NativeRosterScope()
+  if not IsInGuild() or finalGuild ~= nativeGuild or finalRealm ~= nativeRealm then return nil end
   -- Second guard, on this side of the wire: an export far smaller than the last one is almost certainly truncated
   -- (show-offline off, or a GUILD_ROSTER_UPDATE that fired before the full list arrived). Keep the previous one.
   local prev = OlympusVerifyDB.roster
@@ -565,7 +608,7 @@ ExportRoster = function(force, rosterAlreadyAsked)
     Print(string.format("roster export looked short (%d members vs %d last time) — kept the previous export. /olv roster forces one.", #members, prevCount))
     return nil
   end
-  OlympusVerifyDB.roster = { exportedAt = now, members = members, total = total, online = online }
+  OlympusVerifyDB.roster = { exportedAt = now, members = members, total = total, online = online, nativeGuild = nativeGuild, nativeRealm = nativeRealm }
   return #members
 end
 
@@ -1260,6 +1303,21 @@ do
     return mine
   end
   function Presence.MyNameVia() return via end
+  -- Treasury MACs retain the ORIGINAL native realm suffix. The older relay protocol's MyName strips it.
+  function Presence.TreasuryName()
+    local me = PlayerGuid()
+    if me and GetNumGuildMembers and GetGuildRosterInfo then
+      for i = 1, math.min(tonumber(GetNumGuildMembers()) or 0, 1000) do
+        local ok, n, g = pcall(NameAndGuid, i)
+        n, g = ok and Presence.Readable(n), ok and Presence.Readable(g)
+        if n and g == me and TwoParts(n) then return n end
+      end
+    end
+    local fn = rawget(_G, "GetUnitName") or rawget(_G, "UnitName")
+    local ok, n = pcall(fn, "player", true)
+    n = ok and Presence.Readable(n) or nil
+    return TwoParts(n) and n or nil
+  end
 end
 
 Presence.pendingNotes = {}
@@ -1280,6 +1338,41 @@ local function NoteToSelf(text)
   local ok = pcall(SendChatMessage, text, "WHISPER", nil, me)
   FlushChatLog()
   return ok
+end
+
+-- A fresh, code-bound native cache observation closes the gap left by an older Worker roster.
+-- False means only "not on THIS collector's own guild roster"; it never claims the player has no guild.
+function Presence.NativeMembershipProof(sender, guid, code)
+  if not SECRET or not L.hmacSha256hex or not L.sha256hex or not Presence.IsGuid(guid) or #guid > 40 or type(code) ~= "string" or L.strictCode(code) ~= code then return nil end
+  sender = Presence.Readable(sender)
+  if not sender or #sender < 2 or #sender > 96 or sender:find("[%c|%(%)<>]") then return nil end
+  local function boolean(fn, ...)
+    if type(fn) ~= "function" then return nil end
+    local ok, value = pcall(fn, ...)
+    if not ok then return nil end
+    local hidden = rawget(_G, "issecretvalue") or rawget(_G, "isSecret")
+    if hidden then local readable, secretValue = pcall(hidden, value); if not readable or secretValue then return nil end end
+    if type(value) ~= "boolean" then return nil end
+    return value
+  end
+  local guild, realm = Presence.NativeRosterScope()
+  if not guild or not realm or boolean(rawget(_G, "IsInGuild")) ~= true then return nil end
+  local getter = C_GuildInfo and C_GuildInfo.MemberExistsByName
+  local first = boolean(getter, sender)
+  if first == nil then return nil end
+  local member = boolean(getter, sender)
+  local finalGuild, finalRealm = Presence.NativeRosterScope()
+  if member == nil or member ~= first or finalGuild ~= guild or finalRealm ~= realm or boolean(rawget(_G, "IsInGuild")) ~= true then return nil end
+  local observedAt = time()
+  if type(observedAt) ~= "number" or observedAt <= 0 or observedAt ~= math.floor(observedAt) then return nil end
+  local scopeHash = L.sha256hex("native-scope|1|" .. guild .. "|" .. realm):sub(1, 16)
+  local truth = member and "1" or "0"
+  local stamp = string.format("%.0f", observedAt)
+  local mac = L.hmacSha256hex(SECRET, table.concat({ "membership", "1", L.normalizeCharacter(sender), guid, code, truth, stamp, scopeHash }, "|")):sub(1, 32)
+  local proof = { version = 1, member = member, observedAt = observedAt, scopeHash = scopeHash, mac = mac }
+  local note = string.format("Olympus: member %s %s %s %s %s %s (ref OLVm-%s)", sender, guid, code, truth, stamp, scopeHash, mac)
+  if #note <= 255 then NoteToSelf(note) end
+  return proof
 end
 
 -- What waited for the name goes out once it is known: notes still inside the signing window, in order, one flush.
@@ -1369,7 +1462,7 @@ local function ChatFilterJoin(_, _, msg, author)
   if not (msg and author) then return false end
   local me = Presence.MyName()
   if not me or BaseName(author) ~= me then return false end
-  return string.match(msg, "^Olympus: .-ref OLV[jlrg]%-%x+%)$") ~= nil
+  return string.match(msg, "^Olympus: .-ref OLV[jlrgm]%-%x+%)$") ~= nil
 end
 
 -- At every login and reload: which character is in the world and which addon build it runs, signed, into the chat log.
@@ -1405,6 +1498,7 @@ do
 end
 
 local function CheckJoined()
+  if cfg.membershipOnly == true then return 0, 0 end
   local db = OlympusVerifyDB
   if not db or not (C_GuildInfo and C_GuildInfo.MemberExistsByName) then return 0 end
   local joined, pending = 0, 0
@@ -1454,6 +1548,11 @@ end
 -- -- a /who on the next applicant in line. Both are protected calls, so never both in one press. opts.force is the
 -- panel's "Send anyway": it invites at the cap, for when the roster count is stale and a seat has just opened.
 function OlympusVerify_Flush(entry, opts)
+  if cfg.membershipOnly == true then
+    Print("verification-only mode: legacy invite queue is held unchanged. No invite, retry, note or /who was sent.")
+    frame:UpdateButton()
+    return false
+  end
   local db = OlympusVerifyDB
   if not db then return end
   local invited, noted = 0, 0
@@ -2679,6 +2778,7 @@ local function DismissRows(rows)
   end
 end
 local function MergeQueueFile()
+  if cfg.membershipOnly == true then return 0, 0 end
   local q = OlympusQueue
   if type(q) ~= "table" or type(q.entries) ~= "table" then return 0 end
   local added, ready = 0, 0
@@ -2771,6 +2871,7 @@ end
 -- then and never sees a newer file. Kept because it is harmless; new approvals and the unverified list need a /reload.
 local mergeTicker
 local function StartMergeTicker()
+  if cfg.membershipOnly == true then return end
   if mergeTicker or MERGE_INTERVAL <= 0 or not (C_Timer and C_Timer.NewTicker) then return end
   mergeTicker = C_Timer.NewTicker(MERGE_INTERVAL, function()
     local added = MergeQueueFile()
@@ -2850,7 +2951,7 @@ button:SetScript("OnLeave", function()
   if GameTooltip then GameTooltip:Hide() end
 end)
 button:SetScript("OnClick", function(_, mouseButton)
-  if mouseButton == "RightButton" then
+  if cfg.membershipOnly == true or mouseButton == "RightButton" then
     if OlympusVerifyUI and OlympusVerifyUI.Toggle then OlympusVerifyUI.Toggle() end
   else
     OlympusVerify_Flush()
@@ -2867,6 +2968,13 @@ function frame:UpdateButton()
       button:SetPoint(saved.point, UIParent, saved.relPoint or saved.point, tonumber(saved.x) or 0, tonumber(saved.y) or 0)
     end
     launcherRestored = true
+  end
+  if cfg.membershipOnly == true then
+    button:SetText("Olympus  |cff9EA3AD·|r  Verification only")
+    launcherDetail = "Left- or right-click: review verification status. The retained legacy invite queue is held; invite and /who controls are disabled."
+    button:Show()
+    if OlympusVerifyUI and OlympusVerifyUI.Refresh then OlympusVerifyUI.Refresh() end
+    return
   end
   local n = QueuedCount()
   local notes = (SET_NOTES and OlympusVerifyDB) and #OlympusVerifyDB.notePending or 0
@@ -2923,9 +3031,15 @@ end
 
 -- What the panel reads. Everything here is a snapshot; the panel never touches the queue except through the calls below.
 OlympusVerifyAPI = {
+  -- .227: this protocol preserves the native recipient, including its meaningful realm suffix.
+  TreasuryTransport = { Name = Presence.TreasuryName, Guid = Presence.PlayerGuid, Note = function(text)
+    local me = Presence.TreasuryName()
+    return me and pcall(SendChatMessage, text, "WHISPER", nil, me) or false
+  end },
   Flush = OlympusVerify_Flush,                       -- Flush() = next ready (or check the next); Flush(entry) = that one (also retries a failed one)
   -- Presence. Check() is a hardware-event call like Flush: one /who per click.
   Check = function()
+    if cfg.membershipOnly == true then Print("verification-only mode: legacy invite checks are held; no /who was sent.") return false end
     local ok = Presence.Step(false)
     frame:UpdateButton()
     return ok
@@ -2951,11 +3065,15 @@ OlympusVerifyAPI = {
     return ok
   end,
   Remove = function(entry)
+    if cfg.membershipOnly == true then Print("verification-only mode: retained legacy queue is read-only.") return false end
     local db = OlympusVerifyDB
     for i, q in ipairs(db.queue) do if q == entry then DismissRows({ q }); table.remove(db.queue, i) break end end
     frame:UpdateButton()
   end,
-  ClearQueue = function() DismissRows(OlympusVerifyDB.queue); OlympusVerifyDB.queue = {}; OlympusVerifyDB.notePending = {}; frame:UpdateButton() end,
+  ClearQueue = function()
+    if cfg.membershipOnly == true then Print("verification-only mode: retained legacy queue is read-only.") return false end
+    DismissRows(OlympusVerifyDB.queue); OlympusVerifyDB.queue = {}; OlympusVerifyDB.notePending = {}; frame:UpdateButton()
+  end,
   ExportRoster = function()
     local n = ExportRoster(true)
     frame:UpdateButton()
@@ -3016,6 +3134,7 @@ OlympusVerifyAPI = {
       rosterTotal = (db.roster and db.roster.total) or 0,
       guildCap = GUILD_CAP,
       version = VERSION,
+      membershipOnly = cfg.membershipOnly == true,
     }
   end,
 }
@@ -3271,7 +3390,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
     -- housekeeping: drop invited entries older than a week and mail keys older than a month
     local cutoff, kept = time() - 7 * 86400, {}
     for _, q in ipairs(db.queue) do if q.status == "queued" or math.max(q.invitedAt or 0, q.joinedAt or 0, q.failedAt or 0) > cutoff then kept[#kept + 1] = q end end
-    db.queue = kept
+    if cfg.membershipOnly ~= true then db.queue = kept end
     for k, ts in pairs(db.processedMail) do if ts < time() - 30 * 86400 then db.processedMail[k] = nil end end
     for k, t in pairs(db.tickets or {}) do if type(t) ~= "table" or time() - (t.at or 0) > TICKET_HOLD then db.tickets[k] = nil end end
     -- Which build is loaded and who is playing, for the watcher to read after the next /reload or logout. The chat log
@@ -3297,7 +3416,9 @@ frame:SetScript("OnEvent", function(self, event, ...)
     StartMergeTicker()
     ShowOfflineMembers()
     local n = QueuedCount()
-    if n > 0 and Presence.Available() then
+    if cfg.membershipOnly == true then
+      Print(string.format("verification-only mode: %d retained legacy queue record(s) are held unchanged. No invitations or /who actions are enabled.", #db.queue))
+    elseif n > 0 and Presence.Available() then
       Print(string.format("%d waiting (%d new from Discord). Each press of your flush key invites the next one confirmed online and guildless, or checks the next in line with /who.", n, added))
     elseif n > 0 then
       Print(string.format("%d invite(s) queued (%d new from Discord). Press your flush key or click the button to send them.", n, added))
@@ -3413,8 +3534,7 @@ SlashCmdList.OLYMPUSVERIFY = function(msg)
     local n = ExportRoster(true)
     Print(string.format("roster exported: %s members (written to SavedVariables at logout or /reload).", tostring(n or 0)))
   elseif cmd == "clear" then
-    OlympusVerifyAPI.ClearQueue()
-    Print("queue cleared.")
+    if OlympusVerifyAPI.ClearQueue() ~= false then Print("queue cleared.") end
   elseif cmd == "sync" then
     OlympusVerifyAPI.Sync()
   elseif cmd == "flushlog" then

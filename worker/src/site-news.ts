@@ -78,6 +78,13 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".227", date: "2026-11-03", lines: [
+      "Verification can require a fresh roster and matching native character identity before an account is linked.",
+      "The officer addon records completed gold transfers and collected mail for local reconciliation; transfers never automatically grant benefits.",
+      "The Companion aggregate feed remains off pending live producer evidence and realm mapping.",
+    ],
+  },
+  {
     build: ".226", date: "2026-11-03", lines: [
       "The bot owner can use raid-announcement buttons, see their signup on event rosters and record their own post-start attendance without character verification.",
       "Ordinary member checks, event limits, account safety and staff permissions remain in place.",

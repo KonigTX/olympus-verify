@@ -190,8 +190,8 @@ export function auditReason(reason: string): string {
   return out;
 }
 
-export const addRole = (env: Env, userId: string, roleId: string, reason: string, budget?: AttemptBudget) =>
-  rest(env, "PUT", `/guilds/${env.GUILD_ID}/members/${userId}/roles/${roleId}`, undefined, 0, reason, budget);
+export const addRole = (env: Env, userId: string, roleId: string, reason: string, budget?: AttemptBudget,beforeDispatch?:()=>void) =>
+  rest(env, "PUT", `/guilds/${env.GUILD_ID}/members/${userId}/roles/${roleId}`, undefined, 0, reason, budget,false,beforeDispatch);
 
 /** `mandatory` (.95): a removal the run owes (after a ban, or while a restriction is held): its retry is counted, never refused. */
 export const removeRole = (env: Env, userId: string, roleId: string, reason: string, budget?: AttemptBudget, mandatory = false) =>

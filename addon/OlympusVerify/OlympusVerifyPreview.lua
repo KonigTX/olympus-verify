@@ -472,6 +472,7 @@ function Fake.Status()
     kickCommand = r.kickCommand or "/guildremove",
     rosterTotal = f.rosterTotal, guildCap = f.cap,
     version = r.version or "?",
+    membershipOnly = r.membershipOnly == true,
   }
 end
 
@@ -556,6 +557,7 @@ end
 -- button, the flush key binding, "Send next invite" and each row's Invite button all end up in here.
 function Fake.Flush(entry, opts)
   local f = Cur()
+  if f.real.membershipOnly then Say("verification-only mode: the sample legacy invite queue is held unchanged.") return false end
   if type(entry) == "table" then
     if f.sample[entry] and (entry.status == "queued" or entry.status == "failed") then SampleInvite(f, entry)
     else Say(string.format("would invite %s. Nothing was sent.", Gold(entry.name or "?"))) end
@@ -575,6 +577,7 @@ function Fake.Flush(entry, opts)
 end
 
 function Fake.Check()
+  if Cur().real.membershipOnly then Say("verification-only mode: no sample /who check is enabled.") return false end
   local ok = SampleCheck(Cur())
   Refresh()
   return ok
@@ -582,6 +585,7 @@ end
 
 function Fake.Remove(entry)
   local f = Cur()
+  if f.real.membershipOnly then Say("verification-only mode: retained sample queue is read-only.") return false end
   for i, q in ipairs(f.queue) do
     if q == entry then
       table.remove(f.queue, i)
@@ -596,6 +600,7 @@ end
 
 function Fake.ClearQueue()
   local f = Cur()
+  if f.real.membershipOnly then Say("verification-only mode: retained sample queue is read-only.") return false end
   local n = #f.queue
   f.queue, f.sample, f.presence = {}, {}, {}
   Say(string.format("would clear all %d queue entries. The sample list is empty now; the real queue is untouched. %s brings the samples back.",
@@ -705,7 +710,7 @@ local function Capture(UI)
   if s.api.Status then
     local ok, st = pcall(s.api.Status)
     if ok and type(st) == "table" then
-      for _, k in ipairs({ "version", "guildCap", "kickMacroName", "kickCommand", "offlineRule", "mergeSeconds", "flushLog" }) do
+      for _, k in ipairs({ "version", "guildCap", "kickMacroName", "kickCommand", "offlineRule", "mergeSeconds", "flushLog", "membershipOnly" }) do
         if type(st[k]) ~= "table" and type(st[k]) ~= "function" then s.real[k] = st[k] end
       end
     end

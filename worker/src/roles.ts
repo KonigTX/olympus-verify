@@ -40,6 +40,7 @@ import { addRole, DiscordError, guildMember, removeRole, rest, type AttemptBudge
 import { membershipSettlementEnabled as durableServingRoles,membershipTransitionEnabled,membershipTargetsCurrent,type MembershipTargets } from './membership-role-transition';
 import { privacyCaptureFromColumns } from './privacy-serving-authority';
 import { BETA_RESET_GUILD_ID,BETA_RESET_ROLE_IDS,captureBetaRemovalDispatch,captureBetaRoleDispatch,betaRoleDispatchHeld,betaGrantDispatchHeld,betaSourceEpochState,type BetaRoleDispatch,type BetaRemovalDispatchCapture } from './beta-reset-policy';
+import { captureLaunchVerification,assertLaunchMembershipMode,launchMembershipCurrent,LaunchVerificationHeld,type LaunchMembershipSource } from './launch-verification227';
 
 export const blockingRoleIds = (env: Env): string[] =>
   (env.BLOCKING_ROLE_IDS ?? "")
@@ -126,14 +127,20 @@ export async function budgetExhausted(env: Env, budget: CallBudget, source: stri
  * bookkeeping only: the decision is made on a fresh member read and a fresh ban read, immediately before the write.
  * Throws what addRole throws, so every caller keeps its own failure handling and audit.
  */
-export async function grantMemberRole(env: Env, userId: string, reason: string, source: string, _roles?: readonly string[], budget?: CallBudget, generationCapture?:{subjectGeneration:string|null;membershipContext?:Readonly<{central:boolean;targets:MembershipTargets|null}>},originalDispatch?:BetaRoleDispatch): Promise<GrantOutcome> {
+export async function grantMemberRole(env: Env, userId: string, reason: string, source: string, _roles?: readonly string[], budget?: CallBudget, generationCapture?:{subjectGeneration:string|null;membershipContext?:Readonly<{central:boolean;targets:MembershipTargets|null}>;launchSource?:LaunchMembershipSource},originalDispatch?:BetaRoleDispatch): Promise<GrantOutcome> {
+  const launchMode=captureLaunchVerification(env);
+  if(launchMode.mode==='held'||launchMode.mode==='members-only'&&!durableServingRoles(env))return 'held';
   const dispatch=originalDispatch??captureBetaRoleDispatch(env),removalDispatch=dispatch.capture;
   if(betaGrantDispatchHeld(env,dispatch,env.GUILD_ID,env.ROLE_GUILD_MEMBER))return 'held';
   // .152: an optional backfill selection stays original across this writer's own awaits. Other callers retain their existing contract.
   const originalCapture=generationCapture===undefined?undefined:Object.freeze({subjectGeneration:generationCapture.subjectGeneration});
+  const launchSource=generationCapture?.launchSource;
+  const launchCurrent=()=>launchSource?launchMembershipCurrent(env,launchSource):Promise.resolve(true);
+  const launchBeforeDispatch=()=>{if(!launchMode.current())throw new LaunchVerificationHeld();if(launchSource)assertLaunchMembershipMode(env,launchSource);};
+  if(launchSource&&!await launchCurrent())return 'held';
   const context=generationCapture?.membershipContext;
   const originalContext=context===undefined?undefined:Object.freeze({central:context.central,targets:context.targets===null?null:Object.freeze({guild:context.targets.guild,current:context.targets.current,retired:context.targets.retired,transition:context.targets.transition})});
-  const originalMembershipCurrent=()=>originalContext===undefined||durableServingRoles(env)===originalContext.central&&(!originalContext.central||originalContext.targets!==null&&membershipTargetsCurrent(env,originalContext.targets));
+  const originalMembershipCurrent=()=>launchMode.current()&&(originalContext===undefined||durableServingRoles(env)===originalContext.central&&(!originalContext.central||originalContext.targets!==null&&membershipTargetsCurrent(env,originalContext.targets)));
   if(!originalMembershipCurrent())return 'held';
   // The old beta source epoch expires independently of the bulk-removal activation flag.
   // This fixed-scope fast gate leaves unrelated guilds and roles unchanged; the policy module
@@ -149,11 +156,12 @@ export async function grantMemberRole(env: Env, userId: string, reason: string, 
   if(durableServingRoles(env)){
     // The serving caller passes its ORIGINAL selection/cookie capture. Missing authority is never repaired by reading a new generation.
     if(!originalCapture)return 'held';
-    try{const central=await import('./role-settlements'),snapshot=await env.DB.prepare('SELECT MAX(id) AS id FROM roster_snapshots').first<{id:number}>();
+    try{const central=await import('./role-settlements'),snapshot=launchSource?{id:launchSource.snapshotId}:await env.DB.prepare('SELECT MAX(id) AS id FROM roster_snapshots').first<{id:number}>();
       if(!originalMembershipCurrent()||betaCapture&&betaPolicy&&!await betaPolicy.betaGrantCurrent(env,betaCapture))return 'held';
       const operation=await central.queueRosterMembershipRole(env,userId,snapshot?.id??0,originalCapture.subjectGeneration,dispatch);
       if(betaCapture&&betaPolicy&&!await betaPolicy.betaGrantCurrent(env,betaCapture))return 'held';
-      const r=await central.settleRoleIntent(env,operation,false,undefined,budget,betaCapture??undefined,dispatch);
+      if(launchSource&&!await launchCurrent())return 'held';
+      const r=await central.settleRoleIntent(env,operation,false,undefined,budget,betaCapture??undefined,dispatch,launchSource);
       return r.state==='settled'?(r.reason==='fresh_server_confirmed'?'has-role':'granted'):r.reason==='role_request_budget'?'budget':'held';
     }catch{return 'held';}
   }
@@ -171,6 +179,7 @@ export async function grantMemberRole(env: Env, userId: string, reason: string, 
   if (configured === "unknown") return "unverified"; // the inventory could not be read: nothing is granted, nothing cached
   if (!takeCall(budget)) return budgetExhausted(env, budget!, source); // .90: the run's budget, before each Discord call
   const m = await guildMember(env, userId, budget);
+  if(launchSource&&!await launchCurrent())return 'held';
   if(!originalMembershipCurrent())return 'held';
   if(betaGrantDispatchHeld(env,dispatch,env.GUILD_ID,role))return 'held';
   if (!m) return "not-in-server";
@@ -187,16 +196,21 @@ export async function grantMemberRole(env: Env, userId: string, reason: string, 
     await audit(env, "system", "role.held_reapply", userId, { source });
     return "held";
   }
+  if(launchSource&&!await launchCurrent())return 'held';
   // .95: the PUT and the removal it may owe, reserved together before the PUT
   if (!affords(budget, 2)) return budgetExhausted(env, budget!, source);
   if(!originalMembershipCurrent())return 'held';
   if(betaGrantDispatchHeld(env,dispatch,env.GUILD_ID,role))return 'held';
   if(betaCapture?.mode==='open'){
+    // The old beta writer has no request-bound native source callback. Restricted
+    // launch proofs use the central writer above; never broaden this historical path.
+    if(launchSource)return 'held';
     const guarded=await import('./beta-reset-grants'),receipt=await guarded.beginBetaLegacyGrant(env,betaCapture,userId);
     if(!receipt||await guarded.dispatchBetaLegacyGrant(env,receipt,reason,budget)!=='granted')return 'held';
   }else{
     if (!takeCall(budget)) return budgetExhausted(env, budget!, source);
-    await addRole(env, userId, role, reason, budget);
+    await addRole(env, userId, role, reason, budget,launchBeforeDispatch);
+    launchBeforeDispatch?.();
   }
   // .60: and once more after the write: a ban that landed while the PUT was in flight is undone here, not left held
   if (await isBanned(env, userId)) {

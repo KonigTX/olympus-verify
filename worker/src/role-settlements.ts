@@ -17,6 +17,7 @@ import { isSiteAdmin } from './site-core';
 import { captureTreasuryReservedRoles } from './treasury-reserved-roles';
 import { BETA_RESET_GUILD_ID,BETA_RESET_ROLE_IDS,captureBetaRoleDispatch,betaRoleDispatchHeld,betaGrantDispatchHeld,betaGrantDispatchSql,type BetaGrantCapture,type BetaRoleDispatch } from './beta-reset-policy';
 import { type LaneCapture,type LaneKind,type LaneRemovalPurpose,type LaneTupleRow } from './full-release-roles';
+import { captureLaunchVerification,assertLaunchMembershipMode,launchMembershipPredicate,type LaunchMembershipSource } from './launch-verification227';
 
 type Role={id:string;position:number;permissions:string;managed:boolean};
 type Member={roles:string[];user:{id:string}};
@@ -48,7 +49,7 @@ const now=()=>Math.floor(Date.now()/1000);
 const budget=():AttemptBudget=>({limit:8,attempts:0,retries:0});
 /** This path counts every network request and disables the legacy 429 retry. */
 async function request<T>(env:Env,b:AttemptBudget,method:string,path:string,readAdmission?:()=>Promise<boolean>,beforeDispatch?:()=>void):Promise<T> {
- if(readAdmission&&method==='GET'&&!await readAdmission())throw Error('retirement_original_read_admission_changed');
+ if(readAdmission&&(method==='GET'||method==='PUT')&&!await readAdmission())throw Error('retirement_original_read_admission_changed');
  if(b.attempts>=b.limit)throw new Error('role_budget');b.attempts++;if('calls' in b)(b as AttemptBudget&{calls:number}).calls++;
  return rest<T>(env,method,path,undefined,1,'Olympus verified role settlement',b,false,beforeDispatch);
 }
@@ -292,7 +293,8 @@ function captureOriginalSettlementFacts(raw:unknown,env:Env):Readonly<{intent:Re
  const check=()=>{for(const witness of witnesses)witness();const d=Object.getOwnPropertyDescriptor(env,'GUILD_ID');if(!d||!Object.hasOwn(d,'value')||d.value!==guildSlot.value||d.writable!==guildSlot.writable||d.configurable!==guildSlot.configurable||d.enumerable!==guildSlot.enumerable||d.get!==guildSlot.get||d.set!==guildSlot.set)return held();};check();
  return Object.freeze({intent:intent as unknown as Readonly<Intent>|undefined,compensation:compensation as unknown as Readonly<{id:string;reason:string}>|undefined,check});
 }
-export async function settleRoleIntent(env:QrEnv,id:string,reconcileOnly=false,actor?:OriginalRoleActor,b:AttemptBudget=budget(),originalBetaCapture?:BetaGrantCapture,removalDispatch?:RemovalDispatch):Promise<Settlement> {
+export async function settleRoleIntent(env:QrEnv,id:string,reconcileOnly=false,actor?:OriginalRoleActor,b:AttemptBudget=budget(),originalBetaCapture?:BetaGrantCapture,removalDispatch?:RemovalDispatch,originalLaunchSource?:LaunchMembershipSource):Promise<Settlement> {
+ const launchMode=captureLaunchVerification(env);
  const removal=originalRemovalDispatch(env,removalDispatch);
  const betaOriginal=betaGrantConfiguration(env);
  const owner=actor?captureRoleActor(actor):null;actor=owner?.actor;owner?.check();if(!membershipSettlementEnabled(env)&&env.QR_RANK_MAPPING_ENABLED!=='true'&&env.QR_PRIVILEGED_RANK_MAPPING_ENABLED!=='true')return result('held','features_disabled');if(!TOKEN.test(id))return result('held','invalid_operation');
@@ -303,7 +305,7 @@ export async function settleRoleIntent(env:QrEnv,id:string,reconcileOnly=false,a
  const i=original.intent,compensation=original.compensation;
  if(!i||i.guild_id!==env.GUILD_ID)return result('held','operation_not_current',id);
  const betaScoped=i.guild_id===BETA_RESET_GUILD_ID&&BETA_RESET_ROLE_IDS.includes(i.role_id);
- const check=()=>{original.check();owner?.check();if(!providerEffectStarted&&!compensation&&i.desired===1&&i.beta_window_id!==null&&i.beta_window_id!==undefined){if(!betaOriginal?.enabled||i.beta_window_id!==betaOriginal.windowId||i.purpose!=='verified_membership'||i.role_id!==betaOriginal.membershipRole)throw new OriginalSettlementFactsHeld();try{assertBetaConfiguration(betaOriginal);}catch{throw new OriginalSettlementFactsHeld();}}};
+ const check=()=>{original.check();owner?.check();if(!reconcileOnly&&i.desired===1&&(launchMode.mode==='held'||!launchMode.current()))throw new OriginalSettlementFactsHeld();if(originalLaunchSource){try{assertLaunchMembershipMode(env,originalLaunchSource);}catch{throw new OriginalSettlementFactsHeld();}}if(!providerEffectStarted&&!compensation&&i.desired===1&&i.beta_window_id!==null&&i.beta_window_id!==undefined){if(!betaOriginal?.enabled||i.beta_window_id!==betaOriginal.windowId||i.purpose!=='verified_membership'||i.role_id!==betaOriginal.membershipRole)throw new OriginalSettlementFactsHeld();try{assertBetaConfiguration(betaOriginal);}catch{throw new OriginalSettlementFactsHeld();}}};
  const checked=async<T>(perform:()=>Promise<T>):Promise<T>=>{check();const value=await perform();check();return value;};
  const effectMethod=i.desired===1?'PUT':'DELETE',effectPath=`/guilds/${i.guild_id}/members/${i.subject}/roles/${i.role_id}`;
  let providerEffectStarted=false;
@@ -345,7 +347,13 @@ export async function settleRoleIntent(env:QrEnv,id:string,reconcileOnly=false,a
  if(!await checked(()=>intentCurrent(env,i,betaOriginal)))return result('held','proof_changed_after_lookup',id);
  if(betaCapture&&betaPolicy&&!await checked(()=>betaPolicy.betaGrantCurrent(env,betaCapture)))return result('held','beta_grant_policy_changed',id);
  const nonce=randomGeneration(),base=i.proof_id?{sql:PROOF_CURRENT+' AND '+betaProofPurposeSql(betaOriginal)+(i.beta_window_id?(' AND '+betaMembershipEffectSql(betaOriginal!)):''),values:[i.proof_id,i.subject,id,nonce],id:3,nonce:4}:{sql:ROSTER_CURRENT,values:[...rosterParams(env,i),nonce],id:7,nonce:9};
- let guard=base.sql+` AND ?${base.nonce} IS NOT NULL AND NOT EXISTS(SELECT 1 FROM role_settlements WHERE subject=?2 AND desired=0 AND attempts=1 AND state IN('dispatching','unknown') AND id<>?${base.id})`;if(actor){const start=base.values.length+1;base.values.push(actor.id,actor.v,actor.e,actor.g);guard+=` AND ?${start+2}>${DB_NOW} AND EXISTS(SELECT 1 FROM site_users WHERE discord_id=?${start} AND session_version=?${start+1} AND in_server=1 AND ${privacyAccountIncarnationLiteralFenceSql('account_incarnation',actor.n)}) AND ${privacyGenerationFenceSql(start,start+3)}`;}
+ let guard=base.sql+` AND ?${base.nonce} IS NOT NULL AND NOT EXISTS(SELECT 1 FROM role_settlements WHERE subject=?2 AND desired=0 AND attempts=1 AND state IN('dispatching','unknown') AND id<>?${base.id})`;
+ if(!reconcileOnly&&i.desired===1&&launchMode.mode==='members-only'){
+   if(i.proof_id||!launchMode.scope)return result('held','live_native_scope_proof_required',id);
+   const at=base.values.length+1;guard+=` AND EXISTS(SELECT 1 FROM roster_snapshots launch_scope WHERE launch_scope.id=?${at} AND launch_scope.source=?${at+1})`;base.values.push(i.roster_id,launchMode.scope.provenance);
+ }
+ if(originalLaunchSource){const launch=launchMembershipPredicate(env,originalLaunchSource,base.values.length+1);guard+=` AND (${launch.sql})`;base.values.push(...launch.values);}
+ if(actor){const start=base.values.length+1;base.values.push(actor.id,actor.v,actor.e,actor.g);guard+=` AND ?${start+2}>${DB_NOW} AND EXISTS(SELECT 1 FROM site_users WHERE discord_id=?${start} AND session_version=?${start+1} AND in_server=1 AND ${privacyAccountIncarnationLiteralFenceSql('account_incarnation',actor.n)}) AND ${privacyGenerationFenceSql(start,start+3)}`;}
   if(betaCapture&&betaPolicy){const reset=betaPolicy.betaGrantSql(betaCapture,base.values.length+1);guard+=` AND (${reset.sql})`;base.values.push(...reset.values);}
  if(i.desired===1&&/^(verified|roster)_(native|privileged)_rank$/.test(i.purpose))guard+=` AND NOT EXISTS(SELECT 1 FROM role_settlements old JOIN role_settlements current ON current.id=?${base.id} WHERE old.subject=current.subject AND old.desired=0 AND old.state<>'settled' AND old.purpose IN('verified_native_rank','verified_privileged_rank','roster_native_rank','roster_privileged_rank') AND ((current.proof_id IS NOT NULL AND old.proof_id=current.proof_id) OR (current.roster_id IS NOT NULL AND old.roster_id=current.roster_id))
  AND NOT(current.proof_id IS NULL AND old.proof_id IS NULL AND current.roster_id IS NOT NULL
@@ -374,7 +382,16 @@ export async function settleRoleIntent(env:QrEnv,id:string,reconcileOnly=false,a
  if(betaCapture&&betaPolicy&&!await checked(()=>betaPolicy.betaGrantCurrent(env,betaCapture)))return result('held','beta_grant_policy_changed',id);
  if(i.desired===0&&removalHeld(env,removal,i.guild_id,i.role_id))return result('held',HELD_BY_MODE,id);
  if(i.desired===1&&betaGrantDispatchHeld(env,removal,i.guild_id,i.role_id))return result('held',HELD_BY_MODE,id);
- try{check();providerEffectStarted=true;await checked(()=>request(env,b,effectMethod,effectPath));}catch(cause){
+ // Scoped launch grants re-read the exact original admitted claim/source after
+ // the final policy awaits. This is still not atomic with the following HTTP PUT.
+ const finalAdmission=!reconcileOnly&&i.desired===1&&(originalLaunchSource||launchMode.mode==='members-only')?async()=>{
+   check();const at=base.values.length+1;
+   const admitted=await env.DB.prepare(`SELECT CASE WHEN (${guard}) AND EXISTS(SELECT 1 FROM role_settlements final_claim
+     WHERE final_claim.id=?${at} AND final_claim.claim_nonce=?${at+1} AND final_claim.state='dispatching' AND final_claim.attempts=1
+     AND final_claim.expires_at=?${at+2} AND final_claim.expires_at>${DB_NOW}) THEN 1 ELSE 0 END AS admitted`)
+     .bind(...base.values,id,nonce,i.expires_at).first<{admitted:number}>();check();return admitted?.admitted===1;
+ }:undefined;
+ try{check();providerEffectStarted=true;await checked(()=>request(env,b,effectMethod,effectPath,finalAdmission,!reconcileOnly&&i.desired===1?check:undefined));}catch(cause){
  // A changed original Native witness cannot authorize more reset reads or compensation. Preserve the original
  // exact id/nonce unknown-receipt update below instead of throwing before recording that spent uncertainty.
  if(!(cause instanceof OriginalSettlementFactsHeld)&&betaCapture&&betaPolicy&&!await checked(()=>betaPolicy.betaGrantCurrent(env,betaCapture)))return await checked(()=>compensateGrant(env,b,i,nonce,false,false,removal));

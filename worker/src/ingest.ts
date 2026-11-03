@@ -13,6 +13,7 @@ import type { RemovalDispatch } from './role-settlements';
 import { guildSeats, seatsStaffLine } from "./guild-seats";
 import { messageOperationId,postPrivacyMessage } from './privacy-provider-messages';
 import { captureLaneConfig } from './full-release-roles';
+import { captureLaunchVerification,launchVerificationRefusal,launchVerificationEnv,captureNativeMembershipProof,verifyNativeMembershipProof,captureLaunchMembershipSource,launchMembershipFence,launchMembershipCurrent,launchContradictionRestriction,LaunchVerificationHeld,type LaunchVerificationCapture,type NativeMembershipProof } from './launch-verification227';
 
 type WatcherCapture = { references: PrivacyReference[] };
 type CapturedQueue = {id:number;discord_id:string;name_key:string;name:string;created_at:number;status:string;attempts:number|null;retry_after:number|null;last_reason:string|null;claimed_by:string|null;claimed_at:number|null;last_reason_at:number|null;note:string|null;written_at:number|null;invited_at:number|null;joined_at:number|null;approved_by:string|null;priority:number;privacy_generation:string|null;privacy_state:string|null;privacy_revision:number|null};
@@ -107,6 +108,8 @@ interface VerifyIn {
   officer?: string;
   /** The whisperer's character ID, from the whisper event itself (the addon signs it; watcher 0.6.0+). Optional. */
   guid?: string;
+  /** Owner addon native membership MAC, bound to this code/GUID/scope/time; never a user claim. */
+  nativeMembership?: unknown;
 }
 
 /** A player GUID as the client writes it ("Player-4613-0ABCDEF0"), or null. */
@@ -117,16 +120,25 @@ export function playerGuid(v: unknown): string | null {
 
 export async function postVerify(env: Env, body: VerifyIn,originalDispatch?:BetaRoleDispatch): Promise<Response> {
   const roleDispatch=originalDispatch??captureBetaRoleDispatch(env);
+  const launch = captureLaunchVerification(env);
+  if (launch.mode === 'held') return json({ result: 'verification_configuration_held', roleGranted: false, inviteQueued: false, pendingConsumed: false }, 503);
   const context:WatcherCapture={references:[]};
   try {
-    const result=await postVerifyInner(env,body,context,roleDispatch);
+    // Copy all selected request primitives and the strict native proof before any await.
+    let originalBody=body;
+    if(launch.mode==='members-only'){
+      const copied:Record<string,unknown>={};
+      for(const field of ['character','code','source','ts','officer','guid','nativeMembership']){const d=Object.getOwnPropertyDescriptor(body,field);if(d&&!Object.hasOwn(d,'value'))throw new LaunchVerificationHeld();copied[field]=d?.value;}
+      copied.nativeMembership=captureNativeMembershipProof(copied.nativeMembership);originalBody=Object.freeze(copied) as unknown as VerifyIn;
+    }
+    const result=await postVerifyInner(launchVerificationEnv(env,launch),originalBody,context,roleDispatch,launch);
     if(result.status<400)await assertWatcherCurrent(env,context);
     return result;
   }
-  catch(error) { if(error instanceof PrivacySiteRequestHeld)return watcherHeldResult(env,context);throw error; }
+  catch(error) { if(error instanceof PrivacySiteRequestHeld||error instanceof LaunchVerificationHeld)return watcherHeldResult(env,context);throw error; }
 }
 
-async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,roleDispatch:BetaRoleDispatch): Promise<Response> {
+async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,roleDispatch:BetaRoleDispatch,launch:LaunchVerificationCapture): Promise<Response> {
   const originalEnv=env;
   const name = (body.character ?? "").trim();
   const nameKey = normalizeCharacter(name);
@@ -166,6 +178,8 @@ async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,r
     }
   }
   if (!pending) {
+    // Membership-only launch verification never reopens the historical invite queue.
+    if (launch.mode === 'members-only' || !launch.current()) return json({ result: 'no_pending' });
     // A valid code with no open request is usually an expired request or a replay. There is one case where it is
     // deliberate: we refused this character's invite because they were in another guild, told them to leave and
     // whisper the code back, and they have now done it. Whispering it again is how they say "done".
@@ -204,6 +218,24 @@ async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,r
   const onRoster = await latestRosterEntry(env, nameKey);
   const current = !!onRoster && isCurrentRoster(env, onRoster);
   const rosterGuid = current ? guidOf(onRoster!.guid) : null;
+  const nativeMembership=launch.mode==='members-only'?await verifyNativeMembershipProof(env,launch,body.nativeMembership as NativeMembershipProof|null,name,whisperGuid,code):null;
+  const launchRefusal = launchVerificationRefusal(launch, { current, exportedAt: onRoster?.exportedAt ?? null, rosterGuid, whisperGuid,source:onRoster?.source??null,nativeMembership:launch.mode==='legacy'||nativeMembership?.member===true }, now());
+  if (launchRefusal) {
+    if(launchRefusal.result!=='membership_not_confirmed')return json(launchRefusal,503);
+    // A definitive refusal closes only this original request, so Get my code can
+    // issue a new nonce. No character, review, invite or role is created here.
+    // A lost/changed Native result is unknown, never acknowledged as a refusal.
+    try{
+      const restriction=launchContradictionRestriction(env,launch,nativeMembership,onRoster,nameKey);
+      const refused=await admittedPrivacySubjectWrite(env,pending.discord_id,privacyCapture,[pendingFingerprintFence(env,pending),
+        env.DB.prepare(`UPDATE pending SET consumed_at=?8,consumed_source='membership_refused' WHERE id=?1 AND discord_id=?2
+          AND created_at=?3 AND name_key=?4 AND name=?5 AND expires_at=?6 AND nonce IS ?7 AND consumed_at IS NULL RETURNING id`)
+          .bind(pending.id,pending.discord_id,pending.created_at,pending.name_key,pending.name,pending.expires_at,pending.nonce??null,now()),...(restriction?[restriction]:[])]);
+      if(refused[1]?.meta?.changes!==1||refused[1]?.results?.length!==1)return json({result:'outcome_unknown'},503);
+      return json({...launchRefusal,pendingConsumed:true,requestRefused:true},409);
+    }catch{return json({result:'outcome_unknown'},503);}
+  }
+  const launchSource=onRoster?captureLaunchMembershipSource(env,launch,onRoster,nameKey,nativeMembership):null;
   const who = whisperGuid ?? rosterGuid;
   const holder = who
     ? await env.DB.prepare(
@@ -263,8 +295,10 @@ async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,r
     );
   }
   let allDone:D1Result[];
+  if (!launch.current()) return json({ result: 'verification_configuration_held', roleGranted: false, inviteQueued: false, pendingConsumed: false }, 503);
   try {
-    allDone = await admittedPrivacySubjectWrite(env,pending.discord_id,privacyCapture,[pendingFingerprintFence(env,pending),...stmts]);
+    const guards=[pendingFingerprintFence(env,pending),...(launchSource?[launchMembershipFence(env,launchSource)]:[])];
+    allDone = await admittedPrivacySubjectWrite(env,pending.discord_id,privacyCapture,[...guards,...stmts]);
   } catch {
     // A competing relay or account closure can refuse the original consuming proof. Read only
     // to classify the outcome: never adopt a replacement pending row/generation or retry a write.
@@ -282,7 +316,7 @@ async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,r
     } catch { /* An unavailable observation cannot prove refusal or rollback. */ }
     return json({result:'outcome_unknown'},503);
   }
-  const done=allDone.slice(1);
+  const done=allDone.slice(launchSource?2:1);
   if (!done[1]?.meta?.changes) {
     // Lost a race: the request was used a moment ago, or the name was linked to another account a moment ago.
     const after = await env.DB.prepare("SELECT consumed_at, name FROM pending WHERE id = ?1").bind(pending.id).first<{ consumed_at: number | null; name: string }>();
@@ -301,7 +335,11 @@ async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,r
   }
   const resolved: PendingRow = { ...pending, name_key: nameKey, name, consumed_at: t };
   if (alreadyLinked) {
+    // An already linked member may have lost their Discord role. A newly proved
+    // native source can reach the existing writer; never replay an unknown intent.
+    if(launchSource)await promote(env,pending.discord_id,nameKey,name,undefined,whisperGuid,undefined,privacyCapture,roleDispatch,launchSource);
     await audit(env, "watcher", "verify.already_linked", name, { discordId: pending.discord_id, source: body.source },reference);
+    if(launchSource&&!await launchMembershipCurrent(env,launchSource))return json({result:'outcome_unknown',pendingConsumed:true,roleOutcome:'unknown',inviteQueued:false},503);
     return json({ result: "member", discordId: pending.discord_id, name });
   }
   await audit(env, "watcher", "verify.confirmed", name, { discordId: pending.discord_id, source: body.source, officer: body.officer, ticket, guid: whisperGuid },reference);
@@ -314,7 +352,8 @@ async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,r
     // last export, read on launch day, would grant the role to whoever took the name on live and pin the wrong
     // character to them. The GUID is taken only from a very fresh export; otherwise the next export pins it.
     await audit(env, "watcher", "verify.already_member", name, { discordId: pending.discord_id, source: body.source },reference);
-    await promote(env, pending.discord_id, nameKey, name, undefined, whisperGuid ?? (now() - onRoster.exportedAt <= ROSTER_PIN_WITHIN ? onRoster.guid : null),undefined,privacyCapture,roleDispatch);
+    await promote(env, pending.discord_id, nameKey, name, undefined, whisperGuid ?? (now() - onRoster.exportedAt <= ROSTER_PIN_WITHIN ? onRoster.guid : null),undefined,privacyCapture,roleDispatch,launchSource??undefined);
+    if(launchSource&&!await launchMembershipCurrent(env,launchSource))return json({result:'outcome_unknown',pendingConsumed:true,roleOutcome:'unknown',inviteQueued:false},503);
     return json({ result: "member", discordId: pending.discord_id, name });
   }
   if (onRoster) await audit(env, "watcher", "verify.roster_not_current", name, { exportedAt: onRoster.exportedAt },reference);
@@ -715,13 +754,19 @@ async function postEventsInner(env: Env, body: { events: EventIn[] }, notices: N
   return json({ applied });
 }
 
-export async function postRoster(env: Env, body: { exportedAt: number; members: RosterMemberIn[] }, defer?: (label: string, work: () => Promise<unknown>) => void,originalDispatch?:BetaRoleDispatch): Promise<Response> {
+export async function postRoster(env: Env, body: { exportedAt: number; members: RosterMemberIn[];nativeGuild?:string;nativeRealm?:string }, defer?: (label: string, work: () => Promise<unknown>) => void,originalDispatch?:BetaRoleDispatch): Promise<Response> {
   const roleDispatch=originalDispatch??captureBetaRoleDispatch(env);
+  const launch=captureLaunchVerification(env);
+  if(launch.mode==='held')return json({error:'verification_native_scope_unconfirmed'},503);
+  if(launch.mode==='members-only'){
+    if(!launch.scope||body.nativeGuild!==launch.scope.guild||body.nativeRealm!==launch.scope.realm)return json({error:'native_roster_scope_mismatch'},409);
+    env=launchVerificationEnv(env,launch);
+  }
   // Revision 4 (A1): the lane configuration is captured here, before any await of this export, and handed to ingestRoster
   // (roster.ts cannot import the lane module: full-release-roles reaches roster.ts, so that would be a module-load cycle).
   const lane = captureLaneConfig(env);
   if (!Array.isArray(body.members) || !body.exportedAt) return json({ error: "exportedAt and members[] required" }, 400);
-  const summary = await ingestRoster(env, body.exportedAt, body.members, "addon", lane.configured && defer ? { cap: lane, defer } : undefined,roleDispatch);
+  const summary = await ingestRoster(env, body.exportedAt, body.members, launch.mode==='members-only'?launch.scope!.provenance:"addon", lane.configured && defer ? { cap: lane, defer } : undefined,roleDispatch);
   // .115 (Codex's review of f975, 3 Oct 2026, 13:15 UTC, finding 2): an export refused for duplicate names is a 422, which
   // the watcher takes as final (watcher.py Worker.call: a 4xx is not retried, since sending it again changes nothing).
   // The review of 3 Oct 2026 added "unusable" (every batch committed, and the stored rows still fell short of the count):
@@ -740,7 +785,15 @@ export async function postRoster(env: Env, body: { exportedAt: number; members: 
  *
  * With no officer given (an older watcher, or a one-officer setup) the behaviour is exactly as before.
  */
-export async function getQueue(env: Env, officer = ""): Promise<Response> {
+export async function getQueue(env: Env, officer = "", presenceOnly = false): Promise<Response> {
+  // .227: verification-only collectors still report presence on this endpoint,
+  // but neither a new nor an older host may claim retained invitation rows.
+  const launch = captureLaunchVerification(env);
+  if (launch.mode === 'held' || !launch.current() || launch.mode === 'members-only' && !launch.scope)
+    return json({ error: 'verification_configuration_held' }, 503);
+  // Honor the host's read-only intent even when this implementation selects legacy
+  // mode. It must not claim retained invitations before the host rejects a reply.
+  if (presenceOnly === true || launch.mode === 'members-only') return json({ presenceOnly: true, entries: [], setGuildNote: false });
   const who = officer.trim().slice(0, 64);
   const ttl = Math.max(1, intVar(env.QUEUE_CLAIM_TTL_MINUTES, 15)) * 60;
   const limit = Math.max(1, intVar(env.QUEUE_CLAIM_LIMIT, 25));

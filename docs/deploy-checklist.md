@@ -7683,3 +7683,14 @@ Baseline accepted .224/730dd86b. Only the exact Discord owner472099715253796864 
 ## Worker .226 — Owner event participation (prepared 3 November 2026)
 
 Baseline accepted .225/e559ae6c. Exact configured owner-only legacy raid button access and event participant visibility/attendance are reconciled across Discord and website rosters, counts/capacity and opted-in reminder recipients. No viewer website capability or staff role is added. Original owner account/version/privacy capture, ordinary-member proof, event revision/start/capacity/lock, one-shot reminder/unknown custody and all OFF gates remain. New signed regressions include owner and ordinary-reader rosters, clean-name fallback, self-attendance, owner revocation/privacy races, capacity and recipient changes during POST. The owner preapproves exact-.226 solo review and one final full run after13 PR CI; main CI/fresh443/442 backup/single protected deploy/public90/RT16/first ordinary cron/live Discord readbacks still qualify the actual release. No schema, registration, role grant or optional activation.
+
+
+## Worker .227 — launch verification and local receipts (3 November 2026)
+
+Prepared successor to accepted .226; not a production acceptance receipt. The membership-only selection requires the original complete trusted roster, matching native GUID and source freshness through consume, promotion and central role dispatch. No DDL, new role creation or launch-floor reduction. Per-sister live proof and exact guild/realm mapping remain unresolved and must not be inferred from the counts-only feed.
+
+Daniel-confirmed feed target/retention choices are pinned, but polling remains unmounted/OFF pending live mapping, producer/replay/erasure/restore evidence, HS1 lifecycle agreement, dedicated public-key registration and reviewed cache admission.
+
+Addon0.6.15 and Watcher0.6.12 prepare unclassified incoming trade/collected-mail receipts, fixed-origin30-day local retention and signed chat/SavedVariables fallback with receipt-ID deduplication. Neither a payment, observation nor an ambiguous file/provider outcome grants tithe credit, a role or a perk. Client flushing and exact native name/realm rendering remain actual game checks. Unknown staged journals stop rather than overwrite an original; retention must be reported held if custody is unresolved.
+
+Release requires focused/local Native/Lua checks, exact-head review, original13 PR jobs, one final qualification, main CI and a fresh443-live442-portable restored backup before a single protected deployment. Preserve all original rollout and OFF gates. Install public host/client files separately with hashes and protected configuration readback; do not replay old outboxes or infer native acceptance from an install. See docs/launch227-feed-contract.md and docs/launch227-verification-readiness.md for blockers.
