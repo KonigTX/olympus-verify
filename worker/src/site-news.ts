@@ -78,6 +78,12 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".226", date: "2026-11-03", lines: [
+      "The bot owner can use raid-announcement buttons, see their signup on event rosters and record their own post-start attendance without character verification.",
+      "Ordinary member checks, event limits, account safety and staff permissions remain in place.",
+    ],
+  },
+  {
     build: ".225", date: "2026-11-02", lines: [
       "The bot owner can use private Discord utilities without a verified character. Everyone else retains the existing verification requirement; account safety and staff permissions still apply.",
     ],
