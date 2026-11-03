@@ -120,6 +120,19 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .225 reverses only this exact owner-access release note.
+  const release225 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".225\", date: \"2026-11-02\", lines: [",
+    "      \"The bot owner can use private Discord utilities without a verified character. Everyone else retains the existing verification requirement; account safety and staff permissions still apply.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .225 prepend occurs once', originalNews.split(release225).length === 2);
+  originalNews = originalNews.replace(release225, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+
   // .224 reverses only this exact owner-authorized Cabinet and hub release note.
   const release224 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

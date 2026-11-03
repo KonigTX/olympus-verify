@@ -46,7 +46,7 @@ export async function olympusHub224(env:Env,a:GuildActor219,i:Interaction):Promi
  if(p==='section'){p=selected(i);if(!SECTIONS.some(([v])=>v===p))throw Error('Choose one current hub section.');}
  let embeds:GuildEmbed219[]=[];const components:HubRow222[]=[];
  if(p==='home'){
-  embeds=[{title:'Olympus · your guild hub',description:'Choose a section below. These replies are private. Existing commands, including /raid, remain available. No invitation, role change, payment, appeal decision or game action is performed here.',footer:{text:'Controls expire after three minutes. Your account and server eligibility are checked again on every interaction.'}}];
+  embeds=[{title:'Olympus · your guild hub',description:'Choose a section below. These replies are private. Existing commands, including /raid, remain available. No invitation, role change, payment, appeal decision or game action is performed here.',footer:{text:'Controls expire after three minutes. Your account and server eligibility are checked again on every interaction.'+(a.verification==='bot-owner'?' Owner access does not verify a character or grant any role.':'')}}];
  }else if(p==='status'){
   const out=await guildActorBatch219(env,a,[env.DB.prepare('SELECT name,status FROM characters WHERE discord_id=?1 ORDER BY name_key LIMIT 11').bind(a.id)]);
   const chars=out[0]!.results as unknown as {name:string;status:string}[];

@@ -4,6 +4,7 @@
  * CommunityContext is minted. Every consuming batch rechecks the same tuple.
  */
 import type { Env } from './env';
+import { discordCommandOwner225 } from './discord-command-owner225';
 import { officerRoles } from './env';
 import { now } from './db';
 import { userOf, type Interaction } from './discord';
@@ -12,26 +13,29 @@ import { discordMemberFenceSql } from './discord-member-fence219';
 import { destination, discord } from './community-event-delivery';
 import { privacyAccountIncarnation, readPrivacySubject } from './privacy-serving-authority';
 
-export interface GuildActor219 { readonly id: string; readonly birth: string; readonly version: number; readonly generation: string|null; readonly deadline: number; readonly guild: string }
+export interface GuildActor219 { readonly id: string; readonly birth: string; readonly version: number; readonly generation: string|null; readonly deadline: number; readonly guild: string; readonly verification: 'character'|'bot-owner' }
 const witnesses = new WeakMap<object, Env>();
 export async function captureGuildActor219(env: Env, i: Interaction, admittedAt: number, signedAt: number): Promise<GuildActor219> {
   const d=destination(env), user=userOf(i);
   if (!d || i.guild_id!==d.guild || !user || !/^[0-9]{17,20}$/.test(user.id) || ((user as {bot?:unknown}).bot!==undefined&&(user as {bot?:unknown}).bot!==false)
       || !Number.isSafeInteger(admittedAt) || !Number.isSafeInteger(signedAt) || Math.abs(admittedAt-signedAt)>300) throw Error('guild_command_unavailable');
+  const verification=discordCommandOwner225(env,user.id,i.guild_id)?'bot-owner':'character';
   const deadline=Math.min(admittedAt+180,signedAt+300);
   if (deadline<=now()) throw Error('guild_command_expired');
   const row=await env.DB.prepare('SELECT account_incarnation,session_version FROM site_users WHERE discord_id=?1 AND in_server=1 AND denied=0').bind(user.id).first<{account_incarnation:unknown;session_version:number}>();
   if (!row || !Number.isSafeInteger(row.session_version)) throw Error('guild_command_sign_in');
   const birth=privacyAccountIncarnation(row.account_incarnation), subject=await readPrivacySubject(env,user.id);
   if (subject && subject.state!=='active') throw Error('guild_command_account_held');
-  const a=Object.freeze({id:user.id,birth,version:row.session_version,generation:subject?.subjectGeneration??null,deadline,guild:d.guild});
+  const a=Object.freeze({id:user.id,birth,version:row.session_version,generation:subject?.subjectGeneration??null,deadline,guild:d.guild,verification});
   witnesses.set(a,env);
   if (!await currentGuildActor219(env,a)) throw Error('guild_command_account_held');
   return a;
 }
 export function guildActorFence219(env:Env,a:GuildActor219,idParameter:number):string {
   if (witnesses.get(a)!==env) throw Error('guild_command_original_actor_held');
-  return `(${discordMemberFenceSql(idParameter,a.generation,a.birth)} AND EXISTS(SELECT 1 FROM site_users v219 WHERE v219.discord_id=?${idParameter} AND v219.session_version=${a.version}) AND ${DB_NOW}<${a.deadline})`;
+  const owner=a.verification==='bot-owner';
+  if(owner&&!discordCommandOwner225(env,a.id,a.guild))return `(?${idParameter} IS NULL AND 0)`;
+  return `(${discordMemberFenceSql(idParameter,a.generation,a.birth,owner)} AND EXISTS(SELECT 1 FROM site_users v219 WHERE v219.discord_id=?${idParameter} AND v219.session_version=${a.version}) AND ${DB_NOW}<${a.deadline})`;
 }
 export async function currentGuildActor219(env:Env,a:GuildActor219):Promise<boolean> {
   const row=await env.DB.prepare(`SELECT 1 ok WHERE ${guildActorFence219(env,a,1)}`).bind(a.id).first();
