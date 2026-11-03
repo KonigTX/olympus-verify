@@ -138,7 +138,7 @@ export function launchVerificationRefusal(capture: LaunchVerificationCapture, fa
   // whispered guild label are not a native membership proof, even when a code is valid.
   if (!facts.nativeMembership||!capture.scope||facts.source!==capture.scope.provenance||!facts.current || !Number.isSafeInteger(at) || !Number.isSafeInteger(facts.exportedAt) ||
       facts.exportedAt! > at || facts.exportedAt! <= at - 600 || !facts.whisperGuid || !facts.rosterGuid || facts.whisperGuid !== facts.rosterGuid) return {
-    result: 'membership_not_confirmed', error: 'Your character is not confirmed by a fresh, trusted Olympus membership source. No role or invite was issued. After the owner refreshes the native roster or staff confirms the official sister-guild QR proof, press Get my code for a fresh code and whisper that new code.',
+    result: 'membership_not_confirmed', error: 'Your character is not confirmed by a fresh, trusted Olympus membership source. No role or invite was issued. For the collector\'s own guild, ask the owner to refresh the native roster, then press Get my code and whisper that fresh code. Sister-guild roles require the official signed-GUID QR website flow and remain held until that integration is qualified.',
     roleGranted: false, inviteQueued: false, pendingConsumed: false,
   };
   return null;

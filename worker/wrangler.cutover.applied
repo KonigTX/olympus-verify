@@ -54,3 +54,7 @@ activated_at = "2026-10-18T02:49:11Z"
 # No --activate invocation, provider operation, saved-setting rewrite or optional feature activation is asserted.
 activation_profile_sha256 = "a7aaff90f926a1dafcbc227758e00576cff91d81eb1d7b903174a6cebd26338a"
 activated_at = "2026-10-27T00:07:44Z"
+# Owner-requested .227 SOURCE-ONLY restricted membership and fresh request-ticket configuration.
+# Original CI marker failure retained; no --activate invocation, provider change or optional feature activation is asserted.
+activation_profile_sha256 = "360d4f610f6baee724db9e8f0dbd539d91b1b6e07d40cfc417ac3b2a36f72f46"
+activated_at = "2026-11-03T19:53:01Z"

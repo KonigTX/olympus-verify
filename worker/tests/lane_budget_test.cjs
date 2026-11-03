@@ -18,6 +18,8 @@ const sha=text=>crypto.createHash('sha256').update(text.replace(/\r\n/g,'\n')).d
 const { SOURCE198_ROLE_SETTLEMENTS, source196HistoricalDigest } = require('./source196-historical-projection.cjs');
 if (crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source211-historical-projection.cjs'))).digest('hex') !== 'db8684b7c2a202c99cfc58442cd1ba500fc0b572230029d357be8e64cf1b5093') throw Error('reviewed211 lane helper differs');
 const source211 = require('./source211-historical-projection.cjs');
+if (crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source227-role-historical-projection.cjs'))).digest('hex') !== 'c657132d9f48b27adeddb10dad3a72ae44e13fcdde6b8004e9cacccf88179305') throw Error('reviewed227 lane helper differs');
+const source227 = require('./source227-role-historical-projection.cjs');
 const state=(b,p)=>JSON.stringify({limit:b.limit,attempts:b.attempts,calls:b.calls,retries:b.retries,exhausted:b.exhausted,parent:p});
 function apply(b,op){try{op(b);return 'ok';}catch(e){return 'throw:'+e.message;}}
 (async()=>{
@@ -70,18 +72,21 @@ function apply(b,op){try{op(b);return 'ok';}catch(e){return 'throw:'+e.message;}
  // roles bae0474c4c2ab9f3d8441b23cd6b89b3c4d41355d9850b860f1a7c745ff4fb15;
  // original796settlementlines bad16c4d3c773be54b76e85b8f3f8f871269e5cd9f3f1a0be6242be5e9caa37c.
  check('role-rank-continuation.ts is byte-identical to the reviewed .163 integrated source',sha(src('role-rank-continuation.ts'))==='bf4a2926770bf44af674e7a2ddc6f9b5c029960aaeca66a30947730d9d296561');
- check('roles.ts is byte-identical to the reviewed .163 integrated source',sha(src('roles.ts'))==='0fb851d804ddb97594a8b4109db3fad46a3f88df8c65475b63f2c79dbf89f6f8');
- const sources211=source211.sourceChecks(path.join(root,'src'),{files:{'role-settlements':'04bf328c854d60033a604e1f8b0e8d26712d3ec40b521985732a723a6d1c5672','privacy-global-serving-origin':'89053632c43fec4e5fd05cc82749ea3362f2907b1a58adee8d1f27e9fd2397ca'}});
- const discord222=require('./source222-discord-type-projection.cjs').checks(path.join(root,'src'));
- const branch224=require('./source224-branch-name-projection.cjs').checks(path.join(root,'src'));
+ check('.227 static inverse binds all four whole current sources and refuses unrelated/context/line-ending drift',Object.values(source227.checks(path.join(root,'src'))).every(Boolean));
+ check('roles.ts reconstructs byte-identical reviewed .163 integrated source through the exact finite .227 inverse',sha(source227.inverse('roles',src('roles.ts'))??'')==='0fb851d804ddb97594a8b4109db3fad46a3f88df8c65475b63f2c79dbf89f6f8');
+ const {sources211,discord222,branch224,drift224}=source227.withStaticView(path.join(root,'src'),view=>({
+  sources211:source211.sourceChecks(view,{files:{'role-settlements':'04bf328c854d60033a604e1f8b0e8d26712d3ec40b521985732a723a6d1c5672','privacy-global-serving-origin':'89053632c43fec4e5fd05cc82749ea3362f2907b1a58adee8d1f27e9fd2397ca'}}),
+  discord222:require('./source222-discord-type-projection.cjs').checks(view),branch224:require('./source224-branch-name-projection.cjs').checks(view),drift224:require('./source224-branch-name-projection.cjs').driftControls224(view),
+ }));
  check('.224 lane proof preserves original211 restrictions with exact222 erased-type and224 protected Branch aliases',Object.entries(sources211).filter(([key])=>!['discord:exact-reviewed-support','treasury-cosmetic:exact-reviewed-support'].includes(key)).every(([,ok])=>ok)&&sources211['discord:exact-reviewed-support']===false&&sources211['treasury-cosmetic:exact-reviewed-support']===false&&discord222.qualified&&discord222.negativeControls&&branch224.qualified&&branch224.negativeControls);
  console.log('RETAINED211_DISCORD_RAW_SEAL false; finite222 type-only runtime parity '+discord222.qualified);
- for(const row of require('./source224-branch-name-projection.cjs').driftControls224(path.join(root,'src')))check('.211 lane reconstruction refuses '+row.source+' '+row.name,row.refused);
- check('role-settlements.ts reconstructs the entire reviewed .163 integrated source through exact current pinned contextual reversals',source211.source211HistoricalDigest('role-settlements',settlements)==='04bf328c854d60033a604e1f8b0e8d26712d3ec40b521985732a723a6d1c5672');
+ for(const row of drift224)check('.211 lane reconstruction refuses '+row.source+' '+row.name,row.refused);
+ const settlements227=source227.inverse('role-settlements',settlements)??'';
+ check('role-settlements.ts reconstructs the entire reviewed .163 integrated source through exact current pinned contextual reversals',source211.source211HistoricalDigest('role-settlements',settlements227)==='04bf328c854d60033a604e1f8b0e8d26712d3ec40b521985732a723a6d1c5672');
  // .198 preserves every request allowance and original whole-source seal. Only
  // the three exact reviewed absent-duplicate qualification contexts are reversed.
  // Reconstructed H16 text is only the historical static control input; execution stays current.
- const role198Pin=SOURCE198_ROLE_SETTLEMENTS,role198Raw=source211.original211Source('role-settlements',settlements)??'';
+ const role198Pin=SOURCE198_ROLE_SETTLEMENTS,role198Raw=source211.original211Source('role-settlements',settlements227)??'';
  let role197Raw=role198Raw;
  for(const edit of role198Pin.edits){assert.equal(edit.count,1);assert.equal(role197Raw.split(edit.from).length,2);role197Raw=role197Raw.replace(edit.from,edit.to);}
  check('the exact three .198 role contexts reconstruct the entire accepted .197 source before historical checks',role198Pin.edits.length===3&&crypto.createHash('sha256').update(role198Raw).digest('hex')===role198Pin.exactCurrentRawSHA256&&crypto.createHash('sha256').update(role197Raw).digest('hex')===role198Pin.exact197RawSHA256&&source196HistoricalDigest('role-settlements',role197Raw)==='04bf328c854d60033a604e1f8b0e8d26712d3ec40b521985732a723a6d1c5672');
