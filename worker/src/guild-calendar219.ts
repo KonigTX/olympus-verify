@@ -1,8 +1,9 @@
+import { eventParticipantSql226, eventParticipantNameSql226 } from './guild-event-owner226';
 /** Signed Discord calendar adapter. Uses the existing event tables and privacy
  * families, but never calls the browser writer with a fabricated session. */
 import type { Env } from './env';
 import { now } from './db';
-import { DB_NOW, communityFeatures, randomToken, qualifiesSql } from './community-context';
+import { DB_NOW, communityFeatures, randomToken } from './community-context';
 import { scanLimit } from './community-directory';
 import { calendarRoom, EVENT_RETENTION_S, historyStatement, opHash, parseField, rsvpStatements } from './community-events';
 import { currentGuildActor219, guildActorBatch219, guildActorFence219, guildStaffNow219, type GuildActor219 } from './guild-command-authority219';
@@ -46,9 +47,9 @@ export async function rsvpCalendar219(env:Env,a:GuildActor219,id:string,revision
 }
 export const ROSTER_PAGE_219 = 20;
 export async function calendarRoster219(env:Env,a:GuildActor219,id:string,page=1):Promise<Record<string,unknown>[]> {
- const out=await guildActorBatch219(env,a,[env.DB.prepare(`SELECT COALESCE(u.nick,u.global_name,u.username,'Member') display_name,s.character_name,s.status,s.raid_role,s.decision,${rsvpPreferenceSql219()} AS preference,
+ const out=await guildActorBatch219(env,a,[env.DB.prepare(`SELECT ${eventParticipantNameSql226(env,'u')} display_name,s.character_name,s.status,s.raid_role,s.decision,${rsvpPreferenceSql219()} AS preference,
   CASE WHEN ?3=1 AND s.discord_id=?4 THEN (SELECT state FROM community_event_attendance x WHERE x.event_id=s.event_id AND x.discord_id=s.discord_id) END attendance, CASE WHEN ?3=1 AND s.discord_id=?4 THEN 1 ELSE 0 END attendance_visible
-  FROM community_event_signups s JOIN site_users u ON u.discord_id=s.discord_id WHERE s.event_id=?1 AND ${qualifiesSql('s.discord_id')} AND ${privacySubjectWritableSql('s.discord_id')}
+  FROM community_event_signups s JOIN site_users u ON u.discord_id=s.discord_id WHERE s.event_id=?1 AND ${eventParticipantSql226(env,'s.discord_id')} AND ${privacySubjectWritableSql('s.discord_id')}
   AND EXISTS(SELECT 1 FROM community_events e WHERE e.id=s.event_id AND e.retain_until>${DB_NOW}) ORDER BY s.updated_at,s.discord_id LIMIT ${ROSTER_PAGE_219+1} OFFSET ?2`).bind(eventId219(id),(page-1)*ROSTER_PAGE_219,communityFeatures(env).has('attendance')?1:0,a.id)]);
  return out[0]!.results as Record<string,unknown>[];
 }
@@ -63,7 +64,7 @@ export async function attendanceCalendar219(env:Env,a:GuildActor219,id:string,ac
   return out[0]?.meta.changes===1;
  }
  if(action!=='record'||typeof target!=='string'||!/^[0-9]{17,20}$/.test(target)||!['present','absent','excused','unknown'].includes(String(state)))throw Error('Select an existing signup and an explicit observed attendance state.');
- const targetStanding=`${qualifiesSql('?3')} AND ${privacySubjectWritableSql('?3')} AND (EXISTS(SELECT 1 FROM community_event_signups WHERE event_id=?1 AND discord_id=?3) OR EXISTS(SELECT 1 FROM community_event_attendance WHERE event_id=?1 AND discord_id=?3) OR EXISTS(SELECT 1 FROM community_profiles WHERE discord_id=?3 AND listed=1))`;
+ const targetStanding=`${eventParticipantSql226(env,'?3')} AND ${privacySubjectWritableSql('?3')} AND (EXISTS(SELECT 1 FROM community_event_signups WHERE event_id=?1 AND discord_id=?3) OR EXISTS(SELECT 1 FROM community_event_attendance WHERE event_id=?1 AND discord_id=?3) OR EXISTS(SELECT 1 FROM community_profiles WHERE discord_id=?3 AND listed=1))`;
  const admitted=`EXISTS(SELECT 1 FROM community_events WHERE id=?1 AND attendance_nonce=?5)`;
  const out=await guildActorBatch219(env,a,[env.DB.prepare(`UPDATE community_events SET attendance_nonce=?5 WHERE id=?1 AND status='scheduled' AND starts_at<=${DB_NOW} AND retain_until>${DB_NOW}
   AND ${attendanceUnlocked219('community_events.id')} AND ${guildActorFence219(env,a,2)} AND ${targetStanding} AND ${calendarRoom('json_array(?3)','?6')}`).bind(event,a.id,target,state,nonce,limit),

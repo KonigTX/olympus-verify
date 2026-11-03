@@ -1,3 +1,4 @@
+import { eventParticipantSql226, eventParticipantNameSql226 } from './guild-event-owner226';
 import { attendanceUnlocked219, rsvpPreferenceSql219 } from './guild-calendar-metadata219';
 /**
  * .59 (1 Oct 2026): the guild calendar with sign-ups, capacity and attendance, consolidation batch 3 of Codex's adapter
@@ -85,9 +86,9 @@ const DISPLAY = "COALESCE(u.nick, u.global_name, u.username, '')";
 const EVENT_COLUMNS = `e.id, e.title, e.details, e.starts_at, e.duration_min, e.ends_at, e.capacity, e.role_targets, e.status, e.revision, e.signup_generation, e.attendance_generation, e.created_by,
   (SELECT ${DISPLAY} FROM site_users u WHERE u.discord_id = e.created_by) AS creator_name`;
 /** The 'yes' answers to `eventExpr` whose owners qualify at the moment of the statement. */
-const placesHeld = (eventExpr: string) => `(SELECT COUNT(*) FROM community_event_signups o WHERE o.event_id = ${eventExpr} AND o.status = 'yes' AND ${qualifiesSql("o.discord_id")})`;
+const placesHeld = (env: Env, eventExpr: string) => `(SELECT COUNT(*) FROM community_event_signups o WHERE o.event_id = ${eventExpr} AND o.status = 'yes' AND ${eventParticipantSql226(env,"o.discord_id")})`;
 /** Stage 2: the qualifying accepted sign-ups also hold places (Codex finding 2): the capacity cannot go below them. */
-const acceptedHeld = (eventExpr: string) => `(SELECT COUNT(*) FROM community_event_signups a WHERE a.event_id = ${eventExpr} AND a.decision = 'accepted' AND ${qualifiesSql("a.discord_id")})`;
+const acceptedHeld = (env: Env, eventExpr: string) => `(SELECT COUNT(*) FROM community_event_signups a WHERE a.event_id = ${eventExpr} AND a.decision = 'accepted' AND ${eventParticipantSql226(env,"a.discord_id")})`;
 const inCalendar = (idExpr: string) => `(EXISTS (SELECT 1 FROM community_event_signups cs WHERE cs.discord_id = ${idExpr}) OR EXISTS (SELECT 1 FROM community_event_attendance ca WHERE ca.discord_id = ${idExpr}))`;
 const calendarMembers = (limitExpr: string) => `(SELECT COUNT(*) FROM (SELECT discord_id FROM community_event_signups UNION SELECT discord_id FROM community_event_attendance LIMIT ${limitExpr}))`;
 /** True when the distinct ids of the JSON array `newcomersExpr` not yet in the calendar still fit under `limitExpr`. */
@@ -229,11 +230,11 @@ async function readEvent(env: Env, ctx: CommunityContext, id: string): Promise<{
   const limit = scanLimit(env);
   const out = await admittedRead(env, ctx, "confirmedGuildData", [
     env.DB.prepare(`SELECT ${EVENT_COLUMNS}, ${QUAL_CREATOR} FROM community_events e WHERE e.id = ?1`).bind(id),
-    env.DB.prepare(`SELECT COUNT(*) AS n FROM (SELECT 1 FROM community_event_signups s WHERE s.event_id = ?1 AND ${qualifiesSql("s.discord_id")} LIMIT ?2)`).bind(id, limit + 1),
-    env.DB.prepare(`SELECT s.event_id, s.status, s.raid_role, COUNT(*) AS n FROM community_event_signups s WHERE s.event_id = ?1 AND ${qualifiesSql("s.discord_id")} GROUP BY s.event_id, s.status, s.raid_role`).bind(id),
+    env.DB.prepare(`SELECT COUNT(*) AS n FROM (SELECT 1 FROM community_event_signups s WHERE s.event_id = ?1 AND ${eventParticipantSql226(env,"s.discord_id")} LIMIT ?2)`).bind(id, limit + 1),
+    env.DB.prepare(`SELECT s.event_id, s.status, s.raid_role, COUNT(*) AS n FROM community_event_signups s WHERE s.event_id = ?1 AND ${eventParticipantSql226(env,"s.discord_id")} GROUP BY s.event_id, s.status, s.raid_role`).bind(id),
     env.DB.prepare(`${MINE_SELECT} WHERE s.event_id = ?1 AND s.discord_id = ?2`).bind(id, viewer.id),
     env.DB.prepare("SELECT event_id, state, source, reason_code, recorded_at FROM community_event_attendance WHERE event_id = ?1 AND discord_id = ?2").bind(id, viewer.id),
-    env.DB.prepare(`SELECT s.event_id, COUNT(*) AS n FROM community_event_signups s WHERE s.event_id = ?1 AND s.decision = 'accepted' AND ${qualifiesSql("s.discord_id")} GROUP BY s.event_id`).bind(id),
+    env.DB.prepare(`SELECT s.event_id, COUNT(*) AS n FROM community_event_signups s WHERE s.event_id = ?1 AND s.decision = 'accepted' AND ${eventParticipantSql226(env,"s.discord_id")} GROUP BY s.event_id`).bind(id),
   ]);
   if (out === FENCE_REFUSED) return { event: null, hydration: "refused" };
   const [ev, pre, counts, mine, own, accepted] = out;
@@ -306,11 +307,11 @@ export async function listEvents(request: Request, env: Env, ctx: CommunityConte
     const out = await admittedCommunityRead(env, ctx, [
       env.DB.prepare("SELECT e.starts_at, e.id FROM community_events e WHERE e.ends_at > ?1 AND e.starts_at < ?2 ORDER BY e.starts_at, e.id LIMIT ?3").bind(from, to, limit + 1),
       env.DB.prepare(`SELECT ${EVENT_COLUMNS}, ${QUAL_CREATOR} FROM community_events e WHERE e.id IN (${pageSql}) ORDER BY e.starts_at, e.id`).bind(...pageParams),
-      env.DB.prepare(`SELECT COUNT(*) AS n FROM (SELECT 1 FROM community_event_signups s WHERE s.event_id IN (${pageSql}) AND ${qualifiesSql("s.discord_id")} LIMIT ?7)`).bind(...pageParams, limit + 1),
-      env.DB.prepare(`SELECT s.event_id, s.status, s.raid_role, COUNT(*) AS n FROM community_event_signups s WHERE s.event_id IN (${pageSql}) AND ${qualifiesSql("s.discord_id")} GROUP BY s.event_id, s.status, s.raid_role`).bind(...pageParams),
+      env.DB.prepare(`SELECT COUNT(*) AS n FROM (SELECT 1 FROM community_event_signups s WHERE s.event_id IN (${pageSql}) AND ${eventParticipantSql226(env,"s.discord_id")} LIMIT ?7)`).bind(...pageParams, limit + 1),
+      env.DB.prepare(`SELECT s.event_id, s.status, s.raid_role, COUNT(*) AS n FROM community_event_signups s WHERE s.event_id IN (${pageSql}) AND ${eventParticipantSql226(env,"s.discord_id")} GROUP BY s.event_id, s.status, s.raid_role`).bind(...pageParams),
       env.DB.prepare(`${MINE_SELECT} WHERE s.discord_id = ?7 AND s.event_id IN (${pageSql})`).bind(...pageParams, viewer.id),
       env.DB.prepare(`SELECT event_id, state, source, reason_code, recorded_at FROM community_event_attendance WHERE discord_id = ?7 AND event_id IN (${pageSql})`).bind(...pageParams, viewer.id),
-      env.DB.prepare(`SELECT s.event_id, COUNT(*) AS n FROM community_event_signups s WHERE s.event_id IN (${pageSql}) AND s.decision = 'accepted' AND ${qualifiesSql("s.discord_id")} GROUP BY s.event_id`).bind(...pageParams),
+      env.DB.prepare(`SELECT s.event_id, COUNT(*) AS n FROM community_event_signups s WHERE s.event_id IN (${pageSql}) AND s.decision = 'accepted' AND ${eventParticipantSql226(env,"s.discord_id")} GROUP BY s.event_id`).bind(...pageParams),
     ]);
     if (out === FENCE_REFUSED) return communityReadRefusal(env, request);
     const [win, evs, pre, counts, mine, own, accepted] = out;
@@ -357,9 +358,9 @@ export async function getEvent(request: Request, env: Env, ctx: CommunityContext
     const out = await admittedCommunityRead(env, ctx, [
       env.DB.prepare(`SELECT ${EVENT_COLUMNS}, ${QUAL_CREATOR} FROM community_events e WHERE e.id = ?1`).bind(id),
       env.DB.prepare(
-        `SELECT s.discord_id, s.status, s.character_name, s.raid_role, s.updated_at, s.rsvp_starts_at, ${DISPLAY} AS display_name, (SELECT r.ref FROM community_refs r WHERE r.discord_id = s.discord_id) AS ref, s.decision, s.decision_revision
+        `SELECT s.discord_id, s.status, s.character_name, s.raid_role, s.updated_at, s.rsvp_starts_at, ${eventParticipantNameSql226(env,'u','')} AS display_name, (SELECT r.ref FROM community_refs r WHERE r.discord_id = s.discord_id) AS ref, s.decision, s.decision_revision
          FROM community_event_signups s JOIN site_users u ON u.discord_id = s.discord_id
-         WHERE s.event_id = ?1 AND ${qualifiesSql("s.discord_id")} LIMIT ?2`,
+         WHERE s.event_id = ?1 AND ${eventParticipantSql226(env,"s.discord_id")} LIMIT ?2`,
       ).bind(id, limit + 1),
       env.DB.prepare(`${MINE_SELECT} WHERE s.event_id = ?1 AND s.discord_id = ?2`).bind(id, viewer.id),
       env.DB.prepare("SELECT event_id, state, source, reason_code, recorded_at FROM community_event_attendance WHERE event_id = ?1 AND discord_id = ?2").bind(id, viewer.id),
@@ -407,7 +408,7 @@ export function rsvpStatements(env: Env, w: RsvpWrite): D1PreparedStatement[] {
        SELECT e.id, ?2, ?4, ?5, ?6, ?7, 1, e.starts_at, ?8, ?12, COALESCE(?17, 0) FROM community_events e
        WHERE e.id = ?1 AND e.status = 'scheduled' AND e.starts_at > ${DB_NOW} AND (?16 = 0 OR e.revision = ?16)
          AND (?15 = 1 OR ?9 = 0 OR EXISTS (SELECT 1 FROM community_event_signups o WHERE o.event_id = ?1 AND o.discord_id = ?2 AND o.revision = ?9))
-         AND (?4 <> 'yes' OR e.capacity IS NULL OR EXISTS (SELECT 1 FROM community_event_signups o WHERE o.event_id = ?1 AND o.discord_id = ?2 AND o.status = 'yes') OR ${placesHeld("?1")} < e.capacity)
+         AND (?4 <> 'yes' OR e.capacity IS NULL OR EXISTS (SELECT 1 FROM community_event_signups o WHERE o.event_id = ?1 AND o.discord_id = ?2 AND o.status = 'yes') OR ${placesHeld(env, "?1")} < e.capacity)
          AND ${calendarRoom("json_array(?2)", "?13")}
          AND ${w.fence}
        ON CONFLICT(event_id, discord_id) DO UPDATE SET
@@ -431,7 +432,7 @@ export function rsvpStatements(env: Env, w: RsvpWrite): D1PreparedStatement[] {
 export type RsvpState = { status: string; revision: number; started: number; capacity: number | null; yes: number; mine_revision: number | null; mine_status: string | null; in_calendar: number; calendar_room: number };
 /** Why an RSVP write did not land, from fresh facts in one statement: the same questions the write asked. */
 export const rsvpRefusalState = (env: Env, eventId: string, me: string, limit: number) => env.DB.prepare(
-  `SELECT e.status, e.revision, (e.starts_at <= ${DB_NOW}) AS started, e.capacity, ${placesHeld("e.id")} AS yes,
+  `SELECT e.status, e.revision, (e.starts_at <= ${DB_NOW}) AS started, e.capacity, ${placesHeld(env, "e.id")} AS yes,
           (SELECT revision FROM community_event_signups o WHERE o.event_id = e.id AND o.discord_id = ?2) AS mine_revision,
           (SELECT status FROM community_event_signups o WHERE o.event_id = e.id AND o.discord_id = ?2) AS mine_status,
           ${inCalendar("?2")} AS in_calendar, ${calendarRoom("json_array(?2)", "?3")} AS calendar_room
@@ -540,7 +541,7 @@ export async function createEvent(request: Request, env: Env, ctx: CommunityCont
 }
 
 type Stored = { id: string; title: string; details: string; starts_at: number; duration_min: number; capacity: number | null; role_targets: string | null; status: string; revision: number; created_by: string | null; created_at: number; yes: number; accepted: number; started: number };
-const stored = (env: Env, id: string) => env.DB.prepare(`SELECT id, title, details, starts_at, duration_min, capacity, role_targets, status, revision, created_by, created_at, ${placesHeld("community_events.id")} AS yes, ${acceptedHeld("community_events.id")} AS accepted, (starts_at <= ${DB_NOW}) AS started FROM community_events WHERE id = ?1`).bind(id).first<Stored>();
+const stored = (env: Env, id: string) => env.DB.prepare(`SELECT id, title, details, starts_at, duration_min, capacity, role_targets, status, revision, created_by, created_at, ${placesHeld(env, "community_events.id")} AS yes, ${acceptedHeld(env, "community_events.id")} AS accepted, (starts_at <= ${DB_NOW}) AS started FROM community_events WHERE id = ?1`).bind(id).first<Stored>();
 async function organizerRefusal(env: Env, ctx: CommunityContext, row: Stored | null, viewer: Viewer, revision: number, at: number): Promise<Response | null> {
   if (!row) return apiJson({ error: "event_not_found" }, 404);
   const event = () => loadEvent(env, ctx, row.id);
@@ -588,7 +589,7 @@ export async function updateEvent(request: Request, env: Env, ctx: CommunityCont
       env.DB.prepare(
         `UPDATE community_events SET title = ?5, details = ?6, starts_at = ?7, duration_min = ?8, ends_at = ?9, capacity = ?10, role_targets = ?11, retain_until = ?12, revision = revision + 1, nonce = ?13, updated_at = ?14
          WHERE id = ?1 AND revision = ?2 AND status = 'scheduled' AND starts_at > ${DB_NOW} AND ?7 <= created_at + ${EVENT_LIMITS.horizonDays * 86400} AND (created_by = ?3 OR ?15 = 1)
-           AND (?10 IS NULL OR (capacity IS NOT NULL AND ?10 >= capacity) OR (?10 >= ${placesHeld("community_events.id")} AND ?10 >= ${acceptedHeld("community_events.id")}))
+           AND (?10 IS NULL OR (capacity IS NOT NULL AND ?10 >= capacity) OR (?10 >= ${placesHeld(env, "community_events.id")} AND ?10 >= ${acceptedHeld(env, "community_events.id")}))
            AND ${fenceSql("confirmedGuildData", 3, 4, 16,ctx.subject!.privacyGeneration,ctx.subject!.accountIncarnation)}`,
       ).bind(eventId, revision, me, ctx.subject!.sessionVersion, next.title, next.details, next.startsAt, next.durationMin, endsAt, next.capacity, roleTargetsText(next.roleTargets), endsAt + EVENT_RETENTION_S, nonce, t, viewer.staff ? 1 : 0, ctx.subject!.expiresAt),
       eventDeliveryChanged(env, eventId, nonce),
@@ -645,13 +646,13 @@ export async function cancelEvent(request: Request, env: Env, ctx: CommunityCont
 // ---------- attendance ----------
 type UnionRow = { discord_id: string; ref: string; display_name: string | null; rsvp: RsvpStatus | null; state: AttendanceState | null; source: string | null; reason_code: ReasonCode | null; recorded_at: number | null; revision: number | null; write_nonce: string | null };
 const staffRow = (r: UnionRow) => ({ ref: r.ref, displayName: r.display_name, rsvp: r.rsvp, attendance: r.state ? { state: r.state, source: r.source, reasonCode: r.reason_code, recordedAt: secondsToIso(r.recorded_at!), revision: r.revision } : null });
-const UNION_SQL = `SELECT m.discord_id, r.ref, ${DISPLAY} AS display_name, s.status AS rsvp, a.state, a.source, a.reason_code, a.recorded_at, a.revision, a.write_nonce
+const unionSql226 = (env: Env) => `SELECT m.discord_id, r.ref, ${eventParticipantNameSql226(env,'u','')} AS display_name, s.status AS rsvp, a.state, a.source, a.reason_code, a.recorded_at, a.revision, a.write_nonce
   FROM (SELECT discord_id FROM community_event_signups WHERE event_id = ?1 UNION SELECT discord_id FROM community_event_attendance WHERE event_id = ?1) m
   JOIN community_refs r ON r.discord_id = m.discord_id
   JOIN site_users u ON u.discord_id = m.discord_id
   LEFT JOIN community_event_signups s ON s.event_id = ?1 AND s.discord_id = m.discord_id
   LEFT JOIN community_event_attendance a ON a.event_id = ?1 AND a.discord_id = m.discord_id
-  WHERE ${qualifiesSql("m.discord_id")}`;
+  WHERE ${eventParticipantSql226(env,"m.discord_id")}`;
 
 /** GET /api/community/event/attendance?id=[&cursor=] → {event, attendance, nextCursor, signupGeneration, attendanceGeneration} (organizers) */
 export async function attendanceList(request: Request, env: Env, ctx: CommunityContext): Promise<Response> {
@@ -672,8 +673,8 @@ export async function attendanceList(request: Request, env: Env, ctx: CommunityC
     const limit = scanLimit(env);
     const out = await admittedRead(env, ctx, "confirmedGuildData", [
       env.DB.prepare(`SELECT ${EVENT_COLUMNS}, ${QUAL_CREATOR} FROM community_events e WHERE e.id = ?1`).bind(id),
-      env.DB.prepare(`SELECT s.status, s.raid_role, COUNT(*) AS n FROM community_event_signups s WHERE s.event_id = ?1 AND ${qualifiesSql("s.discord_id")} GROUP BY s.status, s.raid_role`).bind(id),
-      env.DB.prepare(`${UNION_SQL} LIMIT ?2`).bind(id, limit + 1),
+      env.DB.prepare(`SELECT s.status, s.raid_role, COUNT(*) AS n FROM community_event_signups s WHERE s.event_id = ?1 AND ${eventParticipantSql226(env,"s.discord_id")} GROUP BY s.status, s.raid_role`).bind(id),
+      env.DB.prepare(`${unionSql226(env)} LIMIT ?2`).bind(id, limit + 1),
       env.DB.prepare(`${MINE_SELECT} WHERE s.event_id = ?1 AND s.discord_id = ?2`).bind(id, viewer.id),
       env.DB.prepare("SELECT event_id, state, source, reason_code, recorded_at FROM community_event_attendance WHERE event_id = ?1 AND discord_id = ?2").bind(id, viewer.id),
     ]);
@@ -743,7 +744,7 @@ export async function recordAttendance(request: Request, env: Env, ctx: Communit
          AND (EXISTS (SELECT 1 FROM community_event_signups s WHERE s.event_id = ?2 AND s.discord_id = r.discord_id)
               OR EXISTS (SELECT 1 FROM community_event_attendance a WHERE a.event_id = ?2 AND a.discord_id = r.discord_id)
               OR EXISTS (SELECT 1 FROM community_profiles p WHERE p.discord_id = r.discord_id AND p.listed = 1))
-         AND ${qualifiesSql("r.discord_id")}`,
+         AND ${eventParticipantSql226(env,"r.discord_id")}`,
     ).bind(JSON.stringify(entries.map((x) => x.ref)), eventId).all<{ ref: string; discord_id: string }>();
     const idOfRef = new Map(targets.results.map((x) => [x.ref, x.discord_id]));
     const writes = entries.filter((x) => x.value !== null && idOfRef.has(x.ref));
@@ -767,7 +768,7 @@ export async function recordAttendance(request: Request, env: Env, ctx: Communit
              AND (json_extract(j.value, '$[3]') = 0 OR EXISTS (SELECT 1 FROM community_event_attendance x WHERE x.event_id = ?1 AND x.discord_id = ${member} AND x.revision = json_extract(j.value, '$[3]')))
              AND EXISTS (SELECT 1 FROM community_refs mr WHERE mr.discord_id = ${member} AND mr.ref = json_extract(j.value, '$[4]'))
              AND (EXISTS (SELECT 1 FROM community_event_signups rs WHERE rs.event_id = ?1 AND rs.discord_id = ${member}) OR EXISTS (SELECT 1 FROM community_event_attendance ra WHERE ra.event_id = ?1 AND ra.discord_id = ${member}) OR EXISTS (SELECT 1 FROM community_profiles rp WHERE rp.discord_id = ${member} AND rp.listed = 1))
-             AND ${qualifiesSql(member)}
+             AND ${eventParticipantSql226(env,member)}
            ON CONFLICT(event_id, discord_id) DO UPDATE SET state = excluded.state, source = excluded.source, reason_code = excluded.reason_code, recorded_by = excluded.recorded_by, recorded_at = excluded.recorded_at, revision = excluded.revision, write_nonce = excluded.write_nonce
            WHERE community_event_attendance.revision + 1 = excluded.revision
            RETURNING discord_id, state, source, reason_code, recorded_at, revision`,
@@ -780,11 +781,11 @@ export async function recordAttendance(request: Request, env: Env, ctx: Communit
       // .67: the result's payload, read in the same batch (one instant) and requalifying every target: a member who no
       // longer qualifies has no row here, so nothing private of theirs enters an invalid, stale or committed result
       env.DB.prepare(
-        `SELECT r.discord_id, r.ref, ${DISPLAY} AS display_name, s.status AS rsvp, a.state, a.source, a.reason_code, a.recorded_at, a.revision, a.write_nonce
+        `SELECT r.discord_id, r.ref, ${eventParticipantNameSql226(env,'u','')} AS display_name, s.status AS rsvp, a.state, a.source, a.reason_code, a.recorded_at, a.revision, a.write_nonce
          FROM community_refs r JOIN site_users u ON u.discord_id = r.discord_id
          LEFT JOIN community_event_signups s ON s.event_id = ?1 AND s.discord_id = r.discord_id
          LEFT JOIN community_event_attendance a ON a.event_id = ?1 AND a.discord_id = r.discord_id
-         WHERE r.discord_id IN (SELECT value FROM json_each(?2)) AND ${qualifiesSql("r.discord_id")}`,
+         WHERE r.discord_id IN (SELECT value FROM json_each(?2)) AND ${eventParticipantSql226(env,"r.discord_id")}`,
       ).bind(eventId, JSON.stringify([...idOfRef.values()])),
     );
     const out = await admitted(env, ctx, statements);
@@ -907,7 +908,7 @@ export async function decideRoster(request: Request, env: Env, ctx: CommunityCon
     const nonce = randomToken();
     const open = `e.status = 'scheduled' AND e.starts_at > ${DB_NOW} AND (e.created_by = ?5 OR ?8 = 1)`;
     const fence = fenceSql("confirmedGuildData", 5, 9, 10, s.privacyGeneration, s.accountIncarnation);
-    const target = `discord_id = (SELECT r.discord_id FROM community_refs r WHERE r.ref = ?3 AND ${qualifiesSql("r.discord_id")})`;
+    const target = `discord_id = (SELECT r.discord_id FROM community_refs r WHERE r.ref = ?3 AND ${eventParticipantSql226(env,"r.discord_id")})`;
     const bind = (ref: string, decision: Decision | null, revision: number) => [eventId, nonce, ref, decision, me, t, revision, staff, s.sessionVersion, s.expiresAt] as const;
     const statements: D1PreparedStatement[] = [
       // the admitted first statement: the event is open and this organizer manages it; the list's pages restart
@@ -925,7 +926,7 @@ export async function decideRoster(request: Request, env: Env, ctx: CommunityCon
         `UPDATE community_event_signups SET decision = ?4, decided_by = ?5, decided_at = ?6, decision_revision = decision_revision + 1
          WHERE event_id = ?1 AND ${target} AND decision_revision = ?7 AND (?4 <> 'accepted' OR status IN ('yes', 'tentative'))
            AND EXISTS (SELECT 1 FROM community_events e WHERE e.id = ?1 AND ${open}
-             AND (?4 <> 'accepted' OR e.capacity IS NULL OR community_event_signups.decision = 'accepted' OR ${acceptedHeld("e.id")} < e.capacity))
+             AND (?4 <> 'accepted' OR e.capacity IS NULL OR community_event_signups.decision = 'accepted' OR ${acceptedHeld(env, "e.id")} < e.capacity))
            AND ${fence}
          RETURNING discord_id, decision, decision_revision AS revision, decided_at`).bind(...bind(x.ref, v.decision, v.revision)));
     }
@@ -934,10 +935,10 @@ export async function decideRoster(request: Request, env: Env, ctx: CommunityCon
         .bind(...bind("", null, 0), JSON.stringify({ entries: valid.length })),
       // the result's payload, read in the same batch and requalifying every target: a member who no longer qualifies has no row here
       env.DB.prepare(
-        `SELECT r.discord_id, r.ref, ${DISPLAY} AS display_name, s.status AS rsvp, s.decision, s.decision_revision AS revision, s.decided_at
+        `SELECT r.discord_id, r.ref, ${eventParticipantNameSql226(env,'u','')} AS display_name, s.status AS rsvp, s.decision, s.decision_revision AS revision, s.decided_at
          FROM community_refs r JOIN site_users u ON u.discord_id = r.discord_id
          LEFT JOIN community_event_signups s ON s.event_id = ?1 AND s.discord_id = r.discord_id
-         WHERE r.ref IN (SELECT value FROM json_each(?2)) AND ${qualifiesSql("r.discord_id")}`,
+         WHERE r.ref IN (SELECT value FROM json_each(?2)) AND ${eventParticipantSql226(env,"r.discord_id")}`,
       ).bind(eventId, JSON.stringify(entries.map((x) => x.ref))),
     );
     const out = await admitted(env, ctx, statements);

@@ -1,3 +1,5 @@
+import { discordCommandOwner225 } from './discord-command-owner225';
+import { discordMemberFenceSql as commandMemberFenceSql } from './discord-member-fence219';
 /**
  * Owner item 3, stage 1 (14 Oct 2026): the sign-up buttons under a raid announcement in #raid-signups.
  *
@@ -18,7 +20,7 @@ import { communityFeatures, DB_NOW, randomToken } from "./community-context";
 import { scanLimit } from "./community-directory";
 import { destination } from "./community-event-delivery";
 import { rsvpRefusalState, rsvpStatements, type RsvpStatus } from "./community-events";
-import { privacyAccountIncarnation, privacyAccountIncarnationLiteralFenceSql, privacyGenerationLiteralFenceSql, readPrivacySubject } from "./privacy-serving-authority";
+import { privacyAccountIncarnation, readPrivacySubject } from "./privacy-serving-authority";
 import { captureLaneConfig } from "./full-release-roles";
 
 const BUTTON = /^raid:(rsvp|remind):([A-Za-z0-9_-]{22}):([1-9]\d{0,8})(?::(yes|tentative|no))?$/; // stage 2: raid:remind:<event>:<revision> has no status
@@ -27,10 +29,8 @@ const SAID: Record<RsvpStatus, string> = { yes: "Signed up for this raid. The or
 const ROSTER_SAID: Record<string, string> = { accepted: "The organizer has you on the roster.", bench: "The organizer has you on the bench.", declined: "The organizer has declined your sign-up for this raid." };
 
 /** SQL true when the account at ?id may answer now: the same facts as the site's confirmedGuildData fence, without a session. */
-export function discordMemberFenceSql(id: number, generation: string | null, incarnation: string): string {
-  return `EXISTS(SELECT 1 FROM site_users fu WHERE fu.discord_id=?${id} AND fu.denied=0 AND fu.in_server=1 AND ${privacyAccountIncarnationLiteralFenceSql("fu.account_incarnation", incarnation)} AND ${privacyGenerationLiteralFenceSql("fu.discord_id", generation)})
-    AND EXISTS(SELECT 1 FROM characters fc WHERE fc.discord_id=?${id} AND fc.status='member') AND NOT EXISTS(SELECT 1 FROM members fm WHERE fm.discord_id=?${id} AND fm.banned=1)
-    AND NOT EXISTS(SELECT 1 FROM privacy_serving_jobs fj WHERE fj.subject_id=?${id} AND fj.state<>'complete')`;
+export function discordMemberFenceSql(id: number, generation: string | null, incarnation: string, ownerAccess = false): string {
+  return commandMemberFenceSql(id, generation, incarnation, ownerAccess);
 }
 
 export async function handleRaidComponent(env: Env, i: Interaction): Promise<Response> {
@@ -45,24 +45,32 @@ export async function handleRaidComponent(env: Env, i: Interaction): Promise<Res
   if (i.guild_id !== d.guild || (typeof i.channel_id === "string" && i.channel_id !== d.channel)) return reply("These buttons only work under a raid notice in the #📅raid-schedule channel of the Olympus server.");
   const user = userOf(i);
   if (!user || !SNOWFLAKE.test(user.id)) return reply("Unknown member.");
+  const ownerAtEntry = discordCommandOwner225(env, user.id, i.guild_id ?? "");
+  const ownerDeadline = now() + 180;
   // In configured mode the fresh member role (FULL_RELEASE_ROLES membership) is accepted too.
-  if (env.ROLE_GUILD_MEMBER && !(i.member?.roles ?? []).includes(env.ROLE_GUILD_MEMBER) && !(freshMember && (i.member?.roles ?? []).includes(freshMember))) return reply(`Raid sign-ups are for verified guild members. Verify a character first, or open the calendar: ${site}`);
+  if (!ownerAtEntry && env.ROLE_GUILD_MEMBER && !(i.member?.roles ?? []).includes(env.ROLE_GUILD_MEMBER) && !(freshMember && (i.member?.roles ?? []).includes(freshMember))) return reply(`Raid sign-ups are for verified guild members. Verify a character first, or open the calendar: ${site}`);
   if (rateLimited(`cr:${user.id}`, 30, 60)) return reply("Too many answers in one minute. Wait a moment, then try again.");
   // The capture: the live account and its incarnation, then the privacy generation, before the batch; the fence inside
   // the batch holds them, so anything that changes in between refuses the write instead of adopting a newer fact.
-  const account = await env.DB.prepare("SELECT account_incarnation FROM site_users WHERE discord_id=?1 AND in_server=1 AND denied=0").bind(user.id).first<{ account_incarnation: unknown }>();
+  const account = await env.DB.prepare("SELECT account_incarnation,session_version FROM site_users WHERE discord_id=?1 AND in_server=1 AND denied=0").bind(user.id).first<{ account_incarnation: unknown; session_version: number }>();
   if (!account) return reply(`Sign in on the guild site once with Discord; after that the buttons work for you. ${site}`);
   let incarnation: string;
   try { incarnation = privacyAccountIncarnation(account.account_incarnation); } catch { return reply(`Your site account could not be confirmed. Open the calendar: ${site}`); }
   const subject = await readPrivacySubject(env, user.id);
   if (subject && subject.state !== "active") return reply(`Your account is being closed, so no sign-up is recorded. ${site}`);
   const generation = subject?.subjectGeneration ?? null;
+  if (ownerAtEntry && !Number.isSafeInteger(account.session_version)) return reply(`Your site account could not be confirmed. Open the calendar: ${site}`);
+  const fence = (parameter: number) => {
+    if (ownerAtEntry && !discordCommandOwner225(env, user.id, i.guild_id ?? "")) return `(?${parameter} IS NULL AND 0)`;
+    const base = discordMemberFenceSql(parameter, generation, incarnation, ownerAtEntry);
+    return ownerAtEntry ? `(${base} AND EXISTS(SELECT 1 FROM site_users ov226 WHERE ov226.discord_id=?${parameter} AND ov226.session_version=${account.session_version}) AND ${DB_NOW}<${ownerDeadline})` : base;
+  };
   const limit = scanLimit(env), nonce = randomToken(), newRef = randomToken(), t = now();
-  const probe = env.DB.prepare(`SELECT CASE WHEN ${discordMemberFenceSql(1, generation, incarnation)} THEN 1 ELSE json_extract('privacy_discord_request_refused','$') END AS admitted`).bind(user.id);
+  const probe = env.DB.prepare(`SELECT CASE WHEN ${fence(1)} THEN 1 ELSE json_extract('privacy_discord_request_refused','$') END AS admitted`).bind(user.id);
   if (kind === "remind") {
     // Stage 2: flip the reminder-mention choice of an existing sign-up under the same fence; the event must be open and the button current.
     const flip = env.DB.prepare(`UPDATE community_event_signups SET remind_mention = 1 - remind_mention, revision = revision + 1, updated_at = ?3, write_nonce = ?4
-      WHERE event_id = ?1 AND discord_id = ?2 AND EXISTS (SELECT 1 FROM community_events e WHERE e.id = ?1 AND e.status = 'scheduled' AND e.starts_at > ${DB_NOW} AND e.revision = ?5) AND ${discordMemberFenceSql(2, generation, incarnation)} RETURNING remind_mention`).bind(eventId, user.id, t, nonce, revision);
+      WHERE event_id = ?1 AND discord_id = ?2 AND EXISTS (SELECT 1 FROM community_events e WHERE e.id = ?1 AND e.status = 'scheduled' AND e.starts_at > ${DB_NOW} AND e.revision = ?5) AND ${fence(2)} RETURNING remind_mention`).bind(eventId, user.id, t, nonce, revision);
     const note = env.DB.prepare("INSERT INTO audit (ts, actor, action, subject, details) SELECT ?3, ?2, 'community.rsvp', ?1, NULL WHERE EXISTS (SELECT 1 FROM community_event_signups WHERE event_id = ?1 AND discord_id = ?2 AND write_nonce = ?4)").bind(eventId, user.id, t, nonce);
     let flipped: D1Result[];
     try { flipped = (await env.DB.batch([probe, flip, note])).slice(1); } catch { return reply(`Your account could not be confirmed. Open the calendar: ${site}`); }
@@ -78,7 +86,7 @@ export async function handleRaidComponent(env: Env, i: Interaction): Promise<Res
     return reply(`Your choice could not be confirmed (your site account or roster standing changed). Open the calendar: ${site}`);
   }
   const statements = rsvpStatements(env, { eventId, me: user.id, status, character: null, raidRole: null, keepChar: true, keepRole: true, revision: 0, anyRevision: true, eventRevision: revision, nonce, newRef, at: t, limit,
-    fence: discordMemberFenceSql(2, generation, incarnation), sessionVersion: 0, expiresAt: 0, remindMention: null });
+    fence: fence(2), sessionVersion: 0, expiresAt: 0, remindMention: null });
   let results: D1Result[];
   try { results = (await env.DB.batch([probe, ...statements])).slice(1); } catch { return reply(`Your account could not be confirmed for this sign-up. Open the calendar: ${site}`); }
   if ((results[0]?.meta?.changes ?? 0) > 0) {

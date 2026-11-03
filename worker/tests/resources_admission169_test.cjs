@@ -120,6 +120,20 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .226 reverses only the exact owner-event release note.
+  const release226 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".226\", date: \"2026-11-03\", lines: [",
+    "      \"The bot owner can use raid-announcement buttons, see their signup on event rosters and record their own post-start attendance without character verification.\",",
+    "      \"Ordinary member checks, event limits, account safety and staff permissions remain in place.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .226 prepend occurs once', originalNews.split(release226).length === 2);
+  originalNews = originalNews.replace(release226, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+
   // .225 reverses only this exact owner-access release note.
   const release225 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

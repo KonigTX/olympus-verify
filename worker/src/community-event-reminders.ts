@@ -1,3 +1,4 @@
+import { eventParticipantSql226 } from './guild-event-owner226';
 import { discordCommandOwner225, DISCORD_BOT_OWNER_225 } from './discord-command-owner225';
 import { organizerMarkersSql219, organizerMarker219 } from './guild-calendar-metadata219';
 import { guildOrganizerMemberNow219 } from './guild-command-authority219';
@@ -49,12 +50,12 @@ export const MENTION_PLACEHOLDER = "0";
  * subject 'retiring', serving job 'waiting_role'), so the guild qualification alone would still select them. A recipient's standing is the
  * guild qualification plus the existing privacy-subject policy: no subject row (legacy) or an active one; retiring and retired never. Used at
  * the claim and in every re-check, so an admission after the claim invalidates it like any other withdrawal. */
-const recipientStandingSql = (expr: string) => `${qualifiesSql(expr)} AND ${privacySubjectWritableSql(expr)}`;
+const recipientStandingSql = (env: Env, expr: string) => `${eventParticipantSql226(env,expr)} AND ${privacySubjectWritableSql(expr)}`;
 /** Built at call time, not at module load: the standing predicate reaches privacy-serving-authority, which the module graph initialises after this file. */
-const mentionListSql = () => `(SELECT json_group_array(discord_id) FROM (SELECT s.discord_id FROM community_event_signups s WHERE s.event_id = r.event_id AND s.status = 'yes' AND s.remind_mention = 1 AND ${recipientStandingSql("s.discord_id")} ORDER BY s.updated_at, s.discord_id LIMIT ${MENTION_CAP}))`;
+const mentionListSql = (env: Env) => `(SELECT json_group_array(discord_id) FROM (SELECT s.discord_id FROM community_event_signups s WHERE s.event_id = r.event_id AND s.status = 'yes' AND s.remind_mention = 1 AND ${recipientStandingSql(env, "s.discord_id")} ORDER BY s.updated_at, s.discord_id LIMIT ${MENTION_CAP}))`;
 /** Finding 1 (Codex, 15 Oct 03:10): every selected recipient must still say yes, still ask for the mention and still stand (guild qualification and
  * privacy-subject policy), at the proof and at the settlement; a placeholder left by an erasure never qualifies. `p` is the reminder row's prefix. */
-const recipientsConsentSql = (p: string) => `NOT EXISTS (SELECT 1 FROM json_each(${p}mention_ids) m WHERE NOT EXISTS (SELECT 1 FROM community_event_signups s WHERE s.event_id = ${p}event_id AND s.discord_id = m.value AND s.status = 'yes' AND s.remind_mention = 1 AND ${recipientStandingSql("s.discord_id")}))`;
+const recipientsConsentSql = (env: Env, p: string) => `NOT EXISTS (SELECT 1 FROM json_each(${p}mention_ids) m WHERE NOT EXISTS (SELECT 1 FROM community_event_signups s WHERE s.event_id = ${p}event_id AND s.discord_id = m.value AND s.status = 'yes' AND s.remind_mention = 1 AND ${recipientStandingSql(env, "s.discord_id")}))`;
 export function mentionIdsOf(stored: unknown): string[] {
   if (stored === null || stored === undefined) return [];
   if (typeof stored !== "string") throw Error("reminder_mentions_held");
@@ -189,7 +190,7 @@ export async function runEventReminders(env: Env, selected219?:Readonly<{eventId
   const selectedValues = (updatedAt: number) => [r.event_id, ids, nonce, r.op_id, r.actor, r.consent_version,
     r.event_revision, r.starts_at, r.guild_id, r.channel_id, r.host, r.message_id, r.frozen_content,
     r.cleanup_requested, r.retain_until, r.created_at, rotated.last_attempt_at, updatedAt];
-  const claim = await env.DB.prepare(`UPDATE community_event_reminders AS r SET state='claimed',claim_nonce=?3,updated_at=${DB_NOW},mention_ids=${mentionListSql()}
+  const claim = await env.DB.prepare(`UPDATE community_event_reminders AS r SET state='claimed',claim_nonce=?3,updated_at=${DB_NOW},mention_ids=${mentionListSql(env)}
     WHERE event_id=?1 AND state='armed' AND claim_nonce IS ?19 AND ${selected} AND ${current} AND ${authority} RETURNING updated_at, mention_ids`)
     .bind(...selectedValues(r.updated_at), r.claim_nonce).first<{ updated_at: number; mention_ids: string | null }>();
   if (!claim) return 0;
@@ -197,7 +198,7 @@ export async function runEventReminders(env: Env, selected219?:Readonly<{eventId
   const prePostRoles219=(!roleMode219 || await guildOrganizerMemberNow219(env,r.actor,d.guild)) && (!ownerMode225 || discordCommandOwner225(env,r.actor,d.guild));
   // Reconsume the same selected row and generation after claim; no fresh authority is adopted before POST.
   const proof = await env.DB.prepare(`SELECT 1 AS ok FROM community_event_reminders r WHERE event_id=?1 AND state='claimed'
-    AND claim_nonce=?3 AND r.mention_ids IS ?19 AND ${recipientsConsentSql("r.")} AND ${selected} AND ${current} AND ${authority}`).bind(...selectedValues(claim.updated_at), claim.mention_ids).first<{ ok: number }>();
+    AND claim_nonce=?3 AND r.mention_ids IS ?19 AND ${recipientsConsentSql(env, "r.")} AND ${selected} AND ${current} AND ${authority}`).bind(...selectedValues(claim.updated_at), claim.mention_ids).first<{ ok: number }>();
   if (!prePostRoles219 || !proof || !enabled(env) || JSON.stringify(destination(env)) !== JSON.stringify(d)) {
     await env.DB.prepare(`UPDATE community_event_reminders SET state='cancelled',updated_at=${DB_NOW} WHERE event_id=?1 AND claim_nonce=?2 AND state='claimed'`).bind(r.event_id, nonce).run(); return 0;
   }
@@ -219,8 +220,8 @@ export async function runEventReminders(env: Env, selected219?:Readonly<{eventId
   // its known pointer under the original operation tuple; authority below still
   // classifies it as unknown with cleanup required, never as a delivered reminder.
   const settled=await db.batch<{state:'posted'|'refused'|'unknown'}>([
-    db.prepare(`UPDATE community_event_reminders AS r SET message_id=COALESCE(?4,message_id),state=CASE WHEN ?3='posted' AND (${current}) AND (${originalAuthority}) AND r.mention_ids IS ?16 AND ${recipientsConsentSql("r.")} THEN 'posted' WHEN ?3='posted' THEN 'unknown' ELSE ?3 END,
-      cleanup_requested=CASE WHEN ?4 IS NOT NULL AND NOT((${current}) AND (${originalAuthority}) AND r.mention_ids IS ?16 AND ${recipientsConsentSql("r.")}) THEN 1 ELSE cleanup_requested END,
+    db.prepare(`UPDATE community_event_reminders AS r SET message_id=COALESCE(?4,message_id),state=CASE WHEN ?3='posted' AND (${current}) AND (${originalAuthority}) AND r.mention_ids IS ?16 AND ${recipientsConsentSql(env, "r.")} THEN 'posted' WHEN ?3='posted' THEN 'unknown' ELSE ?3 END,
+      cleanup_requested=CASE WHEN ?4 IS NOT NULL AND NOT((${current}) AND (${originalAuthority}) AND r.mention_ids IS ?16 AND ${recipientsConsentSql(env, "r.")}) THEN 1 ELSE cleanup_requested END,
       updated_at=${DB_NOW} WHERE event_id=?1 AND claim_nonce=?5 AND op_id=?6 AND guild_id=?7 AND channel_id=?8 AND host=?9
         AND event_revision=?10 AND starts_at=?11 AND retain_until<=?12 AND (message_id IS ?13 OR message_id=?4) AND state IN('claimed','unknown') RETURNING state`)
       .bind(r.event_id, settlementIds219, state, pointer, nonce, r.op_id, r.guild_id, r.channel_id, r.host, r.event_revision, r.starts_at, r.retain_until, r.message_id, r.actor, r.consent_version, claim.mention_ids),
@@ -237,7 +238,7 @@ async function settleReminderMessage(env: Env, ctx: CommunityContext, r: Reminde
   const db = privacyProviderCustodyDatabase(env), custody: EventCustodyProof = {
     eventId: r.event_id, revision: r.event_revision, startsAt: r.starts_at, opId: r.op_id, nonce,
     guild: r.guild_id, channel: r.channel_id, pointer: r.message_id, retainUntil: r.retain_until };
-  const stillCurrent = `cleanup_requested=0 AND ${recipientsConsentSql("community_event_reminders.")} AND EXISTS(SELECT 1 FROM community_events e WHERE e.id=?1 AND e.reminder_closed=0
+  const stillCurrent = `cleanup_requested=0 AND ${recipientsConsentSql(env, "community_event_reminders.")} AND EXISTS(SELECT 1 FROM community_events e WHERE e.id=?1 AND e.reminder_closed=0
     AND e.revision=?8 AND e.starts_at=?9 AND e.status='scheduled' AND e.starts_at>${DB_NOW} AND e.retain_until>${DB_NOW}
     AND (e.created_by=?11 OR ?14=1)) AND ${fenceSql("confirmedGuildData", 11, 12, 13,ctx.subject!.privacyGeneration,ctx.subject!.accountIncarnation)}`;
   await db.batch([
