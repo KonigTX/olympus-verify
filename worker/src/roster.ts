@@ -38,6 +38,7 @@ import {
   type StatementCount,
 } from "./roster-effects";
 import type { LaneCapture } from "./full-release-roles";
+import { launchMembershipFence,launchMembershipCurrent,type LaunchMembershipSource } from './launch-verification227';
 
 export interface RosterMemberIn {
   name: string;
@@ -99,17 +100,22 @@ export const ROSTER_INGEST_STATEMENTS_FULL_GUILD = 40;
 export const ROSTER_PIN_WITHIN = 600;
 
 export interface RosterEntry {
+  snapshotId: number;
+  source: string;
   name: string;
   guid: string | null;
   exportedAt: number;
 }
 
-/** The newest roster's row for a name (its GUID and the export's time included), or null when the name is not on it. */
+/** The newest roster's row for a name, only after its entire trusted snapshot is stored.
+ * A newer refused/unfinished export holds verification; never fall back to an older good one. */
 export async function latestRosterEntry(env: Env, nameKey: string): Promise<RosterEntry | null> {
   return await env.DB.prepare(
-    `SELECT rm.name AS name, rm.guid AS guid, s.exported_at AS exportedAt
+    `SELECT s.id AS snapshotId, s.source AS source, rm.name AS name, rm.guid AS guid, s.exported_at AS exportedAt
        FROM roster_members rm JOIN roster_snapshots s ON s.id = rm.snapshot_id
-      WHERE rm.name_key = ?1 AND rm.snapshot_id = (SELECT id FROM roster_snapshots ORDER BY id DESC LIMIT 1)`,
+      WHERE rm.name_key = ?1 AND rm.snapshot_id = (SELECT id FROM roster_snapshots ORDER BY id DESC LIMIT 1)
+        AND s.complete = 1 AND s.trusted = 1
+        AND s.member_count = (SELECT COUNT(*) FROM roster_members stored WHERE stored.snapshot_id = s.id)`,
   )
     .bind(nameKey)
     .first<RosterEntry>();
@@ -488,7 +494,7 @@ async function reportDuplicateNames(env: Env, count: number, dupes: Array<{ key:
  * against ROSTER_INGEST_STATEMENTS (scheduled-budget.ts) before it starts; whatever does not fit stays in the worklist for
  * the next export or the cron.
  */
-export async function ingestRoster(env: Env, exportedAt: number, members: RosterMemberIn[], source: "addon" | "api", fresh?: FreshIngest,originalDispatch?:BetaRoleDispatch) {
+export async function ingestRoster(env: Env, exportedAt: number, members: RosterMemberIn[], source: "addon" | "api" | `addon-native-v1:${string}`, fresh?: FreshIngest,originalDispatch?:BetaRoleDispatch) {
   const removal = originalDispatch??departureDispatch(env); // Original entry capture survives every facade and await.
   const count = { used: 0 };
   const counted = countStatements(env, count);
@@ -558,7 +564,7 @@ async function seatBase(env: Env, upTo: number, cut: number, maxShrinkPct: numbe
   return base;
 }
 
-async function ingestRosterInner(env: Env, adm: Admission, exportedAt: number, members: RosterMemberIn[], source: "addon" | "api", notices: NoticeBatch, removal: RemovalDispatch, holder?: { calls?: CallBudget }) {
+async function ingestRosterInner(env: Env, adm: Admission, exportedAt: number, members: RosterMemberIn[], source: "addon" | "api" | `addon-native-v1:${string}`, notices: NoticeBatch, removal: RemovalDispatch, holder?: { calls?: CallBudget }) {
   // .115 (Codex's review of f975, 3 Oct 2026, 13:15 UTC, finding 2): an export naming one character key twice is refused
   // before anything is read or written: no snapshot, no member rows, no first-seen dates, no link, character or role
   // change. ingest.ts answers 422, which the watcher takes as final (a 4xx is not retried); the next export is judged
@@ -583,7 +589,7 @@ async function ingestRosterInner(env: Env, adm: Admission, exportedAt: number, m
     throw new Error("Roster snapshot is still being written; retry this export");
   }
   const fullyStored = !!prev && prev.complete === 1 && prev.stored_count === prev.member_count;
-  if (prev && (prev.exported_at > exportedAt || (prev.exported_at === exportedAt && !stuck && fullyStored))) {
+  if (prev && (prev.exported_at > exportedAt || (prev.exported_at === exportedAt && prev.source===source && !stuck && fullyStored))) {
     // .115 (finding A): an export older than the stored one, or the same one sent again, still changes no snapshot. But the
     // newest snapshot's effects may be unfinished (its invocation stopped partway, or its slice did not reach every item),
     // and a retry is exactly when the watcher is back: it resumes them rather than answering "older" and leaving them.
@@ -619,7 +625,7 @@ async function ingestRosterInner(env: Env, adm: Admission, exportedAt: number, m
   // itself did not move, and that still has to grant a role.
   const fingerprint = await rosterFingerprint(members);
   let snapId: number;
-  const unchanged = !!prev && !stuck && prev.content_hash === fingerprint;
+  const unchanged = !!prev && !stuck && prev.source===source && prev.content_hash === fingerprint;
   let run: EffectRun | null = null; // .115 (finding A): the effects run this export derives, if any
   let waiting = false; // .115 (finding A): the newest run is this snapshot's, underived, and inside the grace
 
@@ -1078,19 +1084,20 @@ async function afterDeparture(env: Env, discordId: string, name: string, how: st
 }
 
 /** Character confirmed on the roster with a verified binding → member: Guild Member role, nickname, log line, DM. */
-export async function promote(env: Env, discordId: string, nameKey: string, name: string, batch?: NoticeBatch, guid?: string | null, calls?: CallBudget,originalCapture?:PrivacySubject|null,originalDispatch?:BetaRoleDispatch) {
+export async function promote(env: Env, discordId: string, nameKey: string, name: string, batch?: NoticeBatch, guid?: string | null, calls?: CallBudget,originalCapture?:PrivacySubject|null,originalDispatch?:BetaRoleDispatch,launchSource?:LaunchMembershipSource) {
   const roleDispatch=originalDispatch??captureBetaRoleDispatch(env);
   const capture=originalCapture===undefined?await readPrivacySubject(env,discordId):originalCapture;
   if(capture&&capture.state!=='active')return;
   const t = now();
   const g = guidOf(guid); // pinned only if none is: a pin is never overwritten here (reconcileIdentities decides that)
   await env.DB.batch([
+    ...(launchSource?[launchMembershipFence(env,launchSource)]:[]),
     env.DB.prepare(
       `UPDATE characters SET status = 'member', member_since = COALESCE(member_since, ?2), left_at = NULL, guid = COALESCE(guid, ?3) WHERE name_key = ?1 AND discord_id=?4 AND ${privacyGenerationFenceSql(4,5)}`,
     ).bind(nameKey, t, g,discordId,capture?.subjectGeneration??null),
     env.DB.prepare(`UPDATE invite_queue SET status = 'joined', joined_at = ?2 WHERE name_key = ?1 AND discord_id=?3 AND status IN ('queued','written','invited') AND ${privacyGenerationFenceSql(3,4)}`).bind(nameKey, t,discordId,capture?.subjectGeneration??null),
   ]);
-  await afterPromotion(env, discordId, name, batch, calls,capture,false,roleDispatch);
+  await afterPromotion(env, discordId, name, batch, calls,capture,false,roleDispatch,launchSource);
 }
 
 /**
@@ -1099,10 +1106,11 @@ export async function promote(env: Env, discordId: string, nameKey: string, name
  * roster.member (which the role sweep reads to grant a deferred role), the log line and the welcome. At most twelve
  * statements, the welcome's share of the notices' flush included (roster-effects.ts EFFECT_WORST.promote less the claim).
  */
-async function afterPromotion(env: Env, discordId: string, name: string, batch?: NoticeBatch, calls?: CallBudget,capture:PrivacySubject|null=null,deferCronRole=false,originalDispatch?:BetaRoleDispatch) {
+async function afterPromotion(env: Env, discordId: string, name: string, batch?: NoticeBatch, calls?: CallBudget,capture:PrivacySubject|null=null,deferCronRole=false,originalDispatch?:BetaRoleDispatch,launchSource?:LaunchMembershipSource) {
   const roleDispatch=originalDispatch??captureBetaRoleDispatch(env);
   const reference={subject:discordId,capture};
   if(!(await env.DB.prepare(`SELECT (${privacyGenerationFenceSql(1,2)}) AS current`).bind(discordId,capture?.subjectGeneration??null).first<{current:number}>())?.current)return;
+  if(launchSource&&!await launchMembershipCurrent(env,launchSource))return;
   // The role grant is optional (ROLE_GUILD_MEMBER may be unset once the role is retired), and nothing below depends
   // on it succeeding. Until 26 Sep the nickname and welcome sat after addRole inside one try, so any role failure —
   // including the role simply having been deleted — silently stopped nicknames as well.
@@ -1115,10 +1123,10 @@ async function afterPromotion(env: Env, discordId: string, name: string, batch?:
   } else if (env.ROLE_GUILD_MEMBER) {
     try {
       // .55: through the one role writer (roles.ts): a held blocking role withholds the grant, fail-closed config too.
-      const writer=grantMemberRole as unknown as (...args:[Env,string,string,string,string[]|undefined,CallBudget|undefined,{subjectGeneration:string|null},BetaRoleDispatch])=>ReturnType<typeof grantMemberRole>;
+      const writer=grantMemberRole as unknown as (...args:[Env,string,string,string,string[]|undefined,CallBudget|undefined,{subjectGeneration:string|null;launchSource?:LaunchMembershipSource},BetaRoleDispatch])=>ReturnType<typeof grantMemberRole>;
       const roleEnv=env.PRIVACY_ERASURE_ENABLED==='true'||membershipTransitionEnabled(env)?{...env,DB:privacyProviderCustodyDatabase(env)}:env;
       const roleCalls=deferCronRole&&calls?{...calls,limit:0}:calls;
-      const outcome = await writer(roleEnv, discordId, `olympus-verify: ${name} confirmed on the guild roster`, "promote", undefined, roleCalls,{subjectGeneration:capture?.subjectGeneration??null},roleDispatch);
+      const outcome = await writer(roleEnv, discordId, `olympus-verify: ${name} confirmed on the guild roster`, "promote", undefined, roleCalls,{subjectGeneration:capture?.subjectGeneration??null,...(launchSource?{launchSource}:{})},roleDispatch);
       granted = outcome === "granted" || outcome === "has-role";
       blocked = outcome === "blocked";
       if(deferCronRole)await audit(env,"system","role.deferred",name,{discordId,source:"promote",reason:outcome},reference);
@@ -1170,6 +1178,7 @@ interface EffectRun {
  */
 interface LatestRow {
   id: number;
+  source: string;
   exported_at: number;
   member_count: number;
   content_hash: string | null;
@@ -1185,7 +1194,7 @@ interface LatestRow {
   run_derived: number | null;
   applied_snapshot: number | null;
 }
-const LATEST_SNAPSHOT_AND_RUN = `SELECT s.id AS id, s.exported_at AS exported_at, s.member_count AS member_count, s.content_hash AS content_hash,
+const LATEST_SNAPSHOT_AND_RUN = `SELECT s.id AS id, s.source AS source, s.exported_at AS exported_at, s.member_count AS member_count, s.content_hash AS content_hash,
        s.trusted AS trusted, s.complete AS complete, s.first_received_at AS first_received_at,
        (SELECT COUNT(*) FROM roster_members WHERE snapshot_id = s.id) AS stored_count,
        r.id AS run_id, r.snapshot_id AS run_snapshot, r.prev_snapshot_id AS run_prev, r.removals AS run_removals,

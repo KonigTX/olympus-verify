@@ -1,0 +1,26 @@
+# .227 finite historical role-source compatibility
+
+The first .227 PR candidate failed hosted shard5 because `lane_budget_test.cjs` still required the complete current `roles.ts` bytes to equal the reviewed .163 source. The new native membership fences intentionally changed that file. The corresponding identity leaf also retained earlier .211/.222 source seals. These are real failed historical comparisons; the failed candidate and provider logs remain retained. They are not relabeled as passes.
+
+The successor preserves every historical hash and all current-runtime budget, trace, response, statement-order and role-row assertions. It adds a finite static inverse for precisely the .227 changes in four files, using accepted .226 commit `4035063a6454a4829b857378450a08ad004c2e50` as the intermediate predecessor:
+
+| Source | Exact contextual inverses | Current SHA256 | Reconstructed predecessor SHA256 |
+| --- | ---: | --- | --- |
+| `roles.ts` | 5 | `43fbd5cc8d412b84d823417012cfd543fc50fa174deb793005c61e338ee90ef3` | `0fb851d804ddb97594a8b4109db3fad46a3f88df8c65475b63f2c79dbf89f6f8` |
+| `role-settlements.ts` | 6 | `8b805a7101f4ab87b522314a531a1bd43ddaaa4494f342d4f65d4464e29a142b` | `b769c90eb3a1c4bd4ed7049360746ebdc498942ed51f46f7368a1123bc3e66f2` |
+| `discord.ts` | 1 | `556d18f38ad8dd3c0acc3740d5441704fec96d1fd1c0dbeb6d7c386995bb8325` | `2ed91b2fd780228d8ffe9ba488442e2d48c31eb65959d7babdc9a46281f6b0c8` |
+| `roster.ts` | 11 | `12d0759390cd0964f1b911b8cfe42f67287fd099e205a59cc96d068587837e41` | `69fa387ea2df5e74746eae29db9b110216bb7dfa37811934074ec8672c4547a0` |
+
+The pinned fixture `worker/tests/fixtures/reviewed227-role-source-contexts.json` lists each exact before/after context, raw byte length and SHA256. Its whole-file SHA256 is `a15af49b558f8058ec512139e9828af93c6c2ae9aaeab1bb39b03f934845d39c`. The shared `source227-role-historical-projection.cjs` authenticates that fixture, requires each entire current source seal first, applies each context exactly once, and requires the entire predecessor seal afterward. Unknown edits cannot be removed by a broad regular expression or accepted through a new historical hash. The original three-file proposal and helper/leaf snapshots remain preserved in the external evidence.
+
+Negative controls reject added prefixes/suffixes, duplicated contexts, altered contexts and changed raw line endings. The original .163 role hash remains `0fb851d804ddb97594a8b4109db3fad46a3f88df8c65475b63f2c79dbf89f6f8`; earlier settlement, erased-type and protected-branch checks still run through the unchanged .196/.211/.222/.224 helpers and their original pins and drift controls.
+
+Only those historical static checks receive an owned temporary source view. The existing .222 helper may transpile source text solely for its type-erasure output comparison; no reconstructed source is imported or executed. Runtime loaders, `SRC`, `IDENTITY_SRC`, dynamic entropy, existing manifest/guide projections, response/row oracles and `PINS` remain unchanged. The additional comparison and diagnostic hash are disclosed below. Temporary cleanup checks the resolved owned path before removal.
+
+The first focused successor identity run passed616/636 checks. Its20 failures were exclusively ingest trace digests; responses, twelve-role rows, SQL counts and HTTP counts matched the unchanged pins. That failure remains recorded in `identity-historical-inverse-v18.log`. A current-runtime-only raw dump established the complete difference: one legacy SQL tuple with ordered keys `k,tag,sql,params`, empty binds, and a1,079-byte `LATEST_SNAPSHOT_AND_RUN` query whose only addition is `s.source AS source`. Reversing only that full query literal recovered the original trace hash exactly (`0ff3c05f…` to `6b4e389b…`). The raw4,267,187-byte dump has SHA256 `6680aca5f04e72853b7ba0eea89ebd5026c90ee3376aef67cf740de6b62a7734`; the exact proof is `identity-one-query-proof-v19.json`. No old runtime was executed.
+
+For historical comparison only, the finite trace inverse requires precisely that full SQL literal, tuple grammar and one occurrence in every ingest trace. It leaves raw `r.trace` unchanged. The pre-.227 comparison function and its raw trace hashes remain available separately in diagnostic output. Missing/duplicated queries, changed SQL or binds, wrong context/kind and extra/reordered tuple keys are refused; unrelated bind, event-order and additional-SQL mutations must still fail the original whole-trace pins. Non-ingest traces are untouched. The original .160 trace hashes are not replaced or re-recorded, and the added source column remains present in every actual executed query.
+
+This compatibility proof does not establish that the new .227 restrictions are identical to the old implementation. The new restricted mode is qualified separately by its native proof, request/source races, central writer, rollback protocol and scoped-budget tests. Those execute current source. Historical comparison compatibility and current functional qualification are distinct evidence.
+
+The inverse and both leaf deltas received independent source review. Focused results and exact reviewed bytes are recorded in the external `worker-verification-v2` evidence receipts. The full final aggregate and release acceptance remain separate gates.

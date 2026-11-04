@@ -120,6 +120,21 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .227 reverses only this exact launch-readiness release note.
+  const release227 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".227\", date: \"2026-11-03\", lines: [",
+    "      \"Verification can require a fresh roster and matching native character identity before an account is linked.\",",
+    "      \"The officer addon records completed gold transfers and collected mail for local reconciliation; transfers never automatically grant benefits.\",",
+    "      \"The Companion aggregate feed remains off pending live producer evidence and realm mapping.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .227 prepend occurs once', originalNews.split(release227).length === 2);
+  originalNews = originalNews.replace(release227, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+
   // .226 reverses only the exact owner-event release note.
   const release226 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

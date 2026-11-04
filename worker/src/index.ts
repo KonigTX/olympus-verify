@@ -22,6 +22,7 @@ import { isGuildCommand219, guildCommandReadOnly219, handleGuildCommand219 } fro
  */
 import { armyAfterMemberGate, armyGateReply } from "./site-army";
 import { treasuryAfterMemberGate } from "./site-treasury-access";
+import { captureLaunchVerification,launchVerificationEnv } from './launch-verification227';
 import type { Env } from "./env";
 import {nativeErasureMode,nativeServingEnvironment} from './privacy-native-mode';
 import { unverifiedReport } from "./unverified";
@@ -203,7 +204,7 @@ export default {
     }
     // Private files are delivered below inside the same original serving root and admitted membership read.
     // Capture the global original transport before narrow OAuth/Names/Me factories and before any await.
-    if(globalServingMode(env)==='configured'&&request.method==='GET'&&path==='/health')return json({ok:true,build:BUILD,d1:'not_checked'});
+    if(globalServingMode(env)==='configured'&&request.method==='GET'&&path==='/health')return json({ok:true,build:BUILD,d1:'not_checked',...(await watcherAuthorized(env,request)?{verification:launchVerificationHealth(env)}:{})});
     let globalEntry:ReturnType<typeof captureGlobalServingEntry>;try{globalEntry=captureGlobalServingEntry(env,ctx,'fetch',request);}catch{return json({error:'original_serving_held'},503); }env=globalEntry.env;request=globalEntry.request!;
     // Capture native/host/version/method custody before any facade substitution or await.
     // Only this Names boundary is managed; missing bindings hold Names without a legacy fallback.
@@ -254,7 +255,7 @@ export default {
       const res = await route(request, env, path, schemaReady, ctx, namesOrigin,roleDispatch);
       // The watcher polls /queue every 30 seconds while an officer is online, which is exactly when promotions happen.
       // The Guild Member sweep rides on those polls (throttled to one per five minutes inside), after the response.
-      if (request.method === "GET" && path === "/queue" && res.ok) {
+      if (request.method === "GET" && path === "/queue" && res.ok && !url.searchParams.getAll('presenceOnly').includes('1')) {
         // Revision 4 (A1, A4 entry 1): the lane configuration is captured here, synchronously. Unconfigured keeps the
         // original statement exactly; configured shares one Discord-call allowance between the sweep and the fresh pass.
         const lane = captureLaneConfig(env);
@@ -560,10 +561,9 @@ async function route(request: Request, env: Env, path: string, schemaReady = tru
   if (path.startsWith("/ingest/") || path.startsWith("/queue")) {
     if (!(await watcherAuthorized(env, request))) return new Response("unauthorized", { status: 401 });
     if (!schemaReady) return json({ error: "database schema not ready; retry shortly" }, 503);
-    // .66 (Codex, 1 Oct 02:41 UTC): this Worker speaks the unversioned 0.6.x protocol only. A client that names a key
-    // version asks for a protocol this Worker does not implement (the generation-3 proposal stays an unshipped
-    // candidate); it is told so, never served the legacy answer as if it were that protocol. Unversioned clients see
-    // no difference.
+    // Older sources reject every keyVersion before queue/ingest effects. The exact
+    // .227 query marker gives the strict host that same fail-closed rollback fence.
+    // It is not a secret/key rotation or permission for other versioned routes.
     let body: any = null; // each handler validates its own body, exactly as before .66
     if (request.method === "POST") {
       // .210: a body that is not a JSON object is a final 400; it was a 500, which the watcher retries forever.
@@ -571,7 +571,11 @@ async function route(request: Request, env: Env, path: string, schemaReady = tru
       if (body === null || typeof body !== "object" || Array.isArray(body)) return json({ error: "bad_body", message: "The request body must be a JSON object." }, 400);
     }
     if (query.has("keyVersion") || (body !== null && typeof body === "object" && "keyVersion" in body)) {
-      return json({ error: "unsupported_protocol", message: "This Worker serves the unversioned protocol only; a keyVersion is not supported." }, 400);
+      const versions=query.getAll('keyVersion'),presenceOnly=request.method==='GET'&&path==='/queue'&&query.getAll('presenceOnly').includes('1');
+      const launch=captureLaunchVerification(env),ingest=request.method==='POST'&&['/ingest/verify','/ingest/roster','/ingest/events'].includes(path)&&launch.mode==='members-only'&&!!launch.scope&&launch.current();
+      if(versions.length!==1||versions[0]!=='launch-membership-v1'||body!==null&&typeof body==='object'&&'keyVersion'in body||!presenceOnly&&!ingest)
+        return json({ error: "unsupported_protocol", message: "This Worker serves the unversioned protocol only; a keyVersion is not supported." }, 400);
+      if(ingest)env=launchVerificationEnv(env,launch);
     }
     if (request.method === "POST" && path === "/ingest/verify") return await postVerify(env, body,roleDispatch);
     if (request.method === "POST" && path === "/ingest/roster") return await postRoster(env, body, ctx ? (label, work) => deferOriginalServing(ctx, label, work) : undefined,roleDispatch);
@@ -587,7 +591,7 @@ async function route(request: Request, env: Env, path: string, schemaReady = tru
           console.error("relay presence not recorded", errorRef(e));
         }
       }
-      return await getQueue(env, query.get("officer") ?? "");
+      return await getQueue(env, query.get("officer") ?? "", query.getAll('presenceOnly').includes('1'));
     }
     // Who is in the guild but not verified, and when each may be offered for removal. Pulled by the watcher on a slow
     // cadence and carried into the addon's queue file; the addon only reads that file at login or /reload anyway.
@@ -650,12 +654,17 @@ async function freshRegistrationRefused(env: Env, trigger: string): Promise<void
 }
 
 /** Bumped with every change that needs a redeploy, so GET /health shows which build is live. */
-const BUILD = "2026-11-03.226 Owner event participation";
+const BUILD = "2026-11-03.227 Launch verification and local receipts";
 
 /**
  * Presence of each secret (never the value) and a D1 round trip — enough to tell a missing `wrangler secret put` from a
  * bug. Since .49 the inventory is returned only to the watcher's bearer; anyone else gets ok, build and d1.
  */
+function launchVerificationHealth(env: Env) {
+  const verification = captureLaunchVerification(env);
+  return { mode: verification.mode, nativeScopePinned: !!verification.scope, nativeMembershipProofVersion: 1 };
+}
+
 async function health(env: Env, full: boolean) {
   const secrets = ["DISCORD_PUBLIC_KEY", "DISCORD_BOT_TOKEN", "DISCORD_CLIENT_SECRET", "VERIFY_SECRET", "WATCHER_TOKEN", "COOKIE_SECRET"] as const;
   const present: Record<string, boolean> = {};
@@ -712,5 +721,5 @@ async function health(env: Env, full: boolean) {
   } catch (e) {
     roles = `error: ${errorRef(e)}`;
   }
-  return { ok: true, build: BUILD, mode: env.ADMISSION_MODE, bnetRetention, legacyApi, roles, rosterGuard: { minMembers: env.ROSTER_MIN_MEMBERS, maxShrinkPct: env.ROSTER_MAX_SHRINK_PCT }, linksNotBefore: env.LINKS_NOT_BEFORE || null, seats, relays, appId: env.DISCORD_APP_ID, baseUrl: env.PUBLIC_BASE_URL, secrets: present, d1, bnetLogin: !!(env.BNET_CLIENT_ID && env.BNET_CLIENT_SECRET), bnetSwitch, intros: { guild: env.INTROS_GUILD_ID || null, channels: Object.keys(parseChannels(env.INTROS_CHANNELS)).length, intros: INTROS.length }, site: { host: siteHost(env) || null, guild: env.SITE_GUILD_ID || null, admins: siteAdmins(env).size } };
+  return { ok: true, build: BUILD, mode: env.ADMISSION_MODE, verification: launchVerificationHealth(env), bnetRetention, legacyApi, roles, rosterGuard: { minMembers: env.ROSTER_MIN_MEMBERS, maxShrinkPct: env.ROSTER_MAX_SHRINK_PCT }, linksNotBefore: env.LINKS_NOT_BEFORE || null, seats, relays, appId: env.DISCORD_APP_ID, baseUrl: env.PUBLIC_BASE_URL, secrets: present, d1, bnetLogin: !!(env.BNET_CLIENT_ID && env.BNET_CLIENT_SECRET), bnetSwitch, intros: { guild: env.INTROS_GUILD_ID || null, channels: Object.keys(parseChannels(env.INTROS_CHANNELS)).length, intros: INTROS.length }, site: { host: siteHost(env) || null, guild: env.SITE_GUILD_ID || null, admins: siteAdmins(env).size } };
 }

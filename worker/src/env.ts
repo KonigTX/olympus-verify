@@ -9,6 +9,8 @@ export interface Env {
   QR_NATIVE_ROLE_MAP?: string;
   QR_PRIVILEGED_RANK_MAPPING_ENABLED?: string;
   FULL_RELEASE_ROLES?: string; // unset by default; owner-supplied canonical JSON for the fresh member and ten rank roles (full-release-roles.ts); invalid present holds
+  VERIFY_MEMBERSHIP_ONLY?: string; // exact true: native current-membership verification only; no applicant invites, invalid present holds
+  VERIFY_NATIVE_SCOPE?: string; // exact canonical {version:1,guild,realm}; approved native own-guild + live GetRealmName pin, absent/unconfirmed holds membership-only mode
   TREASURY_COSMETIC_ROLES?: string; // absent: disabled; exact canonical guild/app, explicit 90-day season start + three cosmetic role IDs, separately owner-configured
   TREASURY_COSMETIC_ENABLED?: string; // only literal true permits an explicitly confirmed single cosmetic role operation; never creates roles or auto-grants
   ARMY_SITE_AGGREGATE_ENABLED?: string; // absent/OFF until the publisher ships and the owner verifies the dedicated unified exporter; never authenticates game origin

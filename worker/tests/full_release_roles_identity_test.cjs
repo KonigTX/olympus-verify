@@ -237,7 +237,11 @@ function projectKnownPublicGuide(e) {
   if (e.body.split(marker).length !== 2) return e;
   return { ...e, body: e.body.replace(marker, replacement) };
 }
-const legacyOf = (r) => r.trace.filter((e) => e.tag === 'legacy').map(({ tag, ...e }) => e.params?{...e,params:e.params.map(projectApprovedManifest)}:projectKnownPublicGuide(e));
+const legacyOfBefore227 = (r) => r.trace.filter((e) => e.tag === 'legacy').map(({ tag, ...e }) => e.params?{...e,params:e.params.map(projectApprovedManifest)}:projectKnownPublicGuide(e));
+// Only the sealed readonly roster query gains one source projection in .227.
+// Raw r.trace remains current; the helper checks its exact tuple/count before
+// supplying a copy for the unchanged historical digest and order/row oracles.
+const legacyOf = (r) => legacyOfBefore227({...r,trace:source227.traceInverse(r.trace)});
 const laneOf = (r) => r.trace.filter((e) => e.tag === 'lane');
 // The documented A6 texts (configured and the fresh lane open), mapped back to their .160 wording; nothing else is masked.
 const A6 = [
@@ -347,8 +351,11 @@ const { SOURCE196_COMPAT, SOURCE196_CRON, SOURCE198_ROLE_SETTLEMENTS, source196H
 // finite static reconstruction helper; the runtime loader above is untouched.
 if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'source211-historical-projection.cjs'))).digest('hex') !== 'db8684b7c2a202c99cfc58442cd1ba500fc0b572230029d357be8e64cf1b5093') throw Error('reviewed211 identity helper differs');
 const source211 = require('./source211-historical-projection.cjs');
+if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'source227-role-historical-projection.cjs'))).digest('hex') !== 'c657132d9f48b27adeddb10dad3a72ae44e13fcdde6b8004e9cacccf88179305') throw Error('reviewed227 identity helper differs');
+const source227 = require('./source227-role-historical-projection.cjs');
 function sourceDigest(name) {
-  return source211.source211HistoricalDigest(name, fs.readFileSync(path.join(SRC, name + '.ts'), 'utf8'));
+  const raw=fs.readFileSync(path.join(SRC, name + '.ts'), 'utf8'),original=RECORD?raw:source227.originalSource(name,raw);
+  return original===null?null:source211.source211HistoricalDigest(name,original);
 }
 /** Static value imports among src/*.ts (type-only imports and dynamic import() excluded). */
 function staticGraph() {
@@ -381,7 +388,7 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
   if (DUMP) {
     const [phase, profile, variant, scenario] = DUMP.split(':');
     const r = await runOnce(phase, profile, variant, scenario);
-    console.log(JSON.stringify({ digest:digestOf(r),response: r.response, errors: r.errors, laneCalls: r.laneCalls, discord: r.discord, twelve: r.twelve, trace:r.trace }, null, 1));
+    console.log(JSON.stringify({ digest:digestOf(r),unprojected227ComparisonTraceSHA256:sha(JSON.stringify(legacyOfBefore227(r))),response: r.response, errors: r.errors, laneCalls: r.laneCalls, discord: r.discord, twelve: r.twelve, trace:r.trace }, null, 1));
     for (const e of r.trace) console.log(e.tag.padEnd(6), e.k === 'sql' ? 'SQL ' + e.sql.replace(/\s+/g, ' ').slice(0, 160) + ' ' + JSON.stringify(e.params).slice(0, 160) : e.k === 'batch' ? 'BATCH ' + e.n : `HTTP ${e.method} ${e.path} ${(e.body || '').slice(0, 200)}`);
     return;
   }
@@ -404,19 +411,21 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
   check('RT06 held-verify successor binds exact full restore source and finite H4/H6/current fixture',Object.values(heldSources).every(Boolean),heldSources);
   const recoverySources=recovery217.sourceChecks(SRC);
   check('.217 recovery successor binds the exact current interactions source',Object.values(recoverySources).every(Boolean),recoverySources);
-  const sources211 = source211.sourceChecks(SRC, PINS);
-  const discord222=require('./source222-discord-type-projection.cjs').checks(SRC);
-  const branch224=require('./source224-branch-name-projection.cjs').checks(SRC);
+  check('.227 static inverse binds all four whole current sources and refuses unrelated/context/line-ending drift',Object.values(source227.checks(SRC)).every(Boolean));
+  const {sources211,discord222,branch224,drift224}=source227.withStaticView(SRC,view=>({
+    sources211:source211.sourceChecks(view,PINS),discord222:require('./source222-discord-type-projection.cjs').checks(view),
+    branch224:require('./source224-branch-name-projection.cjs').checks(view),drift224:require('./source224-branch-name-projection.cjs').driftControls224(view),
+  }));
   check('.224 identity retains original211 restrictions with exact222 erased-type and224 protected Branch-alias successors', Object.entries(sources211).filter(([key])=>!['discord:exact-reviewed-support','treasury-cosmetic:exact-reviewed-support'].includes(key)).every(([,ok])=>ok)&&sources211['discord:exact-reviewed-support']===false&&sources211['treasury-cosmetic:exact-reviewed-support']===false&&discord222.qualified&&discord222.negativeControls&&branch224.qualified&&branch224.negativeControls,{sources211,discord222,branch224});
   console.log('RETAINED211_DISCORD_RAW_SEAL false; finite222 type-only runtime parity '+discord222.qualified);
-  for (const row of require('./source224-branch-name-projection.cjs').driftControls224(SRC)) check('.211 identity reconstruction refuses ' + row.source + ' ' + row.name, row.refused);
+  for (const row of drift224) check('.211 identity reconstruction refuses ' + row.source + ' ' + row.name, row.refused);
 
   // --- static: whole reviewed .164 integrated sources; the lane modules are never part of a module-load cycle
   for (const name of PROTECTED) check(['role-settlements', 'privacy-global-serving-origin'].includes(name) ? `${name}.ts reconstructs accepted H16 through exact .211 contexts before unchanged historical whole seals` : SOURCE196_COMPAT[name] ? `${name}.ts reconstructs the reviewed .164 whole source through exact pinned .196 contextual reversals only` : `${name}.ts is byte-identical to the reviewed .164 integrated source`, sourceDigest(name) === PINS.files[name]);
   // .198: the owner-approved absent empty duplicate changes three qualification
   // contexts only. Historical file seals and every dynamic trace below stay fixed.
   // Historical intermediate controls inspect reconstructed text only; no old code executes.
-  const role198Raw = source211.original211Source('role-settlements', fs.readFileSync(path.join(SRC, 'role-settlements.ts'), 'utf8')) ?? '', role198Pin = SOURCE198_ROLE_SETTLEMENTS;
+  const role198Raw = source211.original211Source('role-settlements', source227.inverse('role-settlements',fs.readFileSync(path.join(SRC, 'role-settlements.ts'), 'utf8'))??'') ?? '', role198Pin = SOURCE198_ROLE_SETTLEMENTS;
   check('.198 role compatibility accepts only the exact raw source and three unique reviewed contexts', sha(role198Raw) === role198Pin.exactCurrentRawSHA256 && role198Pin.edits.length === 3 && role198Pin.edits.every(edit => edit.count === 1 && role198Raw.split(edit.from).length === 2) && source196HistoricalDigest('role-settlements', role198Raw) === PINS.files['role-settlements']);
   const role197Raw = role198Pin.edits.reduce((raw, edit) => raw.replace(edit.from, edit.to), role198Raw);
   check('.198 role compatibility reconstructs the entire accepted .197 source before all unchanged historical seals', sha(role197Raw) === role198Pin.exact197RawSHA256 && source196HistoricalDigest('role-settlements', role197Raw) === PINS.files['role-settlements']);
@@ -472,6 +481,17 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
     const pin = PINS.traces[phase][profile][scenario];
     for (const variant of Object.keys(VARIANTS)) {
       const r = await runOnce(phase, profile, variant, scenario), where = `${phase}/${profile}/${scenario}/${variant}`, lane = laneOf(r);
+      if(scenario==='ingest'){
+        const rawTraceSHA=sha(r.trace),historical=source227.traceInverse(r.trace,1);
+        check(where+': exact single readonly roster-query inverse preserves raw current trace',historical!==r.trace&&historical.length===r.trace.length&&sha(r.trace)===rawTraceSHA);
+        if(variant==='absent')console.log('RETAINED227_RAW_TRACE '+phase+'/'+profile+' '+sha(JSON.stringify(legacyOfBefore227(r))));
+        if(phase==='pre'&&profile==='plain'&&variant==='absent'){
+          for(const control of source227.traceControls(r.trace))check('.227 trace inverse refuses '+control.name,control.refused);
+          const at=r.trace.findIndex(e=>e.tag==='legacy'&&e.k==='sql'),next=r.trace.findIndex((e,i)=>i>at&&e.tag==='legacy'&&JSON.stringify(e)!==JSON.stringify(r.trace[at]));
+          const changedBind=r.trace.map((e,i)=>i===at?{...e,params:[...e.params,'unrelated227']}:e),reordered=r.trace.slice();[reordered[at],reordered[next]]=[reordered[next],reordered[at]];
+          for(const[name,trace]of[['unrelated bind',changedBind],['unrelated event order',reordered],['additional SQL',[...r.trace,{k:'sql',tag:'legacy',sql:'SELECT 1 AS unrelated227',params:[]}]]])check('.227 whole historical oracle refuses '+name,!same(digestOf({...r,trace}),pin));
+        }
+      }else if(phase==='pre'&&profile==='plain'&&variant==='absent'&&scenario==='queue')check('.227 query inverse leaves non-ingest traces untouched',source227.traceInverse(r.trace)===r.trace);
       check(`${where}: no deferred work threw`, r.errors.length === 0, r.errors);
       const banContext={phase,profile,variant,pin,mask,digestOf};
       const banResult=scenario==='ban'?ban210.inspect(r,banContext):null;

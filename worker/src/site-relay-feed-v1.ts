@@ -4,6 +4,14 @@
  */
 export const RELAY_GUILDS_V1 = Object.freeze(['Olympus', 'Olympus I', 'Olympus II', 'Olympus III', 'Olympus IV', 'Olympus V', 'Olympus VI', 'Olympus VII', 'Olympus VIII', 'Olympus IX', 'Olympus X'] as const);
 export const RELAY_POLICY_V1 = Object.freeze({ scope: 'forever-pve-alliance', charactersSeconds: 1800, onlineSeconds: 900, clockSkewSeconds: 5, maximumBytes: 16384, maximumCount: 1000, pollSeconds: 300, requestLifetimeSeconds: 60, finalized: false } as const);
+/** Daniel's confirmation supplied by the owner on 3 November 2026. These are
+ * agreed integration targets, not evidence that the producer is deployed. */
+export const RELAY_ENDPOINT_V1 = 'https://olympus-guild.web.app/companion/v1/site/aggregates?v=1&scope=forever-pve-alliance';
+export const RELAY_PRODUCER_COMMITMENTS_V1 = Object.freeze({ rawObservationSeconds: 86400, securityLogSeconds: 2592000, encryptedBackupSeconds: 2592000, primaryErasureSeconds: 86400, gmVerificationGraceSeconds: 172800, hs1MaximumAgeSeconds: null } as const);
+/** Only the future reviewed server caller may attest these gates. In particular,
+ * a confirmed URL or a valid local fixture cannot qualify producer behaviour. */
+export const RELAY_PENDING_READINESS_V1 = Object.freeze({ producerQualified: false, replayQualified: false, erasureRestoreQualified: false, hs1LifecycleQualified: false, cachePrivacyBudgetQualified: false, keyRegistrationConfirmed: false, rolloutAuthorized: false });
+export type RelayReadinessV1 = { [K in keyof typeof RELAY_PENDING_READINESS_V1]: boolean };
 const REASONS = ['not-observed', 'no-quorum', 'no-fresh-quorum', 'conflict', 'expired', 'revoked', 'deleted', 'withdrawn', 'complementary-small-group'] as const;
 export interface SourceTime { notBefore: number; notAfter: number }
 export type RelayMetric = { status: 'available'; value: number; precision: 'exact' | 'approximate'; sourceTime: SourceTime; validUntil: number }
@@ -186,4 +194,60 @@ export async function createRelayRequestV1(config: FeedRequestConfigV1, now: num
   const input = header + '.' + claims, signature = new Uint8Array(await crypto.subtle.sign('Ed25519', config.privateKey, new TextEncoder().encode(input)));
   const sig = btoa(String.fromCharCode(...signature)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   return { authorization: 'Bearer ' + input + '.' + sig, target: url.href };
+}
+
+export interface ConfirmedRelayPollConfigV1 extends FeedRequestConfigV1 { mappingVersion: number; readiness?: RelayReadinessV1 }
+export type RelayTransportV1 = (request: Request) => Promise<Response>;
+/** A server-only polling boundary, still deliberately unmounted. Config defaults
+ * to held: every readiness gate must be independently qualified before a caller
+ * can use credentials. A single poll never retries, stores a snapshot or grants
+ * a role. The caller must persist the complete returned cache through its
+ * reviewed admission/privacy boundary, not write individual guild rows. */
+export async function pollConfirmedRelayFeedV1(config: ConfirmedRelayPollConfigV1, prior: RelayCacheV1 | null, now: number, transport: RelayTransportV1 = request => fetch(request), signal?: AbortSignal): Promise<RelayCacheV1> {
+  need(config.enabled === true && config.contractFinalized === true && config.nativeMappingConfirmed === true, 'feed_disabled_or_unfinalized');
+  need(config.endpoint === RELAY_ENDPOINT_V1 && integer(now, 1) && integer(config.mappingVersion, 1), 'invalid_confirmed_configuration');
+  const readiness = config.readiness ?? RELAY_PENDING_READINESS_V1;
+  keys(readiness, Object.keys(RELAY_PENDING_READINESS_V1));
+  need(Object.keys(RELAY_PENDING_READINESS_V1).every(key => readiness[key as keyof RelayReadinessV1] === true), 'feed_launch_evidence_pending');
+  // Validate the previous object before putting its ETag in a credential-bearing
+  // request. Validation at its original acquisition does not refresh its age.
+  if (prior) {
+    need(integer(prior.acquiredAt, 1, now) && strongEtag(prior.etag) && prior.canonical === JSON.stringify(validateRelaySnapshotV1(prior.snapshot, prior.acquiredAt, config.mappingVersion)), 'invalid_prior');
+  }
+  need(!signal?.aborted, 'response_timeout');
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  const timer = setTimeout(abort, 8000);
+  signal?.addEventListener('abort', abort, { once: true });
+  let rejectAbort: ((reason: Error) => void) | undefined;
+  const aborted = new Promise<never>((_, reject) => { rejectAbort = reject; });
+  const failAbort = () => rejectAbort?.(new RelayFeedRefusal('response_timeout'));
+  controller.signal.addEventListener('abort', failAbort, { once: true });
+  if (signal?.aborted) abort();
+  try {
+    const signed = await Promise.race([createRelayRequestV1(config, now), aborted]);
+    need(!controller.signal.aborted, 'response_timeout');
+    const headers = new Headers({ accept: 'application/json', authorization: signed.authorization });
+    if (prior) headers.set('if-none-match', prior.etag);
+    // Workers has no ambient cookie jar; only these fresh headers are sent.
+    // Keep the standard omit hint for portable transports, although Workers'
+    // narrower RequestInit declaration does not expose that browser field.
+    const init: RequestInit & { credentials: 'omit' } = { method: 'GET', headers, redirect: 'error', cache: 'no-store', credentials: 'omit', signal: controller.signal };
+    const request = new Request(RELAY_ENDPOINT_V1, init);
+    const pending = transport(request);
+    // A custom/failing transport can ignore AbortSignal. Still bound our wait,
+    // and cancel a body that arrives after the poll has already been abandoned.
+    void pending.then(response => { if (controller.signal.aborted && response.body) void response.body.cancel().catch(() => {}); }, () => {});
+    const response = await Promise.race([pending, aborted]);
+    return await consumeRelayResponseV1(response, prior, now, config.mappingVersion, controller.signal);
+  } catch (error) {
+    // Provider exceptions can contain a credential-bearing URL or header. Only
+    // fixed refusal codes escape this boundary; do not log auth/JWS/JTI here.
+    if (error instanceof RelayFeedRefusal) throw error;
+    throw new RelayFeedRefusal('relay_transport_failed');
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', abort);
+    controller.signal.removeEventListener('abort', failAbort);
+  }
 }

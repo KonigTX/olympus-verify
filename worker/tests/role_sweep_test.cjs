@@ -45,6 +45,9 @@ stubs['./membership-role-transition']=membershipMod.exports;
 // Shared source scope constants are a real dependency; keep all historical checks unchanged.
 const betaPolicyMod={exports:{}};new Function('module','exports','require',ts.transpileModule(fs.readFileSync(path.join(__dirname,'..','src','beta-reset-policy.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(betaPolicyMod,betaPolicyMod.exports,()=>{throw Error('unexpected beta policy runtime import');});
 stubs['./beta-reset-policy']=betaPolicyMod.exports;
+// .227: keep the actual launch gate in this legacy fixture; never replace the
+// production mode/source guards with a permissive constant test stub.
+stubs['./launch-verification227']=entry.load('launch-verification227');
 
 const rolesJs = ts.transpileModule(fs.readFileSync(path.join(__dirname, "..", "src", "roles.ts"), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
 const rolesMod = { exports: {} };

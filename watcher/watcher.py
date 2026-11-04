@@ -45,6 +45,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import codes  # noqa: E402
 import savedvars  # noqa: E402
 from custody_recovery import StateLease  # noqa: E402
+from treasury_receipts227 import TreasuryJournal, normalize_name as treasury_name, parse_note as treasury_note  # noqa: E402
+from native_membership227 import parse_membership_note, validate_membership  # noqa: E402
 
 # The sender is a character name, never a channel tag or a UI escape. Since patch 12.1 code shipped to this client,
 # Blizzard's Discord bridge can relay a Discord user's text into guild chat, and a Discord display name is free text:
@@ -101,7 +103,7 @@ LINE_TS_RE = re.compile(r"^(?P<mo>\d{1,2})/(?P<d>\d{1,2})\s+(?P<h>\d{1,2}):(?P<m
 CLIENT_IN = "Active Player Created"
 CLIENT_OUT = ("Client Object Manager Destroyed", "Client Destroy")
 
-WATCHER_VERSION = "0.6.11"
+WATCHER_VERSION = "0.6.12"
 
 
 # Where a relay character may come from: a login note addressed to the name it carries (a whisper the server delivered),
@@ -267,7 +269,13 @@ class Worker:
             log(f"worker {method}: refused a request path that is not local to the origin")
             return False, "invalid_path"
         data = None if body is None else json.dumps(body).encode("utf-8")
-        req = urllib.request.Request(self.base + path, data=data, method=method)
+        wire_path = path
+        if getattr(self, 'membership_only', False) and ((method == 'GET' and path.split('?', 1)[0] == '/queue') or (method == 'POST' and path in ('/ingest/verify', '/ingest/roster', '/ingest/events'))):
+            # A pre-launch Worker refuses keyVersion before touching the queue
+            # or ingestion. This also fences a binary rollback after startup's
+            # health check; an ignored proof can never become a legacy grant.
+            wire_path += ('&' if '?' in wire_path else '?') + 'keyVersion=launch-membership-v1'
+        req = urllib.request.Request(self.base + wire_path, data=data, method=method)
         req.add_header("Authorization", f"Bearer {self.token}")
         req.add_header("Content-Type", "application/json")
         req.add_header("User-Agent", f"olympus-verify-watcher/{WATCHER_VERSION}")
@@ -300,6 +308,19 @@ class Worker:
                     seconds = max(self.PAUSE_AUTH if code in (401, 403) else self.PAUSE_RATE, self._retry_after(e.headers)) + random.uniform(0, 1)
                     self._pause_for(code, seconds, f"worker {method} {path} -> {code} " + ("(check watcher_token); all requests paused for at least 15 minutes" if code in (401, 403) else "rate limited; all requests paused until the Worker's deadline"))
                     return False, {"httpStatus": code, "retryAfterSeconds": math.ceil(float(self._pause_data()["worker_retry_at"]) - time.time())}
+                if code == 409 and method == "POST" and path == "/ingest/verify":
+                    # .227: a known closed-request refusal is not an unknown
+                    # provider effect. Settle this original so it cannot block all
+                    # other applicants, but keep its code deduplicated. A fresh
+                    # code/actual whisper is needed after roster reconciliation.
+                    try:
+                        raw = e.read(4097)
+                        refused = json.loads(raw) if len(raw) <= 4096 else None
+                        if isinstance(refused, dict) and set(refused) == {"result", "error", "roleGranted", "inviteQueued", "pendingConsumed", "requestRefused"} and refused.get("result") == "membership_not_confirmed" and all(refused.get(key) is False for key in ("roleGranted", "inviteQueued")) and refused.get("pendingConsumed") is True and refused.get("requestRefused") is True:
+                            log("worker verify -> membership not confirmed; request closed without a role or invite")
+                            return True, {"result": "membership_not_confirmed", "roleGranted": False, "inviteQueued": False, "pendingConsumed": True, "requestRefused": True}
+                    except (ValueError, OSError, http.client.HTTPException):
+                        pass  # Any other/unknown refusal retains the original.
                 if 400 <= code < 500:
                     # the Worker understood and rejected it; retrying will not change the answer. Its body is not logged.
                     log(f"worker {method} {path} -> {code}")
@@ -316,6 +337,10 @@ class Worker:
 
 class NoCustody(RuntimeError):
     """Stop consuming the source: no retained original owns this work yet."""
+
+
+class LaunchNotReady(RuntimeError):
+    """No ingestion into an older/unqualified Worker that ignores native proof."""
 
 
 class CustodyStopped(RuntimeError):
@@ -427,10 +452,20 @@ class Watcher:
         self.worker = Worker(cfg["worker_url"], cfg["watcher_token"])
         self.secret = cfg["verify_secret"]
         self.officer = cfg.get("officer_character", "")
+        self.membership_only = cfg.get("membership_only", False)
+        if type(self.membership_only) is not bool:
+            raise ValueError("membership_only must be a boolean")
+        self.worker.membership_only = self.membership_only
+        self._native_membership: dict[str, dict[str, Any]] = {}
         # Identity used to claim invites, so two officers running the addon do not both invite the same applicant.
         # Defaults to the officer character, normalized, which is unique per officer and needs no extra configuration.
         self.officer_id = str(cfg.get("officer_id") or codes.normalize_character(self.officer) or "").strip()[:64]
         self.state = State(Path(cfg.get("state_file", "watcher-state.json")))
+        # Local unclassified receipts are independent of network/role dispatch and
+        # commit before the chat/SavedVariables cursor. The owner named this exact
+        # collector (3 Nov 2026); neither branch names nor a Discord ID are inferred.
+        self.treasury = TreasuryJournal(self.state.path.with_name(self.state.path.stem + ".treasury-receipts227.json"), str(cfg.get("treasury_recipient", "Fern Melder")), cfg.get("treasury_retention_days", 30))
+        self._treasury_purged_at = 0.0
         self.worker.pause_state = self.state  # 0.6.5: the transport pause is kept with the rest of the state
         # 0.6.9: floors, so a tiny interval cannot turn the loop into a request storm against the Worker (650 requests
         # in 8 s). 0.6.10: zero, negative and non-numbers are refused at startup instead of being floored without a word.
@@ -701,6 +736,8 @@ class Watcher:
         for line in lines:
             if "ref OLVg-" in line:
                 self.read_identity(line)
+            if "ref OLVm-" in line:
+                self.read_native_membership(line)
         for line in lines:
             self.handle_chat_line(line)
         self.state.d["chat_offset"] = off + consumed
@@ -713,7 +750,7 @@ class Watcher:
         if "OLVDIAG" in line and OUT_WHISPER_RE.match(line):
             # only the officer's own outgoing lines: anyone can whisper or emote the word
             self.note_diag_line(line)
-        if self.handle_signed_join(line) or self.handle_signed_leave(line) or self.handle_signed_relay(line) or self.handle_signed_identity(line):
+        if self.handle_signed_membership(line) or self.handle_signed_treasury(line) or self.handle_signed_join(line) or self.handle_signed_leave(line) or self.handle_signed_relay(line) or self.handle_signed_identity(line):
             return
         m = WHISPER_RE.match(line)
         if not m:
@@ -738,9 +775,18 @@ class Watcher:
         if self.state.was_seen(key):
             self.note_ticket_reuse(sender, code)
             return
+        native = self._native_membership.get(key)
+        if self.membership_only and (not native or validate_membership(self.secret, sender, native.get("guid"), code, native.get("nativeMembership"), int(time.time())) is None):
+            # The following authenticated self-note or SavedVariables fallback
+            # will relay this actual whisper. An old GUID note is not current
+            # membership and the host never invents a positive assertion.
+            return
         self.note_ticket_sender(sender, code)
         body = {"character": sender, "code": code, "source": "whisper", "ts": int(time.time()), "officer": self.officer}
         guid = self.identity_of(sender)
+        if self.membership_only and native:
+            guid = native["guid"]
+            body["nativeMembership"] = native["nativeMembership"]
         if guid:
             body["guid"] = guid
         log(f"whisper from {sender}: valid {'request ' if kind == 'ticket' else ''}code, forwarding{' (character ID known)' if guid else ''}")
@@ -1125,8 +1171,81 @@ class Watcher:
         self._post_claimed("/ingest/events", {"events": [ev]}, f"{ev['type']} {ev['name']}", [key])
         self.state.save()
 
+    def read_native_membership(self, line: str) -> dict[str, Any] | None:
+        outgoing = OUT_WHISPER_RE.match(line)
+        if not outgoing or "ref OLVm-" not in outgoing.group("text"):
+            return None
+        if codes.normalize_character(outgoing.group("name")) != codes.normalize_character(self.officer):
+            return None
+        row = parse_membership_note(outgoing.group("text").strip())
+        if row is None or not codes.code_kind(self.secret, row["character"], row["code"]):
+            return None
+        at = int(time.time())
+        proof = validate_membership(self.secret, row["character"], row["guid"], row["code"], row["nativeMembership"], at)
+        if proof is None:
+            return None
+        self._native_membership = {key: value for key, value in self._native_membership.items() if at - 600 < value["nativeMembership"]["observedAt"] <= at + 5}
+        key = self.code_key("w", row["character"], row["code"])
+        prior = self._native_membership.get(key)
+        if (prior is not None or len(self._native_membership) < 1000) and (prior is None or prior["nativeMembership"]["observedAt"] <= proof["observedAt"]):
+            self._native_membership[key] = row
+        return self._native_membership.get(key, row)
+
+    def handle_signed_membership(self, line: str) -> bool:
+        outgoing = OUT_WHISPER_RE.match(line)
+        if not outgoing or "ref OLVm-" not in outgoing.group("text"):
+            return False
+        row = self.read_native_membership(line)
+        if not self.membership_only or row is None:
+            return True
+        key = self.code_key("w", row["character"], row["code"])
+        if self.state.was_seen(key):
+            return True
+        self.note_ticket_sender(row["character"], row["code"])
+        body = {**row, "source": "whisper", "ts": row["nativeMembership"]["observedAt"], "officer": self.officer}
+        self._post_claimed("/ingest/verify", body, "native membership verification", [key])
+        self.state.save()
+        return True
+
+    def handle_signed_treasury(self, line: str) -> bool:
+        outgoing = OUT_WHISPER_RE.match(line)
+        if not outgoing or "ref OLVt-" not in outgoing.group("text"):
+            return False
+        recipient = outgoing.group("name").strip()
+        if treasury_name(recipient) != treasury_name(self.treasury.recipient):
+            return True
+        event = treasury_note(outgoing.group("text").strip(), recipient)
+        if event is None:
+            log("treasury: invalid signed receipt format (not recorded)")
+            return True
+        self.record_treasury_receipt(event, "signed-chat")
+        return True
+
+    def record_treasury_receipt(self, event: dict[str, Any], source: str) -> None:
+        try:
+            result = self.treasury.record(event, self.secret, source)
+        except (OSError, ValueError) as error:
+            # Do not advance the source cursor when the independent disk receipt
+            # is uncertain. No sender, amounts, MACs or filesystem errors in logs.
+            raise NoCustody("treasury receipt custody unavailable; source retained") from error
+        if result == "recorded":
+            log("treasury: unclassified transfer recorded locally; no tithe credit or role applied")
+        elif result == "refused":
+            log("treasury: receipt authentication or bounds refused (not recorded)")
+
+    def purge_treasury_receipts(self) -> None:
+        current = time.time()
+        if current - self._treasury_purged_at < 3600:
+            return
+        try:
+            self.treasury.purge(int(current))
+        except (OSError, ValueError) as error:
+            raise NoCustody("treasury retention custody unavailable; source retained") from error
+        self._treasury_purged_at = current
+
     # ---------- 2. SavedVariables ----------
     def check_savedvars(self) -> None:
+        self.purge_treasury_receipts()
         if not self.sv_file.exists():
             return
         mtime = self.sv_file.stat().st_mtime
@@ -1141,6 +1260,12 @@ class Watcher:
             self.state.save()
             return
         db = data.get("OlympusVerifyDB") or {}
+        treasury = db.get("treasury") or {}
+        receipts = treasury.get("receipts") if isinstance(treasury, dict) else None
+        if isinstance(receipts, list):
+            for receipt in receipts:
+                if isinstance(receipt, dict) and receipt.get("status") == "confirmed_local" and receipt.get("classification") == "unclassified_receipt":
+                    self.record_treasury_receipt(receipt, "savedvariables")
         self.note_saved_relay(db, mtime)
         self.forward_events(db.get("events") or [])
         self.forward_roster(db.get("roster") or {})
@@ -1168,6 +1293,11 @@ class Watcher:
                 if strict:
                     self.note_ticket_sender(name, strict)
                 body = {"character": name, "code": strict or raw, "source": t, "ts": ts, "officer": self.officer}
+                if self.membership_only:
+                    proof = validate_membership(self.secret, name, e.get("guid"), strict or raw, e.get("nativeMembership"), int(time.time()))
+                    if proof is None:
+                        continue
+                    body["nativeMembership"] = proof
                 if codes.is_guid(e.get("guid")):
                     body["guid"] = e["guid"]  # the addon read it from the whisper event itself
                 log(f"{t} from {name} (SavedVariables): forwarding")
@@ -1234,7 +1364,18 @@ class Watcher:
     def forward_roster(self, roster: dict[str, Any]) -> None:
         exported = int(roster.get("exportedAt") or 0)
         members = roster.get("members") or []
-        if not exported or exported <= self.state.d["roster_sent"] or not isinstance(members, list):
+        native_scope = {}
+        for field in ("nativeGuild", "nativeRealm"):
+            value = roster.get(field)
+            if isinstance(value, str) and 0 < len(value.encode("utf-8")) <= 128 and not any(ord(c) < 32 or ord(c) == 127 for c in value):
+                native_scope[field] = value
+        # Scope is part of source identity, including an otherwise identical
+        # export at the same second. Never let an older export replace a newer
+        # one, and retain old unscoped watermarks without an unsolicited replay.
+        scope_hash = hashlib.sha256(json.dumps(native_scope, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
+        prior_scope_hash = self.state.d.get("roster_scope_hash")
+        same_scope = prior_scope_hash == scope_hash or prior_scope_hash is None and not native_scope
+        if not exported or exported < self.state.d["roster_sent"] or exported == self.state.d["roster_sent"] and same_scope or not isinstance(members, list):
             return
         payload = {
             "exportedAt": exported,
@@ -1254,12 +1395,21 @@ class Watcher:
                 if isinstance(m, dict) and m.get("name")
             ],
         }
+        # Preserve actual client scope; the host never manufactures a guild/realm
+        # from its configuration or a character claim. The Worker pins it before
+        # admitting a launch roster. Older addons remain unscoped, not guessed.
+        payload.update(native_scope)
         log(f"roster ({len(payload['members'])} members, exported {exported})")
         previous_watermark = self.state.d["roster_sent"]
         self.state.d["roster_sent"] = exported  # committed atomically with custody, before any dispatch
+        self.state.d["roster_scope_hash"] = scope_hash
         outcome = self.post("/ingest/roster", payload, f"roster {exported}")
         if outcome is Delivery.NO_CUSTODY:
             self.state.d["roster_sent"] = previous_watermark
+            if prior_scope_hash is None:
+                self.state.d.pop("roster_scope_hash", None)
+            else:
+                self.state.d["roster_scope_hash"] = prior_scope_hash
             raise NoCustody("roster source paused until original custody is available")
         if outcome is Delivery.DELIVERED:
             self._last_unverified_pull = 0.0  # the list is derived from the roster: refresh it on the next queue pull
@@ -1308,6 +1458,14 @@ class Watcher:
             return
         self._last_queue_pull = time.time()
         if self._custody_halted:
+            return
+        if self.membership_only:
+            # No legacy invite claim, render, file write or /queue/written ACK.
+            # Presence remains useful to Get my code's whisper instructions.
+            path = "/queue" + (f"?officer={urllib.parse.quote(self.officer_id)}{self.presence_query()}&presenceOnly=1" if self.officer_id else "?presenceOnly=1")
+            okay, response = self.worker.call("GET", path, retries=1)
+            if not okay or not isinstance(response, dict) or response.get("presenceOnly") is not True:
+                log("launch presence poll not confirmed; legacy invitation data remains untouched")
             return
         if self.state.d.get("queue_written_pending") or self.state.d.get("queue_written_original"):
             self.retry_queue_written()
@@ -1509,7 +1667,16 @@ class Watcher:
                 log("request codes: " + ("on — Get my code hands them out" if rel.get("requestCodes") else "waiting — the button asks for a character name until an addon 0.6.0+ has checked in"))
         return 0 if ok else 1
 
+    def require_launch_worker(self) -> None:
+        if not self.membership_only:
+            return
+        okay, response = self.worker.call("GET", "/health", retries=1)
+        state = response.get("verification") if okay and isinstance(response, dict) and response.get("ok") is True else None
+        if not isinstance(state, dict) or state.get("mode") != "members-only" or state.get("nativeScopePinned") is not True or type(state.get("nativeMembershipProofVersion")) is not int or state["nativeMembershipProofVersion"] != 1:
+            raise LaunchNotReady("launch verification Worker/profile is not ready; ingestion was not started")
+
     def run(self) -> None:
+        self.require_launch_worker()
         log(f"watcher {WATCHER_VERSION}: watching {self.chat_log} and {self.sv_file}")
         while True:
             try:
@@ -1567,6 +1734,9 @@ def main() -> int:
     except CustodyStopped:
         log("local custody persistence stopped; inspect storage and restart with the same state and configuration")
         return 2
+    except LaunchNotReady:
+        log("launch verification Worker/profile is not ready; no ingestion started. Configure the reviewed live native scope before starting this collector.")
+        return 3
     except ValueError as e:  # invalid configuration/state remains refused before dispatch
         log(f"config: {e}")
         return 2

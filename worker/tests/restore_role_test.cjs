@@ -1,6 +1,7 @@
 // Loads the REAL src/restore.ts (transpiled by TypeScript itself) with its imports stubbed.
 // Run from the worker folder:  node tests/restore_role_test.cjs
 const fs = require("fs"), path = require("path"), ts = require("typescript");
+const entry = require('./helpers/privacy129_fixture.cjs');
 const src = fs.readFileSync(path.join(__dirname, "..", "src", "restore.ts"), "utf8");
 const js = ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
 
@@ -24,6 +25,9 @@ stubs['./membership-role-transition']=membershipMod.exports;
 // Shared source scope constants are a real dependency; keep all historical checks unchanged.
 const betaPolicyMod={exports:{}};new Function('module','exports','require',ts.transpileModule(fs.readFileSync(path.join(__dirname,'..','src','beta-reset-policy.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(betaPolicyMod,betaPolicyMod.exports,()=>{throw Error('unexpected beta policy runtime import');});
 stubs['./beta-reset-policy']=betaPolicyMod.exports;
+// .227: execute the real launch-mode capture, including its fail-closed parser,
+// rather than leaving a newly imported production dependency undefined.
+stubs['./launch-verification227']=entry.load('launch-verification227');
 
 const rolesJs = ts.transpileModule(fs.readFileSync(path.join(__dirname, "..", "src", "roles.ts"), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
 const rolesMod = { exports: {} };

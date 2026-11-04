@@ -33,13 +33,18 @@ SUITES = {
     "queue_dismiss": (TESTS, Path("test_queue_dismiss.lua")),
     "stats_pilot": (TESTS, Path("test_stats_pilot.lua")),
     "army_stats": (TESTS, Path("test_army_stats.lua")),
+    "treasury227": (TESTS, Path("test_treasury227.lua")),
+    "membership_only227": (TESTS, Path("test_membership_only227.lua")),
+    "native_roster_scope227": (TESTS, Path("test_native_roster_scope227.lua")),
+    "per_whisper_membership227": (TESTS, Path("test_per_whisper_membership227.lua")),
+    "membership_queue_hold227": (TESTS, Path("test_membership_queue_hold227.lua")),
 }
 
 
 def input_hashes() -> dict[str, str]:
     paths = [
         ADDON / "OlympusVerify" / name
-        for name in ("OlympusVerify.lua", "OlympusVerifyUI.lua", "OlympusVerifyPreview.lua", "OlympusVerifyRoster.lua", "OlympusVerifyGuild.lua", "OlympusVerifyRanks.lua", "OlympusVerify.toc", "Libs/OlympusHmac.lua", "Libs/OlympusQr.lua", "OlympusVerifyBrowser.lua")
+        for name in ("OlympusVerify.lua", "OlympusVerifyUI.lua", "OlympusVerifyPreview.lua", "OlympusVerifyRoster.lua", "OlympusVerifyGuild.lua", "OlympusVerifyRanks.lua", "OlympusVerify.toc", "Libs/OlympusHmac.lua", "Libs/OlympusQr.lua", "OlympusVerifyBrowser.lua", "OlympusVerifyTreasury.lua")
     ]
     paths.extend([TESTS / "wow_mock.lua", Path(__file__).resolve()])
     paths.extend(cwd / script for cwd, script in SUITES.values())
