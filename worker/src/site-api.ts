@@ -12,7 +12,7 @@ import { requestServingErasure, erasureRequestStatus, privacyBoundSiteEnv,readEr
  * caller's own, and no count of votes of any kind.
  */
 import { errorRef } from "./log";
-import { APPLICATION_EDIT_FIELDS_219, applicationEditToken219, openApplication219 } from './application-edit219';
+import { APPLICATION_EDIT_FIELDS_219, applicationEditToken219, applicationEditValues219, matchesApplicationEditToken219, openApplication219 } from './application-edit219';
 import type { Env } from "./env";
 import type { RulesetSnapshot } from "./ruleset-profile";
 import { audit, now } from "./db";
@@ -540,7 +540,7 @@ async function saveApplication(env: Env, user: SiteUser, body: Record<string, un
   // A pre-.219 tab must reload before editing an existing record. An absent
   // token cannot prove which answers the applicant actually opened.
   if (existing && !Object.hasOwn(body,'editToken')) return apiJson({error:'stale_application',message:'Reload your application before editing it. Your saved answers remain unchanged.'},409);
-  if (Object.hasOwn(body, 'editToken') && (existing ? body.editToken !== await applicationEditToken219(existing) : body.editToken !== null)) {
+  if (Object.hasOwn(body, 'editToken') && (existing ? !await matchesApplicationEditToken219(existing, body.editToken) : body.editToken !== null)) {
     return apiJson({ error: 'stale_application', message: 'Your application changed since this editor opened. Reload it before saving so another edit is not overwritten.' }, 409);
   }
 
@@ -596,7 +596,13 @@ async function saveApplication(env: Env, user: SiteUser, body: Record<string, un
   }
   if (changed) a.answers = JSON.stringify(answers);
   const t = now();
-  const expected = (prefix = '') => APPLICATION_EDIT_FIELDS_219.map((key, index) => `${prefix}${key} IS ?${21 + index}`).join(' AND ');
+  const expected = (prefix = '') => APPLICATION_EDIT_FIELDS_219.map((key, index) => {
+    const column = prefix + key;
+    // Match the applicant token's open class while leaving the stored status to staff.
+    const value = key === 'status' ? `CASE WHEN ${column} = 'reviewing' THEN 'submitted' ELSE ${column} END` : column;
+    return `${value} IS ?${21 + index}`;
+  }).join(' AND ');
+  const expectedValues = existing ? applicationEditValues219(existing) : APPLICATION_EDIT_FIELDS_219.map(() => null);
   const original = `((?40=1 AND EXISTS(SELECT 1 FROM site_applications WHERE discord_id=?1 AND ${expected()})) OR (?40=0 AND NOT EXISTS(SELECT 1 FROM site_applications WHERE discord_id=?1)))`;
   // Master QA, 28 Oct 2026: a settings pause can commit during the awaited
   // reference lookup. Admit both inserts and edits against the live switches
@@ -613,7 +619,7 @@ async function saveApplication(env: Env, user: SiteUser, body: Record<string, un
        status = CASE WHEN site_applications.status = 'withdrawn' THEN 'submitted' ELSE site_applications.status END
      WHERE site_applications.status NOT IN ('accepted','declined') AND ${existing ? expected('site_applications.') : '0'}`,
   )
-    .bind(user.discord_id, a.position, a.class_lead, a.backup1, a.backup2, a.fallback, a.character, a.char_key, a.class, a.role, a.region, a.avail, a.avail_tz, a.fit_na, a.fit_eu, a.board ? 1 : 0, a.answers, t, answers.applicationTrack ?? '', retainingPatron ? 1 : 0, ...APPLICATION_EDIT_FIELDS_219.map(key => existing?.[key] ?? null), existing ? 1 : 0)
+    .bind(user.discord_id, a.position, a.class_lead, a.backup1, a.backup2, a.fallback, a.character, a.char_key, a.class, a.role, a.region, a.avail, a.avail_tz, a.fit_na, a.fit_eu, a.board ? 1 : 0, a.answers, t, answers.applicationTrack ?? '', retainingPatron ? 1 : 0, ...expectedValues, existing ? 1 : 0)
     .run();
   // .114 (Codex, log 19:56 UTC): a decision that landed while this save was being prepared (the read above, the reference
   // labels) wins: the decided application is not overwritten with answers nobody reviewed, and the member is told so.

@@ -8,8 +8,8 @@ async function applicationEdit219(){
  await siteUser(OTHER,{global_name:'Other applicant'});await character(OTHER,'Other One','Player-219-0002');
  await siteUser(STAFF);
  const schemaBefore=JSON.stringify(db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").all());
- const request=async(method,url,body,who=MEMBER)=>{
-  const response=await indexMod.default.fetch(new Request('https://guild.example'+url,{method,headers:{Cookie:await cookieFor(who),Origin:'https://guild.example','X-Olympus':siteCore.PAGE_VERSION,...(body===undefined?{}:{'Content-Type':'application/json'})},...(body===undefined?{}:{body:JSON.stringify(body)})}),env(),ctx);
+ const request=async(method,url,body,who=MEMBER,headers={},native)=>{
+  const response=await indexMod.default.fetch(new Request('https://guild.example'+url,{method,headers:{Cookie:await cookieFor(who),Origin:'https://guild.example','X-Olympus':siteCore.PAGE_VERSION,...(body===undefined?{}:{'Content-Type':'application/json'}),...headers},...(body===undefined?{}:{body:JSON.stringify(body)})}),env(native?{DB:native}:{}),ctx);
   return {status:response.status,body:await response.clone().json().catch(()=>null)};
  };
  const saved=()=>one('SELECT * FROM site_applications WHERE discord_id=?',MEMBER);
@@ -21,7 +21,7 @@ async function applicationEdit219(){
  await fixtureRun("UPDATE site_applications SET status='reviewing',reviewed_at=?,reviewed_by=?,admin_note='' WHERE discord_id=?",now-10,STAFF,MEMBER);
  await fixtureRun("INSERT INTO site_settings(key,value,updated_at) VALUES('applicationsOpen','0',1) ON CONFLICT(key) DO UPDATE SET value='0'");
  let me=await request('GET','/api/me'),token=me.body.application.editToken;
- check('review state changes the own token without disclosing staff notes',token!==initialToken&&!Object.hasOwn(me.body.application,'adminNote'));
+ check('review status alone preserves the own token without disclosing staff notes',token===initialToken&&!Object.hasOwn(me.body.application,'adminNote'));
  const staff=await openPage(STAFF);let staffPosts=0;
  staff.before((p,i)=>{if(p.endsWith('/status')&&i.method==='POST')staffPosts++;return false;});
  await staff.go('#/admin/applications/'+MEMBER);
@@ -78,6 +78,83 @@ async function applicationEdit219(){
  if(historyForm){historyForm.querySelector('[data-field="extra"] textarea').value='Corrected historical private answer.';historyForm.querySelector('[data-field="ack"] input').checked=true;fire(historyForm,'submit');await waitFor(()=>JSON.parse(one('SELECT answers FROM site_applications WHERE discord_id=?',HIST).answers).extra==='Corrected historical private answer.','actual appointed historical editor save',8000);}
  const historyAfter=one('SELECT * FROM site_applications WHERE discord_id=?',HIST);
  check('parent-office-only filled first and backup seats permit a real UI save without invented board consent',historySent?.board===false&&historySent?.editToken?.length===64&&JSON.parse(historyAfter.answers).extra==='Corrected historical private answer.'&&historyAfter.position==='class_lead'&&historyAfter.backup1==='raid_leader_eu'&&historyAfter.created_at===historyBefore.created_at&&historyAfter.board_at===null);
+ // Exercise both actual staff transitions and the atomic window before the save.
+ await fixtureRun("UPDATE site_settings SET value='1' WHERE key='applicationsOpen'");
+ const otherBody={...body,character:'Other One'};
+ const first=await request('PUT','/api/application',otherBody,OTHER);
+ check('the real first submit still accepts a null edit token',first.status===200&&first.body.application.status==='submitted',first);
+ const otherRow=()=>one('SELECT * FROM site_applications WHERE discord_id=?',OTHER);
+ const otherOwn=async()=> (await request('GET','/api/me',undefined,OTHER)).body.application;
+ const target=()=>request('GET','/api/admin/users/'+OTHER+'/decision-target?route=status&decisionAction=business_only',undefined,STAFF);
+ const status=async(value,note,prepared)=>{
+  const proof=prepared??(await target()).body?.targetToken;
+  if(typeof proof!=='string')throw Error('original staff status proof');
+  return request('POST','/api/admin/applications/'+OTHER+'/status',{status:value,note},STAFF,{'X-Olympus-Decision-Target':proof,'X-Olympus-Decision-Action':'business_only'});
+ };
+ const edit=(editToken,extra,native)=>request('PUT','/api/application',{...otherBody,editToken,answers:{...otherBody.answers,extra}},OTHER,{},native);
+ await fixtureRun('UPDATE site_applications SET created_at=?,updated_at=? WHERE discord_id=?',now-120,now-60,OTHER);
+ await fixtureRun("UPDATE site_settings SET value='0' WHERE key='applicationsOpen'");
+ const submitted=await otherOwn(),beforeReview=otherRow(),staleStaff=(await target()).body?.targetToken;
+ const reviewing=await status('reviewing','Private review note');
+ const afterReview=otherRow();
+ check('actual RT16 review changes its staff fields and leaves applicant updated_at intact',reviewing.status===200&&afterReview.status==='reviewing'&&afterReview.admin_note==='Private review note'&&afterReview.reviewed_by===STAFF&&afterReview.updated_at===beforeReview.updated_at,reviewing);
+ const refusedStaff=await status('reviewing','Stale staff overwrite',staleStaff);
+ check('RT16 still rejects a stale proof after status and staff metadata change',refusedStaff.status===409&&otherRow().admin_note==='Private review note',refusedStaff);
+ const forward=await edit(submitted.editToken,'Forward applicant edit');
+ check('submitted token saves after actual review starts while admissions are paused',forward.status===200&&otherRow().status==='reviewing'&&otherRow().admin_note===afterReview.admin_note&&otherRow().reviewed_at===afterReview.reviewed_at&&otherRow().created_at===beforeReview.created_at,forward);
+
+ const reviewToken=(await otherOwn()).editToken;
+ // Reproduce the original v1 raw review spelling emitted to open pre-release editors.
+ const oldFields=['position','class_lead','backup1','backup2','fallback','character','char_key','class','role','region','avail','avail_tz','fit_na','fit_eu','board_at','answers','status','created_at','updated_at'];
+ const rawReview=otherRow();
+ const legacyReview=require('node:crypto').createHash('sha256').update('application-own-edit/v1\0'+JSON.stringify(oldFields.map(key=>rawReview[key]))).digest('hex');
+ const submittedAgain=await status('submitted','Staff moved it back');
+ const reverse=await edit(reviewToken,'Reverse applicant edit');
+ check('review token saves after actual return to submitted and preserves the staff decision',submittedAgain.status===200&&reverse.status===200&&otherRow().status==='submitted'&&otherRow().admin_note==='Staff moved it back',reverse);
+ // Reset only the test row's original content and clock so the original proof can be exercised independently.
+ await fixtureRun('UPDATE site_applications SET answers=?,updated_at=? WHERE discord_id=?',rawReview.answers,rawReview.updated_at,OTHER);
+ const oldBrowser=await edit(legacyReview,'Pre-release applicant edit');
+ check('pre-release raw reviewing token remains usable only for the same open application content',oldBrowser.status===200&&otherRow().status==='submitted',oldBrowser);
+ await fixtureRun("UPDATE site_applications SET answers=json_set(answers,'$.extra',?),updated_at=? WHERE discord_id=?",'New same-second applicant content',rawReview.updated_at,OTHER);
+ const sameSecondContent=otherRow().answers;
+ const oldReplay=await edit(legacyReview,'Overwrite from a stale pre-release tab');
+ check('the pre-release token cannot overwrite changed raw content at the exact same updated_at',oldReplay.status===409&&oldReplay.body.error==='stale_application'&&otherRow().answers===sameSecondContent&&otherRow().updated_at===rawReview.updated_at,oldReplay);
+
+ const beforeRace=await otherOwn();
+ let racedReview=null;
+ const reviewPort=entry.originalNativePort(db,{beforeRun:async sql=>{
+  if(!racedReview&&/^INSERT INTO site_applications/.test(sql))racedReview=await status('reviewing','Concurrent staff review');
+ }});
+ const concurrent=await edit(beforeRace.editToken,'Applicant edit alongside review',reviewPort);
+ check('an admitted staff review between read and CAS still allows the applicant write and keeps the staff state',racedReview?.status===200&&concurrent.status===200&&otherRow().status==='reviewing'&&otherRow().admin_note==='Concurrent staff review'&&JSON.parse(otherRow().answers).extra==='Applicant edit alongside review',{racedReview,concurrent});
+
+ const beforeMixed=await otherOwn(),mixedClock=otherRow().updated_at;
+ let mixedReview=null,mixedAnswers=null;
+ const mixedPort=entry.originalNativePort(db,{beforeRun:async sql=>{
+  if(!mixedReview&&/^INSERT INTO site_applications/.test(sql)){
+   mixedReview=await status('submitted','Concurrent return to submitted');
+   await fixtureRun("UPDATE site_applications SET answers=json_set(answers,'$.extra',?) WHERE discord_id=?",'Different bytes at the same second',OTHER);
+   mixedAnswers=otherRow().answers;
+  }
+ }});
+ const mixed=await edit(beforeMixed.editToken,'Must not overwrite same-second content',mixedPort);
+ check('a concurrent open transition plus a same-second raw edit still refuses at the CAS',mixedReview?.status===200&&mixed.status===409&&mixed.body.error==='application_changed'&&otherRow().status==='submitted'&&otherRow().updated_at===mixedClock&&otherRow().answers===mixedAnswers,{mixedReview,mixed});
+
+ const consent={...JSON.parse(otherRow().answers),boardPortraitOptIn:true};
+ await fixtureRun('UPDATE site_applications SET answers=? WHERE discord_id=?',JSON.stringify(consent),OTHER);
+ const beforeConsent=(await otherOwn()).editToken;
+ const withdrawn=await request('PUT','/api/application',{consentOnly:true,boardPortrait:false},OTHER);
+ const afterConsent=otherRow();
+ const staleConsent=await edit(beforeConsent,'Stale after withdrawal');
+ check('real board withdrawal remains an exact applicant content conflict',withdrawn.status===200&&JSON.parse(afterConsent.answers).boardPortraitOptIn===false&&staleConsent.status===409&&staleConsent.body.error==='stale_application'&&otherRow().answers===afterConsent.answers,{withdrawn,staleConsent});
+
+ const beforeTerminal=await otherOwn();
+ let racedTerminal=null;
+ const terminalPort=entry.originalNativePort(db,{beforeRun:async sql=>{
+  if(!racedTerminal&&/^INSERT INTO site_applications/.test(sql))racedTerminal=await status('accepted','Concurrent terminal decision');
+ }});
+ const terminal=await edit(beforeTerminal.editToken,'Must not rewrite accepted application',terminalPort);
+ check('a real terminal decision racing the CAS wins and keeps original applicant answers',racedTerminal?.status===200&&terminal.status===409&&terminal.body.error==='decided'&&otherRow().status==='accepted'&&otherRow().answers===afterConsent.answers,{racedTerminal,terminal});
  check('application editing uses the exact existing schema',JSON.stringify(db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").all())===schemaBefore);
  console.log('\n'+ok+'/'+n+' passed');process.exit(ok===n?0:1);
 }
