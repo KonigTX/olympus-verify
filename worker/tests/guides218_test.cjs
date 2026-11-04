@@ -91,6 +91,9 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   refuse('an unknown profession group', d => { d.professions[0].type = 'unknown'; });
   refuse('an unknown checklist row kind', d => { d.tools.preBis.checklist[0].kind = 'task'; });
   refuse('an unavailable raid fact treated as an action', d => { d.tools.attunements[0].steps.find(row => row.grade === 'U').kind = 'action'; });
+  refuse('a buff with an invalid raid context', d => { d.tools.worldBuffs[0].raid = 'open'; });
+  refuse('a consumable with an unrecognized role', d => { d.tools.consumables[0].roles = ['damage']; });
+  refuse('a stat key inherited from the label map prototype', d => { d.tools.worldBuffs[0].stats.constructor = 1; });
 
   // 3. Every preset is a real, attachable build from the pinned snapshot.
   for (const p of DATA.presets) {
@@ -274,12 +277,72 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   const legacyChecklist = await mounted(attunements, legacyAttunements);
   check('an older catalogue retains readable references and does not guess which ones are tasks',
     legacyChecklist.box.tags('input').length === 16 && text(legacyChecklist.box).includes(legacyAttunements.tools.attunements[0].steps[5].note));
-  m = await mounted({ view: 'tool', tool: 'buffs', talentRevision: talents.revision });
-  const statRows = [...DATA.tools.worldBuffs, ...DATA.tools.consumables].filter(r => r.stats && Object.keys(r.stats).length);
-  const firstInput = m.box.all(e => e.tagName === 'INPUT' && e.getAttribute('id') === 'guides218-buff-' + statRows[0].id.replace(/[^a-z0-9-]/g, ''))[0];
-  firstInput.checked = true; firstInput.fire('change');
-  const total = m.box.all(e => e.getAttribute('role') === 'status' && e.getAttribute('aria-live') === 'polite')[0];
-  check('choosing a buff updates the combined effect, labelled when it rests on Classic numbers', text(total).includes('Combined effect of 1 selected') && (['D', 'E'].includes(statRows[0].grade) ? text(total).includes('not Forever-verified') : true));
+  const buffTool = { view: 'tool', tool: 'buffs', talentRevision: talents.revision };
+  m = await mounted(buffTool);
+  const liveTotals = box => box.all(e => e.getAttribute('role') === 'status' && e.getAttribute('aria-live') === 'polite')[0];
+  const encounter = (box, id) => liveTotals(box).all(e => e.getAttribute('data-buff-context') === id)[0];
+  const figures = (box, id) => encounter(box, id).tags('li').map(text).sort().join('|');
+  const buffInput = (box, id) => box.tags('input').find(input => input.getAttribute('id') === 'guides218-buff-' + id);
+  const choose = (box, id, checked = true) => { const input = buffInput(box, id); input.checked = checked; input.fire('change'); };
+  const filterRole = (box, value) => { const select = box.tags('select')[0]; select.value = value; select.fire('change'); };
+  const badge = (box, id) => text(buffInput(box, id).parentNode.all(e => e.className === 'guides218-status')[0]);
+  const universal = ['major-healing-potion', 'fire-protection-potions', 'forever-food-changes', 'first-aid-curatives', 'scrolls'];
+  const visibleConsumables = box => box.tags('label').filter(label => text(label).endsWith(' · Consumable')).length;
+  for (const [role, expected] of [['', 24], ['tank', 13], ['healer', 10], ['melee', 12], ['ranged', 8], ['caster', 13]]) {
+    filterRole(m.box, role);
+    assert.equal(visibleConsumables(m.box), expected, role);
+    assert.ok(universal.every(id => buffInput(m.box, id)) && DATA.tools.worldBuffs.every(r => buffInput(m.box, r.id)), role);
+  }
+  filterRole(m.box, 'ranged');
+  const hunterSource = DATA.sources.findIndex(s => s.url === 'https://www.warcrafttavern.com/wow-classic/guides/pve-marksmanship-hunter-enchants-consumables/');
+  check('each role retains universal consumables and ranged includes both cited Classic Hunter elixirs',
+    visibleConsumables(m.box) === 8 && hunterSource >= 0
+    && ['elixir-of-the-mongoose', 'elixir-of-greater-agility'].every(id => buffInput(m.box, id)
+      && DATA.tools.consumables.some(r => r.id === id && r.grade === 'E' && r.sources.includes(hunterSource))));
+  filterRole(m.box, '');
+  check('raid status badges distinguish outside raid, unestimated and reference effects',
+    ['rallying-cry', 'songflower-serenade', 'dire-maul-tribute', 'warchiefs-blessing'].every(id => badge(m.box, id) === 'Outside raid preview')
+    && badge(m.box, 'camp-buffs') === 'No raid estimate' && badge(m.box, 'elixir-of-cunning') === 'Raid reference');
+  choose(m.box, 'rallying-cry');
+  check('Rallying Cry contributes its five exact values in open world and none inside a raid',
+    figures(m.box, 'open-world') === 'Attack power: +140|Critical strike %: +10|Healing: +80|Spell critical %: +10|Spell power: +80'
+    && figures(m.box, 'raid') === '' && text(liveTotals(m.box)).includes('omitted from raid totals'));
+  choose(m.box, 'elixir-of-the-grizzly');
+  choose(m.box, 'elixir-of-cunning');
+  check('the same visible selection produces different open-world and raid reference totals',
+    figures(m.box, 'open-world') === 'Agility: +25|Attack power: +140|Critical strike %: +12|Healing: +80|Intellect: +25|Spell critical %: +10|Spell power: +80|Strength: +25'
+    && figures(m.box, 'raid') === 'Agility: +25|Critical strike %: +2|Intellect: +25|Strength: +25');
+  filterRole(m.box, 'ranged');
+  check('changing to Ranged excludes the hidden Grizzly pick from both previews and discloses it',
+    !buffInput(m.box, 'elixir-of-the-grizzly') && buffInput(m.box, 'elixir-of-cunning').checked
+    && text(liveTotals(m.box)).includes('2 selected in this view') && text(liveTotals(m.box)).includes('1 hidden by the role filter')
+    && figures(m.box, 'open-world') === 'Agility: +25|Attack power: +140|Critical strike %: +10|Healing: +80|Intellect: +25|Spell critical %: +10|Spell power: +80'
+    && figures(m.box, 'raid') === 'Agility: +25|Intellect: +25');
+  filterRole(m.box, '');
+  check('restoring Every role restores hidden picks and their exact effects', buffInput(m.box, 'elixir-of-the-grizzly').checked
+    && !text(liveTotals(m.box)).includes('hidden by the role filter') && figures(m.box, 'raid').includes('Strength: +25'));
+  choose(m.box, 'rallying-cry', false);
+  choose(m.box, 'elixir-of-the-grizzly', false);
+  choose(m.box, 'elixir-of-cunning', false);
+  choose(m.box, 'songflower-serenade');
+  choose(m.box, 'juju-ember');
+  check('Classic numeric references stay marked in each relevant context with recorded durations',
+    figures(m.box, 'open-world') === 'Agility: +15|Critical strike %: +5|Fire resistance: +15|Intellect: +15|Spirit: +15|Stamina: +15|Strength: +15'
+    && figures(m.box, 'raid') === 'Fire resistance: +15'
+    && ['open-world', 'raid'].every(id => text(encounter(m.box, id)).includes('not Forever-verified')
+      && text(encounter(m.box, id)).includes('Shortest recorded duration: 10 min.')));
+  choose(m.box, 'songflower-serenade', false);
+  choose(m.box, 'juju-ember', false);
+  choose(m.box, 'camp-buffs');
+  check('a camp buff without a recorded figure stays visible and out of raid totals',
+    text(encounter(m.box, 'open-world')).includes('No numeric effects recorded') && figures(m.box, 'raid') === ''
+    && text(liveTotals(m.box)).includes('without a raid estimate are omitted'));
+  const uncertain = clone(DATA);
+  uncertain.tools.worldBuffs.find(r => r.id === 'camp-buffs').stats = { stamina: 17 };
+  const uncertainTool = await mounted(buffTool, uncertain);
+  choose(uncertainTool.box, 'camp-buffs');
+  check('an unestimated raid context still excludes a numeric effect from the raid preview',
+    figures(uncertainTool.box, 'open-world') === 'Stamina: +17' && figures(uncertainTool.box, 'raid') === '');
   m = await mounted({ view: 'tool', tool: 'changes', talentRevision: talents.revision });
   check('the compendium shows the class table with every class and a calculator link each', m.box.tags('tr').length === 10 && DATA.classSummary.every(x => links(m.box).includes('#/talents/' + x.id)));
   const classLabels = m.box.tags('tr').slice(1).map(row => text(row.tags('th')[0]));

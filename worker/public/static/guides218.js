@@ -12,6 +12,7 @@
   const GRADES = ["A", "B", "C", "D", "E", "U"];
   const CODE = /^ot1\.([a-f0-9]{12})\.([a-z]+)\.(30|60)\.([0-9]+)$/;
   const ROLE_ICON = { tank: "role-tank", healer: "role-healer", melee: "role-dps", ranged: "role-dps", caster: "role-dps" };
+  const BUFF_ROLES = [["tank", "Tank"], ["healer", "Healer"], ["melee", "Melee"], ["ranged", "Ranged"], ["caster", "Caster"]];
   const TOOLS = [
     ["attunements", "Attunements & pre-raid checklist", "Raid access, what Blizzard has announced, and a slot-by-slot gearing checklist."],
     ["buffs", "World buffs & consumables", "Pick a role, tick what you will bring and see the combined effect, with every Classic number labelled."],
@@ -80,9 +81,11 @@
     if (!t || !isList(t.attunements, 3) || !t.preBis || !isList(t.worldBuffs, 12) || !isList(t.consumables, 30) || !isList(t.whatChanged, 30)) fail("tools");
     if (t.attunements.some(a => !a || !isText(a.raid, 60) || !isText(a.opens, 120) || !isText(a.size, 2) || !claimOk(a.requirement) || !checklistRowsOk(a.steps, 8))) fail("attunements");
     if (!isText(t.preBis.note) || !isList(t.preBis.slots, 16) || t.preBis.slots.some(s => !s || !isText(s.slot, 40) || !claimOk(s.guidance)) || !checklistRowsOk(t.preBis.checklist, 10)) fail("pre-raid");
-    const statsOk = st => st === undefined || (st && typeof st === "object" && Object.keys(st).every(k => STAT_LABEL[k] && Number.isFinite(st[k])));
+    const statsOk = st => st === undefined || (st && typeof st === "object" && Object.keys(st).every(k => Object.hasOwn(STAT_LABEL, k) && Number.isFinite(st[k])));
     for (const r of [...t.worldBuffs, ...t.consumables]) {
       if (!r || !isText(r.id, 80) || !isText(r.name, 80) || !isText(r.effect) || !GRADES.includes(r.grade) || !sourceOk(r.sources) || !statsOk(r.stats)
+        || (r.raid !== undefined && r.raid !== null && typeof r.raid !== "boolean")
+        || (r.roles !== undefined && (!isList(r.roles, BUFF_ROLES.length) || !r.roles.every(role => BUFF_ROLES.some(([id]) => id === role))))
         || !(r.durationMin === null || (Number.isFinite(r.durationMin) && r.durationMin > 0))) fail("buffs");
     }
     if (t.whatChanged.some(x => !x || !isText(x.topic, 60) || !isText(x.text) || !["announced", "pinned-data", "pending"].includes(x.status) || !sourceOk(x.sources))) fail("compendium");
@@ -354,31 +357,50 @@
       const t = data.tools, rows = [...t.worldBuffs.map(r => ({ ...r, kind: "World buff" })), ...t.consumables.map(r => ({ ...r, kind: "Consumable" }))];
       collect(used, rows);
       const picked = new Set();
-      const role = el("select", { id: "guides218-role", onchange: () => draw() }, [["", "Every role"], ["tank", "Tank"], ["healer", "Healer"], ["melee", "Melee"], ["ranged", "Ranged"], ["caster", "Caster"]]
+      const role = el("select", { id: "guides218-role", onchange: () => draw() }, [["", "Every role"], ...BUFF_ROLES]
         .map(([v, text]) => el("option", { value: v, text })));
       const box = el("div", { class: "guides218-buffs" }), total = el("div", { class: "guides218-total", role: "status", "aria-live": "polite" });
-      function sum() {
-        const totals = {}, grades = new Set(), chosen = rows.filter(r => picked.has(r.id));
-        for (const r of chosen) { grades.add(r.grade); for (const [k, v] of Object.entries(r.stats || {})) totals[k] = (totals[k] || 0) + v; }
+      const visibleRows = () => rows.filter(r => !role.value || r.kind === "World buff" || !r.roles?.length || r.roles.includes(role.value));
+      function preview(id, title, chosen) {
+        const totals = {};
+        const numeric = chosen.filter(r => r.stats && Object.keys(r.stats).length);
+        for (const r of numeric) for (const [k, v] of Object.entries(r.stats)) totals[k] = (totals[k] || 0) + v;
         const keys = Object.keys(totals);
-        // replaceChildren would print a null as the text "null", so absent parts are filtered out first.
-        total.replaceChildren(...[el("h3", { text: chosen.length ? "Combined effect of " + chosen.length + " selected" : "Nothing selected yet" }),
-          keys.length ? el("ul", { class: "guides218-list" }, keys.map(k => el("li", { text: STAT_LABEL[k] + ": +" + Math.round(totals[k] * 100) / 100 }))) : null,
-          chosen.length && (grades.has("D") || grades.has("E")) ? el("p", { class: "muted small", text: "These totals use Classic reference numbers that are not Forever-verified. Stacking rules in Forever may differ." }) : null,
-          chosen.some(r => r.durationMin) ? el("p", { class: "small", text: "Shortest duration: " + Math.min(...chosen.filter(r => r.durationMin).map(r => r.durationMin)) + " min." }) : null].filter(Boolean));
+        const durations = chosen.map(r => r.durationMin).filter(n => n !== null);
+        return el("div", { "data-buff-context": id }, el("h4", { text: title }),
+          keys.length ? el("ul", { class: "guides218-list" }, keys.map(k => el("li", { text: STAT_LABEL[k] + ": +" + Math.round(totals[k] * 100) / 100 })))
+            : el("p", { class: "small", text: chosen.length ? "No numeric effects recorded for these selections." : "No selections included in this preview." }),
+          numeric.length && numeric.length < chosen.length ? el("p", { class: "small", text: "Some selections have no recorded numeric effect." }) : null,
+          numeric.some(r => r.grade === "D" || r.grade === "E")
+            ? el("p", { class: "muted small", text: "Includes Classic reference numbers that are not Forever-verified." }) : null,
+          durations.length ? el("p", { class: "small", text: "Shortest recorded duration: " + Math.min(...durations) + " min." }) : null);
+      }
+      function sum() {
+        const chosen = visibleRows().filter(r => picked.has(r.id));
+        const hidden = picked.size - chosen.length;
+        total.replaceChildren(el("h3", { text: picked.size ? chosen.length + " selected in this view" : "Nothing selected yet" }),
+          el("div", null,
+            hidden ? el("p", { class: "small", text: hidden + " hidden by the role filter. Change the role to see those selections." }) : null,
+            chosen.some(r => r.raid === false) ? el("p", { class: "small", text: "World-buff selections marked Outside raid preview are omitted from raid totals." }) : null,
+            chosen.some(r => r.raid == null) ? el("p", { class: "small", text: "Selections marked without a raid estimate are omitted from the raid preview." }) : null,
+            preview("open-world", "Open world reference", chosen),
+            preview("raid", "Inside a raid reference", chosen.filter(r => r.raid === true))));
       }
       function draw() {
-        const wanted = role.value;
-        box.replaceChildren(el("ul", { class: "guides218-checklist" }, rows.filter(r => !wanted || r.kind === "World buff" || (r.roles || []).includes(wanted)).map(r => {
+        box.replaceChildren(el("ul", { class: "guides218-checklist" }, visibleRows().map(r => {
           const id = "guides218-buff-" + r.id.replace(/[^a-z0-9-]/g, "");
+          const raidStatus = r.raid === true ? "Raid reference" : r.raid === false ? "Outside raid preview" : "No raid estimate";
           const input = el("input", { type: "checkbox", id, checked: picked.has(r.id), onchange: () => { if (input.checked) picked.add(r.id); else picked.delete(r.id); sum(); } });
-          return el("li", null, input, el("label", { for: id }, el("strong", { text: r.name }), " · " + r.kind), " ", grade(data, r.grade),
+          return el("li", null, input, el("label", { for: id }, el("strong", { text: r.name }), " · " + r.kind),
+            el("div", null, grade(data, r.grade), " ", el("span", { class: "guides218-status", text: raidStatus })),
             el("p", { class: "small", text: r.effect + (r.durationMin ? " Lasts " + r.durationMin + " min." : "") + (r.foreverStatus ? " " + r.foreverStatus : "") }), sourcesLine(data, r.sources));
         })));
         sum();
       }
       draw();
-      return section("Choose what you will bring", el("label", { for: "guides218-role", text: "Show consumables for " }), role, box, total);
+      return section("Choose what you will bring", el("label", { for: "guides218-role", text: "Show consumables for " }), role,
+        el("p", { class: "muted small", text: "Previews add recorded values for visible selections. Check beta values, item availability, faction and stacking in game. Camp buffs have no raid estimate." }),
+        box, total);
     }
 
     function render(data) {
