@@ -122,8 +122,12 @@ const body196=String.raw`
   await traversal196.go('#/community/directory');await waitFor(()=>traversalReads196===1&&!byText(traversal196.app,'button','Load all eligible Olympus members').hidden,'explicit traversal control');
   check('opening the directory does not automatically enumerate the remaining source',traversalReads196===1);
   byText(traversal196.app,'button','Load all eligible Olympus members').click();
-  await waitFor(()=>traversalReads196===3&&traversal196.app.textContent.includes('End of this traversal.'),'explicit paced continuation completes');
-  check('explicit continuation renders each bounded page and stops at confirmed completion',traversal196.app.querySelectorAll('.card.member').length===3&&byText(traversal196.app,'button','Load all eligible Olympus members').hidden);
+  const traversalComplete196=await waitFor(()=>traversalReads196===3
+    && traversal196.app.querySelectorAll('.card.member').length===3
+    && traversal196.app.textContent.includes('End of this traversal.')
+    && byText(traversal196.app,'button','Load all eligible Olympus members')?.hidden===true,
+  'explicit paced continuation completes and hides its control',8000);
+  check('explicit continuation renders each bounded page and stops at confirmed completion',traversalComplete196);
   await traversal196.go('#/roles');
   for(const boundary196 of ['pause','hidden','route']) {
     const page=await openPage(MEMBER);let readN=0;
