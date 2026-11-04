@@ -1227,3 +1227,17 @@ html[data-stream-shield="on"] main.shell,html[data-stream-shield="on"] #app>.not
 
 /* Rank badges stay readable on the narrowest supported application view. */
 .rank-office199{white-space:normal;max-width:100%;overflow-wrap:anywhere}
+
+/* At high zoom the layout viewport can be narrower than a 320px phone. */
+@media (max-width: 319px) {
+  main { overflow-wrap: anywhere; }
+  main :is(.badge, .btn, .prof, .nowrap) { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+  main :is(.field, fieldset, .check > span, .btn-row > *, .governance-hero > div) { min-width: 0; max-width: 100%; }
+  main :is(input, select, textarea) { max-width: 100%; }
+  .notice-box, .governance-hero { flex-direction: column; gap: .5rem; }
+  .notice-box > div { width: 100%; }
+  .admin-section-picker { grid-template-columns: minmax(0, 1fr); }
+  .filters > .field { min-width: 0; flex: 1 1 100%; }
+  .olympus-rank-planner .filter-row > label { min-width: 0; flex-wrap: wrap; }
+  .olympus-rank-planner .filter-row select { max-width: 100%; }
+}

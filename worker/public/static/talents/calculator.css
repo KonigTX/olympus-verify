@@ -87,3 +87,10 @@
 .talents-change-tree>summary:focus-visible{outline:2px solid #e4cf96;outline-offset:-2px}.talents-change-group{padding:0 10px 8px}.talents-change-group h4{margin:8px 0 3px;color:#d9cbab;font-size:12px}
 .talents-change-group ul{margin:0;padding-left:18px;color:#cac6b9;font-size:12px}.talents-change-group li{margin:2px 0;overflow-wrap:anywhere}.talents-change-source{margin:10px 0 0!important;color:#aaa69c;font-size:11px;overflow-wrap:anywhere}
 @media(forced-colors:active){.talents-node-tag,.talents-tag,.talents-delta{border-color:CanvasText;color:CanvasText;background:Canvas}.talents-tree.talents-classic-layout .talents-grid::before{border-color:CanvasText}}
+
+@media (max-width: 319px) {
+  .talents-spec-bars, .talents-spec-bars > div { min-width: 0; width: 100%; }
+  .talents-spec-bars > div { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+  .talents-tree-header { flex-wrap: wrap; height: auto; min-height: 42px; }
+  .talents-tree-header :is(h3, strong) { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+}

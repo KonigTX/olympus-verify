@@ -304,3 +304,9 @@ details[open] > summary.org-alliance-card-heading::after { content: '\2212'; }
 
 /* Continuous connections terminate at card borders. */
 .org-edge{stroke-width:2.8;opacity:.86;stroke-linejoin:round}.org-edge-coordination{opacity:.68}.org-edge-active{stroke-width:4;opacity:1}
+
+@media (max-width: 319px) {
+  .org-toolbar > *, .org-council-offices > li { min-width: 0; max-width: 100%; }
+  .org-toolbar input { flex-basis: 100%; }
+  .org-chart-tools { flex-wrap: wrap; }
+}
