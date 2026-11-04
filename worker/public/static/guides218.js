@@ -152,7 +152,8 @@
         c.note ? el("span", { class: "muted guides218-note", text: " " + c.note }) : null, " ", sourcesLine(data, c.sources)];
     }
     function claim(data, c) {
-      return el("li", { class: "guides218-claim", "data-grade": c.grade }, el("strong", { text: c.label }), " ", claimEvidence(data, c));
+      return el("li", { class: "guides218-claim", "data-grade": c.grade },
+        el("strong", { class: "guides218-claim-label", text: c.label }), " ", claimEvidence(data, c));
     }
     const claims = (data, items, empty = "Nothing confirmed yet.") => items.length ? el("ul", { class: "guides218-claims" }, items.map(c => claim(data, c))) : el("p", { class: "muted", text: empty });
     function legend(data, used) {
@@ -269,7 +270,7 @@
         const id = listId + "-" + i, c = r.guidance || r;
         const box = el("input", { type: "checkbox", id, onchange: () => { if (box.checked) done.add(i); else done.delete(i); update(); } });
         return el("li", { "data-grade": c.grade }, box, el("label", { for: id, text: r.label }),
-          el("div", { class: "small" }, r.guidance ? [el("strong", { text: c.label }), " "] : null, claimEvidence(data, c)));
+          el("div", { class: "small" }, r.guidance ? [el("strong", { class: "guides218-claim-label", text: c.label }), " "] : null, claimEvidence(data, c)));
       }))];
     }
     function checklistSections(data, rows, actionTitle, referenceTitle) {

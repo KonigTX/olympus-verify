@@ -4046,14 +4046,14 @@
     {
       "path": "worker/public/static/guides218.css",
       "mode": "100644",
-      "bytes": 7773,
-      "sha256": "938c610d81abe5b8e22e5c1d53432c8379181e579b21347f1f8498ad7132dff3"
+      "bytes": 7827,
+      "sha256": "40932d71dc4b16148e5e56e18773e721d8f4223944ec846a5fbb1580da44ab58"
     },
     {
       "path": "worker/public/static/guides218.js",
       "mode": "100644",
-      "bytes": 35736,
-      "sha256": "67c2cda3bdf3b7782d0ff4ab92c8855e917d213aadc38190577473b35a8cd6b4"
+      "bytes": 35808,
+      "sha256": "8e8f464addc8df0a2de572c92943dac9b181e663939a14c180c40fc2483bf586"
     },
     {
       "path": "worker/public/static/guides218.json",

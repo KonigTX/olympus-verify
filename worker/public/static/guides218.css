@@ -23,6 +23,7 @@
 .guides218-list li,.guides218-claims li{margin:4px 0}
 .guides218-claims{margin:0;padding-left:0;list-style:none}
 .guides218-claim{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.guides218-claim-label{display:block;font-weight:600}
 .guides218-claim[data-grade="D"],.guides218-claim[data-grade="E"]{opacity:.9}
 .guides218-grade{display:inline-block;min-width:22px;padding:0 6px;border:1px solid currentColor;border-radius:10px;font-size:12px;line-height:18px;text-align:center;text-decoration:none;cursor:help}
 .guides218-grade[data-grade="A"],.guides218-grade[data-grade="B"]{color:#9fd59f}

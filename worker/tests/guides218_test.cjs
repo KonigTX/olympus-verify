@@ -253,6 +253,11 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
       && a.steps.every(row => evidenceShown(raidSections[i], row, row.kind === 'action')))
     && DATA.tools.preBis.checklist.every(row => evidenceShown(gearSection, row, row.kind === 'action'))
     && DATA.tools.preBis.slots.every(slot => evidenceShown(slots, slot.guidance, true)));
+  const firstRequirement = rowFor(raidSections[0], DATA.tools.attunements[0].requirement.label);
+  const firstSlot = rowFor(slots, DATA.tools.preBis.slots[0].guidance.label);
+  check('claim and nested gear labels are visually distinct from the evidence beneath them',
+    [firstRequirement, firstSlot].every(row => row?.tags('strong')[0]?.className === 'guides218-claim-label')
+    && /\.guides218-claim-label\s*\{[^}]*display\s*:\s*block[^}]*font-weight\s*:\s*600/.test(CSS));
   const allBoxes = m.box.tags('input'), labelTargets = m.box.tags('label').map(e => e.getAttribute('for'));
   check('all 26 checkbox labels are associated and the page-only notice appears once',
     allBoxes.length === 26 && new Set(labelTargets).size === 26
@@ -370,6 +375,9 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   check('the raid grouping table names the first Forever raids with their announced capacities',
     m.box.tags('tbody')[0]?.tags('th').map(text).join('|') === 'Barrow Deeps · 10 players|Hyjal Summit · 20 players|Onyxia’s Lair · 40 players'
     && text(m.box).includes('December 9') && links(m.box).includes('https://worldofwarcraft.blizzard.com/en-us/news/24303009'));
+  const raidPublisher = m.box.tags('a').find(a => a.getAttribute('href') === 'https://worldofwarcraft.blizzard.com/en-us/news/24303009');
+  check('Fox’s guide uses the same safe external window and referrer policy for the publisher link',
+    raidPublisher?.getAttribute('target') === '_blank' && raidPublisher.getAttribute('rel') === 'noopener noreferrer');
   check('farm rotation advice links directly to the governing article', links(m.box).includes('#/governance/the-guild-statute-of-olympus/article-s11')
     && text(m.box).includes('affected participants’ consent'));
   m = await mounted({ view: 'tool', tool: 'nope', talentRevision: talents.revision });
