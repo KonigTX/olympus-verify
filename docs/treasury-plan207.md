@@ -4,6 +4,8 @@ Published planning reference, 28 October 2026. Website content source: `worker/p
 
 ## Status and scope
 
+The plan and calculator source are public in the Olympus Verify repository. The guild website serves its interactive presentation only to eligible officers. Keep private bank records and case details in their authorized systems.
+
 The owner reported a **0g opening balance on 28 October 2026**. This is a dated owner statement, not a live bank feed. Weekly active unique players, operating realm, accessible bank/custody limits, provider capacity, market demand, margins and the programme's actual Day 1 remain unconfirmed.
 
 This programme publishes an officer plan and a member explanation. It does not collect donations, activate fees or provider dispatch, change permissions, create appointments, authorise purchases or turn on the paused Royal Writs. Existing Royal Writs remain **paused/OFF**. A calculator result is an illustration, never a measured bank balance.
