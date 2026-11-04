@@ -150,6 +150,47 @@ async function legacyLiftRequiresEmptyProof() {
   }finally{f.close();}
  }
 }
+
+async function applicationExportOmitsInternalStamp() {
+ const f=fixture();
+ try{
+  const member=await f.signIn(ID),admin=await f.signIn(OTHER);
+  await seedPersonal(f,{roles:0});
+  const input=f.raw('SELECT answers FROM site_applications WHERE discord_id=?',ID).answers;
+  const reply=await decisionPost(f,admin,'status',await decisionTarget(f,admin,'status'),{status:'declined',note:'Authorized staff note'});
+  const birth=f.raw('SELECT account_incarnation FROM site_users WHERE discord_id=?',ID).account_incarnation;
+  const originalAnswers=()=>f.raw('SELECT answers FROM site_applications WHERE discord_id=?',ID).answers;
+  check('actual ordinary decline creates the private stamp needed for the export regression',reply.status===200&&JSON.parse(originalAnswers())[declineKey]?.[0]===birth);
+  async function exported(route='/api/admin/export/applications'){
+   const result=await f.call('GET',route,{cookie:admin}),body=await result.text(),data=JSON.parse(body);
+   assert.equal(result.status,200);
+   const row=data.rows.find(value=>value[data.columns.indexOf('discord_id')]===ID);
+   assert.ok(row);
+   return {body,answers:row[data.columns.indexOf('answers')],note:row[data.columns.indexOf('admin_note')]};
+  }
+  const before=originalAnswers(),changes=f.raw('SELECT total_changes() AS n').n,report=await exported();
+  check('admin application CSV data body excludes the internal key and original incarnation',!report.body.includes(declineKey)&&!report.body.includes(birth)&&report.answers===input&&report.note==='Authorized staff note');
+  check('CSV data projection leaves original storage and authorization unchanged',originalAnswers()===before&&f.raw('SELECT total_changes() AS n').n===changes&&(await f.call('GET','/api/admin/export/applications',{cookie:member})).status===403);
+  for(const raw of ['corrupt legacy {',' 42.00 ',' ["legacy",null] ', ' { "allowed" : "exact bytes" } ']){
+   await f.write('UPDATE site_applications SET answers=? WHERE discord_id=?',raw,ID);
+   check('legacy malformed/scalar or stamp-free value retains exact authorized export bytes',(await exported('/api/admin/export/applications.csv')).answers===raw);
+  }
+  const escapedKey='\\u005f'+declineKey.slice(1);
+  const duplicates='{"allowed":{"nested":"keep"},"big":9e400,"'+declineKey+'":null,"'+escapedKey+'":["'+birth+'",1,2]}';
+  await f.write('UPDATE site_applications SET answers=? WHERE discord_id=?',duplicates,ID);
+  const redacted=await exported();
+  check('duplicate and escaped internal keys are all removed without reinterpreting authorized JSON values',!redacted.body.includes(declineKey)&&!redacted.body.includes(birth)&&redacted.answers==='{"allowed":{"nested":"keep"},"big":9e400}'&&originalAnswers()===duplicates);
+  const allowed='"allowed" : [{"nested":"comma, brace } and \\"quoted\\""}],"big":9e400';
+  const repeated='"'+escapedKey+'":["'+birth+'",1,2]';
+  const large='{'+allowed+','+Array(2000).fill(repeated).join(',')+'}';
+  await f.write('UPDATE site_applications SET answers=? WHERE discord_id=?',large,ID);
+  const stress=await exported();
+  check('large duplicate input preserves exact nested fragments in the real export route',stress.answers==='{'+allowed+'}'&&!stress.body.includes(birth)&&originalAnswers()===large);
+
+ }finally{f.close();}
+}
+
+ await applicationExportOmitsInternalStamp();
  await serverAuthorityAndDenialSequence();
  await legacyLiftRequiresEmptyProof();
  await ordinaryDeclineAndErasure();
