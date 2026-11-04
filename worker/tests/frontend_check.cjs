@@ -262,7 +262,7 @@ async function openPage(who, over = {}, { clockNow, bootTransform } = {}) {
     __answer: null, // .107: when set and it returns a value, the Worker's answer to a matching request is replaced by that value as a 200 JSON body (a readable but wrong receipt)
     __intercept: null, // RT16 fixture only: an owned gate or early Response before the real Worker; default null.
     __before: null, // .107: when set and true, a matching request fails before the Worker sees it (never sent)
-    __hold: null, // .110: when set and it returns a number, the Worker's completed answer to a matching request is held that many ms before the page sees it
+    __hold: null, // The completed Worker reply waits for a fixed delay or an explicit fixture gate before delivery.
     fetch: async (pathname, init = {}) => {
       if (sandbox.__intercept) { const early = await sandbox.__intercept(pathname, init); if (early instanceof Response) return early; }
       const ms = sandbox.__delay ? sandbox.__delay(pathname, init) : 0;
@@ -273,7 +273,9 @@ async function openPage(who, over = {}, { clockNow, bootTransform } = {}) {
       const r = await indexMod.default.fetch(new Request("https://guild.example" + pathname, { method: init.method || "GET", headers: h2, body: init.body }), env({ ASSETS: governanceAssets, ...over }), ctx);
       if (sandbox.__drop && sandbox.__drop(pathname, init)) throw new TypeError("the network dropped the answer");
       if (sandbox.__garble && sandbox.__garble(pathname, init)) return new Response("<!doctype html><title>an edge page</title>", { status: 200, headers: { "Content-Type": "text/html" } }); // .104: a 2xx the browser cannot read, after the Worker handled it
-      { const ms2 = sandbox.__hold ? sandbox.__hold(pathname, init) : 0; if (ms2) await new Promise((res) => setTimeout(res, ms2)); } // .110: the answer is complete; the page sees it later
+      const hold = sandbox.__hold?.(pathname, init);
+      if (typeof hold === "number" && hold > 0) await new Promise((resolve) => setTimeout(resolve, hold));
+      else if (hold) await hold;
       if (sandbox.__answer) { const sub = sandbox.__answer(pathname, init); if (sub instanceof Response) return sub; if (sub !== null && sub !== undefined) return new Response(JSON.stringify(sub), { status: 200, headers: { "Content-Type": "application/json; charset=utf-8" } }); } // .107: a readable but wrong 200, after the Worker handled it
       return r;
     },
@@ -845,10 +847,16 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   const acceptedCount = () => db.prepare("SELECT COUNT(*) AS n FROM community_event_signups WHERE event_id = ? AND decision = 'accepted'").get(EVENT).n;
   // F4b.2 (a): an older successful command whose reply is held while the rows are replaced and the replacement row is acknowledged anew
   await reload2();
-  const holdDecide = [500]; o2.hold((p) => p === "/api/community/events/decide" ? (holdDecide.shift() ?? 0) : 0);
-  picks()[0].value = "declined"; saves()[0].click(); // held 500 ms; the Worker commits row 0's decline now
-  await new Promise((resolve) => setTimeout(resolve, 60));
-  check("fixture: row 0's command is committed by the Worker while its reply is held", dbDecisions().includes("declined"));
+  let releaseOlderReply, olderReplyHeld = false;
+  const olderReplyGate = new Promise(resolve => { releaseOlderReply = resolve; });
+  o2.hold((p) => {
+    if (p !== "/api/community/events/decide" || olderReplyHeld) return;
+    olderReplyHeld = true;
+    return olderReplyGate;
+  });
+  picks()[0].value = "declined"; saves()[0].click();
+  await waitFor(() => olderReplyHeld, "the Worker reply waiting at the explicit gate");
+  check("fixture: row 0's command is committed by the Worker while its reply is held", olderReplyHeld && dbDecisions().includes("declined"));
   (await fixtureRun("UPDATE community_event_signups SET decision_revision = decision_revision + 1 WHERE event_id = ? AND decision IS NULL", EVENT)); // row 1's next command is stale
   picks()[1].value = "bench"; saves()[1].click();
   await waitFor(() => seen().includes("Not decided."), "row 1's refusal and the readback that replaces the rows");
@@ -856,7 +864,8 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   check("fixture: the readback replaced the rows and shows row 0's committed decision", picks().length === 2 && fresh0 >= 0);
   picks()[fresh0].value = "bench"; saves()[fresh0].click();
   await waitFor(() => dbDecisions().filter((d) => d === "bench").length === 1 && seen().includes("Roster: on the bench."), "the replacement row's newer acknowledgement");
-  await new Promise((resolve) => setTimeout(resolve, 650)); // the older reply arrives now
+  releaseOlderReply();
+  await settle(); await settle();
   check("F4b.2: the older command's reply, arriving after the rows were replaced and the replacement row acknowledged, says nothing and changes nothing (no 'declined' toast, the newest decision shown, the counts current)", !seen().includes("Roster: declined.") && picks()[fresh0].value === "bench" && !dbDecisions().includes("declined") && counts2().includes(`${acceptedCount()} accepted`));
   o2.hold(null);
   // F4b.2 (b): a pagination response held across a readback that replaced the table is discarded; the cursor stays the readback's
