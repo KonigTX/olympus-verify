@@ -519,7 +519,7 @@ async function frontendOwner197() {
   await must(() => switchSends200.length === 1 && one("SELECT value FROM site_settings WHERE key='royalWritsOn'")?.value === '1' && !byText(switchPage200.app, 'button', 'Save settings').disabled, '.200 original enabled-setting save');
   const enabledRead200 = await request('GET', '/api/admin/overview', undefined, STAFF);
   check('.200 actual Admin enable sends a boolean and adopts a genuine readable enabled setting without provider activation fields', switchSends200[0].royalWritsOn === true && typeof switchSends200[0].royalWritsOn === 'boolean' && enabledRead200.response.status === 200 && enabledRead200.body.settings.royalWritsOn === true && !Object.keys(switchSends200[0]).some(key => /TREASURY_COSMETIC|ARMY_SITE_AGGREGATE|LINK_DB|webhook/i.test(key)));
-  check('.203 the existing real settings save preserves every populated original holder key without family migration',sortedAppointed203(switchSends200[0].appointed)===sortedAppointed203(populatedAppointed203)&&sortedAppointed203(enabledRead200.body.settings.appointed)===sortedAppointed203(populatedAppointed203));
+  check('the unrelated Writs switch omits appointment fields and preserves every original holder key',!['appointed','namesConfirmed','appointedCharactersConfirmed'].some(key=>Object.hasOwn(switchSends200[0],key))&&sortedAppointed203(enabledRead200.body.settings.appointed)===sortedAppointed203(populatedAppointed203));
   await switchPage200.go('#/vote');
   check('.200 admitted Admin readback enables the schedule and optional Patron disclosure in the same page state', directoryComplete203(switchPage200) && !!switchPage200.app.querySelector('[data-patron-role-chooser="true"]') && switchPage200.app.querySelectorAll('[data-writ-key]').length === 27);
 
