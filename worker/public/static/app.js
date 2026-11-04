@@ -6626,10 +6626,13 @@
     holder.appendChild(profileForm(data.profile, data.limits, redraw));
   }
   function profileForm(p, limits, redraw) {
+    const owner = S.user, route = currentRoute(), actor = decisionActorRevision;
     const listed = h("input", { type: "checkbox", checked: p.listed });
     const main = h("input", { type: "text", maxlength: String(limits.nameMax), value: p.main ? p.main.name : "", placeholder: "First Last" });
     const raidRole = selectOf(Object.keys(RAID_ROLE_LABELS).map((k) => ({ key: k, label: RAID_ROLE_LABELS[k] })), p.raidRole ? p.raidRole.value : "", { placeholder: "No raid role" });
-    const labelled = (el, label) => { el.setAttribute("aria-label", label); return el; }; // .100 (F8)
+    const describe = (control, field) => { control.setAttribute("aria-describedby", "err-profile-" + field); return control; };
+    const group = (field, ...content) => h("div", { class: "field", "data-field": field }, content,
+      h("span", { class: "err", id: "err-profile-" + field, hidden: true }));
     const rows = (items, make, max, addLabel, what = "row") => {
       const box = h("div", { class: "stack rows" });
       const addBtn = h("button", { class: "btn small", type: "button", text: addLabel });
@@ -6644,11 +6647,22 @@
       addBtn.hidden = box.children.length >= max;
       return { box, addBtn };
     };
-    const professions = rows(p.professions, (it, row) => { row.dataset.kind = "profession"; return [labelled(professionSelect(COMMUNITY_PROFESSIONS, it ? it.name : "", "Profession…"), "Profession"), h("input", { type: "number", min: "0", max: String(limits.skillMax), value: it && it.skill !== null && it.skill !== undefined ? String(it.skill) : "", placeholder: "skill", "aria-label": "Skill level" })]; }, limits.maxProfessions, "Add a profession", "profession");
-    const alts = rows(p.alts, (it, row) => { row.dataset.kind = "alt"; return [h("input", { type: "text", maxlength: String(limits.nameMax), value: it ? it.name : "", placeholder: "First Last", "aria-label": "Alt name" }), it ? altBadge(it) : null]; }, limits.maxAlts, "Add an alt", "alt");
-    const crafts = feat("crafting") ? rows(p.crafts, (it, row) => { row.dataset.kind = "craft"; return [labelled(professionSelect(COMMUNITY_PROFESSIONS, it ? it.profession : "", "Profession…"), "Offer profession"), h("input", { type: "text", maxlength: String(limits.recipeMax), value: it ? it.recipe : "", placeholder: "recipe", "aria-label": "Recipe" })]; }, limits.maxCrafts, "Add an offer", "offer") : null;
-    const err = errorLine(""); err.hidden = true;
-    const notice = h("div");
+    const professions = rows(p.professions, (it, row) => {
+      row.dataset.kind = "profession";
+      return [describe(professionSelect(COMMUNITY_PROFESSIONS, it ? it.name : "", "Profession…", { "aria-label": "Profession" }), "professions"),
+        describe(h("input", { type: "number", min: "0", max: String(limits.skillMax), value: it && it.skill !== null && it.skill !== undefined ? String(it.skill) : "", placeholder: "skill", "aria-label": "Skill level" }), "professions")];
+    }, limits.maxProfessions, "Add a profession", "profession");
+    const alts = rows(p.alts, (it, row) => {
+      row.dataset.kind = "alt";
+      return [describe(h("input", { type: "text", maxlength: String(limits.nameMax), value: it ? it.name : "", placeholder: "First Last", "aria-label": "Alt name" }), "alts"), it ? altBadge(it) : null];
+    }, limits.maxAlts, "Add an alt", "alt");
+    const crafts = feat("crafting") ? rows(p.crafts, (it, row) => {
+      row.dataset.kind = "craft";
+      return [describe(professionSelect(COMMUNITY_PROFESSIONS, it ? it.profession : "", "Profession…", { "aria-label": "Offer profession" }), "crafts"),
+        describe(h("input", { type: "text", maxlength: String(limits.recipeMax), value: it ? it.recipe : "", placeholder: "recipe", "aria-label": "Recipe" }), "crafts")];
+    }, limits.maxCrafts, "Add an offer", "offer") : null;
+    const err = errorLine(""); err.hidden = true; err.setAttribute("tabindex", "-1");
+    const notice = h("div", { role: "status", tabindex: "-1", hidden: true });
     const save = h("button", { class: "btn", type: "submit", text: "Save" });
     const dirtyMark = h("span", { class: "badge warn", text: "unsaved", hidden: true });
     function markDirty() { setDirty("community-profile", true, dirtyMark); }
@@ -6658,16 +6672,61 @@
         h("p", null, `Your detailed profile${crafts ? " and Workshop offers" : ""} appear while the box is ticked and you stay roster-confirmed. Unticking it keeps your saved details in My profile.`),
         h("p", null, "Your whole row in the Discord member list has a separate control. ", h("a", { href: "#/community/directory", text: "Manage my Discord member list visibility" })),
         h("p", { text: "Your recruitment application has its own voting-board choices, including a separate choice for your picture." })),
-      h("label", { class: "check" }, listed, " Show my detailed profile in Member profiles"),
+      group("listed", h("label", { class: "check" }, describe(listed, "listed"), " Show my detailed profile in Member profiles")),
       fieldBox("main", "Main character", main, { hint: `${limits.nameMin}–${limits.nameMax} letters, as "First Last". It is marked confirmed when it matches a character verified on your account; a name verified on another account is refused.` }),
       p.main ? h("p", { class: "small" }, "Saved main: ", h("b", { text: p.main.name }), " ", proofBadge(p.main.source)) : null,
       fieldBox("raid-role", "Raid role", raidRole),
-      h("div", { class: "field" }, h("span", { class: "lab", text: `Professions (up to ${limits.maxProfessions}, with a skill level if you like)` }), professions.box, professions.addBtn),
-      h("div", { class: "field" }, h("span", { class: "lab", text: `Alts you claim (up to ${limits.maxAlts}; labels until an officer confirms them)` }), alts.box, alts.addBtn),
-      crafts ? h("div", { class: "field" }, h("span", { class: "lab", text: `Crafting offers (up to ${limits.maxCrafts}; each recipe once)` }), crafts.box, crafts.addBtn) : null,
-      notice, err, h("div", { class: "btn-row savebar" }, save, dirtyMark));
+      group("professions", h("span", { class: "lab", text: `Professions (up to ${limits.maxProfessions}, with a skill level if you like)` }), professions.box, professions.addBtn),
+      group("alts", h("span", { class: "lab", text: `Alts you claim (up to ${limits.maxAlts}; labels until an officer confirms them)` }), alts.box, alts.addBtn),
+      crafts ? group("crafts", h("span", { class: "lab", text: `Crafting offers (up to ${limits.maxCrafts}; each recipe once)` }), crafts.box, crafts.addBtn) : null,
+      h("div", { class: "savebar" }, h("div", { class: "stack" }, h("div", { class: "btn-row" }, save, dirtyMark), notice, err)));
+    const live = () => S.user === owner && decisionActorRevision === actor && S.signedIn && !S.denied && currentRoute() === route && app.contains(form);
     form.addEventListener("input", markDirty);
     form.addEventListener("change", markDirty);
+    const fieldNames = { listed: "listed", main: "main", raidRole: "raid-role", "raid-role": "raid-role", professions: "professions", alts: "alts", crafts: "crafts" };
+    const refusalFields = { invalid_listed: "listed", invalid_main: "main", invalid_raid_role: "raid-role", invalid_professions: "professions", invalid_alts: "alts", invalid_crafts: "crafts" };
+    const namedError = box => [...box.children].find(node => node.classList.contains("err"));
+    const controlFor = box => box?.querySelector("input, select, textarea");
+    const refusalField = (error) => {
+      const field = error.data?.field, code = codeOf(error);
+      if (typeof field === "string" && Object.hasOwn(fieldNames, field)) return fieldNames[field];
+      if (Object.hasOwn(refusalFields, code)) return refusalFields[code];
+      if (code === "name_conflict" && Array.isArray(error.data?.names)) {
+        const normalize = name => name.normalize("NFC").replace(/\s+/gu, " ").trim().replace(/[A-Z]/g, letter => letter.toLowerCase());
+        const names = new Set(error.data.names.filter(name => typeof name === "string").map(normalize));
+        if (names.has(normalize(main.value))) return "main";
+        if ([...alts.box.children].some(row => names.has(normalize(row.children[0].value)))) return "alts";
+      }
+    };
+    function clearRefusal() {
+      const box = form.querySelector(".invalid");
+      if (box) {
+        box.classList.remove("invalid");
+        controlFor(box)?.setAttribute("aria-invalid", "false");
+        const message = namedError(box);
+        message.hidden = true; message.textContent = "";
+      }
+      err.hidden = true; err.textContent = "";
+      notice.hidden = true; clear(notice);
+    }
+    function showSaveError(message, field) {
+      const box = field && form.querySelector(`[data-field="${field}"]`);
+      if (controlFor(box)) {
+        namedError(box).setAttribute("role", "alert");
+        showFieldError(form, field, message);
+      } else {
+        err.textContent = message; err.hidden = false; err.focus({ preventScroll: true });
+      }
+    }
+    function showNotice(content) {
+      clear(notice); notice.appendChild(content); notice.hidden = false; notice.focus({ preventScroll: true });
+    }
+    function showCurrentProfile(fresh, explanation) {
+      p.revision = fresh.revision;
+      showNotice(noticeBox("warn", "icon-warning",
+        h("p", null, h("strong", { text: explanation }), " Nothing was saved. Your draft is kept in this form. The current version has ", h("b", { text: fresh.main ? fresh.main.name : "no main" }), `, is ${fresh.listed ? "shown in Member profiles" : "hidden from Member profiles"}, and has ${plural((fresh.alts || []).length, "alt")} and ${plural((fresh.professions || []).length, "profession")}. Save again to apply your draft over it, or discard the draft and see the current version.`),
+        h("div", { class: "btn-row" }, h("button", { class: "btn small", type: "button", text: "Reload and discard my draft", onclick: () => { if (live()) { setDirty("community-profile", false, dirtyMark); redraw({ profile: fresh, limits }); } } }))));
+    }
     const collect = () => {
       const body = { revision: p.revision, listed: listed.checked, main: main.value.trim() ? main.value.trim() : null, raidRole: raidRole.value || null };
       body.professions = [...professions.box.children].map((row) => { const [sel, skill] = row.children; return { name: sel.value, skill: skill.value === "" ? null : Number(skill.value) }; }).filter((x) => x.name);
@@ -6677,16 +6736,18 @@
     };
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      err.hidden = true;
-      clear(notice);
+      if (!live()) return;
+      clearRefusal();
       save.disabled = true;
       try {
-        const out = await api("PUT", "/api/community/profile", collect());
+        const out = await api("PUT", "/api/community/profile", collect(), { live });
+        if (!live()) return;
         if (!out || !out.profile) throw new ApiError(200, { error: "unreadable_answer" }); // .104 (F100-1): no receipt, nothing marked saved
         setDirty("community-profile", false, dirtyMark);
         toast(out.unchanged ? "Nothing had changed." : "Saved.", "good");
         redraw({ profile: out.profile, limits }, limits, redraw);
       } catch (ex) {
+        if (!live()) return;
         const code = codeOf(ex);
         if (code === "directory_full" && ex.data && ex.data.saved && ex.data.profile) {
           setDirty("community-profile", false, dirtyMark);
@@ -6696,35 +6757,30 @@
         }
         if (uncertain(ex)) {
           // .104 (F100-1): the answer was lost: re-read the current version; the draft stays in the form and the next Save applies it over whatever is current
-          clear(notice);
           try {
-            const fresh = await api("GET", "/api/community/profile");
+            const fresh = await api("GET", "/api/community/profile", undefined, { live });
+            if (!live()) return;
             p.revision = fresh.profile.revision;
-            notice.appendChild(noticeBox("warn", "icon-warning", h("p", null, h("strong", { text: "The answer was lost. " }), "Your profile was re-read: the current version is ", h("b", { text: fresh.profile.main ? fresh.profile.main.name : "no main" }), `, ${fresh.profile.listed ? "shown in Member profiles" : "hidden from Member profiles"}. Your draft is kept in this form; if the current version already shows it, nothing more is needed; otherwise Save again applies it.`)));
-          } catch { notice.appendChild(noticeBox("warn", "icon-warning", h("p", { text: "The answer was lost and the profile could not be re-read. Your draft is kept in this form; reload the page to see the current version." }))); }
-          save.disabled = false;
+            showNotice(noticeBox("warn", "icon-warning", h("p", null, h("strong", { text: "The answer was lost. " }), "Your profile was re-read: the current version is ", h("b", { text: fresh.profile.main ? fresh.profile.main.name : "no main" }), `, ${fresh.profile.listed ? "shown in Member profiles" : "hidden from Member profiles"}. Your draft is kept in this form; if the current version already shows it, nothing more is needed; otherwise Save again applies it.`)));
+          } catch { if (live()) showSaveError("The answer was lost and the profile could not be re-read. Your draft is kept in this form. Reload the page to see the current version."); }
           return;
         }
         if (code === "stale_revision" && ex.data && ex.data.profile) {
           // .100 (F4): the Worker answered with the current row; the draft stays in the form, the next Save applies it over that version deliberately
-          const fresh = ex.data.profile;
-          p.revision = fresh.revision;
-          clear(notice);
-          notice.appendChild(noticeBox("warn", "icon-warning",
-            h("p", null, h("strong", { text: "Your profile changed elsewhere " }), "(another tab, or an officer's review) since this page loaded. Nothing was saved. Your draft is kept in this form; the current version is: ", h("b", { text: fresh.main ? fresh.main.name : "no main" }), `, ${fresh.listed ? "shown in Member profiles" : "hidden from Member profiles"}, ${plural((fresh.alts || []).length, "alt")}, ${plural((fresh.professions || []).length, "profession")}. `, "Save again to apply your draft over it, or discard the draft and see the current version."),
-            h("div", { class: "btn-row" }, h("button", { class: "btn small", type: "button", text: "Reload and discard my draft", onclick: () => { setDirty("community-profile", false, dirtyMark); redraw({ profile: fresh, limits }, limits, redraw); } }))));
-          save.disabled = false;
+          showCurrentProfile(ex.data.profile, "Your profile changed elsewhere since this page loaded.");
           return;
         }
         if (code === "conflict") {
-          notice.appendChild(noticeBox("warn", "icon-warning", h("p", { text: "Your profile was changed elsewhere (another tab, or an officer's review) since this page loaded. Nothing was saved; the page is reloading it." })));
-          try { const fresh = await api("GET", "/api/community/profile"); redraw(fresh, fresh.limits, redraw); } catch { /* the notice says enough */ }
+          try {
+            const fresh = await api("GET", "/api/community/profile", undefined, { live });
+            if (live()) showCurrentProfile(fresh.profile, "The officers' record of one of these character names changed while you were saving.");
+          } catch { if (live()) showSaveError("The character record changed while you were saving. Your draft is kept in this form. Reload the page to see the current version."); }
           return;
         }
-        err.textContent = explain(ex, "The profile could not be saved.");
-        err.hidden = false;
-        save.disabled = false;
-        if (ex && (ex.status === 403 || ex.status === 503)) refreshCommunity();
+        showSaveError(explain(ex, "The profile could not be saved."), refusalField(ex));
+        if (ex && (ex.status === 403 || ex.status === 503)) refreshCommunity({ live });
+      } finally {
+        if (live()) save.disabled = false;
       }
     });
     return frame("My profile", h("span", { class: "badge " + (p.listed ? "green" : "muted"), text: p.listed ? "Shown in Member profiles" : "Hidden from Member profiles" }), form);
