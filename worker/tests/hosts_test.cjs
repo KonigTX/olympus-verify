@@ -544,6 +544,64 @@ const check = (name, cond, ...why) => { n++; if (cond) ok++; else if (why.length
     check(".210 malformed, null, array or scalar watcher bodies get 400 bad_json/bad_body on every POST endpoint",
       answers.length === 16 && answers.every(([status, error], n) => status === 400 && error === (n % 4 === 0 ? "bad_json" : "bad_body")), JSON.stringify(answers));
   }
+  {
+    const cap = 1024 * 1024, padding = new Uint8Array(64 * 1024).fill(32);
+    const post = (path, body, declared, authorized = true) => get("https://verify.example" + path, env(), {
+      method: "POST", duplex: "half", body, headers: {
+        ...(authorized ? { Authorization: "Bearer " + TOKEN } : {}),
+        ...(declared === undefined ? {} : { "Content-Length": String(declared) }),
+        "Content-Type": "application/json",
+      },
+    });
+    const source = (json, total) => {
+      const first = new TextEncoder().encode(json);
+      const seen = { pulls: 0, bytes: 0, cancelled: false };
+      const body = new ReadableStream({
+        pull(controller) {
+          seen.pulls++;
+          if (seen.bytes === total) { controller.close(); return; }
+          const chunk = seen.bytes === 0 ? first : padding.subarray(0, Math.min(padding.length, total - seen.bytes));
+          seen.bytes += chunk.length;
+          controller.enqueue(chunk);
+        },
+        cancel() { seen.cancelled = true; },
+      }, { highWaterMark: 0 });
+      return { body, seen };
+    };
+    for (const [path, json, declared] of [
+      ["/ingest/roster", '{"members":[]}', undefined],
+      ["/queue/written", '{"ids":[]}', 100],
+    ]) {
+      const streaming = source(json, 2 * cap);
+      const r = await post(path, streaming.body, declared);
+      check("CC-165 stream oversize cancels " + path + " at its first over-cap chunk without reading the tail",
+        r.status === 413 && (await r.json()).error === "body_too_large" &&
+        streaming.seen.cancelled && streaming.seen.bytes === cap + json.length, r.status, streaming.seen);
+      const header = source(json, 2 * cap);
+      const refused = await post(path, header.body, cap + 1);
+      check("CC-165 declared oversize refuses " + path + " before reading any body",
+        refused.status === 413 && (await refused.json()).error === "body_too_large" && header.seen.pulls === 0, refused.status, header.seen);
+    }
+    const unauthorized = source('{"ids":[]}', 2 * cap);
+    const denied = await post("/queue/written", unauthorized.body, cap + 1, false);
+    check("CC-165 bearer refusal precedes the watcher body reader", denied.status === 401 && unauthorized.seen.pulls === 0);
+    const edge = source('{"ids":[]}', cap);
+    const r = await post("/queue/written", edge.body, cap);
+    check("CC-165 watcher accepts exactly the cap and retains the existing queue reply",
+      r.status === 200 && (await r.json()).marked === 0 && edge.seen.bytes === cap && !edge.seen.cancelled);
+    const roster = JSON.stringify({
+      exportedAt: 1793833200, keyVersion: "fixture_only", nativeGuild: "Olympus I", nativeRealm: "Forever",
+      members: Array.from({ length: 1000 }, (_, index) => ({
+        name: "Synthetic Member " + index, rank: "Member", rankIndex: 7, level: 60, class: "Warrior",
+        note: "Synthetic guild roster entry", officerNote: "Fixture only, no member data",
+        guid: "Player-1234-" + index.toString(16).padStart(8, "0"), lastOnline: 1793833200,
+      })),
+    });
+    const rosterResult = await post("/ingest/roster", roster, Buffer.byteLength(roster));
+    check("CC-165 a 1,000-row roster above the Discord limit reaches the unchanged watcher protocol fence",
+      Buffer.byteLength(roster) > discord.MAX_INTERACTION_BYTES && Buffer.byteLength(roster) < cap &&
+      rosterResult.status === 400 && (await rosterResult.json()).error === "unsupported_protocol", Buffer.byteLength(roster));
+  }
   res = await get("https://verify.example/admin/guild-map", env({ WATCHER_TOKEN: "" }), { headers: { Authorization: "Bearer " } });
   check("  the admin routes too", res.status === 401);
 

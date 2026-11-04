@@ -497,6 +497,9 @@ export function classifyHost(env: Env, hostname: string): HostClass {
   return "unknown";
 }
 
+// Full guild exports include notes and escaped Unicode. Keep their body budget separate from signed Discord requests.
+const MAX_WATCHER_POST_BYTES = 1024 * 1024;
+
 /** Every handler is awaited here so a rejected promise lands in the catch above instead of surfacing as a 1101. */
 async function route(request: Request, env: Env, path: string, schemaReady = true, ctx?: ExecutionContext,namesOrigin?:HandlerServingOrigin,originalDispatch?:BetaRoleDispatch): Promise<Response> {
   const roleDispatch=originalDispatch??captureBetaRoleDispatch(env);
@@ -583,7 +586,11 @@ async function route(request: Request, env: Env, path: string, schemaReady = tru
     let body: any = null; // each handler validates its own body, exactly as before .66
     if (request.method === "POST") {
       // .210: a body that is not a JSON object is a final 400; it was a 500, which the watcher retries forever.
-      try { body = await request.json(); } catch { return json({ error: "bad_json", message: "The request body is not valid JSON." }, 400); }
+      try {
+        const raw = await readInteractionBody(request, MAX_WATCHER_POST_BYTES);
+        if (raw === null) return json({ error: "body_too_large", message: "The request body exceeds 1 MiB." }, 413);
+        body = JSON.parse(raw);
+      } catch { return json({ error: "bad_json", message: "The request body is not valid JSON." }, 400); }
       if (body === null || typeof body !== "object" || Array.isArray(body)) return json({ error: "bad_body", message: "The request body must be a JSON object." }, 400);
     }
     if (query.has("keyVersion") || (body !== null && typeof body === "object" && "keyVersion" in body)) {
