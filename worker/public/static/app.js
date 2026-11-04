@@ -2801,6 +2801,7 @@
   function showFieldError(form, field, message) {
     const ownError = box => [...box.children].find(child => child.classList.contains("err"));
     for (const f of form.querySelectorAll(".invalid")) { f.classList.remove("invalid"); const control = f.querySelector("input, select, textarea, button"); if (control) control.setAttribute("aria-invalid", "false"); const e = ownError(f); if (e) { e.hidden = true; e.textContent = ""; } }
+    if (!message) return;
     const box = field && form.querySelector(`[data-field="${CSS.escape(field)}"]`);
     if (box) {
       box.classList.add("invalid");
@@ -7439,6 +7440,7 @@
     });
     value();
     return { start, fields: [fieldBox("ev-time-zone", "Time zone", mode), fieldBox("ev-start", "Starts", start, { required: true }), choices, preview], value, error: () => error,
+      errorField: () => choices.hidden ? "ev-start" : "ev-occurrence",
       freeze: (on) => { start.disabled = on; mode.disabled = on; occurrence.disabled = on; } };
   }
   /** The event form (new or edit). `initial` is the event or null; `onSave(values)` returns a promise of the saved event. */
@@ -7451,6 +7453,14 @@
     const capacity = h("input", { type: "number", min: "1", max: String(EVENT_LIMITS.capacityMax), value: initial && initial.capacity ? String(initial.capacity) : "", placeholder: "no limit" });
     const targets = ["tank", "healer", "damage"].map((r) => h("input", { type: "number", min: "0", max: String(EVENT_LIMITS.capacityMax), value: initial && initial.roleTargets ? String(initial.roleTargets[r]) : "", placeholder: "0", "aria-label": `${RAID_ROLE_LABELS[r]} wanted`, "data-role": r }));
     const err = errorLine(""); err.hidden = true;
+    err.setAttribute("tabindex", "-1");
+    const targetFields = targets.map(control => {
+      const key = `ev-${control.dataset.role}`;
+      control.setAttribute("aria-describedby", `err-${key}`);
+      control.setAttribute("aria-invalid", "false");
+      return h("div", { class: "field", "data-field": key }, h("label", { class: "inline" }, rrIcon(control.dataset.role), " ", control),
+        h("span", { class: "err", hidden: true, id: `err-${key}` }));
+    });
     const save = h("button", { class: "btn", type: "submit", text: initial ? "Save changes" : "Schedule" });
     const dirtyMark = h("span", { class: "badge warn", text: "unsaved", hidden: true });
     const form = h("form", { class: "stack", novalidate: true },
@@ -7459,8 +7469,19 @@
       time.fields,
       fieldBox("ev-duration", "Duration (minutes)", duration, { hint: "15 minutes to 12 hours." }),
       fieldBox("ev-capacity", "Places", capacity, { hint: "How many yes answers take a place; empty for no limit." }),
-      h("div", { class: "field" }, h("span", { class: "lab", text: "Wanted roles (optional)" }), h("div", { class: "btn-row" }, targets.map((t) => h("label", { class: "inline" }, rrIcon(t.dataset.role), " ", t)))),
-      err, h("div", { class: "btn-row savebar" }, save, dirtyMark, cancelEvent ? h("button", { class: "btn small danger", type: "button", text: "Cancel this event", onclick: cancelEvent }) : null));
+      h("div", { class: "field" }, h("span", { class: "lab", text: "Wanted roles (optional)" }), h("div", { class: "btn-row" }, targetFields)),
+      h("div", { class: "savebar" }, err, h("div", { class: "btn-row" }, save, dirtyMark, cancelEvent ? h("button", { class: "btn small danger", type: "button", text: "Cancel this event", onclick: cancelEvent }) : null)));
+    const fields = new Map([
+      ["title", "ev-title"], ["invalid_title", "ev-title"], ["details", "ev-details"], ["invalid_details", "ev-details"],
+      ["startsAt", "ev-start"], ["invalid_starts_at", "ev-start"], ["durationMin", "ev-duration"], ["invalid_duration_min", "ev-duration"],
+      ["capacity", "ev-capacity"], ["invalid_capacity", "ev-capacity"], ["capacity_below_accepted", "ev-capacity"],
+    ]);
+    const report = (field, message) => {
+      if (field) return showFieldError(form, field, message);
+      err.textContent = message;
+      err.hidden = false;
+      err.focus();
+    };
     const markDirty = () => setDirty("community-event", true, dirtyMark);
     form.addEventListener("input", markDirty);
     form.addEventListener("change", markDirty);
@@ -7475,9 +7496,10 @@
     form.addEventListener("submit", async (ev) => {
       ev.preventDefault();
       err.hidden = true;
+      showFieldError(form, null);
       const v = collect();
-      if (!v.title) { err.textContent = ORGANIZER_ERRORS.invalid_title; err.hidden = false; return; }
-      if (!v.startsAt) { err.textContent = time.error() || ORGANIZER_ERRORS.invalid_starts_at; err.hidden = false; return; }
+      if (!v.title) return report("ev-title", ORGANIZER_ERRORS.invalid_title);
+      if (!v.startsAt) return report(time.errorField(), time.error() || ORGANIZER_ERRORS.invalid_starts_at);
       save.disabled = true;
       time.freeze(true);
       try {
@@ -7485,10 +7507,16 @@
         if (r === "unchanged") { save.disabled = false; time.freeze(false); }
         if (r !== "pending") setDirty("community-event", false, dirtyMark); // .109: "pending" = a lost answer waits; the form stays unsaved and the leave guard holds
       } catch (ex) {
-        err.textContent = explain(ex, "The event could not be saved.");
-        err.hidden = false;
+        if (!form.isConnected) return;
         save.disabled = false;
         time.freeze(false);
+        const code = codeOf(ex);
+        const badRole = code === "invalid_role_targets" && targets.find(control => {
+          const value = Number(control.value);
+          return !Number.isInteger(value) || value < 0 || value > EVENT_LIMITS.capacityMax;
+        });
+        const field = fields.get(ex?.data?.field) || fields.get(code) || (badRole && `ev-${badRole.dataset.role}`);
+        report(field, explain(ex, "The event could not be saved."));
         if (ex && (ex.status === 403 || ex.status === 503)) refreshCommunity();
       }
     });

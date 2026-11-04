@@ -1019,11 +1019,25 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   await org.go("#/community/calendar/new");
   await waitFor(() => !!byText(org.app, "button", "Schedule"), "the event form");
   let evForm = byText(org.app, "button", "Schedule").closest("form");
+  const eventTitleControl = evForm.querySelector('#f-ev-title');
+  const eventDurationControl = evForm.querySelector('#f-ev-duration');
+  byText(evForm, "button", "Schedule").click();
+  check("CC065 empty event title focuses and describes the invalid field",
+    org.document.activeElement === eventTitleControl && eventTitleControl.getAttribute('aria-invalid') === 'true'
+    && eventTitleControl.getAttribute('aria-describedby').includes('err-ev-title') && !evForm.querySelector('#err-ev-title').hidden);
   const startLocal = (() => { const d = new Date((now + 4 * DAY) * 1000); const p = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; })();
-  evForm.querySelector('input[type="text"]').value = "Onyxia";
+  eventTitleControl.value = "Onyxia";
   evForm.querySelector("textarea").value = "Cloaks on.";
   evForm.querySelector('input[type="datetime-local"]').value = startLocal;
-  evForm.querySelectorAll('input[type="number"]')[0].value = "90";
+  eventDurationControl.value = "1";
+  byText(evForm, "button", "Schedule").click();
+  await waitFor(() => eventDurationControl.getAttribute('aria-invalid') === 'true', "the Worker duration refusal and focus");
+  check("CC065 the real duration refusal moves focus, clears the old error and preserves the unsent draft",
+    org.document.activeElement === eventDurationControl && !evForm.querySelector('#err-ev-duration').hidden
+    && eventTitleControl.getAttribute('aria-invalid') === 'false' && evForm.querySelector('#err-ev-title').hidden
+    && eventTitleControl.value === 'Onyxia' && evForm.querySelector('textarea').value === 'Cloaks on.'
+    && !one("SELECT 1 FROM community_events WHERE title = 'Onyxia'"));
+  eventDurationControl.value = "90";
   evForm.querySelectorAll('input[type="number"]')[1].value = "40";
   evForm.querySelector('input[data-role="tank"]').value = "2";
   byText(evForm, "button", "Schedule").click();
