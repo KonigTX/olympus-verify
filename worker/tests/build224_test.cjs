@@ -35,7 +35,11 @@ async function checks224(){
  r=await send({type:3,custom:crafter});check('crafter search opens a bounded private modal',r.initial.type===9&&r.initial.data.components[0].components[0].max_length===60);
  r=await send({type:5,custom:r.initial.data.custom_id,fields:[['query','alchemy']]});check('recipe lookup uses the existing privacy-filtered Workshop query',r.initial.type===5&&r.answer.embeds?.length===1);
  r=await send({type:3,custom:menu,values:['council']});check('Council hub displays all twelve canonical titles and reserved applications',expected.every(([,title])=>JSON.stringify(r.answer).includes(title))&&JSON.stringify(r.answer).includes('reserved')&&controls(r.answer).some(x=>x.url?.endsWith('/#/apply')));
+ check('CC-015 Council hub shares the 13-line Cabinet roster without relaxing mention suppression',
+  r.answer.embeds?.[0]?.fields.find(f=>f.name==='Current Council portfolios')?.value.split('\n').length===13&&r.answer.allowed_mentions.parse.length===0);
  r=await send({type:3,custom:menu,values:['branches']});check('branch hub includes current launch evidence and unknown-capacity guardrails',r.answer.embeds?.length===2&&JSON.stringify(r.answer).includes('unknown'));
+ check('CC-018 branch hub shares the compact unpublished-capacity disclosure and preserves the launch embed',
+  r.answer.embeds?.length===2&&r.answer.embeds[0].description.includes('No published capacity snapshot for Olympus I–X yet.')&&!r.answer.embeds[0].fields?.length);
  r=await send({type:3,custom:menu,values:['treasury']});check('Treasury stays paused and ordinary appeals remain free with excluded safety offenses',JSON.stringify(r.answer).includes('OFF')&&JSON.stringify(r.answer).includes('Ordinary appeals are free')&&JSON.stringify(r.answer).includes('100g')&&JSON.stringify(r.answer).includes('Doxxing'));
  r=await send({type:3,custom:menu.replace(MEMBER,ORG),values:['status']});check('a component for another actor cannot disclose status',!(r.initial.type===4?r.initial.data:r.answer).embeds?.length&&/expired/.test((r.initial.type===4?r.initial.data:r.answer).content));
  const seen=one('SELECT COUNT(*) n FROM seen_interactions').n;r=await send({guild:WRONG});check('other guilds are ignored before replay or account effects',r.status===204&&r.initial===null&&one('SELECT COUNT(*) n FROM seen_interactions').n===seen);

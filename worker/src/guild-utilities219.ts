@@ -12,6 +12,9 @@ import { ROYAL_WRIT_POLICY } from './royal-writs199';
 
 export interface GuildEmbed219 { title:string;description?:string;url?:string;fields?:{name:string;value:string;inline?:boolean}[];footer?:{text:string} }
 export const safeDiscordText219=(input:unknown,max=1000)=>String(input??'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/[@`*_~|<>\\]/g,c=>'\\'+c).slice(0,max);
+// Only caller-owned separators survive per-item sanitization.
+const discordLines219=(parts:readonly unknown[],separator:'\n'|'\n\n',max:number)=>
+ parts.map(part=>safeDiscordText219(part,max)).join(separator).slice(0,max);
 const field=(name:string,value:unknown)=>({name:safeDiscordText219(name,150),value:safeDiscordText219(value,1000)||'Unavailable'});
 type Any219=Record<string,any>;
 async function assetJson219(env:Env,a:GuildActor219,path:string):Promise<Any219> {
@@ -40,18 +43,18 @@ export async function guideLookup219(env:Env,a:GuildActor219,sub:string,v:Record
   const spec=specQuery?cls.specs.find((row:Any219)=>row.id===specQuery||row.name?.toLowerCase()===specQuery):null;
   if(specQuery&&!spec)throw Error('Choose a specialization for that class, or omit spec to see the class guide.');
   const presets=guide.presets.filter((row:Any219)=>row.classId===cls.id&&(!spec||row.specId===spec.id)).slice(0,4);
-  return {title:cls.name+(spec?' · '+spec.name:''),url:base+'/#/guides/class/'+cls.id+(spec?'/'+spec.id:''),description:safeDiscordText219((spec?.beginner?.summary??cls.overview??[]).slice(0,2).join('\n\n'),1700),fields:presets.map((row:Any219)=>({name:safeDiscordText219(row.label,150),value:'[Open level '+row.level+' talent preset]('+base+'/#/talents/'+cls.id+'/'+row.code+')'})),footer:{text:evidence}};
+  return {title:cls.name+(spec?' · '+spec.name:''),url:base+'/#/guides/class/'+cls.id+(spec?'/'+spec.id:''),description:discordLines219((spec?.beginner?.summary??cls.overview??[]).slice(0,2),'\n\n',1700),fields:presets.map((row:Any219)=>({name:safeDiscordText219(row.label,150),value:'[Open level '+row.level+' talent preset]('+base+'/#/talents/'+cls.id+'/'+row.code+')'})),footer:{text:evidence}};
  }
  if(sub==='attunement'){
   const id=v.raid==='onyxia'?'onyxias-lair':null,raid=id?guide.tools.attunements.find((row:Any219)=>row.id===id):null;
   if(!['onyxia','mc','bwl'].includes(String(v.raid)))throw Error('Choose Onyxia, Molten Core or Blackwing Lair.');
   if(!raid){const change=guide.tools.whatChanged.find((row:Any219)=>row.topic==='Molten Core and Blackwing Lair');return {title:v.raid==='mc'?'Molten Core':'Blackwing Lair',url:base+'/#/guides/tools/attunements',description:safeDiscordText219(change?.text??'No current Forever attunement is confirmed. Classic reference steps must not be presented as a live requirement.',1700),footer:{text:evidence}};}
-  return {title:raid.raid+' · attunement',url:base+'/#/guides/tools/attunements',description:safeDiscordText219(raid.opens+'\n'+raid.requirement.value,1500),fields:raid.steps.slice(0,8).map((row:Any219)=>field(row.label+' ['+row.grade+']',row.value??row.note??'Unknown')),footer:{text:evidence}};
+  return {title:raid.raid+' · attunement',url:base+'/#/guides/tools/attunements',description:discordLines219([raid.opens,raid.requirement.value],'\n',1500),fields:raid.steps.slice(0,8).map((row:Any219)=>field(row.label+' ['+row.grade+']',row.value??row.note??'Unknown')),footer:{text:evidence}};
  }
  if(sub==='consumes'||sub==='buffs'){
   const rows=sub==='buffs'?guide.tools.worldBuffs:guide.tools.consumables;
-  const rules=guide.tools.whatChanged.filter((row:Any219)=>sub==='buffs'?['World buffs','Raid-wide buffs'].includes(row.topic):['Consumable rules','New recipes','Alchemy and First Aid'].includes(row.topic));
-  return {title:sub==='buffs'?'World buffs & raid-wide buffs':'Raid consumable checklist',url:base+'/#/guides/tools/buffs',description:safeDiscordText219(rules.map((row:Any219)=>row.text).join('\n\n'),1700),fields:rows.slice(0,8).map((row:Any219)=>field(row.name+' ['+row.grade+']',row.foreverStatus??row.effect)),footer:{text:evidence+' '+rows.length+' catalogue entries; open the guide for the complete checklist.'}};
+  const rules=guide.tools.whatChanged.filter((row:Any219)=>sub==='buffs'?['World buffs','Raid auras','Raid-wide buffs'].includes(row.topic):['Consumable rules','New recipes','Alchemy and First Aid'].includes(row.topic));
+  return {title:sub==='buffs'?'World buffs & raid-wide buffs':'Raid consumable checklist',url:base+'/#/guides/tools/buffs',description:discordLines219(rules.map((row:Any219)=>row.text),'\n\n',1700),fields:rows.slice(0,8).map((row:Any219)=>field(row.name+' ['+row.grade+']',row.foreverStatus??row.effect)),footer:{text:evidence+' '+rows.length+' catalogue entries; open the guide for the complete checklist.'}};
  }
  throw Error('Choose a guide lookup.');
 }
@@ -92,7 +95,10 @@ export async function referenceLookup219(env:Env,a:GuildActor219,name:string):Pr
   const rows=await guildActorBatch219(env,a,[env.DB.prepare(`SELECT ${DB_NOW} now`),env.DB.prepare("SELECT key,value,updated_at,updated_by FROM site_settings WHERE key GLOB 'army:census:v2:*' ORDER BY CAST(SUBSTR(key,16) AS INTEGER),key LIMIT 12")]);
   const at=Number((rows[0]!.results[0] as {now:number}).now),snapshots=new Map<string,ArmySnapshot>();let held=false;
   for(const raw of rows[1]!.results){const row=raw as {key:string;value:string;updated_at:number;updated_by:string|null},snapshot=parsedArmySnapshot219(row,at);if(!snapshot||armyKey(snapshot)!==row.key||snapshots.has(snapshot.guilds[0].name)){held=true;break;}snapshots.set(snapshot.guilds[0].name,snapshot);}
-  return {title:'Olympus I–X · branch status',url:base+'/#/army',description:'Branch contexts and accepted Army aggregates; not a live membership or invitation guarantee. Daniel’s automatic relay is unmounted/OFF. October Beta 1000/1000 +247 queued is historical only.',fields:org.guildPlaceholders.map((branch:Any219)=>{
+  const empty=!held&&snapshots.size===0;
+  const scope='Branch contexts and accepted Army aggregates; not a live membership or invitation guarantee. Daniel’s automatic relay is off. October Beta 1000/1000 +247 queued is historical only.';
+  const description=empty?'No published capacity snapshot for Olympus I–X yet. Live capacity is unknown. '+scope:scope;
+  return {title:'Olympus I–X · branch status',url:base+'/#/army',description,fields:empty?[]:org.guildPlaceholders.map((branch:Any219)=>{
    const snapshot=held?null:snapshots.get(branch.name),row=snapshot?.guilds[0],age=row?Math.max(0,at-row.receivedAt):null;
    return field(branch.name,branch.state+'. '+(!row?'Live capacity unknown; '+(held?'stored aggregate validation is held.':'no accepted current aggregate.'):'Volunteer-client aggregate (unverified): '+(row.reportedCharacters==='few'?'fewer than 5':row.reportedCharacters)+' reported characters; received '+new Date(row.receivedAt*1000).toISOString()+'. '+(age!>86400?'Stale; live capacity unknown.':'A dated observation, not current free-slot proof.')));
   }),footer:{text:'No automatic invitation, transfer, ranking or Link action. Officer review uses current evidence; small populations retain the Army suppression rules.'}};
@@ -100,7 +106,8 @@ export async function referenceLookup219(env:Env,a:GuildActor219,name:string):Pr
  if(name==='council'){
   const org=await assetJson219(env,a,'/static/governance/organization.json'),seats=org.councilComposition?.currentSeats;
   if(!Array.isArray(seats)||seats.length!==14||!Array.isArray(org.nativeRanks))throw Error('The current Council guide is unavailable.');
-  return {title:'The ten ranks & current High Council',url:base+'/#/organization',description:'The Guild Master chairs the High Council. The Co-Guild Master serves alongside twelve numbered portfolios. Council portfolios, Officer Corps remits and native rank standing remain separate; this guide appoints nobody.',fields:[field('Exact in-game ladder','1 Leader · 2 High Council · 3 Officer · 4 Officer Alt · 5 Raid Leader · 6 Veteran · 7 Raider · 8 Member · 9 Alt · 10 Initiate'),field('Current Council portfolios',seats.filter((row:Any219)=>row.id!=='gm-chair').map((row:Any219,index:number)=>index===0?row.label:(index+'. '+row.label)).join('\n')),field('Reserved authority','Leadership seats are reserved appointments, not public application tracks. A title, roster entry or payment creates no Discord, bank, cryptographic or addon authority.')]};
+  const labels=seats.filter((row:Any219)=>row.id!=='gm-chair').map((row:Any219,index:number)=>index===0?row.label:index+'. '+row.label);
+  return {title:'The ten ranks & current High Council',url:base+'/#/organization',description:'The Guild Master chairs the High Council. The Co-Guild Master serves alongside twelve numbered portfolios. Council portfolios, Officer Corps remits and native rank standing remain separate; this guide appoints nobody.',fields:[field('Exact in-game ladder','1 Leader · 2 High Council · 3 Officer · 4 Officer Alt · 5 Raid Leader · 6 Veteran · 7 Raider · 8 Member · 9 Alt · 10 Initiate'),{name:'Current Council portfolios',value:discordLines219(labels,'\n',1000)||'Unavailable'},field('Reserved authority','Leadership seats are reserved appointments, not public application tracks. A title, roster entry or payment creates no Discord, bank, cryptographic or addon authority.')]};
  }
  throw Error('Unknown guild reference.');
 }
