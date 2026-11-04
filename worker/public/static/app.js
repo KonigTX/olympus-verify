@@ -3467,9 +3467,43 @@
   }
 
   // ---------------------------------------------------------------- vote: the board, and write-ins
-  const V = { role: "", offset: 0, cls: "", fit: "", todo: false, summary: null };
+  const V = { role: "", offset: 0, cls: "", fit: "", todo: false, summary: null, actor: null, actorRevision: -1 };
   const boardRoleCounts = new WeakMap(); // Counts only, scoped to the displayed role; never candidate data.
   const boardShells = new WeakMap(); // Mounted navigation only; each selected role still gets a fresh admitted read.
+  const boardCount = value => Number.isSafeInteger(value) && value >= 0;
+  const boardObject = value => value !== null && typeof value === "object" && !Array.isArray(value);
+  const boardUnavailable = "Your access to this board could not be confirmed.";
+  async function readBoard(path, live) {
+    let active = true, timer;
+    const deadline = new Promise((_, reject) => {
+      timer = setTimeout(() => { active = false; reject(new ApiError(0, { error: "board_read_timeout" })); }, 10000);
+    });
+    try { return await Promise.race([api("GET", path, undefined, { live: () => active && live() }), deadline]); }
+    finally { active = false; clearTimeout(timer); }
+  }
+  function boardReadFailure(box, subject, error, retry) {
+    clear(box);
+    const limited = error.status === 429;
+    const refused = error.status === 401 || error.status === 403 || error.status === 409 && error.data?.error === "reload";
+    const detail = limited ? " Too many pages in one minute. Wait a moment, then carry on."
+      : error.data?.error === "board_read_timeout" ? " The read took too long." : "";
+    add(box, [errorLine(subject + " could not be checked." + detail),
+      limited || refused ? null : h("button", { class: "btn small", type: "button", text: "Retry " + subject.toLowerCase(),
+        onclick: event => { if (event.currentTarget.isConnected) retry(); } })]);
+  }
+  function clearBoardRole(box) {
+    delete box.dataset.boardFresh;
+    boardRoleCounts.delete(box);
+    box.setAttribute("aria-busy", "false");
+    clear(box);
+  }
+  function refuseBoardRole(box, content) {
+    box.dataset.boardRequest = "refused";
+    clearBoardRole(box);
+    box.appendChild(errorLine(boardUnavailable));
+    // Keep the nomination draft and its leave guard while refusing further actions on this role.
+    for (const control of content.querySelectorAll("button,input,select,textarea")) control.disabled = true;
+  }
   ROUTES.vote = async function vote(main, parts) {
     const selectedTrack199 = track199(dec(parts[0] || ""));
     const savedOpen219 = S.application && ["submitted","reviewing"].includes(S.application.status);
@@ -3500,10 +3534,14 @@
     const meta = M();
     const s = S.settings || {};
     const closed = !s.votingOpen;
+    const actor = S.user, actorRevision = decisionActorRevision, route = currentRoute();
+    if (V.actor !== actor || V.actorRevision !== actorRevision) {
+      V.actor = actor; V.actorRevision = actorRevision; V.summary = null; boardSummaryRead = null;
+    }
     if (main.dataset.applicationTrack199) { clear(main); delete main.dataset.applicationTrack199; boardShells.delete(main); }
     const settingsKey = JSON.stringify([s.votingOpen, s.noVote, s.appointed, s.royalWritsOn === true]);
     let shell = boardShells.get(main);
-    if (shell && shell.settingsKey !== settingsKey) { clear(main); shell = null; boardShells.delete(main); }
+    if (shell && (shell.settingsKey !== settingsKey || shell.actor !== actor || shell.actorRevision !== actorRevision)) { clear(main); shell = null; boardShells.delete(main); }
     if (!main.querySelector("#application-directory201")) {
       add(main, [applicationRoleDirectory201(next => { location.hash = `#/vote/${next.applicationTrack}/${encodeURIComponent(next.targetOffice || "new")}`; }), writsPanel199("vote")]);
     }
@@ -3512,7 +3550,7 @@
     const cached = boardSummaryRead && nowMs() >= boardSummaryRead.at && nowMs() - boardSummaryRead.at < 30000;
     const summary = cached ? boardSummaryRead.data : V.summary || { roles: [] };
     V.summary = summary;
-    const counts = Object.fromEntries(summary.roles.map((r) => [r.key, r]));
+    const counts = Object.assign(Object.create(null), Object.fromEntries(summary.roles.map((r) => [r.key, r])));
     const progressRows = new Map();
     const wanted = dec(parts[0] || "");
     if (wanted && meta.ballots.some((b) => b.key === wanted)) { if (wanted !== V.role) { V.offset = 0; } V.role = wanted; }
@@ -3528,7 +3566,7 @@
     // V.role (and starts at the first page) only once the address has changed.
     const go = (key) => { location.hash = "#/vote/" + encodeURIComponent(key); };
     const item = (b) => {
-      const c = counts[b.key] || { applicants: 0, votable: 0, voted: 0 };
+      const c = counts[b.key];
       const who = appointedTo(b.key);
       const quiet = noVoteFor(b.key);
       // votable: the applicants this voter can vote on (not themself); "3/5" is their progress through those. An
@@ -3539,7 +3577,7 @@
           ? h("span", { class: "n", title: appointmentLabel(who), "data-appointment-title": b.key }, h("img", { class: "tick", src: art("ready"), alt: "appointed", width: "16", height: "16" }))
           : quiet
             ? h("span", { class: "n", title: "No public vote: the leadership chooses" }, crown("no public vote"))
-            : h("span", { class: "n" + (c.votable && c.voted >= c.votable ? " done" : ""), text: c.votable ? `${c.voted}/${c.votable}` : "—", title: progressTitle(c) }));
+            : h("span", { class: "n" + (c?.votable && c.voted >= c.votable ? " done" : ""), text: c?.votable ? `${c.voted}/${c.votable}` : "—", title: c ? progressTitle(c) : "Count unavailable" }));
       progressRows.set(b.key, a);
       return a;
     };
@@ -3554,7 +3592,7 @@
       if (b.key === role) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current");
       progressRows.set(b.key, link);
     }
-    const pickText = (b) => (appointedTo(b.key) ? `${b.label} (appointed)` : noVoteFor(b.key) ? `${b.label} (no public vote)` : `${b.label} (${(counts[b.key] || {}).applicants || 0})`);
+    const pickText = (b) => (appointedTo(b.key) ? `${b.label} (appointed)` : noVoteFor(b.key) ? `${b.label} (no public vote)` : counts[b.key] ? `${b.label} (${counts[b.key].applicants})` : b.label);
     const rolePick = shell ? shell.rolePick : h("select", { class: "role-pick", "aria-label": "Role" },
       h("optgroup", { label: "Leadership" }, lead.map((b) => h("option", { value: b.key, text: pickText(b), selected: b.key === role }))),
       h("optgroup", { label: "Class leads" }, classes.map((b) => h("option", { value: b.key, text: pickText(b), selected: b.key === role }))));
@@ -3563,8 +3601,8 @@
     const boardBox = h("div", { class: "board-results", "aria-busy": "true" },
       counts[role] && counts[role].applicants === 0 ? h("p", { class: "muted", "data-board-last-empty": true, text: "No applications at the last check." }) : null,
       h("p", { class: "muted small", role: "status", text: "Checking applications…" }));
-    const summaryStatus = shell ? shell.summaryStatus : h("p", { class: "muted tiny board-summary-status", role: "status" });
-    summaryStatus.textContent = cached ? "" : "Refreshing role counts…";
+    const summaryStatus = shell ? shell.summaryStatus : h("div", { class: "muted tiny board-summary-status" });
+    clear(summaryStatus);
     const holder = appointedTo(role);
     const quiet = !holder && noVoteFor(role);
     const guideFamily = roleDirectory203()?.keyToFamily[role];
@@ -3574,7 +3612,7 @@
         h("div", { class: "plaque" }, h("h2", null, posIcon(role, "s"), " ", ballot.label),
           holder ? h("span", { class: "aside", text: "Appointed" })
             : quiet ? h("span", { class: "aside", text: "No public vote" })
-            : h("span", { class: "aside", id: "role-applicants", text: `${plural((counts[role] || {}).applicants || 0, "applicant")}` })),
+            : h("span", { class: "aside", id: "role-applicants", text: counts[role] ? plural(counts[role].applicants, "applicant") : "Applicant count unavailable" })),
         roleAbout(role), guideFamily ? h("a", { href: "#/roles/" + encodeURIComponent(guideFamily), text: "Role guide" }) : null,
         holder
           ? appointedNote(ballot, holder)
@@ -3595,46 +3633,68 @@
         noticeBox("ok", "icon-shield", h("p", null, h("strong", { text: "Your votes are private. " }), "Nobody sees how anyone voted or how many votes anyone has, except the guild's leadership. Every voter sees the applicants in a different order, so nobody is first for everyone."))),
       h("div", { class: "board-layout" }, roleList, content),
     ]);
-    boardShells.set(main, { settingsKey, roleList, rolePick, summaryStatus, content });
+    boardShells.set(main, { settingsKey, roleList, rolePick, summaryStatus, content, actor, actorRevision });
     // A prior role's response must be inert even though its surrounding page remains mounted.
-    const live = () => main.parentNode === app && boardShells.get(main)?.content === content;
-    const summaryRequest = cached ? null : api("GET", "/api/board", undefined, { live });
-    const countRead = summaryRequest && summaryRequest.then(next => {
-      if (!live()) return;
-      // A selected-role response is authoritative for that role; a cached summary
-      // arriving later must never overwrite its fresh totals.
-      const freshRole = boardBox.dataset.boardFresh === role && boardRoleCounts.get(boardBox);
-      if (freshRole) {
-        const row = next.roles.find(value => value.key === role);
-        if (row) Object.assign(row, { applicants: freshRole.applicants, votable: freshRole.votable, voted: freshRole.voted });
-      }
-      V.summary = next;
-      boardSummaryRead = { data: next, at: nowMs() };
-      for (const row of next.roles) counts[row.key] = row;
+    const live = () => main.parentNode === app && boardShells.get(main)?.content === content
+      && S.signedIn && !S.denied && S.user === actor && decisionActorRevision === actorRevision && currentRoute() === route;
+    const paintCounts = () => {
       for (const b of meta.ballots) {
-        const n = progressRows.get(b.key).querySelector(".n"), c = counts[b.key] || { applicants: 0, votable: 0, voted: 0 };
-        if (n && !appointedTo(b.key) && !noVoteFor(b.key)) { n.textContent = c.votable ? `${c.voted}/${c.votable}` : "—"; n.title = progressTitle(c); n.classList.toggle("done", !!c.votable && c.voted >= c.votable); }
+        const n = progressRows.get(b.key).querySelector(".n"), c = counts[b.key];
+        if (n && !appointedTo(b.key) && !noVoteFor(b.key)) {
+          n.textContent = c?.votable ? `${c.voted}/${c.votable}` : "—";
+          n.title = c ? progressTitle(c) : "Count unavailable";
+          n.classList.toggle("done", !!c?.votable && c.voted >= c.votable);
+        }
       }
       for (const option of rolePick.querySelectorAll("option")) {
         const b = meta.ballots.find(value => value.key === option.getAttribute("value"));
         if (b) option.textContent = pickText(b);
       }
       if (counts[role]) showRoleProgress(counts[role]);
-      summaryStatus.textContent = "";
-    }).catch(error => {
-      if (!live()) return;
-      summaryStatus.textContent = "Role counts could not be refreshed. " + error.message;
-      if (error.status === 401 || error.status === 403) {
-        boardBox.dataset.boardRequest = "refused";
-        boardBox.setAttribute("aria-busy", "false");
-        clear(boardBox);
-        boardBox.appendChild(errorLine(explain(error)));
-        // Keep a person's unsaved text while refusing further actions after a
-        // current admission failure. The dirty-navigation guard remains active.
-        for (const control of content.querySelectorAll("button,input,select,textarea")) control.disabled = true;
+      else {
+        const aside = content.querySelector("#role-applicants");
+        if (aside) aside.textContent = "Applicant count unavailable";
       }
-    });
-    await Promise.all([countRead, !holder && !quiet ? drawBoard(boardBox, closed, role) : null]);
+    };
+    const refuse = () => {
+      V.summary = null; boardSummaryRead = null;
+      for (const key of Object.keys(counts)) delete counts[key];
+      paintCounts();
+      clear(summaryStatus);
+      summaryStatus.appendChild(errorLine(boardUnavailable));
+      refuseBoardRole(boardBox, content);
+    };
+    const refreshCounts = async () => {
+      if (!live()) return;
+      clear(summaryStatus);
+      summaryStatus.appendChild(h("p", { role: "status", text: "Refreshing role counts…" }));
+      try {
+        const current = () => live() && boardBox.dataset.boardRequest !== "refused";
+        const next = await readBoard("/api/board", current);
+        if (!current()) return;
+        if (!Array.isArray(next?.roles) || !next.roles.every(r => boardObject(r) && typeof r.key === "string" && [r.applicants, r.votable, r.voted].every(boardCount))) throw new Error();
+        // A selected-role response is authoritative for that role, even if the summary arrives later.
+        const freshRole = boardBox.dataset.boardFresh === role && boardRoleCounts.get(boardBox);
+        if (freshRole) {
+          const row = next.roles.find(value => value.key === role);
+          if (row) Object.assign(row, freshRole);
+        }
+        V.summary = next;
+        boardSummaryRead = { data: next, at: nowMs() };
+        for (const row of next.roles) counts[row.key] = row;
+        paintCounts();
+        clear(summaryStatus);
+      } catch (error) {
+        if (!live() || boardBox.dataset.boardRequest === "refused") return;
+        if (error.status === 401 || error.status === 403) {
+          refuse();
+          return;
+        }
+        boardReadFailure(summaryStatus, "Role counts", error, refreshCounts);
+        if (Object.keys(counts).length) summaryStatus.appendChild(h("p", { text: "Previously checked counts may still be shown." }));
+      }
+    };
+    await Promise.all([cached ? null : refreshCounts(), !holder && !quiet ? drawBoard(boardBox, closed, role, live, refuse) : null]);
   };
   /** Above a role's board: what the role is, with its time, responsibilities and expectations one click away. */
   function roleAbout(key) {
@@ -3669,34 +3729,43 @@
     const opt = document.querySelector(`.role-pick option[value="${CSS.escape(r.key)}"]`);
     if (opt) opt.textContent = `${labelOf(M().ballots, r.key)} (${r.applicants})`;
   }
-  async function drawBoard(box, closed, role) {
+  async function drawBoard(box, closed, role, onPage, refuse) {
+    if (!onPage() || !box.isConnected || box.dataset.boardRequest === "refused") return;
     const meta = M();
     const request = String(Number(box.dataset.boardRequest || 0) + 1);
     box.dataset.boardRequest = request;
-    const live = () => box.isConnected && box.dataset.boardRequest === request;
-    let data;
+    const live = () => onPage() && box.isConnected && box.dataset.boardRequest === request;
+    const reload = () => drawBoard(box, closed, role, onPage, refuse);
+    const filtersAtRead = { offset: V.offset, class: V.cls, fit: V.fit, todo: V.todo };
+    box.setAttribute("aria-busy", "true");
+    if (request !== "1") clear(box).appendChild(h("p", { class: "muted small", role: "status", text: "Checking applications…" }));
+    let data, cards;
     try {
-      data = await api("GET", `/api/board/${encodeURIComponent(role)}?` + qs({ offset: V.offset, class: V.cls, fit: V.fit, todo: V.todo }), undefined, { live });
+      data = await readBoard(`/api/board/${encodeURIComponent(role)}?` + qs(filtersAtRead), live);
+      if (!live()) return;
+      if (data?.role?.key !== role || typeof data.votingOpen !== "boolean"
+        || ![data.total, data.votable, data.voted, data.matching, data.offset, data.pageSize].every(boardCount) || !data.pageSize
+        || !Array.isArray(data.candidates) || data.candidates.length > data.pageSize
+        || !data.candidates.every(c => boardObject(c) && typeof c.id === "string" && typeof c.label === "string" && boardObject(c.answers))) throw new Error();
+      cards = data.candidates.map(c => candidateCard(c, data.role, closed || !data.votingOpen, box));
     } catch (err) {
       if (!live()) return;
-      // A completed read refusal is terminal, not a board that is still loading.
-      // Keep sibling nominations and their dirty-navigation guard mounted; no automatic retry.
-      if (err.status === 429) {
-        box.setAttribute("aria-busy", "false");
-        delete box.dataset.boardFresh;
-        boardRoleCounts.delete(box);
-        clear(box);
-        box.appendChild(errorLine("Applications could not be checked. " + explain(err)));
+      const why = err.data?.error;
+      // Preserve the dedicated role closures and their existing admission path.
+      if (err.status === 409 && (why === "no_vote" || why === "appointed") && S.settings) {
+        if (why === "no_vote") S.settings.noVote = [...new Set([...(S.settings.noVote || []), role])];
+        else S.settings.appointed = Object.assign({}, S.settings.appointed, { [role]: err.data.appointed || "the leadership" });
+        render();
         return;
       }
-      const why = err.data && err.data.error;
-      if ((why !== "no_vote" && why !== "appointed") || !S.settings) throw err;
-      // Appointed, or taken off the public vote, since this page was opened: the whole page is drawn again, without the
-      // board and the write-ins (what was written in for it could not be saved anyway). Only if it is still the page on
-      // screen: the answer may come after the member has moved on (and started typing somewhere else).
-      if (why === "no_vote") S.settings.noVote = [...new Set([...(S.settings.noVote || []), role])];
-      else S.settings.appointed = Object.assign({}, S.settings.appointed, { [role]: err.data.appointed || "the leadership" });
-      if (box.isConnected) render();
+      if (err.status === 401 || err.status === 403) {
+        refuse();
+        return;
+      }
+      clearBoardRole(box);
+      boardReadFailure(box, "Applications", err, () => {
+        if (live()) reload();
+      });
       return;
     }
     if (!live()) return;
@@ -3715,7 +3784,11 @@
     const clsSel = h("select", null, h("option", { value: "", text: "Any class" }), [...meta.classes].sort(byDisplayLabel).map((c) => h("option", { value: c.key, text: c.label, selected: V.cls === c.key })));
     const fitSel = h("select", null, [["", "Any raid evenings"], ["na", "NA raid evenings (3+ a week)"], ["eu", "EU raid evenings (3+ a week)"]].map(([k, t]) => h("option", { value: k, text: t, selected: V.fit === k })));
     const todo = h("input", { type: "checkbox", checked: V.todo });
-    const refilter = () => { V.cls = clsSel.value; V.fit = fitSel.value; V.todo = todo.checked; V.offset = 0; drawBoard(box, closed, role); };
+    const refilter = () => {
+      if (!live() || !clsSel.isConnected) return;
+      V.cls = clsSel.value; V.fit = fitSel.value; V.todo = todo.checked; V.offset = 0;
+      reload();
+    };
     clsSel.addEventListener("change", refilter);
     fitSel.addEventListener("change", refilter);
     todo.addEventListener("change", refilter);
@@ -3723,7 +3796,6 @@
       h("label", { class: "field" }, h("span", { class: "sr", text: "Class" }), clsSel),
       h("label", { class: "field" }, h("span", { class: "sr", text: "Raid evenings" }), fitSel),
       h("label", { class: "check" }, todo, h("span", { text: "Only ones I have not voted on" })));
-    const cards = data.candidates.map((c) => candidateCard(c, data.role, closed || !data.votingOpen, box));
     const empty = !data.total
       ? h("p", { class: "muted", text: "No historical applications are listed for this role. Nominations do not open a reserved seat or appoint anyone; current Officer Corps and High Council applications are closed." })
       : !data.matching ? h("p", { class: "muted", text: V.todo ? "You have voted on everyone here who matches. Nice." : "Nobody matches these filters." }) : null;
@@ -3731,12 +3803,17 @@
       ? h("div", { class: "pager" },
           h("span", { class: "muted small", text: `${data.offset + 1}–${data.offset + data.candidates.length} of ${data.matching}` }),
           h("div", { class: "btn-row" },
-            h("button", { class: "btn small", type: "button", text: "Previous", disabled: data.offset === 0, onclick: () => { V.offset = Math.max(0, data.offset - data.pageSize); drawBoard(box, closed, role).then(() => scrollToSection(box)); } }),
+            h("button", { class: "btn small", type: "button", text: "Previous", disabled: data.offset === 0, onclick: () => {
+              if (!live()) return;
+              V.offset = Math.max(0, data.offset - data.pageSize);
+              reload().then(() => { if (onPage()) scrollToSection(box); });
+            } }),
             h("button", { class: "btn small", type: "button", text: "Next", disabled: data.offset + data.candidates.length >= data.matching, onclick: () => {
+              if (!live()) return;
               // With "only ones I have not voted on", whoever was voted on here has left that list: the next page starts
               // right after the ones on this page still without a vote, or it would skip as many people.
               V.offset = V.todo ? data.offset + data.candidates.filter((x) => !x.myVote).length : data.offset + data.pageSize;
-              drawBoard(box, closed, role).then(() => scrollToSection(box));
+              reload().then(() => { if (onPage()) scrollToSection(box); });
             } })))
       : null;
     clear(box);

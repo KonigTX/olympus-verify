@@ -589,6 +589,96 @@ const directoryCoverage203 = page => {
   }
 
 
+  {
+    const board066 = page => page.app.querySelector(".board-results");
+    const counts066 = page => page.app.querySelector(".board-summary-status");
+    const roleRead066 = path => path.startsWith("/api/board/") && path.includes("?");
+    const alert066 = node => node?.querySelector('[role="alert"]');
+    const retry066 = node => node?.querySelector("button");
+    const fail066 = status => Response.json({ message: "INTERNAL_DIAGNOSTIC_066" }, { status });
+    const recovering066 = await openPage(MEMBER), requests066 = [];
+    let failRole066 = true, failSummary066 = true;
+    recovering066.intercept((pathname, init) => {
+      if (pathname !== "/api/board" && !roleRead066(pathname)) return null;
+      requests066.push([pathname, init.method]);
+      return pathname === "/api/board" ? failSummary066 && fail066(503) : failRole066 && fail066(500);
+    });
+    await recovering066.go("#/vote/officer");
+    await waitFor(() => alert066(board066(recovering066)) && alert066(counts066(recovering066)), "CC066 two section-local read failures");
+    const badRole066 = board066(recovering066), badSummary066 = counts066(recovering066);
+    check("CC066 failed role and counts reads stop loading and give separate explicit recovery without raw diagnostics",
+      badRole066.getAttribute("aria-busy") === "false" && alert066(badRole066)?.textContent === "Applications could not be checked."
+      && alert066(badSummary066)?.textContent === "Role counts could not be checked."
+      && retry066(badRole066)?.textContent === "Retry applications" && retry066(badSummary066)?.textContent === "Retry role counts"
+      && recovering066.app.querySelector("#role-applicants").textContent === "Applicant count unavailable"
+      && !recovering066.app.textContent.includes("Checking applications") && !recovering066.app.textContent.includes("INTERNAL_DIAGNOSTIC_066")
+      && !recovering066.app.textContent.includes("Something went wrong") && requests066.length === 2);
+    const oldRoleRetry066 = retry066(badRole066);
+    failRole066 = false;
+    oldRoleRetry066?.click(); oldRoleRetry066?.click();
+    await waitFor(() => board066(recovering066)?.dataset.boardFresh === "officer", "CC066 explicit selected-role recovery");
+    check("CC066 clicking role retry twice performs one current GET and leaves failed summary independent",
+      board066(recovering066)?.dataset.boardFresh === "officer" && alert066(badSummary066)
+      && requests066.filter(([path]) => roleRead066(path)).length === 2 && requests066.filter(([path]) => path === "/api/board").length === 1);
+    failSummary066 = false;
+    const oldCountsRetry066 = retry066(badSummary066);
+    oldCountsRetry066?.click(); oldCountsRetry066?.click();
+    await waitFor(() => badSummary066.textContent === "", "CC066 explicit counts recovery");
+    check("CC066 clicking counts retry twice performs one summary GET without refetching role or writing",
+      badSummary066.textContent === "" && requests066.length === 4 && requests066.every(([, method]) => method === "GET"));
+
+    const malformed066 = await openPage(MEMBER);
+    malformed066.intercept(path => path === "/api/board" ? Response.json({ roles: [{ key: "officer", applicants: -1, votable: 0, voted: 0 }] })
+      : roleRead066(path) ? Response.json({ role: { key: "raid_leader_eu" }, total: 0, votable: 0, voted: 0, matching: 0, offset: 0, pageSize: 20, candidates: [], votingOpen: true }) : null);
+    await malformed066.go("#/vote/officer");
+    await waitFor(() => alert066(board066(malformed066)) && alert066(counts066(malformed066)), "CC066 malformed success refused");
+    check("CC066 malformed summary and a mismatched role200 cannot become an empty or admitted board",
+      !!retry066(board066(malformed066)) && !!retry066(counts066(malformed066)) && !board066(malformed066).dataset.boardFresh
+      && !malformed066.app.textContent.includes("No historical applications") && !malformed066.app.textContent.includes("Something went wrong"));
+
+    const draft066 = await openPage(MEMBER), filters066 = [];
+    let failFilter066 = false;
+    draft066.intercept(path => {
+      if (!roleRead066(path)) return null;
+      filters066.push(path);
+      return failFilter066 ? fail066(502) : null;
+    });
+    await draft066.go("#/vote/officer");
+    await waitFor(() => !!board066(draft066)?.querySelector("select"), "CC066 filter board");
+    const nomination066 = draft066.app.querySelector('input[placeholder="Why them? (optional)"]');
+    nomination066.value = "KEEP_NOMINATION_066"; fire(nomination066, "input");
+    failFilter066 = true;
+    const classFilter066 = board066(draft066).querySelector("select");
+    classFilter066.value = "mage"; fire(classFilter066, "change");
+    await waitFor(() => !!retry066(board066(draft066)), "CC066 filter failure");
+    failFilter066 = false;
+    retry066(board066(draft066))?.click();
+    await waitFor(() => board066(draft066)?.dataset.boardFresh === "officer", "CC066 filtered retry admitted");
+    check("CC066 retry reuses the failed filter and preserves the exact unsaved nomination node",
+      filters066.length === 3 && filters066[1] === filters066[2] && filters066[2].includes("class=mage")
+      && draft066.app.querySelector('input[placeholder="Why them? (optional)"]') === nomination066 && nomination066.value === "KEEP_NOMINATION_066");
+    await draft066.go("#/roles");
+    check("CC066 read recovery leaves the nomination's unsaved-navigation guard in place",
+      !!draft066.document.body.querySelector("dialog") && nomination066.isConnected);
+
+    const deadline066 = await openPage(MEMBER);
+    let release066, attempts066 = 0;
+    deadline066.intercept(path => {
+      if (!roleRead066(path) || ++attempts066 !== 1) return null;
+      return new Promise(resolve => { release066 = resolve; });
+    });
+    await deadline066.go("#/vote/officer");
+    await waitFor(() => !!retry066(board066(deadline066)), "CC066 board read deadline", 12000);
+    check("CC066 an unanswered read becomes a timed-out alert without an automatic second request",
+      attempts066 === 1 && board066(deadline066)?.getAttribute("aria-busy") === "false" && alert066(board066(deadline066))?.textContent.endsWith("The read took too long."));
+    retry066(board066(deadline066))?.click();
+    await waitFor(() => board066(deadline066)?.dataset.boardFresh === "officer", "CC066 manual retry after deadline");
+    release066(Response.json({ error: "signed_out" }, { status: 401 }));
+    await settle(); await settle();
+    check("CC066 a timed-out reply cannot sign out or overwrite the successfully retried role",
+      attempts066 === 2 && board066(deadline066)?.dataset.boardFresh === "officer" && !!byText(deadline066.app, "button", "Sign out"));
+  }
+
   // .218: pin the minimal DOM's dataset deletion contract independently of board rendering.
   {
     const fromDataset218 = new Element("div");
