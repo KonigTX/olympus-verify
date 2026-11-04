@@ -5183,6 +5183,8 @@
     const stopEdit = h("button", { class: "btn small", type: "button", text: "Cancel editing", hidden: true });
     const editStatus = h("div", { class: "muted small", role: "status", "data-news-edit-status": "true" });
     const err = errorLine(""); err.hidden = true;
+    err.setAttribute("tabindex", "-1");
+    const form = h("div");
     const pending = h("div");
     // Item 29: an attended writing aid only; it cannot replace a draft or change a pending operation.
     const brief = h("button", { class: "btn small", type: "button", text: "Start a Daily Brief" });
@@ -5202,9 +5204,22 @@
       text.scrollTop = 0;
     });
     const lock = (on) => { locked = on; for (const el of [title, text, daysSel, submit, stopEdit]) el.disabled = on || !d.newsOn; updateBrief(); };
+    const clearFormError = () => {
+      err.hidden = true;
+      err.textContent = "";
+      showFieldError(form, null);
+    };
     const fail = (ex, fallback) => {
-      err.textContent = explain(ex, fallback);
-      err.hidden = false;
+      if (currentEditor()) {
+        const message = explain(ex, fallback), field = ex?.data?.field;
+        if (ex?.status === 400 && codeOf(ex) === "invalid" && ["title", "body", "days"].includes(field)) {
+          showFieldError(form, `news-${field}`, message);
+        } else {
+          err.textContent = message;
+          err.hidden = false;
+          err.focus();
+        }
+      }
       if (ex && (ex.status === 403 || ex.status === 503)) refreshCommunity();
     };
     const again = (note) => { setDirty("admin-news", false); return adminNews(body, note, endpoint); };
@@ -5282,14 +5297,14 @@
       daysSel.value = String(dayList.includes(was) ? was : limits.defaultDays || 30);
       submit.textContent = "Save changes";
       stopEdit.hidden = false;
-      err.hidden = true;
+      clearFormError();
       setDirty("admin-news", false);
       editStatus.textContent = `Editing ${n.title}.`;
       updateBrief();
       title.focus({ preventScroll: true });
       scrollToSection(title);
     };
-    submit.addEventListener("click", () => { if (frozen) return; err.hidden = true; return editing ? change() : create(); });
+    submit.addEventListener("click", () => { if (frozen) return; clearFormError(); return editing ? change() : create(); });
     stopEdit.addEventListener("click", async () => {
       const id = editing?.id;
       if (!id || !currentEditor()) return;
@@ -5304,6 +5319,12 @@
       h("div", { class: "btn-row" },
         h("button", { class: "btn small", type: "button", text: "Edit", "data-news-edit-id": n.id, disabled: !d.newsOn, onclick: edit(n) }),
         h("button", { class: "btn small danger", type: "button", text: "Delete", onclick: remove(n) })), newsWebhookControls(n)));
+    add(form, [
+      fieldBox("news-title", "Title", title, { required: true, hint: `Up to ${limits.titleMax || 80} characters.` }),
+      fieldBox("news-body", "Text", text, { required: true, hint: `Up to ${limits.bodyMax || 2000} characters. A blank line starts a new paragraph.` }),
+      fieldBox("news-days", "Show for", daysSel),
+      h("div", { class: "savebar" }, err, h("div", { class: "btn-row" }, submit, stopEdit)), pending,
+    ]);
     clear(body);
     add(body, [
       message ? noticeBox("warn", "icon-warning", h("p", { text: message })) : null,
@@ -5318,10 +5339,7 @@
         h("p", { class: "muted small", text: "Write for the whole guild; do not name members. A notice is deleted when its time is up, at most 90 days after posting." }),
         h("div", { class: "btn-row" }, brief),
         h("p", { class: "muted small", text: "The Daily Brief starter fills a blank new notice. Replace its prompts with your own text and check dates and sources before posting." }),
-        fieldBox("news-title", "Title", title, { required: true, hint: `Up to ${limits.titleMax || 80} characters.` }),
-        fieldBox("news-body", "Text", text, { required: true, hint: `Up to ${limits.bodyMax || 2000} characters. A blank line starts a new paragraph.` }),
-        fieldBox("news-days", "Show for", daysSel),
-        err, h("div", { class: "btn-row" }, submit, stopEdit), pending),
+        form),
     ]);
   }
 

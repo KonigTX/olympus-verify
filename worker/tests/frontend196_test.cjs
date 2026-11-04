@@ -335,6 +335,75 @@ const body196=String.raw`
   await waitFor(()=>editor.document.activeElement?.getAttribute('data-news-edit-id')===webhookNotice196,'focus returns to the same notice');
   check('CC-072 cancel editing returns to the same notice action',editor.document.activeElement?.getAttribute('data-news-edit-id')===webhookNotice196
     && !!byText(editor.app,'button','Post notice'));
+  for (const [route, endpoint] of [['#/news/edit','/api/news/editor'], ['#/admin/news','/api/admin/news']]) {
+    const page = await openPage(STAFF), writes = [];
+    await page.go(route);
+    await waitFor(() => !!byText(page.app,'button','Post notice'),'CC-065 Town Crier form');
+    page.before((p, init) => {
+      if (init.method === 'POST' && (p === endpoint || p === endpoint + '/update')) writes.push({p, payload:JSON.parse(init.body)});
+      return false;
+    });
+    const title = page.app.querySelector('#f-news-title'), body = page.app.querySelector('#f-news-body'), days = page.app.querySelector('#f-news-days');
+    const draft = () => [title.value, body.value, days.value];
+    const setDraft = (t, b, d) => { title.value = t; body.value = b; days.value = d; };
+    const submit = byText(page.app,'button','Post notice');
+    // Simulate an obsolete option. The minimal DOM otherwise resets unknown values to its first valid choice.
+    const unsupportedDay = page.document.createElement('option');
+    unsupportedDay.value = '0'; days.appendChild(unsupportedDay);
+    const waitForRefusal = message => waitFor(() => [...page.app.querySelectorAll('.err')].some(el => !el.hidden && el.textContent.includes(message)), 'CC-065 ' + message);
+    const fieldRefusal = (field, control, message) => {
+      const id = 'err-news-' + field, error = page.app.querySelector('#' + id);
+      return page.document.activeElement === control && control.getAttribute('aria-invalid') === 'true'
+        && control.getAttribute('aria-describedby').split(' ').includes(id) && !error.hidden && error.textContent.includes(message)
+        && [title,body,days].filter(el => el.getAttribute('aria-invalid') === 'true').length === 1;
+    };
+    for (const [field, control, values, message] of [
+      ['title',title,['','Keep these words.','7'],'The title needs 1 to 80 characters.'],
+      ['body',body,['Keep this title','','7'],'The text needs 1 to 2000 characters.'],
+      ['days',days,['Keep this title','Keep these words.','0'],'A notice is shown for'],
+    ]) {
+      setDraft(...values); submit.focus(); submit.click();
+      await waitForRefusal(message);
+      check('CC-065 '+route+' real Worker refusal focuses and describes '+field+' and preserves the draft',
+        fieldRefusal(field, control, message) && JSON.stringify(draft()) === JSON.stringify(values));
+    }
+    unsupportedDay.remove();
+    const kept = ['Keep this title','Keep these words.','7'];
+    setDraft(...kept);
+    await fixtureRun("UPDATE site_settings SET value='false' WHERE key='newsOn'");
+    try {
+      submit.focus(); submit.click();
+      await waitForRefusal('News is switched off');
+      const alert = page.app.querySelector('.savebar [role="alert"]');
+      check('CC-065 '+route+' real fieldless refusal focuses the sticky action alert and keeps the draft',
+        alert && page.document.activeElement === alert && !alert.hidden && alert.textContent.includes('News is switched off')
+          && [title,body,days].every(el => el.getAttribute('aria-invalid') === 'false')
+          && JSON.stringify(draft()) === JSON.stringify(kept) && !submit.disabled);
+    } finally { await fixtureRun("UPDATE site_settings SET value='true' WHERE key='newsOn'"); }
+    check('CC-065 '+route+' refused creates preserve the one operation and exact request shape',
+      writes.length === 4 && writes.every(({p,payload}) => p === endpoint && payload.id === writes[0].payload.id
+        && typeof payload.id === 'string' && Object.keys(payload).sort().join(',') === 'body,days,id,title')
+      && !one('SELECT id FROM site_news_notices WHERE id=?',writes[0]?.payload.id || 'missing'));
+
+    fire(title,'input');
+    byText(page.app,'button','Edit').click();
+    byText(page.document.body,'button','Replace draft')?.click();
+    await waitFor(() => !!byText(page.app,'button','Save changes'),'CC-065 opened saved notice');
+    const save = byText(page.app,'button','Save changes');
+    check('CC-065 '+route+' opening a saved notice clears the previous general refusal',
+      page.app.querySelector('.savebar [role="alert"]')?.hidden === true && title.value === 'Synthetic revised notice');
+    const revised = ['Unsaved revised title','','7'];
+    setDraft(...revised);
+    save.click();
+    const confirm = [...page.document.body.querySelectorAll('button')].find(el => el !== save && el.textContent === 'Save changes');
+    check('CC-065 '+route+' editing still requires a separate confirmation', !!confirm && writes.length === 4);
+    confirm?.click();
+    await waitForRefusal('The text needs 1 to 2000 characters.');
+    check('CC-065 '+route+' real edit refusal focuses its body and retains the revision and draft',
+      fieldRefusal('body', body, 'The text needs 1 to 2000 characters.') && JSON.stringify(draft()) === JSON.stringify(revised)
+      && writes.length === 5 && writes[4].p === endpoint + '/update' && writes[4].payload.id === webhookNotice196
+      && writes[4].payload.revision === 2 && one('SELECT revision FROM site_news_notices WHERE id=?',webhookNotice196).revision === 2);
+  }
   byText(editor.app,'button','Review optional Discord cross-post').click();
   await waitFor(()=>!!byText(editor.app,'button','Continue requested removal'),'retained cleanup revision UI');
   if(!byText(editor.app,'button','Continue requested removal'))throw Error('Retained cleanup UI diagnosis: '+editor.app.querySelector('.news-webhook196')?.textContent);
