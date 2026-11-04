@@ -12,6 +12,7 @@ import { DB_NOW, communityFeatures } from './community-context';
 import { readCalendar219, createCalendar219, calendarRoster219, attendanceCalendar219, rsvpCalendar219, eventId219, type CalendarEvent219 } from './guild-calendar219';
 import { consentCalendarReminder219 } from './guild-reminder219';
 import { safeDiscordText219, type GuildEmbed219 } from './guild-utilities219';
+import { siteMemberLink } from './site-return';
 
 type Button222={type:2;style:number;label:string;custom_id?:string;url?:string};
 type Select222={type:3|5;custom_id:string;placeholder:string;min_values:1;max_values:1;options?:{label:string;value:string;description?:string}[]};
@@ -85,19 +86,20 @@ export async function raidHub222(env:Env,a:GuildActor219,i:Interaction):Promise<
  if(p.action==='rsvp'&&event){const choice=selected(i);if(!choices.includes(choice))throw Error('Choose a current signup preference.');const ok=await rsvpCalendar219(env,a,event.id,event.revision,choice);note=ok?'Your preference was saved. Bench is a request, not an organizer decision.':'Nothing changed. This event may have started, filled or changed.';}
  if(p.action==='record'&&event){const state=selected(i);if(!p.target||!['present','absent','excused','unknown'].includes(state))throw Error('Choose an observed attendance state.');const ok=await attendanceCalendar219(env,a,event.id,'record',p.target,state);note=ok?'Observed attendance recorded.':'Nothing changed. Choose an existing signup in a started, unlocked event.';}
  const events=event?[]:await readCalendar219(env,a,undefined,p.page);
- const embeds:GuildEmbed219[]=[{title:event?safeDiscordText219(event.title,80):'Olympus raid & event hub',url:'https://'+host+'/#/community/calendar'+(event?'/'+event.id:''),description:event?'<t:'+event.starts_at+':F> · '+event.duration_min+' minutes\n'+safeDiscordText219(event.details,500)+'\nEvent ID: '+event.id:events.length?'Choose an event below to view its roster or set your signup preference.':'No upcoming events are currently scheduled.',footer:{text:'Private controls expire after three minutes. Roles, event revisions and eligibility are checked again on every action.'}}];
+ const calendarLink=siteMemberLink(host,'community/calendar'+(event?'/'+event.id:''));
+ const embeds:GuildEmbed219[]=[{title:event?safeDiscordText219(event.title,80):'Olympus raid & event hub',url:calendarLink,description:event?'<t:'+event.starts_at+':F> · '+event.duration_min+' minutes\n'+safeDiscordText219(event.details,500)+'\nEvent ID: '+event.id:events.length?'Choose an event below to view its roster or set your signup preference.':'No upcoming events are currently scheduled.',footer:{text:'Private controls expire after three minutes. Roles, event revisions and eligibility are checked again on every action.'}}];
  const components:HubRow222[]=[];
  if(event){
   if(p.action==='roster'){const people=await calendarRoster219(env,a,event.id,p.page);embeds[0]!.description+='\n\n'+(people.slice(0,20).map(r=>safeDiscordText219(r.display_name,50)+' — '+safeDiscordText219(r.preference??r.raid_role??r.status,20)+(r.attendance_visible===1?' · '+safeDiscordText219(r.attendance??'unrecorded',15):'')).join('\n')||'No current eligible signups.');components.push(row(button('Previous roster page',cid(a,'roster',event,Math.max(1,p.page-1))),button('Next roster page',cid(a,'roster',event,Math.min(100,p.page+1)))));}
   if(p.action==='attend')components.push(row({type:5,custom_id:cid(a,'person',event),placeholder:'Choose a signup whose attendance you observed',min_values:1,max_values:1}));
   else if(p.action==='person'){const target=selected(i,5);if(!/^[0-9]{17,20}$/.test(target))throw Error('Choose one Discord member.');note='Attendance for <@'+target+'>. Choose only what you directly observed.';components.push(row({type:3,custom_id:cid(a,'record',event,1,target),placeholder:'Observed attendance',min_values:1,max_values:1,options:['present','absent','excused','unknown'].map(value=>({label:value,value}))}));}
   else if(event.status==='scheduled'&&event.starts_at>now())components.push(row({type:3,custom_id:cid(a,'rsvp',event),placeholder:'Your signup preference',min_values:1,max_values:1,options:choices.map(value=>({label:value[0]!.toUpperCase()+value.slice(1),value,description:value==='bench'?'Request Bench; does not change the officer roster':'Your preference; the organizer reviews the roster'}))}));
-  components.push(row(button('View roster',cid(a,'roster',event)),button('All upcoming events',cid(a,'hub')), {type:2,style:5,label:'Open calendar',url:'https://'+host+'/#/community/calendar/'+event.id}));
+  components.push(row(button('View roster',cid(a,'roster',event)),button('All upcoming events',cid(a,'hub')), {type:2,style:5,label:'Open calendar',url:calendarLink}));
   if(staff)components.push(row(button('One reminder…',cid(a,'remind',event)),button('Record attendance',cid(a,'attend',event)),button('Lock attendance…',cid(a,'lock',event))));
  }else{
   if(events.length)components.push(row({type:3,custom_id:cid(a,'choose',undefined,p.page),placeholder:'Choose a raid or guild event',min_values:1,max_values:1,options:events.slice(0,5).map(e=>({label:safeDiscordText219(e.title,80),value:e.id,description:new Date(e.starts_at*1000).toISOString().slice(0,16)+'Z · '+e.duration_min+' minutes'}))}));
   const nav:Button222[]=[button('Open event by ID…',cid(a,'find'))];if(p.page>1)nav.push(button('Previous events',cid(a,'hub',undefined,p.page-1)));if(events.length>5&&p.page<100)nav.push(button('More events',cid(a,'hub',undefined,p.page+1)));if(staff)nav.push(button('Schedule an event…',cid(a,'create'),1));components.push(row(...nav));
-  components.push(row({type:2,style:5,label:'Guild calendar',url:'https://'+host+'/#/community/calendar'},{type:2,style:5,label:'Raid preparation',url:'https://'+host+'/#/resources'}));
+  components.push(row({type:2,style:5,label:'Guild calendar',url:calendarLink},{type:2,style:5,label:'Raid preparation',url:siteMemberLink(host,'resources')}));
  }
  if(p.action==='choose'){const id=eventId219(selected(i));return raidHub222(env,a,{...i,type:2,data:{name:'raid',options:[{type:3,name:'find',value:id}]}});}
  return {content:note||undefined,embeds,components};

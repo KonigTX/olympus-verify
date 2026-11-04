@@ -51,6 +51,9 @@ async function checks222(){
  r=await send222({who:MEMBER});const choose=control(r.answer,'Choose a raid or guild event');
  r=await send222({type:3,custom:choose,values:[event.id],who:MEMBER});const memberDetail=r.answer;
  check('event dropdown opens current details without signing the member up',memberDetail.embeds[0].title===event.title&&one('SELECT COUNT(*) n FROM community_event_signups').n===0);
+ const returnUrl='https://guild.example/?to='+encodeURIComponent('community/calendar/'+event.id);
+ check('signed raid details and their calendar button carry the same server-visible return',
+  memberDetail.embeds[0].url===returnUrl&&memberDetail.components.flatMap(row=>row.components).some(c=>c.label==='Open calendar'&&c.url===returnUrl));
  const signup=control(memberDetail,'Your signup preference');
  r=await send222({type:3,custom:signup,values:['bench'],who:MEMBER});
  check('signup dropdown stores the member preference without an officer decision',r.answer.content.includes('Bench is a request')&&one('SELECT COUNT(*) n FROM community_event_signups WHERE event_id=? AND discord_id=?',event.id,MEMBER).n===1);

@@ -16,6 +16,7 @@ import { createCalendar219, readCalendar219, calendarRoster219, rsvpCalendar219,
 import { consentCalendarReminder219 } from './guild-reminder219';
 import { RSVP_CHOICES_219 } from './guild-calendar-metadata219';
 import { guideLookup219, workshopLookup219, referenceLookup219, safeDiscordText219, type GuildEmbed219 } from './guild-utilities219';
+import { siteMemberLink } from './site-return';
 
 const COMPONENT=/^raid219:rsvp:([A-Za-z0-9_-]{22}):([1-9][0-9]{0,8}):(tank|healer|melee|ranged|tentative|bench|absent)$/;
 export const isGuildCommand219=(i:Interaction):boolean=>isOlympusHub224(i)||isRaidHub222(i)||(i.type===2&&GUILD_COMMAND_NAMES_228.has(i.data?.name??''))||(i.type===3&&COMPONENT.test(i.data?.custom_id??''));
@@ -31,7 +32,7 @@ const options219=(i:Interaction):Record<string,unknown>=>{
 const page219=(value:unknown)=>{if(value===undefined)return 1;if(!Number.isSafeInteger(value)||Number(value)<1||Number(value)>100)throw Error('Choose a page from 1 to 100.');return Number(value);};
 export function rsvpComponents219(event:Pick<CalendarEvent219,'id'|'revision'>,host:string):ActionRow[] {
  const buttons=RSVP_CHOICES_219.map(choice=>({type:2 as const,style:choice==='absent'?2:3,label:choice[0]!.toUpperCase()+choice.slice(1),custom_id:`raid219:rsvp:${event.id}:${event.revision}:${choice}`}));
- return [{type:1,components:buttons.slice(0,4)},{type:1,components:[...buttons.slice(4),{type:2,style:5,label:'Open calendar',url:`https://${host}/#/community/calendar/${event.id}`}]}];
+ return [{type:1,components:buttons.slice(0,4)},{type:1,components:[...buttons.slice(4),{type:2,style:5,label:'Open calendar',url:siteMemberLink(host,'community/calendar/'+event.id)}]}];
 }
 export interface Answer219 {content?:string;embeds?:GuildEmbed219[];components?:(ActionRow|HubRow222)[]}
 export function assertGuildAnswer219(answer:Answer219):void {
@@ -45,7 +46,7 @@ export function assertGuildAnswer219(answer:Answer219):void {
  assertHubRows222(answer.components??[]);
  if(chars>6000)throw Error('This result exceeds Discord limits. Open the complete website view.');
 }
-const eventEmbed219=(e:CalendarEvent219,host:string):GuildEmbed219=>({title:safeDiscordText219(e.title,80),url:`https://${host}/#/community/calendar/${e.id}`,description:`<t:${e.starts_at}:F> · <t:${e.starts_at}:R>\n${e.duration_min} minutes · ${e.capacity??'No fixed'} signup cap\nID: \`${e.id}\`\n${safeDiscordText219(e.details,500)}`,footer:{text:'Signup preferences are not an organizer roster acceptance. Bench is a request, not a staff decision.'}});
+const eventEmbed219=(e:CalendarEvent219,host:string):GuildEmbed219=>({title:safeDiscordText219(e.title,80),url:siteMemberLink(host,'community/calendar/'+e.id),description:`<t:${e.starts_at}:F> · <t:${e.starts_at}:R>\n${e.duration_min} minutes · ${e.capacity??'No fixed'} signup cap\nID: \`${e.id}\`\n${safeDiscordText219(e.details,500)}`,footer:{text:'Signup preferences are not an organizer roster acceptance. Bench is a request, not a staff decision.'}});
 export async function executeGuildCommand219(env:Env,a:GuildActor219,i:Interaction):Promise<Answer219> {
  if(isOlympusHub224(i))return olympusHub224(env,a,i);
  if(isRaidHub222(i))return raidHub222(env,a,i);
@@ -71,7 +72,7 @@ export async function executeGuildCommand219(env:Env,a:GuildActor219,i:Interacti
  const id=eventId219(v.id),event=(await readCalendar219(env,a,id))[0];if(!event)throw Error('This calendar event is unavailable.');
  if(sub==='roster'){
   const rows=await calendarRoster219(env,a,id,page219(v.page));
-  return {embeds:[{title:safeDiscordText219(event.title,80)+' · roster',url:`https://${host}/#/community/calendar/${id}`,description:rows.length?rows.slice(0,ROSTER_PAGE_219).map(row=>safeDiscordText219(row.display_name,60)+(row.character_name?' / '+safeDiscordText219(row.character_name,40)+' (declared)':'')+' — '+safeDiscordText219(row.preference??row.raid_role??row.status,20)+(row.decision?' · officer: '+safeDiscordText219(row.decision,15):'')+(row.attendance_visible===1?' · own attendance: '+safeDiscordText219(row.attendance??'unrecorded',15):' · attendance private')).join('\n'):'No current eligible signups.',footer:{text:(rows.length>ROSTER_PAGE_219?'More rows: use the next roster page. ':'')+'Tentative / requested Bench / Absent are preferences. Missing attendance stays unrecorded; it is never inferred as absence.'}}],components:event.status==='scheduled'&&event.starts_at>now()?rsvpComponents219(event,host):[]};
+  return {embeds:[{title:safeDiscordText219(event.title,80)+' · roster',url:siteMemberLink(host,'community/calendar/'+id),description:rows.length?rows.slice(0,ROSTER_PAGE_219).map(row=>safeDiscordText219(row.display_name,60)+(row.character_name?' / '+safeDiscordText219(row.character_name,40)+' (declared)':'')+' — '+safeDiscordText219(row.preference??row.raid_role??row.status,20)+(row.decision?' · officer: '+safeDiscordText219(row.decision,15):'')+(row.attendance_visible===1?' · own attendance: '+safeDiscordText219(row.attendance??'unrecorded',15):' · attendance private')).join('\n'):'No current eligible signups.',footer:{text:(rows.length>ROSTER_PAGE_219?'More rows: use the next roster page. ':'')+'Tentative / requested Bench / Absent are preferences. Missing attendance stays unrecorded; it is never inferred as absence.'}}],components:event.status==='scheduled'&&event.starts_at>now()?rsvpComponents219(event,host):[]};
  }
  if(sub==='rsvp'){
   const ok=await rsvpCalendar219(env,a,id,event.revision,String(v.choice));

@@ -164,7 +164,7 @@ const ephemeral = (r) => r.status === 200 && r.body.type === 4 && r.body.data.fl
   // one click by a seeded member with a site account
   r = await click(MEMBER, EVENT, 1, "yes");
   check("a verified member signs up with one click: ephemeral answer, one row, generation moved, ref and audit written, nothing private echoed",
-    ephemeral(r) && /Signed up/.test(r.text) && r.text.includes(`https://guild.example/#/community/calendar/${EVENT}`) && signup(MEMBER)?.status === "yes" && signup(MEMBER).revision === 1 && signup(MEMBER).character_name === null
+    ephemeral(r) && /Signed up/.test(r.text) && r.text.includes("https://guild.example/?to=" + encodeURIComponent("community/calendar/" + EVENT)) && signup(MEMBER)?.status === "yes" && signup(MEMBER).revision === 1 && signup(MEMBER).character_name === null
     && one("SELECT signup_generation AS g FROM community_events WHERE id=?", EVENT).g === 1 && one("SELECT COUNT(*) AS n FROM community_refs WHERE discord_id=?", MEMBER).n === 1 && audits(MEMBER) === 1 && !JSON.stringify(r.body).includes("PRIVATE_"), JSON.stringify(r));
   const first = r;
   r = await click(MEMBER, EVENT, 1, "tentative");

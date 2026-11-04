@@ -27,6 +27,9 @@ async function checks224(){
  const menu=ctl(r.answer,'Open another Olympus section');check('the private hub has all six one-click sections',controls(r.answer).find(c=>c.custom_id===menu)?.options.length===6);
  r=await send({type:3,custom:menu,values:['status']});check('status reads only the current account without issuing a verification code',r.answer.embeds?.[0]?.title==='Your verification & character status'&&r.answer.embeds[0].fields[0].value.includes('issues no code'));
  r=await send({type:3,custom:menu,values:['guides']});const classMenu=ctl(r.answer,'Choose your class'),talent=ctl(r.answer,'Decode talent build…');check('guide menu offers all nine classes and preparation tools',controls(r.answer).find(c=>c.custom_id===classMenu)?.options.length===9&&!!talent&&controls(r.answer).some(c=>c.label==='Attunement checklist'));
+ check('signed Olympus guide links carry only the admitted root return query',
+  r.answer.embeds[0].url==='https://guild.example/?to=resources'
+  && controls(r.answer).find(c=>c.label==='Attunement checklist')?.url==='https://guild.example/?to=guides%2Ftools%2Fattunements');
  r=await send({type:3,custom:classMenu,values:['warrior']});check('class selection uses the existing pinned guide reader',r.answer.embeds?.[0]?.title==='Warrior');
  r=await send({type:3,custom:classMenu,values:['administrator']});check('unknown class values are refused',!r.answer.embeds?.length&&/nine classes/.test(r.answer.content));
  r=await send({type:3,custom:talent});check('talent decoder opens an initial-response modal',r.initial.type===9&&r.initial.data.components.length===1);const talentForm=r.initial.data.custom_id;
@@ -34,7 +37,7 @@ async function checks224(){
  r=await send({type:3,custom:menu,values:['workshop']});const crafter=ctl(r.answer,'Find a crafter or recipe…');check('Workshop opens an opted-in directory with a search control',!!crafter&&r.answer.embeds?.length===1);
  r=await send({type:3,custom:crafter});check('crafter search opens a bounded private modal',r.initial.type===9&&r.initial.data.components[0].components[0].max_length===60);
  r=await send({type:5,custom:r.initial.data.custom_id,fields:[['query','alchemy']]});check('recipe lookup uses the existing privacy-filtered Workshop query',r.initial.type===5&&r.answer.embeds?.length===1);
- r=await send({type:3,custom:menu,values:['council']});check('Council hub displays all twelve canonical titles and reserved applications',expected.every(([,title])=>JSON.stringify(r.answer).includes(title))&&JSON.stringify(r.answer).includes('reserved')&&controls(r.answer).some(x=>x.url?.endsWith('/#/apply')));
+ r=await send({type:3,custom:menu,values:['council']});check('Council hub displays all twelve canonical titles and reserved applications',expected.every(([,title])=>JSON.stringify(r.answer).includes(title))&&JSON.stringify(r.answer).includes('reserved')&&controls(r.answer).some(x=>x.url==='https://guild.example/?to=apply'));
  check('CC-015 Council hub shares the 13-line Cabinet roster without relaxing mention suppression',
   r.answer.embeds?.[0]?.fields.find(f=>f.name==='Current Council portfolios')?.value.split('\n').length===13&&r.answer.allowed_mentions.parse.length===0);
  r=await send({type:3,custom:menu,values:['branches']});check('branch hub includes current launch evidence and unknown-capacity guardrails',r.answer.embeds?.length===2&&JSON.stringify(r.answer).includes('unknown'));

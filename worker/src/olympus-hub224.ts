@@ -7,6 +7,7 @@ import { destination } from './community-event-delivery';
 import { guildActorBatch219, type GuildActor219 } from './guild-command-authority219';
 import { guideLookup219, workshopLookup219, referenceLookup219, safeDiscordText219, type GuildEmbed219 } from './guild-utilities219';
 import type { HubAnswer222, HubRow222 } from './raid-hub222';
+import { siteMemberLink } from './site-return';
 
 const CID=/^o224:([0-9]{17,20}):([0-9]{10}):([a-z]{2,16})$/;
 const SECTIONS=[['status','Verification & character status'],['guides','Forever guides & preparation'],['workshop','Workshop crafters & recipes'],['branches','Branch capacity & launch'],['council','Council, ranks & applications'],['treasury','Treasury & Stockades appeals']] as const;
@@ -42,7 +43,8 @@ export function olympusModal224(i:Interaction,a:GuildActor219):unknown|null {
  return {type:9,data:{custom_id:id(a,String(spec[0])),title:spec[1],components:[{type:1,components:[{type:4,custom_id:spec[2],label:spec[3],style:1,max_length:spec[4],required:true}]}]}};
 }
 export async function olympusHub224(env:Env,a:GuildActor219,i:Interaction):Promise<HubAnswer222> {
- let p=action(i,a);const base='https://'+destination(env)!.host;
+ let p=action(i,a);const host=destination(env)!.host,base='https://'+host;
+ const open=(route:string)=>siteMemberLink(host,route);
  if(p==='section'){p=selected(i);if(!SECTIONS.some(([v])=>v===p))throw Error('Choose one current hub section.');}
  let embeds:GuildEmbed219[]=[];const components:HubRow222[]=[];
  if(p==='home'){
@@ -53,26 +55,26 @@ export async function olympusHub224(env:Env,a:GuildActor219,i:Interaction):Promi
   embeds=[{title:'Your verification & character status',url:base+'/#/',description:chars.length?chars.slice(0,10).map(c=>safeDiscordText219(c.name,40)+' — '+safeDiscordText219(c.status,20)).join('\n'):'No linked characters are currently recorded for this account.',fields:[{name:'Verify a character',value:'Run /verify for the existing officer-attested verification workflow. This hub issues no code and grants no role. Stored beta records are historical, not proof of current launch membership.'}],footer:{text:(chars.length>10?'First10 records shown. ':'')+'Only your own current account is read. Open the website or /olympus-status for the complete status view.'}}];
   components.push(row(link('My guild account',base+'/#/'),link('Account & privacy controls',base+'/#/data')));
  }else if(p==='guides'){
-  embeds=[{title:'Forever guides & preparation',url:base+'/#/resources',description:'Choose a class for its current guide, decode an Olympus talent build, or open the profession and raid-preparation tools. Every fact shows its source grade; pinned data comes from the beta, and the released game can differ.'}];
+  embeds=[{title:'Forever guides & preparation',url:open('resources'),description:'Choose a class for its current guide, decode an Olympus talent build, or open the profession and raid-preparation tools. Every fact shows its source grade; pinned data comes from the beta, and the released game can differ.'}];
   components.push(row({type:3,custom_id:id(a,'class'),placeholder:'Choose your class',min_values:1,max_values:1,options:CLASSES.map(value=>({label:value[0]!.toUpperCase()+value.slice(1),value}))}));
-  components.push(row(button(a,'Decode talent build…','talent'),button(a,'Consumable checklist','consumes'),link('Professions',base+'/#/resources'),link('Attunement checklist',base+'/#/guides/tools/attunements')));
+  components.push(row(button(a,'Decode talent build…','talent'),button(a,'Consumable checklist','consumes'),link('Professions',open('resources')),link('Attunement checklist',open('guides/tools/attunements'))));
  }else if(p==='class'){
   const cls=selected(i);if(!CLASSES.includes(cls))throw Error('Choose one of the nine classes.');embeds=[await guideLookup219(env,a,'class',{class:cls})];
  }else if(p==='talents')embeds=[await guideLookup219(env,a,'talent',{build:field(i,'build',512)})];
  else if(p==='consumes')embeds=[await guideLookup219(env,a,'consumes',{})];
  else if(p==='workshop'){
   embeds=[await workshopLookup219(env,a,'',1)];
-  components.push(row(button(a,'Find a crafter or recipe…','findcrafter'),link('Workshop directory',base+'/#/community/workshop')));
+  components.push(row(button(a,'Find a crafter or recipe…','findcrafter'),link('Workshop directory',open('community/workshop'))));
  }else if(p==='crafters')embeds=[await workshopLookup219(env,a,field(i,'query',60),1)];
  else if(p==='branches'){
   embeds=[await referenceLookup219(env,a,'branches'),await referenceLookup219(env,a,'launch')];
-  components.push(row(link('Olympus / Olympus I–X capacity',base+'/#/army'),link('Launch & admission',base+'/#/')));
+  components.push(row(link('Olympus / Olympus I–X capacity',open('army')),link('Launch & admission',base+'/#/')));
  }else if(p==='council'){
   embeds=[await referenceLookup219(env,a,'council')];
-  components.push(row(link('Ranks & duties',base+'/#/roles'),link('Organization chart',base+'/#/organization'),link('Open applications',base+'/#/apply'),link('Application board',base+'/#/vote')));
+  components.push(row(link('Ranks & duties',open('roles')),link('Organization chart',open('organization')),link('Open applications',open('apply')),link('Application board',open('vote'))));
  }else if(p==='treasury'){
   embeds=[await referenceLookup219(env,a,'treasury'),await referenceLookup219(env,a,'stockades')];
-  components.push(row(link('Treasury charter',base+'/#/governance'),link('Appeal rules',base+'/#/governance')));
+  components.push(row(link('Treasury charter',open('governance')),link('Appeal rules',open('governance'))));
  }else throw Error('This private control is unavailable. Run /olympus for a fresh hub.');
  components.push(row({type:3,custom_id:id(a,'section'),placeholder:'Open another Olympus section',min_values:1,max_values:1,options:SECTIONS.map(([value,label])=>({value,label}))}));
  components.push(row(button(a,'Guild hub home','home'),link('Open Olympus',base+'/#/')));
