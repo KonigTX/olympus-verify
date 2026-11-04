@@ -15,7 +15,7 @@ const FLASH: Record<string, string> = {
   expired: 'This sign-in attempt expired. Start a new Discord sign-in.',
   not_member: 'Join the Asmongold Discord server before using the guild site.',
   pending: 'Finish the Discord server membership screening, then sign in again.',
-  denied: 'This account cannot enter the guild site. Your privacy account connection remains available.',
+  denied: 'This account cannot enter the guild site.',
   busy: 'Discord is busy. Wait a moment before trying again.',
   updating: 'The guild site is updating. Please try again shortly.',
   discord_error: 'Discord sign-in could not be completed. Please try again shortly.',
@@ -24,7 +24,9 @@ const FLASH: Record<string, string> = {
 };
 
 export function siteSignIn(request: Request, status = 200, flash?: string, cookies: string[] = [], animation = false): Response {
-  const note = flash && FLASH[flash] ? `<p role="status">${FLASH[flash]}</p>` : '';
+  const privacyLink = flash === 'denied' || flash === 'not_member'
+    ? ' <a href="/privacy/access">Connect to your account data</a>.' : '';
+  const note = flash && Object.hasOwn(FLASH, flash) ? `<p role="status">${FLASH[flash]}${privacyLink}</p>` : '';
   // Direct owner answer, 23 Oct 2026: approved .173 stills remain the default.
   // The optional animation is a client-model render, not a publisher-issued video.
   const still = `<picture class="login-portal-art"><source media="(max-aspect-ratio: 6/5)" srcset="/static/wow/login/olympus-dark-portal-portrait.png" width="852" height="1847"><img class="login-portal-poster" src="/static/wow/login/olympus-dark-portal-wide.png" alt="" aria-hidden="true" width="1916" height="821"></picture>`;

@@ -40,7 +40,12 @@ function check(label, value) { total++; if (value) passed++; console.log((value 
   const head = access.siteSignIn(new Request('https://guild.example/', { method: 'HEAD' }), 200, undefined, [], true);
   check('HEAD preserves status/security and has no body', head.status === 200 && (await head.text()) === '' && head.headers.get('Content-Security-Policy') === response.headers.get('Content-Security-Policy'));
   const denied = access.siteSignIn(request, 403, 'denied'), deniedText = await denied.text();
-  check('an actual entry refusal preserves its status and account-control explanation', denied.status === 403 && deniedText.includes('This account cannot enter the guild site. Your privacy account connection remains available.') && deniedText.includes('href="/auth/login"'));
+  check('a denied account can follow its privacy connection without entering the guild site', denied.status === 403
+    && deniedText.includes('This account cannot enter the guild site.') && deniedText.includes('href="/privacy/access"') && deniedText.includes('href="/auth/login"'));
+  const departed = access.siteSignIn(request, 403, 'not_member'), departedText = await departed.text();
+  check('a membership refusal links the same direct privacy connection while normal entry stays link-free', departed.status === 403
+    && departedText.includes('Join the Asmongold Discord server') && departedText.includes('href="/privacy/access"')
+    && !main.includes('href="/privacy/access"') && !stillMain.includes('href="/privacy/access"'));
   const privacy = policies.policyResponse(new Request('https://guild.example/legal/privacy'), '/legal/privacy');
   const terms = policies.policyResponse(new Request('https://guild.example/legal/terms'), '/legal/terms');
   check('direct privacy and terms remain public and do not acquire portal markup', privacy.status === 200 && terms.status === 200 && !(await privacy.text()).includes('portal-login') && !(await terms.text()).includes('portal-login'));

@@ -14,7 +14,7 @@ const business=events=>events.filter(e=>e.k==='sql'&&!['WITH business','SELECT C
 const parse=value=>{try{return JSON.parse(value);}catch{return null;}};
 // SEN-01 (30 Oct 2026): interactions.ts is the accepted .212 source plus the reviewed SEN-01 hunks
 // (and its follow-up). The pinned helper reverses exactly those; the seal below stays the .212 source.
-if(sha(fs.readFileSync(path.join(__dirname,'source212-sen01-projection.cjs')))!=='bc188bbb52b63425005ccece0d2cf93fab87444133ab7f77d0088489f8679b14')throw Error('reviewed212 SEN-01 helper differs');
+if(sha(fs.readFileSync(path.join(__dirname,'source212-sen01-projection.cjs')))!=='dfd877df07e403f42bd71f1f3987c3b8e3a25a1a1fded453116c9e03dcc203ed')throw Error('reviewed212 SEN-01 helper differs');
 const sen01=require('./source212-sen01-projection.cjs');
 function sourceChecks(src,pins){
  const raw=fs.readFileSync(path.join(src,'interactions.ts'),'utf8'),original=sen01.original212Interactions(raw);

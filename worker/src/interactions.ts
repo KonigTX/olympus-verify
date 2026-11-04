@@ -93,8 +93,8 @@ export async function handleInteraction(env: Env, i: Interaction, defer?: Defer,
         if (!host || !/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i.test(host)) return reply("The account-controls website is not configured. Ask an officer for the current privacy page.");
         const base = `https://${host}`;
         return reply(i.data.name === "olympus-privacy"
-          ? `Open [Account data](${base}/#/data) for your own export and self-service erasure controls. [Privacy policy](${base}/legal/privacy). You will authenticate on the website; this command copies or erases nothing.`
-          : `Open [Account data](${base}/#/data) to review account-removal controls. For a linked game character, ask an authorized officer to use the guarded unbind workflow. An optional Discord connection is removed in Discord Settings → Connections. Nothing was unlinked or erased by this command.`);
+          ? `Open the [privacy account connection](${base}/privacy/access) to authenticate with Discord and see your export and erasure options. [Privacy policy](${base}/legal/privacy). This command copies or erases nothing.`
+          : `Open the [privacy account connection](${base}/privacy/access) to review account-removal options. For a linked game character, ask an authorized officer to use the guarded unbind workflow. Remove an optional Discord connection in Discord Settings → Connections. This command unlinks or erases nothing.`);
       }
       case "olympus-admin":
         return cmdAdmin(env, i, lane, defer,roleDispatch);

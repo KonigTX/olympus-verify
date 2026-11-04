@@ -2,9 +2,12 @@
 // Initial signed staff roles match the same fixture's fresh fake-provider staff set.
 const fs221=require('node:fs'),path221=require('node:path'),crypto221=require('node:crypto'),{Module}=require('node:module');
 const original221=fs221.readFileSync(path221.join(__dirname,'guild_commands219_test.cjs'),'utf8');
-if(crypto221.createHash('sha256').update(original221).digest('hex')!=='de1100df2d3f10f1edb95ecb7550224f8d8aa15676731786d2743447f1108bd9')throw Error('guild221_original_scaffold_drift');
 const begin221=original221.indexOf('async function guildCommands219(){'),end221=original221.indexOf(" const authority219=load('./guild-command-authority219');"),footer221=original221.lastIndexOf('\nconst mod219=');
 if(begin221<0||end221<begin221||footer221<end221)throw Error('guild221_original_scaffold_boundary');
+// Pin the exact historical scaffold this leaf executes. The parent scenario body is replaced below.
+const hash221=value=>crypto221.createHash('sha256').update(value).digest('hex');
+if(hash221(original221.slice(0,end221))!=='b0c5320c3c0b0a9218710e8eeb59099163429b630eb96e2cd771f801b18129d4'
+  ||hash221(original221.slice(footer221))!=='52fcd8a688396ce873bf49419eaf0014912f0bbdb2289c51e6dd03072f0ccf3e')throw Error('guild221_original_scaffold_drift');
 let setup221=original221.slice(begin221,end221);
 const roleClaim221="member:{user:{id:who,username:'Synthetic'},roles:[ROLE]}";
 if(setup221.split(roleClaim221).length!==2)throw Error('guild221_signed_staff_role_boundary');
@@ -16,7 +19,7 @@ const scenarios221=String.raw`
  const accountBefore221=JSON.stringify(db.prepare('SELECT discord_id,session_version,in_server,denied FROM site_users ORDER BY discord_id').all());
  for(const name of ['olympus-privacy','olympus-unlink']){
   const r=await send219(name,null);const text=r.initial?.data?.content??'';
-  check(name+' replies privately with current account controls, without a destructive action',r.status===200&&r.initial.type===4&&r.initial.data.flags===64&&text.includes('/#/data')&&!text.includes('Unknown command'));
+  check(name+' replies privately with a direct privacy connection, without a destructive action',r.status===200&&r.initial.type===4&&r.initial.data.flags===64&&text.includes('/privacy/access)')&&!text.includes('/#/data')&&!text.includes('Unknown command'));
  }
  check('account guidance leaves site identities and session versions untouched',JSON.stringify(db.prepare('SELECT discord_id,session_version,in_server,denied FROM site_users ORDER BY discord_id').all())===accountBefore221);
  let r=await send219('olympus-status',null);
