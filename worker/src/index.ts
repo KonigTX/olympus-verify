@@ -25,7 +25,7 @@ import { treasuryAfterMemberGate } from "./site-treasury-access";
 import { captureLaunchVerification,launchVerificationEnv } from './launch-verification227';
 import type { Env } from "./env";
 import {nativeErasureMode,nativeServingEnvironment} from './privacy-native-mode';
-import { unverifiedReport } from "./unverified";
+import { STRICT_ROSTER_DISPLAY_PROTOCOL, strictRosterDisplay, unverifiedReport } from "./unverified";
 import { handleInteraction, USER_MENU_LOOKUP } from "./interactions";
 import { DiscordError, INTERACTION_FAILED, json, readInteractionBody, reply, verifyInteraction, type Interaction } from "./discord";
 import { errorRef, idNamespace, logPath } from "./log";
@@ -573,7 +573,14 @@ async function route(request: Request, env: Env, path: string, schemaReady = tru
       if (body === null || typeof body !== "object" || Array.isArray(body)) return json({ error: "bad_body", message: "The request body must be a JSON object." }, 400);
     }
     if (query.has("keyVersion") || (body !== null && typeof body === "object" && "keyVersion" in body)) {
-      const versions=query.getAll('keyVersion'),presenceOnly=request.method==='GET'&&path==='/queue'&&query.getAll('presenceOnly').includes('1');
+      const versions=query.getAll('keyVersion');
+      if (versions.length === 1 && versions[0] === STRICT_ROSTER_DISPLAY_PROTOCOL && request.method === "GET" && path === "/queue/unverified" && query.size === 1) {
+        const report = await strictRosterDisplay(env, captureLaunchVerification(env));
+        const response = report ? json(report) : json({ error: "strict_roster_display_unavailable" }, 409);
+        response.headers.set("Cache-Control", "private, no-store, no-transform");
+        return response;
+      }
+      const presenceOnly=request.method==='GET'&&path==='/queue'&&query.getAll('presenceOnly').includes('1');
       const launch=captureLaunchVerification(env),ingest=request.method==='POST'&&['/ingest/verify','/ingest/roster','/ingest/events'].includes(path)&&launch.mode==='members-only'&&!!launch.scope&&launch.current();
       if(versions.length!==1||versions[0]!=='launch-membership-v1'||body!==null&&typeof body==='object'&&'keyVersion'in body||!presenceOnly&&!ingest)
         return json({ error: "unsupported_protocol", message: "This Worker serves the unversioned protocol only; a keyVersion is not supported." }, 400);

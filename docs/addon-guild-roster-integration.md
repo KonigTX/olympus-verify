@@ -34,12 +34,20 @@ Members window remains available through `/olv members` out of combat.
 
 ## What each status means
 
-The inputs already exist: the live native roster and the watcher's `OlympusQueue.verified`
-and `.unverified` lists. This change does not write the queue, Config.lua or SavedVariables.
-Both fetched dates and the underlying server roster date must be present, not in the future,
-and at most **one hour** old (the watcher normally polls these lists every 30 minutes).
-Refresh the existing watcher exchange and reload to obtain newer lists. Reading the guild
-roster does not refresh the server's verification lists.
+The verification column combines the live native roster with dated Watcher lists.
+In membership-only mode the Watcher separately reads the latest complete, trusted
+export from the configured native guild and realm. It writes the display-only
+`OlympusVerifyLists.lua` file beside the retained invitation queue. The addon checks
+the current native guild, realm, and exact character GUID before showing a result
+or opening a reminder. This file carries no invitation or removal eligibility.
+The legacy Watcher mode continues to read the lists from `OlympusQueue`.
+
+The lists and the underlying server roster must have valid dates at most **one
+hour** old. The Watcher normally polls the lists every 30 minutes. A failed strict
+read leaves any prior display file at its original dates, and the addon holds
+strict results if the file is absent, expired, or from another guild or realm.
+Refresh the Watcher exchange and reload to obtain newer lists. Reading the guild
+roster alone does not refresh the server lists.
 
 - **Verified**: one exact native GUID matches one current `member` link in the loaded list.
   A renamed character can retain its match by GUID. This is a dated display snapshot,

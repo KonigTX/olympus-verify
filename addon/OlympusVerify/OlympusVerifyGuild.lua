@@ -109,7 +109,8 @@ function G.Verification(name, guid)
   if not nativeAt then return { status = "unknown", reason = "The current native guild roster could not be read." } end
   local m = Live(Text(name), Text(guid, 40))
   if not m then return { status = "unknown", reason = "No unique matching character in the current native guild roster." } end
-  local q = type(OlympusQueue) == "table" and OlympusQueue or nil
+  local q, displayError, displayStale = API.Roster.DisplaySource()
+  if displayError then return { status = displayStale and "stale" or "unknown", reason = displayError } end
   local v, u = q and q.verified, q and q.unverified
   if type(v) ~= "table" or type(u) ~= "table" or type(v.members) ~= "table" or type(u.members) ~= "table" then
     return { status = "unknown", reason = "No complete watcher verification lists are loaded. Sync and reload first." }
@@ -129,6 +130,9 @@ function G.Verification(name, guid)
     return { status = "unknown", reason = "Only a name/old account state matched, or the native GUID is unavailable. No current GUID verification is claimed." }
   end
   if unverified then
+    if q == OlympusVerifyLists and Text(unverified.guid, 40) ~= m.guid then
+      return { status = "unknown", reason = "The Watcher display row does not match the current native GUID. No reminder is offered." }
+    end
     if nativeAliases[nk] ~= m or Text(unverified.name):find("-", 2, true) and Key(unverified.name) ~= Key(m.name) then
       return { status = "unknown", reason = "The watcher's plain-name alias is ambiguous in the native guild roster or its explicit realm differs. No reminder is offered." }
     end

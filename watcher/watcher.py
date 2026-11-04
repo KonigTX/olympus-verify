@@ -6,7 +6,7 @@ What it does, forever, politely:
      48 KiB batches and at /reload or logout; the measured lag describes when lines reached this watcher,
      not an addon flush or its cause — see --check)
   2. re-reads the addon's SavedVariables after every /reload or logout: mail codes, invite/joined/note events, the roster export
-  3. pulls the invite queue from the Worker and writes Interface/AddOns/OlympusVerify/OlympusQueue.lua
+  3. pulls the invite queue into OlympusQueue.lua in legacy mode, or a separate roster display file in membership-only mode
      (the addon reads it at the next login or /reload and fires the invites on the officer's key press)
   4. tells the Worker, on that same poll, whether this officer's game client is in the world, so /verify names an
      officer who can actually receive the whisper
@@ -103,7 +103,10 @@ LINE_TS_RE = re.compile(r"^(?P<mo>\d{1,2})/(?P<d>\d{1,2})\s+(?P<h>\d{1,2}):(?P<m
 CLIENT_IN = "Active Player Created"
 CLIENT_OUT = ("Client Object Manager Destroyed", "Client Destroy")
 
-WATCHER_VERSION = "0.6.12"
+WATCHER_VERSION = "0.6.13"
+STRICT_DISPLAY_PROTOCOL = "launch-roster-display-v1"
+STRICT_DISPLAY_PATH = "/queue/unverified?keyVersion=" + STRICT_DISPLAY_PROTOCOL
+STRICT_DISPLAY_MAX_BYTES = 512 * 1024
 
 
 # Where a relay character may come from: a login note addressed to the name it carries (a whisper the server delivered),
@@ -284,7 +287,10 @@ class Worker:
             try:
                 with self.opener.open(req, timeout=20) as res:
                     try:
-                        raw = res.read().decode("utf-8")
+                        payload = res.read(STRICT_DISPLAY_MAX_BYTES + 1) if path == STRICT_DISPLAY_PATH else res.read()
+                        if path == STRICT_DISPLAY_PATH and len(payload) > STRICT_DISPLAY_MAX_BYTES:
+                            return False, "invalid_response"
+                        raw = payload.decode("utf-8")
                         result = json.loads(raw) if raw.strip() else None
                     except (UnicodeDecodeError, ValueError, RecursionError):
                         log(f"worker {method} {path} -> a response that is not JSON; not treated as delivered")
@@ -449,6 +455,7 @@ class Watcher:
         self.chat_log = wow / "Logs" / "WoWChatLog.txt"
         self.sv_file = wow / "WTF" / "Account" / cfg["account"] / "SavedVariables" / "OlympusVerify.lua"
         self.queue_file = wow / "Interface" / "AddOns" / "OlympusVerify" / "OlympusQueue.lua"
+        self.strict_display_file = self.queue_file.with_name("OlympusVerifyLists.lua")
         self.worker = Worker(cfg["worker_url"], cfg["watcher_token"])
         self.secret = cfg["verify_secret"]
         self.officer = cfg.get("officer_character", "")
@@ -477,6 +484,7 @@ class Watcher:
         # ran out of writes once already, on 18 Sep). A roster upload forces the next fetch, since that is when it moves.
         self.unverified_poll = _seconds(cfg, "unverified_poll_seconds", 1800)
         self._last_unverified_pull = 0.0
+        self._next_strict_display_pull = 0.0
         self._unverified: dict[str, Any] | None = None
         self.max_outbox = int(cfg.get("max_outbox", 500))
         self._custody_halted = False
@@ -1460,12 +1468,14 @@ class Watcher:
         if self._custody_halted:
             return
         if self.membership_only:
-            # No legacy invite claim, render, file write or /queue/written ACK.
+            # No legacy invite claim, render, queue file write or /queue/written ACK.
             # Presence remains useful to Get my code's whisper instructions.
             path = "/queue" + (f"?officer={urllib.parse.quote(self.officer_id)}{self.presence_query()}&presenceOnly=1" if self.officer_id else "?presenceOnly=1")
             okay, response = self.worker.call("GET", path, retries=1)
             if not okay or not isinstance(response, dict) or response.get("presenceOnly") is not True:
                 log("launch presence poll not confirmed; legacy invitation data remains untouched")
+                return
+            self.pull_strict_display()
             return
         if self.state.d.get("queue_written_pending") or self.state.d.get("queue_written_original"):
             self.retry_queue_written()
@@ -1503,6 +1513,69 @@ class Watcher:
         log(f"queue file written: {len(entries)} entries ({len(queued)} new) — the addon reads it at the next /reload (the panel's Sync & reload)")
         if queued:
             self.retry_queue_written()
+
+    def pull_strict_display(self) -> None:
+        if not self.membership_only or self._custody_halted:
+            return
+        at = int(time.time())
+        if at < self._next_strict_display_pull:
+            return
+        cadence = min(1800, max(300, self.unverified_poll))
+        self._next_strict_display_pull = at + 300
+        ok, response = self.worker.call("GET", STRICT_DISPLAY_PATH, retries=1)
+        body = self.render_strict_display(response, int(time.time())) if ok else None
+        if body is None:
+            log("strict roster display unavailable; any previous lists keep their original dates")
+            return
+        path = self.strict_display_file
+        if not path.parent.is_dir() or path.is_symlink() or path.with_suffix(".tmp").is_symlink():
+            log("strict roster display file unavailable; invitation queue untouched")
+            return
+        atomic_local_text(path, body)
+        self._next_strict_display_pull = at + cadence
+
+    @staticmethod
+    def render_strict_display(report: Any, at: int) -> str | None:
+        def text(value: Any, limit: int) -> bool:
+            return isinstance(value, str) and 0 < len(value.encode("utf-8", errors="surrogatepass")) <= limit and not re.search(r"[\x00-\x1f\x7f\ud800-\udfff]", value)
+
+        if not isinstance(report, dict) or set(report) != {"protocol", "fetchedAt", "snapshotAt", "guild", "realm", "verified", "unverified"}:
+            return None
+        fetched, snapshot = report["fetchedAt"], report["snapshotAt"]
+        if (report["protocol"] != STRICT_DISPLAY_PROTOCOL or type(fetched) is not int or type(snapshot) is not int
+                or abs(at - fetched) > 60 or not 0 < snapshot <= fetched <= snapshot + 3600
+                or not text(report["guild"], 128) or not text(report["realm"], 128)):
+            return None
+        verified, unverified = report["verified"], report["unverified"]
+        if not isinstance(verified, list) or not isinstance(unverified, list) or len(verified) + len(unverified) > 1000:
+            return None
+        guids: set[str] = set()
+        lines = [
+            "-- Generated strict roster display only. Do not edit. No invite/removal custody.",
+            "OlympusVerifyLists = { version = 1,",
+            f"  guild = {json.dumps(report['guild'], ensure_ascii=False)},",
+            f"  realm = {json.dumps(report['realm'], ensure_ascii=False)},",
+        ]
+        for label, members in (("verified", verified), ("unverified", unverified)):
+            fields = ("status", "username", "displayName") if label == "verified" else ("pending",)
+            lines.append(f"  {label} = {{ fetchedAt = {fetched}, snapshotAt = {snapshot}, members = {{")
+            for row in members:
+                if not isinstance(row, dict) or set(row) != {"name", "guid", *fields}:
+                    return None
+                name, guid = row["name"], row["guid"]
+                if not text(name, 100) or "|" in name or not text(guid, 40) or not re.fullmatch(r"Player-[0-9]+-[0-9a-fA-F]+", guid) or guid in guids:
+                    return None
+                guids.add(guid)
+                if label == "verified":
+                    if (row["status"] != "member"
+                            or any(row[k] is not None and not text(row[k], 256) for k in ("username", "displayName"))):
+                        return None
+                elif type(row["pending"]) is not bool:
+                    return None
+                values = [f"{key} = {json.dumps(row[key], ensure_ascii=False)}" for key in ("name", "guid", *fields) if row[key] is not None]
+                lines.append("    { " + ", ".join(values) + " },")
+            lines.append("  } },")
+        return "\n".join([*lines, "}", ""])
 
     def retry_queue_written(self) -> Delivery:
         """Only the captured acknowledgment may be retried; bare legacy IDs are never assigned a new owner."""
