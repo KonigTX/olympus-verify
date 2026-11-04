@@ -81,7 +81,7 @@ const body218 = String.raw`
   }
   const technical222=page.app.querySelector('[data-role-family203="architect"]');
   check('.222 architecture is technical Officer Corps support without a Council portfolio label',directory.families.find(f=>f.key==='architect').tier==='officer_corps'&&!technical222.querySelector('.role-reporting218')&&technical222.textContent.includes('outside the High Council'));
-  check('.222 Propaganda has its own detailed responsibilities and boundaries',guides.office_103.responsibilities.length>=4&&guides.office_103.boundaries.includes('no moderation')&&directory.keyToFamily.office_103==='propaganda');
+  check('.222 Propaganda has its own detailed responsibilities and boundaries',guides.office_102.responsibilities.length>=4&&guides.office_102.boundaries.includes('no moderation')&&directory.keyToFamily.office_102==='propaganda');
   const justice=page.app.querySelector('[data-role-family203="justice"]'), chancellor=page.app.querySelector('[data-role-family203="head_justice"]');
   check('.218 one judicial portfolio and one clearly named institution retain separate holder scopes', justice.querySelector('summary').textContent.includes('Council of Justice — institution')
     && !justice.querySelector('summary').textContent.includes('Lord High Justiciar') && chancellor.querySelector('summary').textContent.includes('Lord High Justiciar · Minister of Justice & The Privy Court')

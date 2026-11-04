@@ -225,7 +225,7 @@
       h("table", { class: "rosetta-table199" }, h("thead", null, h("tr", null, headings.map(text => h("th", { scope: "col", text })))), h("tbody", null, ranks199().map(rank => {
         const rows = offices199().filter(row => row.nativeSlot === rank.nativeSlot), tiers = [...new Set(rows.map(row => row.tierLabel))], titleOrder = ["I", "II", "III", "IV", "V"], titles = [...new Set(rows.flatMap(row => row.codexTitles || []))].sort((a,b) => titleOrder.indexOf(a) - titleOrder.indexOf(b));
         const familyKey = directory?.ranks[rank.nativeSlot]?.familyKey;
-        const rankLabel = "Rank " + rank.nativeRankOrdinal + " " + rank.name;
+        const rankLabel = "Rank " + rank.nativeRankOrdinal + " " + (rank.nativeSlot === 0 ? "Leader (Guild Master)" : rank.name);
         const cells = [h("div", { class: "role-reference-links228" },
           familyKey ? h("a", { href: "#/roles/" + encodeURIComponent(familyKey), text: rankLabel }) : h("strong", { text: rankLabel }),
           rankPlannerLink228(rank.nativeSlot)), h("div", null, tiers.join(" / "),
@@ -485,16 +485,13 @@
         entry.variantHint.textContent = variantMatches.length ? "Matching detail: " + variantMatches.map(variant => variant.label).join(" · ")
           : value && show && !nameMatch ? "Matches the department context. The role itself remains " + entry.family.label + "." : "";
         entry.variantHint.hidden = !entry.variantHint.textContent;
-        entry.score = !value || entry.labels.includes(value) ? 0 : nameMatch ? 1 : 2;
-        entry.detail.style.order = String(entry.score);
       }
       for (const section of sections) {
         const own = entries.filter(entry => entry.section === section);
         if (!own.length) { section.hidden = !!value; continue; }
         section.hidden = !own.some(entry => !entry.detail.hidden);
-        section.style.order = String(Math.min(...own.filter(entry => !entry.detail.hidden).map(entry => entry.score),2));
       }
-      count.textContent = value ? `${matches} matching role families. Sections with an exact role or title match come first; matching regional, class and rank details remain inside their family. Open a section and role to read them.`
+      count.textContent = value ? `${matches} matching role families. Matching regional, class and rank details remain inside their family. Open a section to read them.`
         : `${entries.length} role families covering ${directory.sourceKeyCount} role, rank and title records. Regional duties, class portfolios and aliases stay with their role.`;
     }
     // .202: directory browsing changes no application answers, even inside Apply.
