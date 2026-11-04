@@ -47,7 +47,7 @@ export async function queueReserved(env: Env, actor: string, ids?: number[]): Pr
   return queueReservedRounds(env,actor,ids,ROUNDS,websiteQueue(env));
 }
 async function queueReservedRounds(env: Env, actor: string, ids: number[]|undefined,rounds:number,launch:LaunchVerificationCapture|null): Promise<QueueOutcome> {
-  if (!launch) return heldOutcome();
+  if (!launch?.current()) return heldOutcome();
   const out: QueueOutcome = { queued: 0, bumped: 0, inGuild: 0, blocked: 0, contested: 0, more: false };
   const only = ids?.filter((x) => Number.isInteger(x) && x > 0).slice(0, 500);
   if (ids && !only?.length) return out;
@@ -68,16 +68,18 @@ async function queueReservedRounds(env: Env, actor: string, ids: number[]|undefi
         LIMIT ${CHUNK + 1}`);
   // Independent counts and first selection share the original native epoch read proof.
   const firstFacts = await env.DB.batch([heldStatement, candidateStatement()]);
+  if (!launch.current()) return heldOutcome();
   const held = firstFacts[0]!.results[0] as { contested: number | null; banned: number | null } | undefined;
   out.contested = held?.contested ?? 0;
   out.blocked = held?.banned ?? 0;
   for (let round = 0; round < rounds; round++) {
+    if (!launch.current()) { out.held = true; out.more = false; break; }
     const cand = round === 0 ? { results: firstFacts[1]!.results as {id:number}[] } : await candidateStatement().all<{id:number}>();
+    // The mode may have changed during the selection, including an empty result.
+    if (!launch.current()) { out.held = true; out.more = false; break; }
     const go = cand.results.slice(0, CHUNK).map((r) => r.id);
     out.more = cand.results.length > CHUNK;
     if (!go.length) break;
-    // A switch to launch verification during the run stops it before the next write.
-    if (!launch.current()) { out.held = true; break; }
     const step = await queueChunk(env, go);
     out.inGuild += step.inGuild;
     out.bumped += step.bumped;
@@ -137,6 +139,7 @@ export async function autoQueueReserved(env: Env): Promise<QueueOutcome | null> 
     const launch = websiteQueue(env);
     if (!launch) return heldOutcome();
     const s = await loadSettings(env);
+    if (!launch.current()) return heldOutcome();
     if (!s.autoQueue || now() < s.launchAt) return null;
     return await queueReservedRounds(env, "system",undefined,SCHEDULED_CAPS.autoQueueRounds,launch);
   } catch (e) {

@@ -3812,7 +3812,7 @@
     stuck: "the latest export was left unfinished; the addon's next export writes it again",
     unchecked: "the latest export has not been checked yet; the next export from the addon, or /olympus-admin sync, checks it",
     distrusted: "the latest export is not trusted: run /olympus-admin sync if the guild really shrank",
-    before_links: "the latest roster export predates the 4 November launch cutoff; the next in-game export replaces it", // Evergreen Stage 2: words, not the setting's name
+    before_links: "the latest roster export predates the configured verification cutoff. A new qualifying export is needed",
     stale: "the latest export is more than 48 hours old",
     error: "the seat state could not be read",
   };
@@ -5387,9 +5387,13 @@
       if (confirmText && !(await confirmBox(confirmText[0], confirmText[1], confirmText[2]))) return;
       try {
         const out = await api("POST", `/api/admin/reserved/${action}`, { ids });
-        if (action === "queue" && out.held === true) toast("Queueing is paused during launch verification: officers invite in game. Nothing was queued.", "bad");
-        else if (action === "queue") {
-          toast(`Queued ${out.queued}, moved to the front ${out.bumped}, already in the guild ${out.inGuild}${out.contested ? `, contested (skipped) ${out.contested}` : ""}${out.blocked ? `, banned owner (skipped) ${out.blocked}` : ""}${out.more ? ". More waiting: press again." : "."}`, "good");
+        if (action === "queue") {
+          const summary = `Queued ${out.queued}, moved to the front ${out.bumped}, already in the guild ${out.inGuild}${out.contested ? `, contested (skipped) ${out.contested}` : ""}${out.blocked ? `, banned owner (skipped) ${out.blocked}` : ""}.`;
+          if (out.held === true) {
+            const completed = out.queued || out.bumped || out.inGuild;
+            const paused = "Queueing is paused during launch verification. Officers invite in game.";
+            toast(completed ? `${summary} ${paused}` : `${paused} Nothing was queued.`, "bad");
+          } else toast(summary + (out.more ? " More names are waiting. Press Queue again." : ""), "good");
         } else toast(`${out.changed} changed.`, "good");
         adminNames(body);
       } catch (err) { toast(err.message, "bad"); }

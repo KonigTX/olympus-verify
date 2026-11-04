@@ -67,7 +67,7 @@
     "test:product219": "node tests/application_edit219_test.cjs && node tests/guild_commands219_test.cjs && node tests/guild_command_plan219_test.cjs",
     "test:evergreen221": "node tests/frontend_evergreen221_test.cjs && node tests/guild_workflows221_test.cjs && node tests/guild_command_plan221_test.cjs && node tests/guild_registration221_test.cjs",
     "test:evergreen222": "node tests/raid_hub222_test.cjs && node tests/guild_registration222_test.cjs",
-    "test:launch227": "node tests/launch_verification227_test.cjs && node tests/launch_membership_mode227_test.cjs && node tests/site_relay_launch227_test.cjs && node tests/launch_qr227_test.cjs && node tests/launch_scoped_rank_budget227_test.cjs && node tests/launch_health_capability227_test.cjs"
+    "test:launch227": "node tests/launch_verification227_test.cjs && node tests/launch_membership_mode227_test.cjs && node tests/site_relay_launch227_test.cjs && node tests/launch_qr227_test.cjs && node tests/launch_scoped_rank_budget227_test.cjs && node tests/launch_health_capability227_test.cjs && node tests/launch_transition228_test.cjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261023.1",

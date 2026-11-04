@@ -84,7 +84,7 @@ export async function referenceLookup219(env:Env,a:GuildActor219,name:string):Pr
   const {launchAt,firstRaids,raidDayEndAt}=FOREVER_SCHEDULE,at=Math.floor(Date.now()/1000),remaining=Math.max(0,launchAt-at),official=[{name:'Official reference',value:'https://worldofwarcraft.blizzard.com/en-us/forever/'}];
   if(remaining){const days=Math.floor(remaining/86400),hours=Math.floor(remaining%86400/3600),minutes=Math.floor(remaining%3600/60);
    return {title:'World of Warcraft: Forever · November 4',url:base+'/#/',description:'Announced global launch: <t:'+launchAt+':F>\n'+days+' days, '+hours+' hours, '+minutes+' minutes remaining.',fields:official};}
-  return {title:'World of Warcraft: Forever · live since 4 November 2026',url:base+'/#/',description:'Global launch: <t:'+launchAt+':F>'+(at<raidDayEndAt?'\nFirst raids open on '+firstRaids+'; Blizzard has not announced the hour.':''),fields:official};
+  return {title:'World of Warcraft: Forever · Launch date',url:base+'/#/',description:'The announced launch time <t:'+launchAt+':F> has passed. Check Blizzard for current availability.'+(at<raidDayEndAt?'\nThe first raids are scheduled for '+firstRaids+'. Blizzard has not announced the hour.':''),fields:official};
  }
  if(name==='stockades')return {title:'The Stockades & Court of Appeals',url:base+'/#/governance',description:ROYAL_WRIT_POLICY.stockadesStatus,fields:[
   field('Eligible conditional clemency only',`100g standard. An unconflicted reviewer may set 250–500g for eligible repeat or escalated minor community or RP infractions. Send in-game gold to ${ROYAL_WRIT_POLICY.recipient} only after an officer accepts the case. Include the Case ID in the mail subject. Payment never guarantees an unban.`),

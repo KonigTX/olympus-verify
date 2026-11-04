@@ -204,7 +204,7 @@ const REASON_WORDS: Record<SeatReason, string> = {
   unchecked: "the latest export has not been checked yet; the next export from the addon, or /olympus-admin sync, checks it",
   distrusted: "the latest export is not trusted: run /olympus-admin sync if the guild really shrank",
   // Evergreen Stage 2 (4 Nov 2026): staff read words, not the setting's name; the cutoff is configured at the launch.
-  before_links: "the latest roster export predates the 4 November launch cutoff; the next in-game export replaces it",
+  before_links: "the latest roster export predates the configured verification cutoff. A new qualifying export is needed",
   stale: "the latest export is more than 48 hours old",
   error: "the seat state could not be read",
 };

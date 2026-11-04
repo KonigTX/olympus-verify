@@ -67,6 +67,23 @@ async function launchTransition228(){
   const invalid=await siteQueue.autoQueueReserved(directEnv({VERIFY_MEMBERSHIP_ONLY:'yes'}));
   check('  a held (invalid) verification switch holds it too',isHeld(invalid)&&queueState()===before,invalid);
  });
+ await guard('configuration changes during queue reads',async()=>{
+  const enterLaunch = e => { e.VERIFY_MEMBERSHIP_ONLY='true'; e.VERIFY_NATIVE_SCOPE=SCOPE; };
+  let preparations=0;
+  const afterSettings={...directEnv(),DB:{prepare(){preparations++;return {all:async()=>{
+    enterLaunch(afterSettings);
+    return {results:[{key:'launchAt',value:String(Math.floor(Date.now()/1000)-60)},{key:'autoQueue',value:'1'}]};
+  }};}}};
+  const noSelection=await siteQueue.autoQueueReserved(afterSettings);
+  check('a mode change while reading settings holds before preparing any selection',isHeld(noSelection)&&preparations===1,noSelection,preparations);
+  let batches=0;
+  const afterEmptySelection={...directEnv(),DB:{prepare(){return {};},async batch(){batches++;
+    enterLaunch(afterEmptySelection);
+    return [{results:[{contested:0,banned:0}]},{results:[]}];
+  }}};
+  const emptySelection=await siteQueue.queueReserved(afterEmptySelection,STAFF);
+  check('a mode change during an empty selection still returns held with no write',isHeld(emptySelection)&&batches===1,emptySelection,batches);
+ });
  await guard('admin hold',async()=>{
   await resetNames();const before=queueState();
   const response=await indexMod.default.fetch(new Request('https://guild.example/api/admin/reserved/queue',{method:'POST',headers:{Origin:'https://guild.example',Cookie:await cookieFor(STAFF),'X-Olympus':'2','Content-Type':'application/json'},body:JSON.stringify({ids:[]})}),env({ASSETS:governanceAssets,...MEMBERS_ONLY}),ctx);
@@ -159,6 +176,13 @@ async function launchTransition228(){
     const anyway=page.document.querySelector('dialog')&&byText(page.document.querySelector('dialog'),'button','Queue anyway');if(anyway){anyway.click();await settle();}
     await waitFor(()=>page.document.body.textContent.includes('Nothing was queued')||page.document.body.textContent.includes('Queued 0'),'the queue answer toast');
     check('  a held answer is reported as paused, never as “Queued 0”',page.document.body.textContent.includes('Queueing is paused during launch verification')&&!page.document.body.textContent.includes('Queued 0'));
+    await waitFor(()=>page.app.querySelector('input[aria-label="Select Tlqone"]')!==box,'queue refresh after first reply');
+    page.answer(p=>p==='/api/admin/reserved/queue'?{ok:true,queued:1,bumped:0,inGuild:0,blocked:0,contested:0,more:false,held:true}:null);
+    const nextBox=page.app.querySelector('input[aria-label="Select Tlqone"]');nextBox.checked=true;fire(nextBox,'change');
+    byText(page.app,'button','Queue selected now').click();await settle();
+    const nextAnyway=page.document.querySelector('dialog')&&byText(page.document.querySelector('dialog'),'button','Queue anyway');if(nextAnyway){nextAnyway.click();await settle();}
+    await waitFor(()=>page.document.body.textContent.includes('Queued 1'),'the partial queue answer toast');
+    check('  the partial queue reply reports work already completed before the hold',page.document.body.textContent.includes('Queued 1, moved to the front 0, already in the guild 0. Queueing is paused'));
     page.answer(null);
    }else check('  membership-only admin copy: officers invite in game during launch verification, and Queue is paused',copy.includes('During launch verification, officers invite in game')&&!copy.includes('Approved names go to the top of the invite queue')&&byText(page.app,'button','Queue selected now').disabled===true&&byText(page.app,'button','Queue every approved name now').disabled===true,copy.slice(0,600));
   }
@@ -177,8 +201,8 @@ async function launchTransition228(){
   const utilities=load('./guild-utilities219'),botEnv=directEnv(BOT_ENV),launch=ms=>atClock(ms,()=>utilities.referenceLookup219(botEnv,null,'launch'));
   const before=await launch(PRE),after=await launch(POST),later=await launch(LATER);
   check('/launch before the launch keeps the countdown',before.title==='World of Warcraft: Forever · November 4'&&before.description.includes('<t:1793833200:F>')&&before.description.includes('remaining'),before);
-  check('/launch after the launch says live since 4 November and gives the 9 December first raids without an hour',after.title==='World of Warcraft: Forever · live since 4 November 2026'&&after.description.includes('<t:1793833200:F>')&&after.description.includes('First raids open on 9 December 2026; Blizzard has not announced the hour.')&&!after.description.includes('remaining')&&!after.description.includes('has passed'),after);
-  check('  after 9 December (PST) the raid line retires and the launch date stays',later.title===after.title&&!later.description.includes('First raids')&&later.description.includes('<t:1793833200:F>'),later);
+  check('/launch after the scheduled time gives the official date and first raids without asserting service availability',after.title==='World of Warcraft: Forever · Launch date'&&after.description.includes('<t:1793833200:F> has passed')&&after.description.includes('Check Blizzard for current availability')&&after.description.includes('The first raids are scheduled for 9 December 2026. Blizzard has not announced the hour.')&&!after.description.includes('remaining'),after);
+  check('  after 9 December (PST) the raid line retires and the launch date stays',later.title===after.title&&!later.description.includes('first raids')&&later.description.includes('<t:1793833200:F>'),later);
   check('the /olympus branches card renders that same /launch answer',source('olympus-hub224').includes("[await referenceLookup219(env,a,'branches'),await referenceLookup219(env,a,'launch')]"));
  });
 
@@ -199,14 +223,14 @@ async function launchTransition228(){
  await guard('seat reason',async()=>{
   const seats=load('./guild-seats'),t=Math.floor(Date.now()/1000);
   const state=seats.seatsFrom(directEnv({LINKS_NOT_BEFORE:String(t+3600)}),t,{id:1,member_count:10,exported_at:t-3600,received_at:t-3600,trusted:1,complete:1,first_received_at:t-3600},null),line=seats.seatsStaffLine(state);
-  check('the bot staff line for an export before the launch cutoff is plain words, no setting name',state.reason==='before_links'&&!line.includes('LINKS_NOT_BEFORE')&&line.includes('predates the 4 November launch cutoff'),line);
+  check('the bot staff line for an export before the launch cutoff is plain words, no setting name',state.reason==='before_links'&&!line.includes('LINKS_NOT_BEFORE')&&line.includes('predates the configured verification cutoff'),line);
   const block=(/const SEAT_REASONS = \{([\s\S]*?)\n  \};/.exec(appSource)||[])[1]||'';
-  check('  the admin overview reasons name no environment setting',block.includes('before_links')&&!/[A-Z]{2,}_[A-Z_]{2,}/.test(block)&&block.includes('predates the 4 November launch cutoff'));
+  check('  the admin overview reasons name no environment setting',block.includes('before_links')&&!/[A-Z]{2,}_[A-Z_]{2,}/.test(block)&&block.includes('predates the configured verification cutoff'));
   await fixtureRun("INSERT INTO roster_snapshots (exported_at, received_at, source, member_count, content_hash, trusted, complete, first_received_at) VALUES (?, ?, 'addon', 10, 'launch228', 1, 1, ?)",t-3600,t-3600,t-3600);
   const admin=await openPage(STAFF,{LINKS_NOT_BEFORE:String(t+3600)});await admin.go('#/admin');
   await waitFor(()=>!!admin.app.querySelector('#overview-seats'),'the overview seat line');
   const seen=admin.app.querySelector('#overview-seats')?.textContent||'';
-  check('  the rendered admin overview says so in the same words',seen.includes('predates the 4 November launch cutoff')&&!seen.includes('LINKS_NOT_BEFORE'),seen);
+  check('  the rendered admin overview says so in the same words',seen.includes('predates the configured verification cutoff')&&!seen.includes('LINKS_NOT_BEFORE'),seen);
  });
  console.log('\n'+ok+'/'+n+' passed');process.exit(ok===n?0:1);
 }
