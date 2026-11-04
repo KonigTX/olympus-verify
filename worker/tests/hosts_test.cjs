@@ -341,6 +341,26 @@ const check = (name, cond, ...why) => { n++; if (cond) ok++; else if (why.length
   const admittedSetup=load('./privacy-write-admission').createPrivacyWriteAdmissionDatabase(assetEnv.DB,'writer','canonical',entryFixture.ENTRY_EPOCH);
   await admittedSetup.prepare('INSERT INTO site_users(discord_id,username,in_server,first_login,last_login,session_version) VALUES(?1,?2,1,?3,?3,1)').bind(viewer,'member',Math.floor(Date.now()/1000)).run();
   const validCookie=(await entryFixture.issueOriginalEntryCookie(load,db,assetEnv,viewer)).cookie, originalVersion=db.prepare('SELECT session_version FROM site_users WHERE discord_id=?').get(viewer).session_version;
+  const normalizedAssetCalls = [];
+  const normalizingAssets = env({ ASSETS: { fetch: async request => {
+    const key = decodeURIComponent(new URL(request.url).pathname).replace(/\/{2,}/g, '/').replace(/\/+$/, '').toLowerCase();
+    normalizedAssetCalls.push(key);
+    return new Response(request.method === 'HEAD' ? null : 'fixture asset ' + key);
+  } } });
+  for (const alias of [
+    '/static/%74reasury-plan-content207.js', '/static/treasury-plan207%2Ecss', '/static//treasury-plan-model207.js',
+    '/static/TREASURY-PLAN207.JS', '/static/army-live%2Fsource.js', '/static/ARMY-LIVE/report.js',
+    '/static/army-live//report.js', '/static/%71r-phase1.html', '/static/QR-PHASE1.HTML',
+    '/static/qr-beta-window-data.html/',
+  ]) {
+    const before = normalizedAssetCalls.length;
+    const refused = await get('https://guild.example' + alias, normalizingAssets, { headers: { Cookie: validCookie } });
+    check('a signed-in caller cannot use an alternate static spelling: ' + alias,
+      refused.status === 404 && privateAsset(refused) && !await refused.text() && normalizedAssetCalls.length === before);
+  }
+  const license = await get('https://guild.example/static/talents/LICENSE-DATA.txt', normalizingAssets, { headers: { Cookie: validCookie } });
+  check('the ordinary tracked mixed-case licence still uses private asset delivery', license.status === 200 && privateAsset(license)
+    && normalizedAssetCalls.at(-1) === '/static/talents/license-data.txt');
   res = await get('https://guild.example/static/app.js', assetEnv, { headers: { Cookie: validCookie } });
   check('current Discord session receives private assets with cookie-varying no-store delivery', res.status === 200 && await res.text() === 'protected-source' && assetCalls === 1 && res.headers.get('Cache-Control') === 'private, no-store, no-transform' && res.headers.get('Vary') === 'Cookie' && /noindex/.test(res.headers.get('X-Robots-Tag')));
   // .177: reproduce a provider read failure through the real gate, without replacing

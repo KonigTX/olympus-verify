@@ -21,7 +21,7 @@ import { isGuildCommand219, guildCommandReadOnly219, handleGuildCommand219 } fro
  * This module's named exports are functions only: workerd refuses an entry that exports a scalar (.51).
  */
 import { armyAfterMemberGate, armyGateReply } from "./site-army";
-import { treasuryAfterMemberGate } from "./site-treasury-access";
+import { TREASURY_PLAN_ASSETS, treasuryAfterMemberGate } from "./site-treasury-access";
 import { captureLaunchVerification,launchVerificationEnv } from './launch-verification227';
 import type { Env } from "./env";
 import {nativeErasureMode,nativeServingEnvironment} from './privacy-native-mode';
@@ -197,7 +197,7 @@ export default {
     }
     // Existing browser-only privacy controls remain available after the site account is gone.
     // This exact page/module pair has no server-data fetch, form submission or serving authority.
-    if (host === 'site' && (path === '/static/qr-beta-window-data.html' || path === '/static/qr-beta-window.mjs')) {
+    if (host === 'site' && url.pathname === path && (path === '/static/qr-beta-window-data.html' || path === '/static/qr-beta-window.mjs')) {
       if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('method not allowed', { status: 405, headers: securityHeaders(new Headers({ Allow: 'GET, HEAD' })) });
       const source = path === '/static/qr-beta-window-data.html'
         ? await fetchCanonicalHtmlAsset(request, env.ASSETS, path)
@@ -231,6 +231,14 @@ export default {
       if (host === 'site') {
         const gate = await memberSiteGate(request, env, path);
         if (gate) return armyGateReply(request, path, gate);
+        // The Worker checks exact routes before ASSETS can decode or collapse an alternate spelling.
+        const assetPath = path.toLowerCase();
+        if (assetPath.startsWith('/static/') && (
+          url.pathname !== path || path.includes('%') || path.includes('//') ||
+          assetPath !== path && (assetPath.startsWith('/static/army-live/') ||
+            (TREASURY_PLAN_ASSETS as readonly string[]).includes(assetPath) ||
+            assetPath === CAMERA_PAGE_PATH || assetPath === '/static/qr-beta-window-data.html')
+        )) return privateSiteAsset(new Response(null, { status: 404 }));
         const armyPrivate = await armyAfterMemberGate(request, env, path);
         if (armyPrivate) return armyPrivate;
         // .218: the Treasury plan's files and its access check are for officers and above (site-treasury-access.ts).
