@@ -5057,6 +5057,7 @@
     const formTitle = h("h2", { text: "New notice" });
     const submit = h("button", { class: "btn", type: "button", text: "Post notice" });
     const stopEdit = h("button", { class: "btn small", type: "button", text: "Cancel editing", hidden: true });
+    const editStatus = h("div", { class: "muted small", role: "status", "data-news-edit-status": "true" });
     const err = errorLine(""); err.hidden = true;
     const pending = h("div");
     // Item 29: an attended writing aid only; it cannot replace a draft or change a pending operation.
@@ -5143,7 +5144,12 @@
         if (ex && (ex.status === 403 || ex.status === 503)) refreshCommunity();
       }
     };
-    const edit = (n) => () => {
+    const originalEditor = S.user, originalRevision = decisionActorRevision;
+    const currentEditor = () => app.contains(body) && S.user === originalEditor && decisionActorRevision === originalRevision;
+    const edit = (n) => async () => {
+      if (locked || frozen || !d.newsOn || !currentEditor() || !app.contains(title)) return;
+      if (dirtyKeys.has("admin-news") && !(await confirmBox("Replace this unsaved draft?", `Open “${n.title}” for editing?`, "Replace draft"))) return;
+      if (locked || frozen || !currentEditor() || !app.contains(title)) return;
       editing = n;
       formTitle.textContent = "Change a notice";
       title.value = n.title;
@@ -5153,17 +5159,26 @@
       submit.textContent = "Save changes";
       stopEdit.hidden = false;
       err.hidden = true;
+      setDirty("admin-news", false);
+      editStatus.textContent = `Editing ${n.title}.`;
       updateBrief();
+      title.focus({ preventScroll: true });
+      scrollToSection(title);
     };
     submit.addEventListener("click", () => { if (frozen) return; err.hidden = true; return editing ? change() : create(); });
-    stopEdit.addEventListener("click", () => again());
+    stopEdit.addEventListener("click", async () => {
+      const id = editing?.id;
+      if (!id || !currentEditor()) return;
+      await again();
+      if (currentEditor()) body.querySelector(`[data-news-edit-id="${CSS.escape(id)}"]`)?.focus();
+    });
     lock(false);
     const list = notices.map((n) => h("div", { class: "card" },
       h("h3", { text: n.title }),
       h("p", { class: "small", text: n.body.length > 200 ? `${n.body.slice(0, 200)}…` : n.body }),
       h("p", { class: "muted small", text: `Posted ${fmtDateTime(n.postedAt)}${n.editedAt ? ` · changed ${fmtDateTime(n.editedAt)}` : ""} · shown until ${fmtDateTime(n.until)} · revision ${n.revision}` }),
       h("div", { class: "btn-row" },
-        h("button", { class: "btn small", type: "button", text: "Edit", disabled: !d.newsOn, onclick: edit(n) }),
+        h("button", { class: "btn small", type: "button", text: "Edit", "data-news-edit-id": n.id, disabled: !d.newsOn, onclick: edit(n) }),
         h("button", { class: "btn small danger", type: "button", text: "Delete", onclick: remove(n) })), newsWebhookControls(n)));
     clear(body);
     add(body, [
@@ -5175,6 +5190,7 @@
       frame("Notices shown now", null, list.length ? list : h("p", { class: "muted small", text: "No notice is shown right now." })),
       frame("Retained Discord cross-posts", null, retainedNewsWebhookControls()),
       frame(formTitle, null,
+        editStatus,
         h("p", { class: "muted small", text: "Write for the whole guild; do not name members. A notice is deleted when its time is up, at most 90 days after posting." }),
         h("div", { class: "btn-row" }, brief),
         h("p", { class: "muted small", text: "The Daily Brief starter fills a blank new notice. Replace its prompts with your own text and check dates and sources before posting." }),

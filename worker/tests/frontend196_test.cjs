@@ -298,6 +298,21 @@ const body196=String.raw`
   await editor.go('#/news/edit');
   await waitFor(()=>!!byText(editor.app,'button','Post notice'),'Town Crier editor');
   check('Town Crier editor opens inside the parent site header',editor.document.title==='Town Crier — Olympus' && !!editor.app.querySelector('header.topbar') && !!byText(editor.app,'button','Post notice'));
+  const draftTitle=editor.app.querySelector('#f-news-title'), editNotice=byText(editor.app,'button','Edit');
+  draftTitle.value='Keep this unsent draft'; draftTitle.dispatchEvent(new Event('input'));
+  editNotice.click();
+  const cancelDraft=byText(editor.document.body,'button','Cancel');
+  check('CC-072 editing another notice asks before replacing a dirty draft',!!cancelDraft&&draftTitle.value==='Keep this unsent draft');
+  cancelDraft?.click(); await settle();
+  if (cancelDraft) {
+    editNotice.click(); byText(editor.document.body,'button','Replace draft')?.click(); await settle();
+  }
+  check('CC-072 editing announces the notice and focuses its title',editor.document.activeElement===draftTitle
+    && draftTitle.value==='Synthetic revised notice'&&editor.app.querySelector('[data-news-edit-status]')?.textContent==='Editing Synthetic revised notice.');
+  byText(editor.app,'button','Cancel editing')?.click();
+  await waitFor(()=>editor.document.activeElement?.getAttribute('data-news-edit-id')===webhookNotice196,'focus returns to the same notice');
+  check('CC-072 cancel editing returns to the same notice action',editor.document.activeElement?.getAttribute('data-news-edit-id')===webhookNotice196
+    && !!byText(editor.app,'button','Post notice'));
   byText(editor.app,'button','Review optional Discord cross-post').click();
   await waitFor(()=>!!byText(editor.app,'button','Continue requested removal'),'retained cleanup revision UI');
   if(!byText(editor.app,'button','Continue requested removal'))throw Error('Retained cleanup UI diagnosis: '+editor.app.querySelector('.news-webhook196')?.textContent);
