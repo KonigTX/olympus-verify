@@ -213,10 +213,11 @@
   const titleLink228 = title => h("a", { href: "#/governance/" + governanceTitleRoutes228[title], text: "Title " + title });
   const rankPlannerLink228 = slot => S.user?.isAdmin === true
     ? h("a", { href: "/admin/ranks#current-rank-" + (slot + 1), text: "Rank planner" }) : null;
-  function roleReferenceLinks228(office, fallback) {
+  function roleReferenceLinks228(office, fallback, ballotKey) {
     return h("nav", { class: "role-reference-links228", "aria-label": "Role references" },
       h("a", { href: "#/organization/" + encodeURIComponent(office?.key || fallback), text: "Organization" }),
-      ...(office?.codexTitles || ["IV"]).map(titleLink228), office ? rankPlannerLink228(office.nativeSlot) : null);
+      ...(office?.codexTitles || ["IV"]).map(titleLink228), office ? rankPlannerLink228(office.nativeSlot) : null,
+      ballotKey ? h("a", { href: "#/vote/" + encodeURIComponent(ballotKey), text: "Leadership board" }) : null);
   }
   function rosettaPanel199(open = false) {
     const directory = roleDirectory203();
@@ -237,7 +238,7 @@
               roleReporting218(row,family,{includeMinistry:false}) ? " · " + roleReporting218(row,family,{includeMinistry:false}) : "");
           }))),
           h("p", { text: rankPortalSummary221(rank.nativeSlot) }),
-          h("p", null, rank.nativeSlot < 5 ? "Reserved appointment; no public application." : "Membership, raiding and artisan work use the role directory; other standing and titles require their own review. ", rank.nativeSlot >= 5 ? h("a", {href:"#/vote",text:"Explore the role directory"}) : null)];
+          h("p", null, rank.nativeSlot < 5 ? "Reserved appointment; no public application." : "Membership, raiding and artisan work use the role directory; other standing and titles require their own review. ", rank.nativeSlot >= 5 ? h("a", {href:"#/roles",text:"Explore the role directory"}) : null)];
         return h("tr", { "data-rank-crosswalk": String(rank.nativeRankOrdinal) }, cells.map((cell, i) => h("td", { "data-column": headings[i] }, cell)));
       }))));
   }
@@ -357,7 +358,7 @@
     const currentFamily = directory.keyToFamily[currentKey] || (directory.families.some(family => family.key === currentKey) ? currentKey : "");
     const search = h("input", {type:"search",id:"application-role-search201",maxlength:"160",placeholder:"Find a role, rank or title…","aria-label":"Search all roles, ranks and titles"});
     const count = h("p", {class:"small muted","aria-live":"polite"});
-    const raidFamilies = new Set(["class_leadership", "chief_strategist", "loot_council", "pvp_leadership", "raid_leader", "raid_assist", "pvp_team"]);
+    const raidFamilies = new Set(["class_leadership", "chief_strategist", "loot_council", "pvp_leadership", "raid_leader", "raid_assist", "pvp_team", "marshall"]);
     const workshopFamilies = new Set(["profession_coordinator", "artisan"]);
     const royalFamilies = new Set(["founder", "emeritus", "tithe", "vip"]);
     const sectionsByRole = [
@@ -376,6 +377,8 @@
       return family.tier === "officer_corps" ? "officers" : "members";
     }
     const councilOrder = new Map(["leader", ...directory.councilOrder].map((key, index) => [key, index]));
+    const rankOrder = new Map(directory.ranks.map(rank => [rank.familyKey, rank.nativeSlot]));
+    const ballotKeys = new Set(M().ballots.map(ballot => ballot.key));
     const sourceLabel = key => directory.families.find(family => family.primaryKey === key && family.kind === "institution")?.label
       || office199(key)?.applicationLabel || office199(key)?.label || positionOf(key)?.label || guides[key]?.label || key;
     const ownHolder = key => {
@@ -391,12 +394,13 @@
     for (const [id, label] of sectionsByRole) {
       const families = directory.families.filter(family => groupForFamily(family) === id);
       if (id === "council") families.sort((a, b) => (councilOrder.get(a.key) ?? Infinity) - (councilOrder.get(b.key) ?? Infinity));
+      if (id === "members") families.sort((a, b) => (rankOrder.get(a.key) ?? directory.ranks.length) - (rankOrder.get(b.key) ?? directory.ranks.length));
       if (!families.length) continue;
       const grid = h("div", {class:"role-directory-grid201 role-family-grid203"});
       const section = h("details", {class:"role-section201","data-role-section201":id,open:id === "members" || families.some(family => family.key === currentFamily)},
         h("summary", null, h("span", {text:label}), h("span", {class:"badge muted",text:String(families.length)})),
         id === "council" ? h("p", {class:"small muted",text:"The Guild Master chairs the Council. The Co-Guild Master and twelve numbered portfolios have separate appointments. Collective institutions retain their own guides below."}) : null,
-        id === "members" ? h("p", {class:"role-standing-scope218 small muted",text:standingIntro218}) : null, grid);
+        id === "members" ? h("p", {class:"role-standing-scope218 small muted",text:"Guild Member and Raider accept applications. For a change in your guild standing, ask the responsible officer to review your record."}) : null, grid);
       section.open = id === "members" || families.some(family => family.key === currentFamily);
       for (const family of families) {
         const row = office199(family.primaryKey), reserved = ["leader","high_council","officer_corps"].includes(family.tier) || family.sourceKeys.some(reservedKey201);
@@ -452,7 +456,8 @@
             h("section", {class:"role-primary203",id:"role-"+family.primaryKey,"data-role-key201":family.primaryKey},
               row?.department ? h("p", {class:"small muted",text:roleDepartment218(row)}) : null,
               roleReporting218(row,family) ? h("p", {class:"role-reporting218",text:roleReporting218(row,family)}) : null,
-              canonicalFamilyGuide219(family,guides), roleReferenceLinks228(row || family.sourceKeys.map(office199).find(Boolean), "activity"), ownHolder(family.primaryKey),
+              canonicalFamilyGuide219(family,guides), roleReferenceLinks228(row || family.sourceKeys.map(office199).find(Boolean), "activity",
+                family.sourceKeys.find(key => ballotKeys.has(key))), ownHolder(family.primaryKey),
               ...family.variants.filter(variant => ["alias","native","historical"].includes(variant.presentation)).map(variant => ownHolder(variant.key))),
             eligible && onChoose ? h("button", {type:"button",class:"btn small","data-apply-role201":intent.targetOffice || family.primaryKey,"data-family-apply203":family.key,disabled:!!appointedTo(intent.targetOffice || family.primaryKey) || admissionClosed219,
               text:appointedTo(intent.targetOffice || family.primaryKey) ? "Appointment recorded" : admissionClosed219 ? "Applications closed" : "Apply for this role",
@@ -3353,6 +3358,7 @@
     summaryStatus.textContent = cached ? "" : "Refreshing role counts…";
     const holder = appointedTo(role);
     const quiet = !holder && noVoteFor(role);
+    const guideFamily = roleDirectory203()?.keyToFamily[role];
     const content = h("div", { class: "board-role-content" },
       rolePick,
       h("section", { class: "frame" },
@@ -3360,7 +3366,7 @@
           holder ? h("span", { class: "aside", text: "Appointed" })
             : quiet ? h("span", { class: "aside", text: "No public vote" })
             : h("span", { class: "aside", id: "role-applicants", text: `${plural((counts[role] || {}).applicants || 0, "applicant")}` })),
-        roleAbout(role),
+        roleAbout(role), guideFamily ? h("a", { href: "#/roles/" + encodeURIComponent(guideFamily), text: "Role guide" }) : null,
         holder
           ? appointedNote(ballot, holder)
           : quiet
