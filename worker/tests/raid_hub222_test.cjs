@@ -107,6 +107,31 @@ async function checks222(){
  await send222({type:3,custom:stateSelect222,values:['absent']});
  check('locked attendance cannot be changed through an older private selector',one('SELECT state FROM community_event_attendance WHERE event_id=? AND discord_id=?',attended222.id,MEMBER).state==='present');
  check('the attendance and search hub scenarios create no public message',publicEffects219().length===0);
+ await fresh219();
+ const start=at()+1800;
+ const isoAt=(seconds)=>new Date(seconds*1000).toISOString();
+ const offsetStart=(seconds,offsetHours)=>{
+  const suffix=offsetHours>0?'+02:00':'-05:00';
+  return isoAt(seconds+offsetHours*3600).replace(/Z$/,suffix);
+ };
+ const scheduleAt=(name,title,starts)=>send222({name,options:[{type:1,name:'schedule',options:[
+  {type:3,name:'title',value:title},{type:3,name:'starts',value:starts},{type:4,name:'minutes',value:60}
+ ]}]});
+ const plus=await scheduleAt('raid','Positive offset',offsetStart(start,2).replace('.000',''));
+ const minusStart=(Math.floor(at()/86400)+1)*86400+3600;
+ const minus=await scheduleAt('event','Negative offset',offsetStart(minusStart,-5));
+ check('signed /raid schedule accepts a positive offset and persists the exact UTC instant',plus.initial?.type===5&&one('SELECT starts_at FROM community_events WHERE title=?','Positive offset')?.starts_at===start&&plus.answer?.embeds?.[0]?.description.includes('<t:'+start+':F>'));
+ check('signed /event schedule accepts a negative offset across a UTC day boundary',minus.initial?.type===5&&one('SELECT starts_at FROM community_events WHERE title=?','Negative offset')?.starts_at===minusStart);
+ const eventCount=one('SELECT COUNT(*) n FROM community_events').n;
+ for(const bad of ['2026-02-30T12:00:00+01:00','2026-11-05T12:00:00+24:00','2026-11-05T12:00:00+05:60','2026-11-05T12:00:00.123+01:00','2026-11-05T12:00+01:00']){
+  const rejected=await scheduleAt('raid','Malformed offset',bad);
+  check('invalid offset timestamp is explained and writes nothing '+bad,rejected.answer?.content.includes('valid ISO start time')&&one('SELECT COUNT(*) n FROM community_events').n===eventCount);
+ }
+ const past=await scheduleAt('raid','Past offset',offsetStart(at()-30,2));
+ check('offset normalization preserves the future-event guard',past.answer?.content.includes('Schedule a future start time')&&one('SELECT COUNT(*) n FROM community_events').n===eventCount);
+ const website=await call('POST','/api/community/events',{opId:'w'.repeat(22),title:'Website offset',startsAt:offsetStart(start,2),durationMin:60},ORG,over219);
+ check('the website event contract still rejects non-Z timestamps without writing',website.status===400&&website.body.error==='invalid_starts_at'&&one('SELECT COUNT(*) n FROM community_events').n===eventCount);
+ check('offset and timezone checks leave reminder and public delivery custody untouched',one('SELECT COUNT(*) n FROM community_event_reminders').n===0&&publicEffects219().length===0);
  console.log('\n'+passed+'/'+total+' signed raid hub checks passed');process.exit(passed===total?0:1);
 }
 const inherited=parent222.slice(pre222,end222).replace('async function guildCommands219(){','async function run222(){');

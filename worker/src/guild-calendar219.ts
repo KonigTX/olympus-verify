@@ -5,7 +5,8 @@ import type { Env } from './env';
 import { now } from './db';
 import { DB_NOW, communityFeatures, randomToken } from './community-context';
 import { scanLimit } from './community-directory';
-import { calendarRoom, EVENT_RETENTION_S, historyStatement, opHash, parseField, rsvpStatements } from './community-events';
+import { calendarRoom, EVENT_RETENTION_S, historyStatement, opHash, parseField, rsvpStatements, timeOf } from './community-events';
+import { isoToSeconds, secondsToIso } from './community-time';
 import { currentGuildActor219, guildActorBatch219, guildActorFence219, guildStaffNow219, type GuildActor219 } from './guild-command-authority219';
 import { attendanceUnlocked219, markerPrefix219, rsvpPreferenceSql219, RSVP_CHOICES_219, type RsvpChoice219 } from './guild-calendar-metadata219';
 import { privacySubjectWritableSql } from './privacy-serving-authority';
@@ -19,11 +20,21 @@ export async function readCalendar219(env:Env,a:GuildActor219,id?:string,page=1)
   WHERE retain_until>${DB_NOW} AND ${id?'id=?1':`status='scheduled' AND starts_at>${DB_NOW}`} ORDER BY starts_at,id LIMIT 6 OFFSET ?${id?2:1}`).bind(...(id?[eventId219(id)]:[]),(page-1)*5)]);
  return rows[0]!.results as unknown as CalendarEvent219[];
 }
+function calendarStartUtc219(value:string):string {
+ if(value.endsWith('Z'))return value;
+ try {
+  // Validate the wall-clock date before Date.parse can normalize an impossible date.
+  timeOf(value.slice(0,-6)+'Z','invalid_starts_at');
+  return secondsToIso(isoToSeconds(value));
+ } catch {
+  throw Error('Enter a valid ISO start time with whole seconds and Z or a UTC offset.');
+ }
+}
 export async function createCalendar219(env:Env,a:GuildActor219,v:Record<string,unknown>):Promise<CalendarEvent219> {
  if(!communityFeatures(env).has('events')||!await guildStaffNow219(env,a))throw Error('Only a currently verified Raid Leader, Officer, High Councillor or site Admin can schedule events.');
  const at=now(),title=parseField('title',v.title,at) as string,details=parseField('details',v.details??'',at) as string;
  if(typeof v.starts!=='string'||!/(Z|[+-]\d\d:\d\d)$/.test(v.starts))throw Error('Include Z or a UTC offset in the start time.');
- const startsAt=parseField('startsAt',v.starts,at) as number;
+ const startsAt=parseField('startsAt',calendarStartUtc219(v.starts),at) as number;
  if(startsAt<=at)throw Error('Schedule a future start time.');
  const durationMin=parseField('durationMin',v.minutes,at) as number,capacity=parseField('capacity',v.capacity??null,at) as number|null;
  const id=randomToken(),nonce=randomToken(),endsAt=startsAt+durationMin*60,hash=await opHash({title,details,startsAt,durationMin,capacity,roleTargets:null});

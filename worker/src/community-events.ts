@@ -123,7 +123,7 @@ function plainText(raw: unknown, min: number, max: number, code: string, multili
   if ([...t].length < min || t.length > max || (multiline ? UNSAFE_MULTILINE : UNSAFE_TEXT).test(t)) throw new Bad(code);
   return t;
 }
-function timeOf(raw: unknown, code: string): number {
+export function timeOf(raw: unknown, code: string): number {
   if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(raw)) throw new Bad(code);
   let s: number;
   try {
