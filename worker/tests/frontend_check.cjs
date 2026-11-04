@@ -388,6 +388,46 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     await out210.go("#/admin");
     await waitFor(() => !/Staff/.test(header210()), ".210 the signed-out header after a 401", 8000);
     check(".210 after a mid-session 401 the header drops the Staff menu and the Stream Shield toggle", before210 && !/Staff/.test(header210()) && !out210.app.querySelector(".stream-shield-toggle"));
+    check("CC074 current API 401 replaces the document with the canonical gate and leaves an asset-free transition",
+      out210.location.replaced && out210.location.navigated === '/?entry=session-ended' && !!out210.app.querySelector('[data-session-ending]')
+      && !out210.app.querySelector('img, header, nav') && !out210.app.textContent.includes('Something went wrong'));
+    const expiredEntry = await indexMod.default.fetch(new Request('https://guild.example/?entry=session-ended'), env({ ASSETS: governanceAssets }), ctx);
+    const entryHtml = await expiredEntry.text();
+    check("CC074 the real Worker serves the normal script-free portal with one finite session-ended message",
+      expiredEntry.status === 200 && entryHtml.includes('Enter Olympus') && entryHtml.includes('Your session ended. Sign in with Discord again.')
+      && !/<script\b|id="boot"/i.test(entryHtml) && !entryHtml.includes('entry=session-ended'));
+    const tool210 = await openPage(MEMBER);
+    let confirmations210 = 0;
+    tool210.intercept(async pathname => {
+      if (pathname !== '/api/me') return;
+      confirmations210++;
+      return new Response('{"error":"signed_out"}', { status: 401 });
+    });
+    await tool210.go('#/talents');
+    const deniedScript = tool210.document.querySelector('script[src="/static/talents/calculator.js"]');
+    deniedScript?.dispatchEvent(new Event('error'));
+    await waitFor(() => tool210.location.replaced, 'CC074 current tool session confirmation', 4000);
+    check("CC074 a failed protected script only returns to the gate after the current session is checked",
+      !!deniedScript && confirmations210 === 1 && tool210.location.navigated === '/?entry=session-ended'
+      && !tool210.app.textContent.includes('Something went wrong'));
+    const admittedTool = await openPage(MEMBER);
+    let admittedChecks = 0;
+    admittedTool.before(pathname => { if (pathname === '/api/me') admittedChecks++; return false; });
+    await admittedTool.go('#/talents');
+    admittedTool.document.querySelector('script[src="/static/talents/calculator.js"]')?.dispatchEvent(new Event('error'));
+    const showsLoadError = await waitFor(() => admittedTool.app.textContent.includes('The tool could not be loaded.'), 'CC074 admitted tool remains a load failure', 8000);
+    check("CC074 an admitted session with a failed asset keeps its site shell and can reopen the tool",
+      showsLoadError && admittedChecks === 1 && !admittedTool.location.replaced && !!byText(admittedTool.app,'button','Sign out'));
+    const staleTool = await openPage(MEMBER);
+    let staleChecks = 0;
+    staleTool.before(pathname => { if (pathname === '/api/me') staleChecks++; return false; });
+    await staleTool.go('#/talents');
+    const staleScript = staleTool.document.querySelector('script[src="/static/talents/calculator.js"]');
+    await staleTool.go('#/roles');
+    staleScript?.dispatchEvent(new Event('error'));
+    await settle(); await settle();
+    check("CC074 a failed asset on a departed view cannot check or change the newer session",
+      !!staleScript && staleChecks === 0 && !staleTool.location.replaced && !!byText(staleTool.app,'button','Sign out'));
   }
   {
     // .210 QA: a second navigation while "Leave without saving?" is open must not stack a second confirmation.

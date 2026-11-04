@@ -796,6 +796,17 @@
   // before an update would send an old shape), so it must match PAGE_VERSION in src/site-core.ts.
   const PAGE_VERSION = "2";
   let boardSummaryRead = null; // Session-memory counts only, never candidate records or write authority.
+  const SESSION_ENDED_ENTRY = "/?entry=session-ended";
+  let endingSiteSession = false;
+  function endSiteSession() {
+    if (endingSiteSession) return;
+    endingSiteSession = true;
+    decisionActorRevision++;
+    S.signedIn = false;
+    toast("You were signed out. Sign in with Discord again.", "bad");
+    render();
+    try { location.replace(SESSION_ENDED_ENTRY); } catch { /* The transition keeps a direct link if navigation is blocked. */ }
+  }
   // `options.live`: the view-liveness of the operation (F4b.1, 15 Oct 2026). When it is given and false at reply time, the shell is
   // left alone (no sign-out, toast, render or reload notice from an operation whose view is gone); the error is still thrown.
   async function api(method, path, body, options = {}) {
@@ -820,13 +831,7 @@
     const current = typeof options.live !== "function" || options.live();
     if (res.status === 401) {
       boardSummaryRead = null;
-      if (current) {
-        decisionActorRevision++;
-        S.signedIn = false;
-        toast("You were signed out. Sign in with Discord again.", "bad");
-        dirtyKeys.clear();
-        render();
-      }
+      if (current) endSiteSession();
       throw new ApiError(401, data);
     }
     if (res.status === 409 && data && data.error === "reload") {
@@ -1608,6 +1613,14 @@
     for (const t of timers) clearInterval(t);
     timers = [];
     dirtyKeys.clear();
+    if (endingSiteSession) {
+      clear(app);
+      app.appendChild(h("main", { class: "shell", "data-session-ending": "true" },
+        h("p", { role: "status", text: "Opening the Olympus sign-in page." }),
+        h("a", { href: SESSION_ENDED_ENTRY, text: "Return to sign-in" })));
+      observeFocusInsets();
+      return;
+    }
     let route = currentRoute();
     const first = route.split("/")[0];
     let scrollTo = "";
@@ -1666,8 +1679,17 @@
     if (target) scrollToSection(target);
     else if (!keepBoard || trackSwitch) window.scrollTo(0, 0);
   }
-  const showError = (main) => (e) => {
-    if (e && e.status === 401 || main.parentNode !== app) return;
+  const showError = (main) => async (e) => {
+    const request = main.dataset.viewRequest;
+    const live = () => main.parentNode === app && main.dataset.viewRequest === request;
+    if (e && e.status === 401 || !live()) return;
+    if (e?.memberAsset) {
+      try {
+        const account = await api("GET", "/api/me", undefined, { live });
+        if (live() && (account?.signedIn === false || account?.denied === true)) endSiteSession();
+      } catch { /* A current 401 already returned to sign-in. Other failures retain the original load error. */ }
+      if (!live()) return;
+    }
     main.appendChild(frame("Something went wrong", null, h("p", { text: (e && e.message) || String(e) })));
   };
 
@@ -1679,7 +1701,7 @@
     if (!toolScripts.has(namespace)) toolScripts.set(namespace, new Promise((resolve, reject) => {
       const script = h("script", { src: file });
       script.addEventListener("load", resolve);
-      script.addEventListener("error", () => { toolScripts.delete(namespace); reject(new Error("The tool could not be loaded. Try opening it again.")); });
+      script.addEventListener("error", () => { toolScripts.delete(namespace); reject(Object.assign(new Error("The tool could not be loaded. Try opening it again."), { memberAsset: true })); });
       document.head.appendChild(script);
     }));
     await toolScripts.get(namespace);
@@ -1727,7 +1749,7 @@
   });
   const resourcesView = view => main => {
     return memberTool(main, "OlympusResources", "/static/resources169.js", "/static/resources169.css", { view,
-      onRefused: status => { if (main.parentNode !== app) return; if (status === 401) { S.signedIn = false; render(); } else if (status === 403 || status === 503) refreshCommunity(); },
+      onRefused: status => { if (main.parentNode !== app) return; if (status === 401) endSiteSession(); else if (status === 403 || status === 503) refreshCommunity(); },
     });
   };
   ROUTES.legal = async (main, parts) => {
@@ -1816,7 +1838,7 @@
   let governanceBookPromise = null, governanceModelPromise = null;
   async function publicGovernanceBytes(path, cap) {
     const res = await fetch(path, { credentials: "same-origin", redirect: "error" });
-    if (!res.ok) throw new Error("The public governance file could not be read. Reload this page to try again.");
+    if (!res.ok) throw Object.assign(new Error("The public governance file could not be read. Reload this page to try again."), { memberAsset: res.status === 401 || res.status === 403 });
     const bytes = new Uint8Array(await res.arrayBuffer());
     if (!bytes.length || bytes.length > cap) throw new Error("The public governance file has an unexpected size.");
     return bytes;
@@ -6301,7 +6323,7 @@
         reset(message);
         if (error.status === 401) {
           // Only the still-current original attempt may affect the signed-in shell.
-          dispose(); S.signedIn = false; dirtyKeys.clear(); render();
+          dispose(); endSiteSession();
         } else if (error.status === 403) {
           dispose(); status.textContent = "Your access changed. The preview was cleared. Reload to check your access again.";
           try { location.reload(); } catch { /* keep the cleared refusal visible if reload is blocked */ }

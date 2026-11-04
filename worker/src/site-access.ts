@@ -14,6 +14,7 @@ const PRIVACY_PATHS = new Set(['/privacy/access', '/privacy/signin', '/privacy/c
 const FLASH: Record<string, string> = {
   cancelled: 'Discord sign-in was cancelled. You can try again when ready.',
   expired: 'This sign-in attempt expired. Start a new Discord sign-in.',
+  session_ended: 'Your session ended. Sign in with Discord again.',
   not_member: 'Join the Asmongold Discord server before using the guild site.',
   pending: 'Finish the Discord server membership screening, then sign in again.',
   denied: 'This account cannot enter the guild site.',
@@ -82,7 +83,9 @@ export async function memberSiteGate(request: Request, env: Env, path: string): 
   }
   const status = user ? 403 : 401;
   if ((request.method === 'GET' || request.method === 'HEAD') && !path.startsWith('/api/') && !path.startsWith('/static/') && (!path.includes('.') || path === '/index.html')) {
-    return siteSignInWithMedia(request, env, path === '/' || path === '/index.html' ? 200 : status, user ? user.denied ? 'denied' : 'not_member' : undefined);
+    const entry = path === '/' || path === '/index.html';
+    const ended = entry && new URL(request.url).search === '?entry=session-ended';
+    return siteSignInWithMedia(request, env, entry ? 200 : status, user ? user.denied ? 'denied' : 'not_member' : ended ? 'session_ended' : undefined);
   }
   const api = path.startsWith('/api/');
   const error = user ? user.denied ? 'denied' : 'not_member' : api ? 'signed_out' : 'discord_sign_in_required';
