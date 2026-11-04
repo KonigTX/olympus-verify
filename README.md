@@ -134,8 +134,9 @@ failing that, from `worker/.dev.vars` (gitignored).
 and `npm run check:vectors` before deploys.
 
 ### 3. Addon (on the officer's PC)
-1. Copy `addon/OlympusVerify` to `<WoW>\_classic_beta_\Interface\AddOns\OlympusVerify` (the folder for the client you
-   play Forever on; the TOC lists `16001` for the beta build 1.60.1 — `/run print((select(4, GetBuildInfo())))` shows the number).
+1. Verify the folder used by the active Forever installation before copying `addon/OlympusVerify`. The planned live path is
+   `<WoW>\_forever_\Interface\AddOns\OlympusVerify`. The older beta layout used `_classic_beta_`. Check the active client interface
+   number with `/run print((select(4, GetBuildInfo())))` and qualify the exact addon in that client.
 2. Copy `Config.example.lua` → `Config.lua`, set `secret`. `mergeSeconds` (45) is how often the queue table loaded at
    login or `/reload` is re-merged (a new queue file needs a `/reload`: the panel's Sync & reload), `readMail` switches
    mail-body reading off, and `replyJoined` controls the signed whisper the addon

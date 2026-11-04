@@ -13,33 +13,28 @@ reporter workspace. It does not infer reporting permission from an organizer tit
 character name or an appointment. Adding another reporter needs a separately reviewed
 identity rule. New private previews and publications remain held unless
 `ARMY_SITE_AGGREGATE_ENABLED` is exactly `"true"`; the accepted configuration leaves it
-unset. Reporter admission alone does not authorize an unadopted exporter.
+unset. Reporter admission and publisher availability are separate from the live publication switch.
 
 ## Publisher adoption and the dedicated file
 
-The publisher release inspected on 26 October 2026 is
-[Olympus Guild 1.3.2](https://www.curseforge.com/wow/addons/olympus-guild/files/9273643),
-commit [`d03ea8a9ce8d6d933dde9ce0f0ec7faa866a2df2`](https://github.com/dnl-gentile/olympus-addon/tree/d03ea8a9ce8d6d933dde9ce0f0ec7faa866a2df2).
-Its read-only `OlympusBridge.GetCensusCheckpoint()` v1 is available in upstream source.
-It is not the older local `GetCensusSnapshot()` / `olympus-census-v1` prototype or an
-`OLCS2` website export.
+The 4 November check verified [Olympus Guild 1.3.3](https://www.curseforge.com/wow/addons/olympus-guild/files/9338970).
+The public CurseForge archive matches the GitHub release asset at commit
+[`71bc357c251b49a167821cc0b7f922eb69fa35b6`](https://github.com/dnl-gentile/olympus-addon/tree/71bc357c251b49a167821cc0b7f922eb69fa35b6).
+It contains `Olympus`, `Olympus_Arena` and `OlympusSiteAggregate`. The optional aggregate component added in
+[PR #72](https://github.com/dnl-gentile/olympus-addon/pull/72) reads the upstream `OlympusBridge.GetCensusCheckpoint()`
+and writes its own masked SavedVariables file. The standalone Army ZIP route is retired.
 
-The [optional exporter proposal, PR #72](https://github.com/dnl-gentile/olympus-addon/pull/72),
-was still an open, unmerged draft in that review. It proposes a dedicated
-`OlympusSiteAggregate` folder in the same upstream package, reading the public checkpoint
-and writing only its own sanitized SavedVariables file. It adds no `GetCensusSnapshot()`
-API or QR transport. A local patch, draft PR or passing synthetic test is not publisher
-adoption, a CurseForge release or actual-client acceptance; installing current 1.3.2 alone
-does not enable the website drop zone. There is no separate Army addon download; the old
-standalone ZIP route is retired.
-
-After separately reviewed adoption and supported-client acceptance, the proposed attended
-workflow is `/olysite export`, `/reload`, then selection of only
-`OlympusSiteAggregate.lua`. The current importer refuses files before reading them while
+The attended workflow uses `/oly site export`, `/reload`, then selection of only `OlympusSiteAggregate.lua`.
+`/oly site clear` clears the export. `/olysite export` and `/olysite clear` are compatibility aliases.
+The current importer refuses files before reading them while
 reporter admission or publisher availability is held. When available, it accepts one
 dedicated file of at most 8 KiB with a strict data-only parser; it never executes Lua or
 uploads the raw file. `Olympus.lua`, `OlympusVerify.lua` and account folders are not safe
 inputs and are refused. See [the local compatibility candidate](../addon/OlympusGuildCompatibility196/README.md).
+
+Live Forever client acceptance and publication remain separate gates. The automatic `site-feed-v1` relay is unmounted.
+It needs the publisher’s live realm scope, signed HS1 and key registration, producer and replay evidence, and a qualified
+current-only cache before rollout. See [the feed contract](launch227-feed-contract.md).
 
 ## Aggregate payload and deliberate publication
 
@@ -98,6 +93,5 @@ assets are not a currently served capture workflow.
 
 Retained desktop/mobile and Lua-to-pixel checks use synthetic aggregates and fictional
 inputs, including empty, masked and populated states plus preview, consent and original
-outcome recovery. Those results do not establish a new installed-game trial, physical
-phone-camera acceptance, publisher adoption or production publication. This documentation
-correction runs no tests and activates no importer or integration.
+outcome recovery. The publisher release is independently verified above. Installed-game testing, physical phone-camera
+acceptance and production publication each require their own evidence.
