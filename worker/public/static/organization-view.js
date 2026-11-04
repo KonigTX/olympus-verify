@@ -65,10 +65,12 @@ export function renderOrganization(main, data, ui) {
   detailDrawer.open = true;
   const status = h("p", { class: "small muted", role: "status", "aria-live": "polite" });
   const chartHelp = h("details", { class: "org-chart-help" }, h("summary", { text: "Chart guide and status" }), status,
-    h("p", { class: "small muted", text: "Drag to pan. Use +/− or Ctrl/⌘ + wheel to zoom. Focus the chart and use arrow keys to pan, Shift for larger steps, and Home or 0 to fit the selected branch. Escape closes full screen. List includes every office and group." }));
+    h("p", { class: "small muted", text: "Drag to pan. Pinch with two fingers, use +/−, or hold Ctrl/⌘ while scrolling to zoom. Focus the chart and use arrow keys to pan, Shift for larger steps, and Home or 0 to fit the selected branch. Escape closes full screen. List includes every office and group." }));
   chartHelp.open = true;
   const search = h("input", { type: "search", id: "organization-search", maxlength: "160", placeholder: "Find an office, rank or duty…", "aria-label": "Search all offices and " + data.terms.length + " labels" });
   let scale = 1, x = 0, y = 0, selected = "council", dragging = null, isList = false, suppressClick = false, branchMode = false, disposed = false, relationshipMap205 = null;
+  const pointers = new Map();
+  let pinch = null;
   const zoomStatus = h("output", { class: "org-zoom", "aria-label": "Chart zoom" });
   function chartSummary() { return branchMode ? `Branch: ${nodeTitle218(byId.get(selected))}. Parent and directly connected offices shown at a readable scale; drag to see the rest. Full map shows all ${visible.length} chart offices; List includes all ${data.nodes.length} groups.` : `Full map overview: all ${visible.length} chart offices. At overview scale, select an office and choose Fit branch to read it, or use List.`; }
   function drawLayout(shown, chartWidth, chartHeight) {
@@ -113,8 +115,8 @@ export function renderOrganization(main, data, ui) {
     drawLayout(new Set(position.keys()), chartWidth, chartHeight); return { width: chartWidth, height: chartHeight };
   }
   function transform() { stage.style.transform = `translate(${x}px, ${y}px) scale(${scale})`; zoomStatus.textContent = Math.round(scale * 100) + "%"; }
-  function zoom(next, cx = viewport.clientWidth / 2, cy = viewport.clientHeight / 2) {
-    next = Math.max(.05, Math.min(2, next)); x = cx - (cx - x) * next / scale; y = cy - (cy - y) * next / scale; scale = next; transform();
+  function zoom(next, cx = viewport.clientWidth / 2, cy = viewport.clientHeight / 2, chartX = (cx - x) / scale, chartY = (cy - y) / scale) {
+    scale = Math.max(.05, Math.min(2, next)); x = cx - chartX * scale; y = cy - chartY * scale; transform();
   }
   function fit() {
     const size = branchLayout(); if (!size) { overview(); status.textContent = "Rank and membership groupings have no command arrows. Their full descriptions are available in List. " + chartSummary(); return; }
@@ -223,24 +225,59 @@ export function renderOrganization(main, data, ui) {
     if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) { e.preventDefault(); const step = e.shiftKey ? 120 : 45; x += e.key === "ArrowLeft" ? step : e.key === "ArrowRight" ? -step : 0; y += e.key === "ArrowUp" ? step : e.key === "ArrowDown" ? -step : 0; transform(); }
     else if (["+", "=", "-", "Home", "0"].includes(e.key)) { e.preventDefault(); if (e.key === "Home" || e.key === "0") fit(); else zoom(scale * (e.key === "-" ? .8 : 1.25)); }
   });
+  function pinchFrame() {
+    const [a, b] = pointers.values(), rect = viewport.getBoundingClientRect();
+    return {
+      cx: (a.clientX + b.clientX) / 2 - rect.left,
+      cy: (a.clientY + b.clientY) / 2 - rect.top,
+      distance: Math.max(1, Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)),
+    };
+  }
   // A card still clicks normally; movement beyond a small threshold becomes a pan instead.
   viewport.addEventListener("pointerdown", e => {
-    if (e.button !== 0 || e.isPrimary === false || dragging) return;
+    const touch = e.pointerType === "touch", first = pointers.values().next().value;
+    if (e.button !== 0 || (first ? !touch || !first.touch || pointers.size >= 2 : e.isPrimary === false)) return;
+    const point = { clientX: e.clientX, clientY: e.clientY, touch };
+    pointers.set(e.pointerId, point);
+    if (first) {
+      // Pinching never activates an office card, even if the two contacts barely move.
+      const { cx, cy, distance } = pinchFrame();
+      pinch = { scale, distance, chartX: (cx - x) / scale, chartY: (cy - y) / scale };
+      dragging = null; suppressClick = true;
+      viewport.classList.add("is-dragging");
+      for (const id of pointers.keys()) if (!viewport.hasPointerCapture(id)) viewport.setPointerCapture(id);
+      return;
+    }
     suppressClick = false;
-    dragging = { id: e.pointerId, px: e.clientX, py: e.clientY, x, y, moved: false };
+    dragging = { px: point.clientX, py: point.clientY, x, y, moved: false };
     if (!e.target.closest("button")) { e.preventDefault(); viewport.focus({ preventScroll: true }); viewport.setPointerCapture(e.pointerId); }
   });
   viewport.addEventListener("pointermove", e => {
-    if (dragging?.id !== e.pointerId) return;
+    const point = pointers.get(e.pointerId);
+    if (!point) return;
+    point.clientX = e.clientX; point.clientY = e.clientY;
+    if (pinch) {
+      const { cx, cy, distance } = pinchFrame();
+      e.preventDefault(); zoom(pinch.scale * distance / pinch.distance, cx, cy, pinch.chartX, pinch.chartY);
+      return;
+    }
     const dx = e.clientX - dragging.px, dy = e.clientY - dragging.py;
     if (!dragging.moved && Math.hypot(dx, dy) < 6) return;
-    dragging.moved = true; suppressClick = true; e.preventDefault(); viewport.setPointerCapture(e.pointerId);
+    dragging.moved = true; suppressClick = true; e.preventDefault();
+    if (!viewport.hasPointerCapture(e.pointerId)) viewport.setPointerCapture(e.pointerId);
     viewport.classList.add("is-dragging"); x = dragging.x + dx; y = dragging.y + dy; transform();
   });
   const stop = e => {
-    if (e?.pointerId !== undefined && dragging?.id !== e.pointerId) return;
-    const id = dragging?.id; dragging = null; viewport.classList.remove("is-dragging");
-    if (id !== undefined && viewport.hasPointerCapture(id)) viewport.releasePointerCapture(id);
+    if (e?.type === "lostpointercapture" && e.target !== viewport) return;
+    if (e && !pointers.has(e.pointerId)) return;
+    const ended = e ? [e.pointerId] : [...pointers.keys()];
+    for (const id of ended) pointers.delete(id);
+    const remaining = pointers.values().next().value;
+    // Rebase the one-finger pan at the last pinch position so the chart never jumps.
+    pinch = null;
+    dragging = remaining ? { px: remaining.clientX, py: remaining.clientY, x, y, moved: true } : null;
+    if (!remaining) viewport.classList.remove("is-dragging");
+    for (const id of ended) if (viewport.hasPointerCapture(id)) viewport.releasePointerCapture(id);
   };
   viewport.addEventListener("pointerup", stop); viewport.addEventListener("pointercancel", stop); viewport.addEventListener("lostpointercapture", stop);
   viewport.addEventListener("click", e => { if (suppressClick && e.detail !== 0) { suppressClick = false; e.preventDefault(); e.stopPropagation(); } }, true);
@@ -300,7 +337,7 @@ export function renderOrganization(main, data, ui) {
       data.councilComposition?.previousDirection ? h("a", { href: data.councilComposition.previousDirection.sourcePath, text: "Historical Council direction (19–23 October 2026)" }) : null,
       h("a", { href: "#/governance/operational-charter-the-work-of-olympus", text: "Read Operational Charter O3 — The High Council and its offices" }))),
     h("div", { class: "org-guide" }, h("h2", { text: "How to read the chart" }), h("p", { text: "Solid gold arrows point from an office toward the authority it answers to. Dashed blue two-way lines connect partners who coordinate. Dotted violet lines show independent review, never command by the person under review. Select a card to read its mandate. The rank and status groupings below carry no command arrows." }),
-      h("p", { class: "small muted", text: "Fit branch keeps the selected office and its direct connections readable. Drag the chart or a card to pan; click a card to read its mandate. Full map gives an overview of every chart office. Use +/−, Ctrl + wheel or ⌘ + wheel to zoom. Focus the chart and use arrow keys to pan, Shift for larger steps, Home or 0 to fit the selected branch. Full screen gives the chart more room; Escape returns to this page. Every office is also available in List view." })),
+      h("p", { class: "small muted", text: "Fit branch keeps the selected office and its direct connections readable. Drag the chart or a card to pan; click or tap a card to read its mandate. Full map gives an overview of every chart office. Pinch with two fingers, use +/−, or hold Ctrl/⌘ while scrolling to zoom. Focus the chart and use arrow keys to pan, Shift for larger steps, Home or 0 to fit the selected branch. Full screen gives the chart more room; Escape returns to this page. Every office is also available in List view." })),
     chartLocation, chartDialog,
     h("details", { class: "frame org-profile-notes" }, h("summary", { text: "Technical & Historical Profile Notes" }), h("p", { text: data.roleRank199.historicalProfileNote }), h("p", { text: "Older drafts that gave Treasurer a separate native slot are superseded. The historical beta-five client observation and the addon’s second-rank Captain assumption remain evidence to review before real native adoption; this page performs no in-game rank write or key-profile activation. Officer Alt is now the fourth native rank, while the Treasurer key is an appointment alias. No title alone grants bank withdrawal, invitations, key signing or confidential access." })),
     h("section", { class: "frame" }, h("h2", { text: "Olympus I–X · affiliation and succession" }), h("p", { text: "These are directory places for affiliated guilds, not assertions that ten guilds are formed or that their Guild Masters have been appointed. A local Guild Master retains local command while accepting the common charter. Each guild names five correspondents: PvP, Raiding, Finance, Artisanry and Heraldry." }), h("ul", { class: "organization-guilds" }, data.guildPlaceholders.map(g => h("li", null, h("strong", { text: g.name }), h("small", { text: g.state }))))),

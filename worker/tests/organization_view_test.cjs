@@ -48,9 +48,17 @@ class Element {
   }
   click(detail = 1) { return this.dispatch("click", { detail }); }
   focus() { this.doc.activeElement = this; }
-  setPointerCapture(id) { this.captures.add(id); }
+  setPointerCapture(id) {
+    const previous = this.doc.pointerOwners.get(id);
+    if (previous && previous !== this) {
+      previous.captures.delete(id);
+      this.doc.captureLoss.push(() => previous.dispatch("lostpointercapture", { pointerId: id }));
+    }
+    this.doc.pointerOwners.set(id, this);
+    this.captures.add(id);
+  }
   hasPointerCapture(id) { return this.captures.has(id); }
-  releasePointerCapture(id) { this.captures.delete(id); this.dispatch("lostpointercapture", { pointerId: id }); }
+  releasePointerCapture(id) { this.captures.delete(id); this.doc.pointerOwners.delete(id); this.dispatch("lostpointercapture", { pointerId: id }); }
   get clientWidth() { return this.inDialog() ? this.doc.dialogWidth : this.doc.viewportWidth; }
   get clientHeight() { return this.inDialog() ? 780 : 600; }
   inDialog() { for (let n = this; n; n = n.parentNode) if (n.tagName === "DIALOG" && n.open) return true; return false; }
@@ -61,6 +69,7 @@ class Element {
 function open({ mobile = false, width = 800, officeAvailability = undefined, parts = [], overview205 = false, model = data } = {}) {
   const doc = new Element("#document"); doc.doc = doc; doc.head = new Element("head", doc); doc.body = new Element("body", doc); doc.append(doc.head, doc.body);
   doc.viewportWidth = width; doc.dialogWidth = mobile ? width : 1100;
+  doc.pointerOwners = new Map(); doc.captureLoss = [];
   doc.createElement = t => new Element(t, doc); doc.createElementNS = (_ns, t) => new Element(t, doc);
   doc.getElementById = id => doc.all(n => n.id === id)[0] || null;
   const h = (tag, attrs, ...nodes) => { const el = doc.createElement(tag); for (const [k, v] of Object.entries(attrs || {})) { if (k === "text") el.textContent = v; else if (k.startsWith("on")) el.addEventListener(k.slice(2), v); else el.setAttribute(k, v); } el.append(...nodes); return el; };
@@ -76,7 +85,19 @@ function open({ mobile = false, width = 800, officeAvailability = undefined, par
   const one = cls => main.all(n => n.classList.contains(cls))[0];
   const button = text => main.all(n => n.tagName === "BUTTON" && n.textContent === text)[0];
   const node = id => main.all(n => n.getAttribute("data-organization-node") === id)[0];
-  const pointer = (target, type, x, y, more = {}) => target.dispatch(type, { pointerId: 1, button: 0, isPrimary: true, clientX: x, clientY: y, ...more });
+  const pointer = (target, type, x, y, more = {}) => {
+    const init = { pointerId: 1, pointerType: "mouse", button: 0, isPrimary: true, clientX: x, clientY: y, ...more };
+    const id = init.pointerId;
+    while (doc.captureLoss.length) doc.captureLoss.shift()();
+    // Touch first captures on the actual target. Transfer emits a bubbling loss before the next event.
+    if (init.pointerType === "touch") {
+      if (type === "pointerdown") target.setPointerCapture(id);
+      else target = doc.pointerOwners.get(id) || target;
+    }
+    const event = target.dispatch(type, init);
+    if (init.pointerType === "touch" && (type === "pointerup" || type === "pointercancel")) doc.pointerOwners.get(id)?.releasePointerCapture(id);
+    return event;
+  };
   const resize = width => { doc.viewportWidth = width; for (const observer of observers) if (!observer.disconnected) observer.fn(); flush(); };
   return { main, doc, flush, one, button, node, pointer, resize, dispose, observers, viewport: one("org-viewport"), stage: one("org-stage"), detail: one("org-inspector"), dialog: one("org-fullscreen") };
 }
@@ -221,6 +242,47 @@ before = p.stage.style.transform; p.pointer(p.viewport, "pointerdown", 1, 1, { b
 check("right-button gestures do not begin a chart pan", p.stage.style.transform === before);
 p.pointer(p.viewport, "pointerdown", 1, 1); p.pointer(p.viewport, "pointermove", 20, 20); p.pointer(p.viewport, "pointercancel", 20, 20);
 check("cancelled pointers release pan state", !p.viewport.hasPointerCapture(1) && !p.viewport.classList.contains("is-dragging"));
+
+const touchView = open({ mobile: true, width: 390 });
+const touchViewport = touchView.viewport, touchCard = touchView.node("war"), touchLabel = touchCard.children[1];
+const touch = (target, type, x, y, id = 1) => touchView.pointer(target, type, x, y, { pointerType: "touch", pointerId: id, isPrimary: id === 1 });
+const pose = () => /translate\(([^p]+)px, ([^p]+)px\) scale\(([^)]+)\)/.exec(touchView.stage.style.transform).slice(1).map(Number);
+const near = (a, b) => Math.abs(a - b) < 1e-8;
+const [firstX, firstY] = pose();
+touch(touchLabel, "pointerdown", 50, 80);
+touch(touchLabel, "pointermove", 62, 86);
+touch(touchLabel, "pointermove", 74, 92);
+touch(touchLabel, "pointermove", 98, 104);
+const [dragX, dragY] = pose();
+check("touch pan survives loss of a card descendant's implicit capture for the full swipe", near(dragX - firstX, 48) && near(dragY - firstY, 24) && touchViewport.hasPointerCapture(1));
+touch(touchLabel, "pointerup", 98, 104);
+check("touch drag leaves the selected office alone and suppresses the post-pan click", touchCard.click().defaultPrevented && touchView.node("council").getAttribute("aria-pressed") === "true" && !touchViewport.classList.contains("is-dragging"));
+touch(touchLabel, "pointerdown", 50, 80);
+touch(touchLabel, "pointermove", 53, 81);
+touch(touchLabel, "pointerup", 53, 81);
+check("a new touch tap after a pan still selects the tapped office", !touchCard.click().defaultPrevented && touchCard.getAttribute("aria-pressed") === "true");
+
+touchView.button("Fit branch").click();
+const [pinchX, pinchY, pinchScale] = pose();
+const mapX = (110 - pinchX) / pinchScale, mapY = (100 - pinchY) / pinchScale;
+touch(touchLabel, "pointerdown", 80, 100);
+touch(touchViewport, "pointerdown", 140, 100, 2);
+touch(touchViewport, "pointermove", 60, 120);
+touch(touchViewport, "pointermove", 180, 120, 2);
+const [zoomX, zoomY, zoomScale] = pose();
+check("two-finger spread doubles chart scale and keeps the same content point under the moving midpoint", near(zoomScale, pinchScale * 2) && near(zoomX + mapX * zoomScale, 120) && near(zoomY + mapY * zoomScale, 120));
+touch(touchViewport, "pointermove", 280, 120, 2);
+check("pinching outward respects the chart's maximum zoom", near(pose()[2], 2));
+touch(touchViewport, "pointermove", 60, 120, 2);
+check("pinching inward respects the chart's minimum zoom", near(pose()[2], .05));
+touch(touchViewport, "pointerup", 60, 120);
+const [remainingX, remainingY, remainingScale] = pose();
+touch(touchViewport, "pointermove", 71, 133, 2);
+const [resumeX, resumeY, resumeScale] = pose();
+check("lifting the primary touch leaves the other finger panning smoothly without a scale or position jump", near(resumeX - remainingX, 11) && near(resumeY - remainingY, 13) && near(resumeScale, remainingScale));
+touch(touchViewport, "pointercancel", 71, 133, 2);
+check("pinch cancellation ends grabbing, releases all capture and does not change the selected office", !touchViewport.hasPointerCapture(1) && !touchViewport.hasPointerCapture(2) && !touchViewport.classList.contains("is-dragging") && touchView.node("council").click().defaultPrevented && touchCard.getAttribute("aria-pressed") === "true");
+touchView.dispose();
 
 const expand = p.button("Full screen"), shell = p.one("org-chart-shell"), location = p.one("org-chart-location");
 expand.click(); p.flush();
