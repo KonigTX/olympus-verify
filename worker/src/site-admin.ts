@@ -393,10 +393,17 @@ async function listApplications(env: Env, q: URLSearchParams): Promise<Response>
   const text = cleanText(q.get("q"), 40);
   if (text) {
     // Names: plain LIKE, which ignores case for A-Z (SQLite's LOWER() would not touch É either, so it adds nothing).
-    // Character keys: the same normalisation they were stored with.
+    // Linked keys use the lookup's normalization and status fence. Declared names are already cleaned on save.
     args.push(likeArg(text), likeArg(normalizeCharacter(text)));
-    const n = args.length - 1;
-    where.push(`(u.username LIKE ?${n} ESCAPE '\\' OR u.global_name LIKE ?${n} ESCAPE '\\' OR u.nick LIKE ?${n} ESCAPE '\\' OR a.char_key LIKE ?${n + 1} ESCAPE '\\')`);
+    const name = `?${args.length - 1}`, character = `?${args.length}`;
+    where.push(`(u.username LIKE ${name} ESCAPE '\\' OR u.global_name LIKE ${name} ESCAPE '\\' OR u.nick LIKE ${name} ESCAPE '\\'
+      OR a.char_key LIKE ${character} ESCAPE '\\'
+      OR EXISTS (SELECT 1 FROM characters c WHERE c.discord_id = a.discord_id AND c.status NOT IN ('unbound','denied')
+        AND c.name_key LIKE ${character} ESCAPE '\\')
+      OR EXISTS (SELECT 1 FROM json_each(CASE WHEN json_valid(a.answers) THEN a.answers ELSE '{}' END, '$.talentBuilds.characters') alt
+        WHERE typeof(alt.key) = 'integer' AND alt.key BETWEEN 1 AND 2
+        AND CASE WHEN alt.type = 'object' THEN json_type(alt.value, '$.character') = 'text'
+          AND json_extract(alt.value, '$.character') LIKE ${character} ESCAPE '\\' ELSE 0 END))`);
   }
   const sql = `FROM site_applications a JOIN site_users u ON u.discord_id = a.discord_id ${where.length ? "WHERE " + where.join(" AND ") : ""}`;
   const offset = intParam(q.get("offset"), 0, 1_000_000, 0);

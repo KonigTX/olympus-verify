@@ -1506,6 +1506,30 @@ async function legacySchemaHeld(old) {
   check("search by character", (await J(res)).total === 1);
   res = await call("GET", "/api/admin/applications?q=%25", { who: VIKTOR });
   check("  % is taken literally", (await J(res)).total === 0);
+  const searchedApplicant = "300000000000000001";
+  const storedAnswers = db.prepare("SELECT answers FROM site_applications WHERE discord_id = ?").get(searchedApplicant).answers;
+  const hadMemberRow = db.prepare("SELECT 1 FROM members WHERE discord_id = ?").get(searchedApplicant);
+  const answersWithAlt = { ...JSON.parse(storedAnswers), talentBuilds: { version: 1, characters: [
+    { character: "Fern Melder", class: "priest", build30: "", build60: "" },
+    { character: "Altura Fen", class: "druid", build30: "", build60: "" },
+  ] } };
+  await qdb("UPDATE site_applications SET answers = ?1 WHERE discord_id = ?2", JSON.stringify(answersWithAlt), searchedApplicant);
+  await qdb("INSERT OR IGNORE INTO members (discord_id) VALUES (?1)", searchedApplicant);
+  await qdb("INSERT INTO characters (name_key, name, discord_id, status, bound_at) VALUES ('alta grove', 'Alta Grove', ?1, 'verified', ?2), ('retired grove', 'Retired Grove', ?1, 'unbound', ?2)", searchedApplicant, T);
+  const adminApplications = async (query) => J(await call("GET", `/api/admin/applications?${query}`, { who: VIKTOR }));
+  const isSoleApplicant = (result) => result.total === 1 && result.items.length === 1 && result.items[0].user.id === searchedApplicant;
+  check("admin application search finds a linked alt by full realm-qualified name", isSoleApplicant(await adminApplications("q=Alta%20Grove-Realm")));
+  check("admin application search finds a declared alt without builds by partial case-insensitive name", isSoleApplicant(await adminApplications("q=ALTURA")));
+  check("matches in both alt sources count the applicant once and honor the position filter", isSoleApplicant(await adminApplications("q=alt&position=raid_leader_eu")) && (await adminApplications("q=alt&position=member")).total === 0);
+  check("admin application search excludes unbound links and escapes SQL wildcards", (await adminApplications("q=Retired")).total === 0 && (await adminApplications("q=Alt%25")).total === 0);
+  check("a regular applicant cannot query the staff search by alt", (await call("GET", "/api/admin/applications?q=ALTURA", { who: searchedApplicant })).status === 403);
+  await qdb("UPDATE site_applications SET answers = ?1 WHERE discord_id = ?2", JSON.stringify({ talentBuilds: { version: 1, characters: [null, "not an object", 1] } }), searchedApplicant);
+  check("malformed legacy alt rows leave linked-character search usable", isSoleApplicant(await adminApplications("q=Alta%20Grove")) && (await adminApplications("q=not%20an%20object")).total === 0);
+  await qdb("UPDATE site_applications SET answers = ?1 WHERE discord_id = ?2", "{invalid", searchedApplicant);
+  check("invalid legacy answers leave existing main-name search usable", isSoleApplicant(await adminApplications("q=fern")));
+  await qdb("UPDATE site_applications SET answers = ?1 WHERE discord_id = ?2", storedAnswers, searchedApplicant);
+  await qdb("DELETE FROM characters WHERE name_key IN ('alta grove','retired grove') AND discord_id = ?1", searchedApplicant);
+  if (!hadMemberRow) await qdb("DELETE FROM members WHERE discord_id = ?1", searchedApplicant);
   res = await call("POST", "/api/admin/applications/300000000000000001/status", { who: VIKTOR, body: { status: "accepted", note: "strong" } });
   out = await J(res);
   check("accept with a note; the detail has friends, nominations and the account", out.application.status === "accepted" && out.application.adminNote === "strong" && out.friends.length === 2 && out.nominated.some((x) => x.ballot === "officer") && !out.nominated.some((x) => x.ballot === "raid_leader_na") && out.account.site.signedUp, // Bob, who picked her for raid leader, was deleted
