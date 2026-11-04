@@ -159,8 +159,10 @@
   function applicationBadges199(intent) {
     const t = track199(intent?.applicationTrack), o = office199(intent?.targetOffice);
     if (!t || (intent.targetOffice && (!o || o.applicationTrack !== t.id))) return null;
+    const role = o?.key || { member: "member", raider: "raider", artisan: "artisan", officer: "officer", high_council: "high_council", patron: "tithe" }[t.id];
     return h("div", { class: "role-tags application-intent199", "data-application-track": t.id }, h("span", { class: "badge blue", text: t.label }), o ? h("span", { class: "badge", "data-target-office": o.key, text: o.applicationLabel || o.label }) : null,
-      o?.councilSeat ? h("span", {class:"small muted application-reporting218", text:o.ministry + " · Council portfolio: " + o.councilSeat}) : null);
+      o?.councilSeat ? h("span", {class:"small muted application-reporting218", text:o.ministry + " · Council portfolio: " + o.councilSeat}) : null,
+      role ? h("a", { href: "#/roles/" + encodeURIComponent(role), text: "Role guide" }) : null);
   }
   function goldBanner199() {
     const policy = M().royalWritPolicy || {};
@@ -200,14 +202,34 @@
         h("p",{text:"The exact 10-rank Olympus In-Game Hierarchy uses the following zero-based game slots."}),
         h("ul",null,directory.ranks.map(rank=>h("li",{text:`Rank ${rank.nativeRankOrdinal} ${rank.label} · slot ${rank.nativeSlot}`})))) : null);
   }
+  const governanceTitleRoutes228 = Object.freeze({
+    I: "title-i-the-sovereign-royal-decrees",
+    II: "title-ii-the-high-council-co-guild-master-privy-court",
+    III: "title-iii-the-imperial-treasury-guild-bank-tithe-ledger",
+    IV: "title-iv-the-grand-alliance-concordat",
+    V: "title-v-the-guild-workshop-artisans-charter-and-the-heralds-accord"
+  });
+  const titleLink228 = title => h("a", { href: "#/governance/" + governanceTitleRoutes228[title], text: "Title " + title });
+  const rankPlannerLink228 = slot => S.user?.isAdmin === true
+    ? h("a", { href: "/admin/ranks#current-rank-" + (slot + 1), text: "Rank planner" }) : null;
+  function roleReferenceLinks228(office, fallback) {
+    return h("nav", { class: "role-reference-links228", "aria-label": "Role references" },
+      h("a", { href: "#/organization/" + encodeURIComponent(office?.key || fallback), text: "Organization" }),
+      ...(office?.codexTitles || ["IV"]).map(titleLink228), office ? rankPlannerLink228(office.nativeSlot) : null);
+  }
   function rosettaPanel199(open = false) {
     const directory = roleDirectory203();
     const headings = ["In-Game Rank Number & Name", "Tier & Statutory Codex Title", "Organization Department & Branch Offices", "Discord Role & Portal Access", "How to Attain It"];
     return h("details", { class: "card rosetta199", id: "role-rosetta-stone", tabindex: "-1", open }, h("summary", { text: "Olympus Role & Rank Rosetta Stone" }),
-      h("p", { text: "102 stable offices and 138 assignable keys share this bridge, including the dedicated High Council Head of Trading & Markets. Display classification and an application do not confer an office, game rank, Discord role or portal access. Olympus Link remains OFF; /oly discord is a future qualified verification path, not a currently active admission shortcut." }),
+      h("p", { text: "103 stable offices and 139 assignable keys share this bridge. Display classification and an application do not confer an office, game rank, Discord role or portal access. Olympus Link remains OFF; /oly discord is a future qualified verification path, not a currently active admission shortcut." }),
       h("table", { class: "rosetta-table199" }, h("thead", null, h("tr", null, headings.map(text => h("th", { scope: "col", text })))), h("tbody", null, ranks199().map(rank => {
         const rows = offices199().filter(row => row.nativeSlot === rank.nativeSlot), tiers = [...new Set(rows.map(row => row.tierLabel))], titleOrder = ["I", "II", "III", "IV", "V"], titles = [...new Set(rows.flatMap(row => row.codexTitles || []))].sort((a,b) => titleOrder.indexOf(a) - titleOrder.indexOf(b));
-        const cells = [h("strong", { text: `Rank ${rank.nativeRankOrdinal} ${rank.name}` }), h("div", null, tiers.join(" / "), h("br"), h("a", { href: "#/governance", text: `Title ${titles.join(" / ") || "I–V"}` })),
+        const familyKey = directory?.ranks[rank.nativeSlot]?.familyKey;
+        const rankLabel = "Rank " + rank.nativeRankOrdinal + " " + rank.name;
+        const cells = [h("div", { class: "role-reference-links228" },
+          familyKey ? h("a", { href: "#/roles/" + encodeURIComponent(familyKey), text: rankLabel }) : h("strong", { text: rankLabel }),
+          rankPlannerLink228(rank.nativeSlot)), h("div", null, tiers.join(" / "),
+          h("div", { class: "role-reference-links228" }, ...titles.map(titleLink228))),
           h("details", null, h("summary", { text: `${rows.length} mapped office / assignment keys` }), h("ul", null, rows.map(row => {
             const family = directory?.families.find(item => item.key === directory.keyToFamily[row.key]);
             return h("li", null, h("a", { href: "#/organization/" + encodeURIComponent(row.key), text: family?.kind === "institution" ? family.label : row.applicationLabel || row.label }), " · ", row.ministry || row.department,
@@ -250,13 +272,13 @@
   // .203 groups presentation only: original application, appointment and history keys stay exact.
   function roleDirectory203() {
     const directory = M().roleDirectory203, guides = M().roleGuides201 || {};
-    if (!directory || directory.version !== 1 || directory.sourceKeyCount !== 141 || !Array.isArray(directory.families)
+    if (!directory || directory.version !== 1 || directory.sourceKeyCount !== 142 || !Array.isArray(directory.councilOrder) || directory.councilOrder.length !== 13 || !Array.isArray(directory.families)
       || !directory.families.length || !Array.isArray(directory.ranks) || directory.ranks.length !== 10
       || !directory.keyToFamily || typeof directory.keyToFamily !== "object") return null;
     const registry = M().appointments;
-    if (!Array.isArray(registry) || registry.length !== 138) return null;
+    if (!Array.isArray(registry) || registry.length !== 139) return null;
     const registeredKeys = registry.map(row => row?.key);
-    if (new Set(registeredKeys).size !== 138 || registeredKeys.some(key => typeof key !== "string"
+    if (new Set(registeredKeys).size !== 139 || registeredKeys.some(key => typeof key !== "string"
       || ["member", "raider", "pvp_team"].includes(key) || !Object.prototype.hasOwnProperty.call(directory.keyToFamily, key))) return null;
     const keys = [], familyKeys = new Set();
     for (const family of directory.families) {
@@ -279,6 +301,8 @@
     }
     if (keys.length !== directory.sourceKeyCount || new Set(keys).size !== keys.length
       || Object.keys(directory.keyToFamily).length !== keys.length
+      || new Set(directory.councilOrder).size !== directory.councilOrder.length
+      || directory.councilOrder.some(key => !directory.families.some(family => family.key === key && family.tier === "high_council" && family.kind === "role"))
       || directory.ranks.some((rank, slot) => rank.nativeSlot !== slot || rank.nativeRankOrdinal !== slot + 1
         || typeof rank.label !== "string" || !familyKeys.has(rank.familyKey))) return null;
     return directory;
@@ -332,13 +356,25 @@
     const currentFamily = directory.keyToFamily[currentKey] || (directory.families.some(family => family.key === currentKey) ? currentKey : "");
     const search = h("input", {type:"search",id:"application-role-search201",maxlength:"160",placeholder:"Find a role, rank or title…","aria-label":"Search all roles, ranks and titles"});
     const count = h("p", {class:"small muted","aria-live":"polite"});
-    const groups = [["members", "Member & specialist roles", family => family.kind === "role" && !["leader","high_council","officer_corps"].includes(family.tier)],
-      ["activities", "Optional member activities", family => family.kind === "activity"],
-      ["officers", "Officer Corps — reserved seats", family => family.kind === "role" && family.tier === "officer_corps"],
-      ["council", "High Council — reserved seats", family => family.kind === "role" && family.tier === "high_council"],
-      ["royal", "Leader & Royal Appointments — reserved seats", family => family.kind === "role" && family.tier === "leader"],
-      ["standing", "Standing, recognition & disciplinary labels", family => family.kind === "status"],
-      ["institutions", "Governance institutions", family => family.kind === "institution"]];
+    const raidFamilies = new Set(["class_leadership", "chief_strategist", "loot_council", "pvp_leadership", "raid_leader", "raid_assist", "pvp_team"]);
+    const workshopFamilies = new Set(["profession_coordinator", "artisan"]);
+    const royalFamilies = new Set(["founder", "emeritus", "tithe", "vip"]);
+    const sectionsByRole = [
+      ["council", "Sovereign & High Council"],
+      ["officers", "Officer Corps & Branch Command"],
+      ["raid", "Raid, PvP & Class Leadership"],
+      ["workshop", "Guild Workshop & Master Artisans"],
+      ["members", "Sworn Members, Raiders, Veterans, Alts & Initiates"],
+      ["royal", "Royal Patrons & Ceremonial Writs"]
+    ];
+    function groupForFamily(family) {
+      if (royalFamilies.has(family.key)) return "royal";
+      if (family.tier === "leader" || family.tier === "high_council") return "council";
+      if (raidFamilies.has(family.key)) return "raid";
+      if (workshopFamilies.has(family.key)) return "workshop";
+      return family.tier === "officer_corps" ? "officers" : "members";
+    }
+    const councilOrder = new Map(["leader", ...directory.councilOrder].map((key, index) => [key, index]));
     const sourceLabel = key => directory.families.find(family => family.primaryKey === key && family.kind === "institution")?.label
       || office199(key)?.applicationLabel || office199(key)?.label || positionOf(key)?.label || guides[key]?.label || key;
     const ownHolder = key => {
@@ -351,14 +387,15 @@
         h("p", {class:"small"}, h("strong", {text:sourceLabel(key) + " — "}), appointmentLabelNode(key,text,false,true)),
         options.showCharacters === true && S.signedIn && !S.denied && communityReader() ? h("div", {"data-appointment-characters":key}) : null);
     };
-    for (const [id, label, includes] of groups) {
-      const families = directory.families.filter(includes);
+    for (const [id, label] of sectionsByRole) {
+      const families = directory.families.filter(family => groupForFamily(family) === id);
+      if (id === "council") families.sort((a, b) => (councilOrder.get(a.key) ?? Infinity) - (councilOrder.get(b.key) ?? Infinity));
       if (!families.length) continue;
       const grid = h("div", {class:"role-directory-grid201 role-family-grid203"});
       const section = h("details", {class:"role-section201","data-role-section201":id,open:id === "members" || families.some(family => family.key === currentFamily)},
         h("summary", null, h("span", {text:label}), h("span", {class:"badge muted",text:String(families.length)})),
-        id === "institutions" ? h("p", {class:"small muted",text:"These are collective institutions and historical mandates, not additional Council seats. A panel or earlier shared record does not appoint the current individual portfolio holder."}) : null,
-        id === "standing" ? h("p", {class:"role-standing-scope218 small muted",text:standingIntro218}) : null, grid);
+        id === "council" ? h("p", {class:"small muted",text:"The Guild Master chairs the Council. The Co-Guild Master and twelve numbered portfolios have separate appointments. Collective institutions retain their own guides below."}) : null,
+        id === "members" ? h("p", {class:"role-standing-scope218 small muted",text:standingIntro218}) : null, grid);
       section.open = id === "members" || families.some(family => family.key === currentFamily);
       for (const family of families) {
         const row = office199(family.primaryKey), reserved = ["leader","high_council","officer_corps"].includes(family.tier) || family.sourceKeys.some(reservedKey201);
@@ -384,7 +421,7 @@
               metadata && roleStanding218(family,guides,variant.key) ? h("p", {class:"small role-standing218",text:roleStanding218(family,guides,variant.key)}) : null,
               !metadata ? guideBody201(guides[variant.key],positionOf(variant.key))
                 : ownBoundary ? guideBody201(guides[variant.key],positionOf(variant.key), {notesOnly:true,includeEligibility:false}) : null,
-              ownHolder(variant.key)));
+              roleReferenceLinks228(source, row?.key || "council"), ownHolder(variant.key)));
           disclosure.open = variant.key === currentKey;
           return {variant,presentation,disclosure};
         });
@@ -404,14 +441,17 @@
         const iconKey = ({artisan:"professions",raid_leader:"raid_leader",raid_assist:"raid_assist",class_leadership:"class_lead",treasurer:"treasurer",main_raid:"raid_leader",main_pvp:"pvp_leader",internal_security:"moderator",head_justice:"moderator",concordat_director:"guild_master"})[family.key]
           || family.sourceKeys.find(key => !!positionOf(key)) || family.primaryKey;
         const detail = h("details", {class:"role-entry201 role-family203" + (chosen ? " chosen" : ""),id:"role-family-"+family.key,"data-role-family203":family.key,"data-role-kind203":family.kind,open:chosen},
-          h("summary", null, posIcon(iconKey,"s"), h("span", {class:"role-entry-name201",text:family.label}), h("span", {class:"badge"+(reserved ? " reserved-seat201" : " blue"),text:badge})),
+          h("summary", null, posIcon(iconKey,"s"), h("span", {class:"role-entry-name201",text:family.label}),
+             h("span", {class:"badge"+(reserved ? " reserved-seat201" : " blue"),text:badge}),
+             councilOrder.get(family.key) >= 2 ? h("span", {class:"badge muted",text:"Portfolio " + (councilOrder.get(family.key) - 1)}) : null,
+             family.kind !== "institution" ? officeBadge199(row?.nativeRankOrdinal ? row : family.sourceKeys.map(office199).find(source => source?.nativeRankOrdinal)) : null),
           h("div", {class:"role-entry-body201"},
 
             variantHint,
             h("section", {class:"role-primary203",id:"role-"+family.primaryKey,"data-role-key201":family.primaryKey},
-              family.kind !== "institution" ? officeBadge199(row?.nativeRankOrdinal ? row : family.sourceKeys.map(office199).find(source => source?.nativeRankOrdinal)) : null, row?.department ? h("p", {class:"small muted",text:roleDepartment218(row)}) : null,
+              row?.department ? h("p", {class:"small muted",text:roleDepartment218(row)}) : null,
               roleReporting218(row,family) ? h("p", {class:"role-reporting218",text:roleReporting218(row,family)}) : null,
-              canonicalFamilyGuide219(family,guides), ownHolder(family.primaryKey),
+              canonicalFamilyGuide219(family,guides), roleReferenceLinks228(row || family.sourceKeys.map(office199).find(Boolean), "activity"), ownHolder(family.primaryKey),
               ...family.variants.filter(variant => ["alias","native","historical"].includes(variant.presentation)).map(variant => ownHolder(variant.key))),
             eligible && onChoose ? h("button", {type:"button",class:"btn small","data-apply-role201":intent.targetOffice || family.primaryKey,"data-family-apply203":family.key,disabled:!!appointedTo(intent.targetOffice || family.primaryKey) || admissionClosed219,
               text:appointedTo(intent.targetOffice || family.primaryKey) ? "Appointment recorded" : admissionClosed219 ? "Applications closed" : "Apply for this role",
@@ -426,11 +466,11 @@
         entries.push({detail,section,grid,family,variantHint,labels,index:[...labels,...family.variants.map(variant => variant.label),...contexts].join(" ").toLowerCase(),
           variants:family.variants.map(variant => ({label:variant.label,key:variant.key,index:[variant.label,sourceLabel(variant.key)].join(" ").toLowerCase()}))});
       }
+      if (id === "royal" && royalWritsVisible200() && onChoose) add(section, h("details", {class:"role-section201","data-patron-role-chooser":"true"},
+        h("summary", {text:"Royal Patron & Flagship charter requests"}), h("p", {text:track199("patron")?.description || "Voluntary charter requests require review."}),
+        h("button", {type:"button",class:"btn small",text:"Review the Patron application",disabled:admissionClosed219,onclick:() => onChoose({applicationTrack:"patron",targetOffice:null})})));
       sections.push(section);
     }
-    if (royalWritsVisible200() && onChoose) sections.push(h("details", {class:"role-section201","data-role-section201":"patron"},
-      h("summary", {text:"Royal Patron & Flagship charter requests"}), h("p", {text:track199("patron")?.description || "Reviewed voluntary charter requests; no purchased authority."}),
-      h("button", {type:"button",class:"btn small",text:"Review the Patron application",disabled:admissionClosed219,onclick:() => onChoose({applicationTrack:"patron",targetOffice:null})})));
     const searchWords221 = text => String(text).normalize("NFKC").toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
     const matchesText203 = (text,value) => {
       const terms = searchWords221(value), words = searchWords221(text);
@@ -539,7 +579,7 @@
   function officeAssignmentPanel() {
     const offices = M().appointments;
     const groups = [["native", "Native-rank display records"], ["leadership", "Leadership display records"], ["class", "Class display records"], ["office", "Extended offices and display aliases"]];
-    const valid = Array.isArray(offices) && offices.length > 0 && offices.length <= 138 && new Set(offices.map(office => office?.key)).size === offices.length && offices.every(office =>
+    const valid = Array.isArray(offices) && offices.length > 0 && offices.length <= 139 && new Set(offices.map(office => office?.key)).size === offices.length && offices.every(office =>
       office && typeof office.key === "string" && /^[a-z][a-z0-9_:]{0,79}$/.test(office.key) && typeof office.label === "string" && office.label.length > 0 && office.label.length <= 160 && groups.some(([group]) => group === office.group));
     if (!valid) return frame("Office and rank display records", null, h("p", { class: "muted", text: "The display catalogue is unavailable. No holder identities were loaded." }));
     if (!S.signedIn || S.denied || !communityReader()) return frame("Office and rank display records", null, h("p", { class: "muted", text: "A qualified current guild reader can view the separately consented website holder records." }));
@@ -578,7 +618,7 @@
     if (!labels.length && !titles.length) return () => {};
     const user = S.user, settings = S.settings, context = COM(), route = currentRoute();
     const offices = M().appointments;
-    if (!Array.isArray(offices) || offices.length < 1 || offices.length > 138 || offices.some(office => !office || typeof office.key !== "string")) return () => {};
+    if (!Array.isArray(offices) || offices.length < 1 || offices.length > 139 || offices.some(office => !office || typeof office.key !== "string")) return () => {};
     const appointmentKeys = new Set(offices.map(office => office.key));
     if (appointmentKeys.size !== offices.length) return () => {};
     const referencedKeys = new Set([...labels.map(node => node.getAttribute("data-appointment-label")), ...titles.map(node => node.getAttribute("data-appointment-title"))].filter(key => appointmentKeys.has(key) && Object.prototype.hasOwnProperty.call(settings?.appointed || {}, key)));
@@ -1729,7 +1769,7 @@
   // Fixed public assets only: this reader never asks a member/leadership API for identities or permissions.
   const GOVERNANCE_BOOK = "/static/governance/reconciled-book.md";
   const GOVERNANCE_MODEL = "/static/governance/organization.json";
-  const GOVERNANCE_SHA256 = "947093b9f1bdaf787c63d875b895821f2ac63d51ca4be240992713f9d346d683";
+  const GOVERNANCE_SHA256 = "1483cdebf9dc4e175dc5d1eac5156f29e3c121bd48a28af3a49d324fc3c108fb";
   let governanceBookPromise = null, governanceModelPromise = null;
   async function publicGovernanceBytes(path, cap) {
     const res = await fetch(path, { credentials: "same-origin", redirect: "error" });
@@ -1741,7 +1781,7 @@
   function governanceBook() {
     if (!governanceBookPromise) governanceBookPromise = (async () => {
       const bytes = await publicGovernanceBytes(GOVERNANCE_BOOK, 524288);
-      if (bytes.length !== 272700) throw new Error("The R7 book has an unexpected size.");
+      if (bytes.length !== 272231) throw new Error("The R7 book has an unexpected size.");
       const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)), (b) => b.toString(16).padStart(2, "0")).join("");
       if (digest !== GOVERNANCE_SHA256) throw new Error("The R7 book does not match the reviewed text.");
       return parseGovernanceBook(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
@@ -1753,14 +1793,14 @@
       const bytes = await publicGovernanceBytes(GOVERNANCE_MODEL, 524288);
       const data = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
       if (data.schema !== "olympus-public-organization-v1" || data.revision !== "R7" || data.draft !== false || data.ratified !== true || data.appointmentsIssued !== false ||
-          !data.book || data.book.path !== GOVERNANCE_BOOK || data.book.bytes !== 272700 || data.book.sha256 !== GOVERNANCE_SHA256 ||
-          !Array.isArray(data.nodes) || data.nodes.length > 64 || !Array.isArray(data.terms) || data.terms.length !== 102 ||
+          !data.book || data.book.path !== GOVERNANCE_BOOK || data.book.bytes !== 272231 || data.book.sha256 !== GOVERNANCE_SHA256 ||
+          !Array.isArray(data.nodes) || data.nodes.length > 64 || !Array.isArray(data.terms) || data.terms.length !== 103 ||
           !Array.isArray(data.nativeRanks) || data.nativeRanks.length !== 10 || !Array.isArray(data.guildPlaceholders) || data.guildPlaceholders.length !== 10 ||
           !Array.isArray(data.termGroups) || data.directoryRoute !== "#/community/leadership") throw new Error("The organization model has an unexpected shape.");
       const ids = new Set(data.nodes.map((n) => n.id));
       if (ids.size !== data.nodes.length || data.nodes.some((n) => !/^[a-z][a-z0-9-]*$/.test(n.id) || (n.parent !== null && !ids.has(n.parent)) ||
           !own(data.legend, n.relation) || !Array.isArray(n.coordinates) || n.coordinates.some((id) => !ids.has(id))) ||
-          data.terms.some((t, i) => t.ordinal !== i + 1 || typeof t.label !== "string" || !ids.has(t.nodeId)) || new Set(data.terms.map((t) => t.label)).size !== 102) throw new Error("The organization model has an invalid relation.");
+          data.terms.some((t, i) => t.ordinal !== i + 1 || typeof t.label !== "string" || !ids.has(t.nodeId)) || new Set(data.terms.map((t) => t.label)).size !== 103) throw new Error("The organization model has an invalid relation.");
       // A corrupt static file must not turn recursive rendering into a loop.
       for (const n of data.nodes) {
         const seen = new Set(); let current = n;
@@ -1786,15 +1826,16 @@
   }
   // A small Markdown reader: text nodes plus emphasis/code and HTTPS or internal fragment links; never arbitrary HTML.
   function governanceInline(text) {
-    return String(text).split(/(\[[^\]\n]+\]\((?:#\/[^\s()<>"']+|https:\/\/[^\s()<>"']+)\)|\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean).map((part) => {
-      const link = /^\[([^\]\n]+)\]\((#\/[^\s()<>"']+|https:\/\/[^\s()<>"']+)\)$/.exec(part);
+    return String(text).split(/(\[[^\]\n]+\]\((?:#\/[^\s()<>"']+|https:\/\/[^\s()<>"']+|\/static\/governance\/council-portfolios228\.md)\)|\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean).map((part) => {
+      const link = /^\[([^\]\n]+)\]\((#\/[^\s()<>"']+|https:\/\/[^\s()<>"']+|\/static\/governance\/council-portfolios228\.md)\)$/.exec(part);
       if (link) return h("a", {href:link[2],text:link[1],...(link[2].startsWith("https:") ? {target:"_blank",rel:"noopener noreferrer"} : {})});
       if (part.startsWith("**") && part.endsWith("**")) return h("strong", {text:part.slice(2,-2)});
       if (part.startsWith("`") && part.endsWith("`")) return h("code", {text:part.slice(1,-1)});
       return document.createTextNode(part);
     });
   }
-  function governanceBlocks(lines) {
+  function governanceBlocks(chapter) {
+    const lines = chapter.lines;
     const out = []; let i = 0;
     const special = (line) => !line.trim() || /^(#{2,6} |\|.*\||[-*] |\d+[.)] |---+$)/.test(line) || line.trim() === "[[OVERVIEW]]";
     while (i < lines.length) {
@@ -1806,7 +1847,16 @@
           h("a", { class: "btn", href: "#/organization", text: "Open the interactive organization chart" })))); i++; continue;
       }
       const heading = /^(#{2,6}) (.+)$/.exec(line);
-      if (heading) { out.push(h(heading[1].length < 4 ? "h3" : "h4", null, governanceInline(heading[2]))); i++; continue; }
+      if (heading) {
+        const article = /^Article ([IVXS0-9.a-z]+)(?= )/.exec(heading[2]);
+        const key = article ? "article-" + article[1].toLowerCase().replaceAll(".", "-") : "";
+        const id = key ? "governance-" + chapter.id + "-" + key : null;
+        out.push(h(heading[1].length < 4 ? "h3" : "h4", { id, tabindex: id ? "-1" : null }, governanceInline(heading[2])));
+        if (key) out.push(h("nav", { class: "governance-article-links228", "aria-label": "Article references" },
+          h("a", { href: "#/governance/" + chapter.id + "/" + key, text: "Link to this article" }),
+          h("a", { href: "#/governance/" + chapter.id, text: "Chapter references" })));
+        i++; continue;
+      }
       if (/^---+$/.test(line.trim())) { out.push(h("hr")); i++; continue; }
       if (/^\|.*\|$/.test(line)) {
         const rows = [];
@@ -1891,14 +1941,25 @@
       // The hash-verified book fixes these instrument chapters at these ordinals.
       const executionFields = (i === 2 || i === 3 || ["adoption-and-office-registers","daily-news-template"].includes(chapter.id))
         ? h("p", { class: "governance-instrument-note", role: "note", text: "About the blank fields: ceremonial and reusable instruments retain their unexecuted signature, witness and register fields. The adopted book does not supply an individual's signature or issue an appointment. A blank field is not a completed record." }) : null;
-      const blocks = governanceBlocks(chapter.lines);
-      const content = h("div", { class: "governance-prose" }, executionFields, blocks);
+      const blocks = governanceBlocks(chapter);
+      const title = Object.keys(governanceTitleRoutes228).find(key => governanceTitleRoutes228[key] === chapter.id);
+      const referenceNodes = { I: "founder", II: "council", III: "treasury", IV: "guilds", V: "artisanry" };
+      const directory = roleDirectory203();
+      const related = title && directory ? directory.families.filter(family =>
+        family.sourceKeys.some(key => office199(key)?.codexTitles.includes(title))) : [];
+      const references = h("nav", { class: "role-reference-links228", "aria-label": "Chapter references" },
+        h("a", { href: "#/organization/" + (referenceNodes[title] || "alliance-overview"), text: "Organization" }),
+        h("a", { href: "#/roles/rosetta-stone", text: "Rank crosswalk" }),
+        related.length ? h("details", null, h("summary", { text: "Roles referenced by Title " + title }),
+          h("ul", null, related.map(family => h("li", null,
+            h("a", { href: "#/roles/" + encodeURIComponent(family.key), text: family.label }))))) : null);
+      const content = h("div", { class: "governance-prose" }, references, executionFields, blocks);
       const section = h("details", { class: "governance-chapter", id: "chapter-" + chapter.id, "data-chapter": chapter.id }, summary, content);
       // Search rendered book text, including phrases spanning strong/code, without
       // counting generated notes, chart invitations or duplicate contents links.
       const prose = [];
       function collectBlocks(node) {
-        if (node.className === "governance-overview") return;
+        if (node.className === "governance-overview" || node.className === "governance-article-links228") return;
         if (["P", "H3", "H4", "LI", "TH", "TD"].includes(node.tagName)) { prose.push(node); return; }
         for (const child of node.children) collectBlocks(child);
       }
@@ -2065,7 +2126,11 @@
         h("div", { class: "governance-reader" }, h("nav", { class: "governance-page-nav", "aria-label": "Chapter navigation" }, prev, current, next), chapterNodes)), matchNav]);
     add(main, royalWritsVisible200() ? writsPanel199("governance") : h("p", {class:"muted small writs-paused200",text:"Royal Writs and new Patron applications are currently paused. The constitutional book and its downloads retain the adopted policy text for reference; they are not an offer of an available service."}));
     selection(index); filter();
-    if (selected >= 0) selection(index, true);
+    if (selected >= 0) {
+      const article = parts[1] && document.getElementById("governance-" + chapters[index].id + "-" + dec(parts[1]));
+      selection(index, !article);
+      if (article) { article.focus({ preventScroll: true }); scrollToSection(article); }
+    }
     window.addEventListener("beforeprint", preparePrint);
     window.addEventListener("afterprint", restorePrint);
     disposeGovernancePrint = () => { restorePrint(); window.removeEventListener("beforeprint", preparePrint); window.removeEventListener("afterprint", restorePrint); disposeGovernancePrint = null; };
@@ -3626,15 +3691,22 @@
   };
 
   function adminTabs(sub) {
-    const tabs = [["", "Overview"], ["applications", "Applications"], ["votes", "Votes"], ["names", "Reserved names"], ["friends", "Friends"], ["lookup", "Lookup"], ["settings", "Settings"], ["renames", "Renames"], ["news", "News"], ["audit", "Audit log"], ["ruleset-publication", "Ruleset publication"]]; // .114: Renames; .115: News; .125: Audit log
-    if (anyCommunity()) tabs.push(["community", "Community"]); // .98: the staff surfaces of the community modules
-    const choices = tabs.map(([k, t]) => ["#/admin" + (k ? "/" + k : ""), t, sub === k]);
-    choices.push(["#/admin/ranks", "Rank planner", sub === "ranks"], ["#/admin/treasury", "Treasury", sub === "treasury"], ["#/admin/directory-visibility", "Directory preferences", sub === "directory-visibility"], ["#/admin/approved-guilds", "Signed guild list", sub === "approved-guilds"]);
-    if (S.user?.id === "472099715253796864") choices.push(["/admin/qr/beta-window", "Named beta verification", false]);
-    const select = h("select", { id: "admin-section-select", "aria-label": "Admin section" }, choices.map(([href, text, selected]) => h("option", { value: href, text, selected })));
+    const groups = [
+      ["Applications & Roster", [["", "Overview"], ["applications", "Applications"], ["votes", "Votes"], ["names", "Reserved names"], ["friends", "Friends"], ["lookup", "Lookup"], ["renames", "Renames"], ["directory-visibility", "Directory preferences"]]],
+      ["Governance, Ranks & Appointments", [["ranks", "Rank planner"], ["approved-guilds", "Signed guild list"]]],
+      ["Imperial Treasury & Stockades", [["treasury", "Treasury"]]],
+      ["News, Calendar & Operations", [["news", "News"], ...(anyCommunity() ? [["community", "Community"]] : [])]],
+      ["System Settings & Compliance", [["settings", "Settings"], ["audit", "Audit log"], ["ruleset-publication", "Ruleset publication"]]]
+    ];
+    if (S.user?.id === "472099715253796864") groups.at(-1)[1].push(["/admin/qr/beta-window", "Named beta verification"]);
+    const choices = groups.map(([label, rows]) => [label, rows.map(([key, text]) => [key.startsWith("/") ? key : "#/admin" + (key ? "/" + key : ""), text, sub === key])]);
+    const select = h("select", { id: "admin-section-select", "aria-label": "Admin section" }, choices.map(([label, rows]) =>
+      h("optgroup", { label }, rows.map(([href, text, selected]) => h("option", { value: href, text, selected })))));
     select.addEventListener("change", () => { location.href = select.value; });
     return h("div", { class: "admin-section-nav" }, h("label", { class: "admin-section-picker", for: "admin-section-select" }, "Admin section", select),
-      h("nav", { class: "btn-row admin-section-links", "aria-label": "Admin sections" }, choices.map(([href, text, selected]) => h("a", { class: "btn small", href, text, "aria-current": selected ? "page" : false }))));
+      h("nav", { class: "admin-section-links", "aria-label": "Admin sections" }, choices.map(([label, rows]) =>
+        h("section", { class: "admin-section-group228" }, h("h2", { text: label }),
+          h("div", { class: "btn-row" }, rows.map(([href, text, selected]) => h("a", { class: "btn small", href, text, "aria-current": selected ? "page" : false })))))));
   }
   ROUTES.admin = async function admin(main, parts) {
     const sub = parts[0] || "";
@@ -3964,7 +4036,7 @@
     }) : [h("p",{class:"muted small",text:"Family grouping is unavailable. The original scoped controls below remain unchanged."}),
       h("div",{class:"group-label",text:"Leadership"}),appointedGrid("leadership"),h("div",{class:"group-label",text:"Class leads"}),appointedGrid("class"),
       h("details",{class:"mt"},h("summary",{text:"Ten native rank display assignments"}),appointedGrid("native")),
-      h("details",{class:"mt"},h("summary",{text:"All 102 extended offices and historical aliases"}),appointedGrid("office"))];
+      h("details",{class:"mt"},h("summary",{text:"All 103 extended offices and historical aliases"}),appointedGrid("office"))];
     // .115 (Viktor's item C, 2 Oct 2026): a name is typed only after that person agreed; the Worker refuses a new or changed
     // name without this tick (400 confirm_names, shown in words). Each save asks again: the box is cleared after it.
     const [namesOk, namesOkRow] = box(false, "Each person I name has agreed to be named on the signed-in guild site and in account settings. A valid existing account session can still view settings after leaving the server or being denied.");

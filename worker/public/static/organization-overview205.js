@@ -54,13 +54,14 @@ export function buildAllianceOverview205(data, directory) {
   }
   if (sourceKeys.size !== directory.sourceKeyCount || directory.ranks.length !== 10 || directory.ranks.some((rank, slot) => rank.nativeSlot !== slot || rank.nativeRankOrdinal !== slot + 1)) throw new Error("Incomplete canonical role or rank coverage.");
   const councilSeats = data.councilComposition?.currentSeats;
-  const seatIds = ["gm-chair", "co-gm", "treasurer", "head-trading", "main-raid-lead", "main-pvp-lead", "head-justice", "artisanry", "heraldry", "intake", "propaganda", "internal-security", "concordat"];
+  const seatIds = ["gm-chair", "co-gm", "treasurer", "head-trading", "main-raid-lead", "main-pvp-lead", "head-justice", "artisanry", "heraldry", "intake", "propaganda", "internal-security", "concordat", "systems-heraldry"];
   const canonicalFamilies = new Map(directory.families.map(family => [family.key, family]));
   if (!Array.isArray(councilSeats) || councilSeats.length !== seatIds.length || new Set(councilSeats.map(seat => seat.id)).size !== seatIds.length || seatIds.some(id => !councilSeats.some(seat => seat.id === id)) || councilSeats.some(seat => {
     const family = canonicalFamilies.get(seat.familyKey);
     return !family || family.tier !== (seat.id === "gm-chair" ? "leader" : "high_council") || !nodes.has(seat.nodeId) || seat.scope !== "alliance" || !seat.label || !seat.description || !Array.isArray(seat.officeKeys) || !seat.officeKeys.length || seat.officeKeys.some(key => !family.sourceKeys.includes(key));
   })) throw new Error("The complete current High Council roster is unavailable.");
   const seatOrder = councilSeats.map(seat => seat.familyKey);
+  if (!Array.isArray(directory.councilOrder) || directory.councilOrder.join("|") !== seatOrder.slice(1).join("|")) throw new Error("The Council order differs from the office register.");
   groupByKey.get("council").families.sort((a, b) => {
     const order = key => seatOrder.includes(key) ? seatOrder.indexOf(key) : seatOrder.length;
     return order(a.family.key) - order(b.family.key);
@@ -130,9 +131,10 @@ export function renderAllianceOverview205(data, ui, onSelectNode) {
   }
   const groupSection = (key, className, text) => h("section", { class: className }, h("h3", { text: model.groups.find(row => row.key === key).title }), h("p", { text }), groupCards(key));
   function seatReference(seat, detailed) {
+    const order = model.councilSeats.indexOf(seat);
     const row = h("li", { "data-council-seat206": detailed ? seat.id : null }, h("a", { href: "#/roles/" + encodeURIComponent(seat.familyKey), class: detailed ? "org-alliance-seat-link" : null, "data-council-reference206": seat.id, title: seat.description },
       detailed ? posIcon(nodes.get(seat.nodeId).icon) : null, detailed ? h("strong", { text: seat.label }) : seat.label),
-      detailed ? h("small", { text: seat.id === "gm-chair" ? "Council chair · Rank 1 Leader" : "Alliance portfolio · Rank 2 High Council" }) : null);
+      detailed ? h("small", { text: order === 0 ? "Council chair · Rank 1 Leader" : order === 1 ? "Co-Guild Master · Rank 2 High Council" : "Portfolio " + (order - 1) + " · Rank 2 High Council" }) : null);
     seatReferences.push({ element: row, familyKey: seat.familyKey });
     return row;
   }

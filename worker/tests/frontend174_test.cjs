@@ -17,10 +17,10 @@ const directoryCoverage203 = page => {
   const model=page.boot.meta.roleDirectory203, expected=[...page.boot.meta.appointments.map(row=>row.key),"member","raider","pvp_team"].sort();
   const declared=model.families.flatMap(family=>family.sourceKeys).sort(),visible=model.families.flatMap(family=>[family.primaryKey,...family.variants.filter(row=>['office','region','class'].includes(row.presentation)).map(row=>row.key)]).sort();
   const actual=page.app.querySelectorAll("[data-role-key201]").map(row=>row.getAttribute("data-role-key201")).sort();
-  return model?.version===1 && model.sourceKeyCount===141 && expected.length===141 && JSON.stringify(declared)===JSON.stringify(expected)
+  return model?.version===1 && model.sourceKeyCount===142 && expected.length===142 && JSON.stringify(declared)===JSON.stringify(expected)
     && expected.every(key=>model.families.find(family=>family.key===model.keyToFamily[key])?.sourceKeys.includes(key))
     && visible.length===116 && JSON.stringify(actual)===JSON.stringify(visible)
-    && page.app.querySelectorAll("details.role-family203").length===71;
+    && page.app.querySelectorAll("details.role-family203").length===72;
 };
 (async () => {
   await siteUser(MEMBER, { global_name: "Mia" }); await character(MEMBER, "Mia One", "Player-1-0001");
@@ -123,7 +123,7 @@ const directoryCoverage203 = page => {
 
   const appointments = await openPage(MEMBER, {}, { bootTransform: boot => { boot.settings.appointed = { officer: "richwcampbell.", treasurer: "Appointed member" }; } });
   await appointments.go("#/roles");
-  check("canonical role families retain all141 source identities and116 real specifications while defaulting to collapsed reading", directoryCoverage203(appointments) && appointments.app.querySelectorAll("details.role-family203").every(d => !d.open && d.querySelector('.role-primary203').querySelectorAll('.role-guide201').length===1 && d.textContent.includes("Responsibilities") && d.textContent.includes("Expectations")));
+  check("canonical role families retain all142 source identities and116 real specifications while defaulting to collapsed reading", directoryCoverage203(appointments) && appointments.app.querySelectorAll("details.role-family203").every(d => !d.open && d.querySelector('.role-primary203').querySelectorAll('.role-guide201').length===1 && d.textContent.includes("Responsibilities") && d.textContent.includes("Expectations")));
   check("appointment labels retain a trailing-period username once and use an identity-free fallback", appointments.app.textContent.includes("Appointed: richwcampbell.") && !appointments.app.textContent.includes("richwcampbell..") && appointments.app.textContent.includes("Filled by appointment") && !appointments.app.textContent.includes("Appointed: Appointed member"));
   await appointments.go("#/roles/officer");
   const officerFamily218=appointments.app.querySelector('[data-role-family203="officer"]'),officerGuide218=appointments.boot.meta.roleGuides201.officer;

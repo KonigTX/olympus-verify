@@ -23,7 +23,25 @@ async function evergreen221(){
  const council=page.app.querySelector('[data-rank-crosswalk="2"]');
  const cells=council.querySelectorAll('td');
  check('Council portal guidance is one specification rather than concatenated near-duplicates',(cells[3].textContent.match(/High Council access requires/g)||[]).length<=1&&!/appointment;.*appointment;/s.test(cells[3].textContent));
- check('statutory titles follow canonical I to V order',cells[1].textContent.includes('Title I / II / III / IV / V'));
+ check('statutory titles follow canonical I to V order',cells[1].querySelectorAll('a').map(a=>a.textContent).join(' / ')==='Title I / Title II / Title III / Title IV / Title V');
+ const groups=page.app.querySelectorAll('[data-role-section201]').map(el=>el.getAttribute('data-role-section201'));
+ check('role catalogue uses the six prescribed sections in order',JSON.stringify(groups)===JSON.stringify(['council','officers','raid','workshop','members','royal']));
+ const cards=page.app.querySelectorAll('[data-role-family203]');
+ check('all canonical role cards link to organization and a statutory Title',cards.length===72&&cards.every(card=>
+  card.querySelectorAll('.role-primary203 nav[aria-label="Role references"] a').some(a=>a.getAttribute('href').startsWith('#/organization/'))&&
+  card.querySelectorAll('.role-primary203 nav[aria-label="Role references"] a').some(a=>a.getAttribute('href').startsWith('#/governance/title-'))));
+ const councilCards=page.app.querySelector('[data-role-section201="council"]').querySelectorAll('[data-role-family203]');
+ check('the chair and Co-Guild Master precede twelve canonically ordered portfolios',JSON.stringify(councilCards.slice(0,14).map(card=>card.getAttribute('data-role-family203')))===JSON.stringify(['leader',...page.boot.meta.roleDirectory203.councilOrder])&&councilCards[13].getAttribute('data-role-family203')==='systems_heraldry'&&!councilCards[13].querySelector('[data-family-apply203]'));
+ check('ordinary readers see ten crosswalk role links without a staff planner link',page.app.querySelectorAll('[data-rank-crosswalk]').every(row=>row.querySelectorAll('a').some(a=>a.getAttribute('href').startsWith('#/roles/'))&&!row.querySelectorAll('a').some(a=>a.getAttribute('href').startsWith('/admin/ranks'))));
+ await page.go('#/governance/title-v-the-guild-workshop-artisans-charter-and-the-heralds-accord/article-v-4');
+ await waitFor(()=>!!page.app.querySelector('#governance-title-v-the-guild-workshop-artisans-charter-and-the-heralds-accord-article-v-4'),'Article V.4 deep link');
+ check('all fifty statutory and Title articles have unique anchors and a deep link opens its chapter',page.app.querySelectorAll('h3[id]').filter(h=>h.getAttribute('id').startsWith('governance-')).length===50&&page.app.querySelector('[data-chapter="title-v-the-guild-workshop-artisans-charter-and-the-heralds-accord"]').open);
+ await siteUser(STAFF,{global_name:'Evergreen administrator'});
+ const staff=await openPage(STAFF);
+ await staff.go('#/roles/rosetta-stone');
+ check('the staff crosswalk points directly to every matching native planner slot',staff.app.querySelectorAll('[data-rank-crosswalk]').every((row,index)=>row.querySelector('a[href="/admin/ranks#current-rank-'+(index+1)+'"]')));
+ await staff.go('#/admin/settings');
+ check('both admin layouts share the five section labels in order',JSON.stringify(staff.app.querySelectorAll('#admin-section-select optgroup').map(node=>node.getAttribute('label')))===JSON.stringify(['Applications & Roster','Governance, Ranks & Appointments','Imperial Treasury & Stockades','News, Calendar & Operations','System Settings & Compliance'])&&staff.app.querySelectorAll('.admin-section-group228').length===5);
  const before=await openPage(MEMBER,{}, {clockNow:Date.parse('2026-11-02T12:00:00Z')});await before.go('#/apply');
  const copy=before.app.querySelector('.launch-application-copy218');
  check('application instructions have no orphan separator after their sentence',!!copy&&!copy.textContent.includes('.  · ')&&!copy.textContent.includes('. · '));

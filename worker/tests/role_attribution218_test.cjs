@@ -27,7 +27,7 @@ const body218 = String.raw`
   }
   const all = page.app.querySelectorAll('[data-role-key201]').map(node => node.getAttribute('data-role-key201')).sort();
   const expectedVisible = directory.families.flatMap(f => [f.primaryKey,...f.variants.filter(v=>['office','region','class'].includes(v.presentation)).map(v=>v.key)]).sort();
-  check('.219 all140 source identities remain mapped while only70 canonical guides and genuine sub-offices render', Object.keys(directory.keyToFamily).length===141 && all.length===new Set(all).size && JSON.stringify(all)===JSON.stringify(expectedVisible) && page.app.querySelectorAll('[data-role-family203]').length===71);
+  check('.219 all140 source identities remain mapped while only70 canonical guides and genuine sub-offices render', Object.keys(directory.keyToFamily).length===142 && all.length===new Set(all).size && JSON.stringify(all)===JSON.stringify(expectedVisible) && page.app.querySelectorAll('[data-role-family203]').length===72);
   check('.219 no duplicate metadata drawers or stitched alias prose', !page.app.textContent.includes('Covered by the') && !page.app.textContent.includes('Related titles & rank details') && !page.app.textContent.includes('Also known as:') && !page.app.querySelector('[data-role-variant-group218="associations"]'));
 
   for (const family of directory.families) {
@@ -81,7 +81,7 @@ const body218 = String.raw`
   }
   const technical222=page.app.querySelector('[data-role-family203="architect"]');
   check('.222 architecture is technical Officer Corps support without a Council portfolio label',directory.families.find(f=>f.key==='architect').tier==='officer_corps'&&!technical222.querySelector('.role-reporting218')&&technical222.textContent.includes('outside the High Council'));
-  check('.222 Propaganda has its own detailed responsibilities and boundaries',guides.office_102.responsibilities.length>=4&&guides.office_102.boundaries.includes('no moderation')&&directory.keyToFamily.office_102==='propaganda');
+  check('.222 Propaganda has its own detailed responsibilities and boundaries',guides.office_103.responsibilities.length>=4&&guides.office_103.boundaries.includes('no moderation')&&directory.keyToFamily.office_103==='propaganda');
   const justice=page.app.querySelector('[data-role-family203="justice"]'), chancellor=page.app.querySelector('[data-role-family203="head_justice"]');
   check('.218 one judicial portfolio and one clearly named institution retain separate holder scopes', justice.querySelector('summary').textContent.includes('Council of Justice — institution')
     && !justice.querySelector('summary').textContent.includes('Lord High Justiciar') && chancellor.querySelector('summary').textContent.includes('Lord High Justiciar · Minister of Justice & The Privy Court')
@@ -112,7 +112,7 @@ const body218 = String.raw`
   }
   const standingNotes218=Object.values(guides).filter(guide=>guide.eligibility==='standing').map(guide=>guide.eligibilityNote);
   const naturalStanding218='These labels record a member’s current guild standing; they are not open positions. Ask the responsible officer to review a change in status.';
-  const standingSection218=page.app.querySelector('[data-role-section201="standing"]'),standingIntro218=standingSection218?.querySelectorAll('.role-standing-scope218')||[];
+  const standingSection218=page.app.querySelector('[data-role-section201="members"]'),standingIntro218=standingSection218?.querySelectorAll('.role-standing-scope218')||[];
   check('.218 one natural status-section intro suppresses only the old generic display text while distinct native rules remain', standingNotes218.filter(note=>note==='This label records current guild standing, rather than an open position. Ask the responsible officer to review a change in status.').length>1&&standingIntro218.length===1&&standingIntro218[0].textContent===naturalStanding218&&page.app.querySelectorAll('.role-standing-scope218').length===1&&page.app.textContent.split(naturalStanding218).length===2&&!page.app.textContent.includes('This label records current guild standing, rather than an open position. Ask the responsible officer to review a change in status.'));
   check('.218 role reading performs no protected writes', requests.length > 0 && requests.every(row => row.method === 'GET'));
   console.log('\n'+ok+'/'+n+' passed'); process.exit(ok === n ? 0 : 1);

@@ -82,10 +82,10 @@ function open({ mobile = false, width = 800, officeAvailability = undefined, par
 }
 const p = open();
 p.button("Full map").click();
-check('.218 chart search accessible name states all102 current labels', data.terms.length === 102 && p.doc.getElementById('organization-search').getAttribute('aria-label') === 'Search all offices and 102 labels');
+check('.218 chart search accessible name states all103 current labels', data.terms.length === 103 && p.doc.getElementById('organization-search').getAttribute('aria-label') === 'Search all offices and 103 labels');
 const originalDataCount208 = JSON.stringify(data), syntheticCountModel208 = { ...data, terms: [...data.terms, { ...data.terms[100], ordinal: 103, officeKey: 'office_103', label: 'Synthetic label-count witness only' }] };
 const syntheticCountView208 = open({ model: syntheticCountModel208 });
-check('.218 accessible search count follows its supplied model without mutating the canonical catalogue', syntheticCountModel208.terms.length === 103 && syntheticCountView208.doc.getElementById('organization-search').getAttribute('aria-label') === 'Search all offices and 103 labels' && JSON.stringify(data) === originalDataCount208 && data.terms.length === 102);
+check('.218 accessible search count follows its supplied model without mutating the canonical catalogue', syntheticCountModel208.terms.length === 104 && syntheticCountView208.doc.getElementById('organization-search').getAttribute('aria-label') === 'Search all offices and 104 labels' && JSON.stringify(data) === originalDataCount208 && data.terms.length === 103);
 syntheticCountView208.dispose();
 const wide205=open({overview205:true});
 check('.221 the interactive full map is open immediately alongside the readable alliance overview',wide205.one('org-relationship-map205').open&&!!wide205.one('org-alliance'));
@@ -97,7 +97,7 @@ const deepNode205=open({overview205:true,parts:['treasury']});
 check('.205 an existing department deep link reveals and focuses the requested mandate',deepNode205.one('org-relationship-map205').open&&deepNode205.doc.activeElement===deepNode205.detail&&deepNode205.detail.textContent.includes('Federal Treasury'));
 wide205.main.all(n=>n.getAttribute('data-office-key')==='office_08')[0].children[0].click(0);
 check('.205 historical catalogue selections reveal the outer map before focusing its reader',wide205.one('org-relationship-map205').open&&wide205.doc.activeElement===wide205.detail);
-check(".218 exact ten ranks and all102 current office records are visible", p.main.all(n=>!!n.getAttribute('data-native-rank')).map(n=>n.children[0].textContent).join('|') === 'Leader|High Council|Officer|Officer Alt|Raid Leader|Veteran|Raider|Member|Alt|Initiate' && p.main.all(n=>!!n.getAttribute('data-office-key')).length === 102 && p.main.all(n=>n.getAttribute('data-tier-group')==='high_council').length===1 && p.main.all(n=>n.getAttribute('data-tier-group')==='officer_corps').length===1);
+check(".218 exact ten ranks and all103 current office records are visible", p.main.all(n=>!!n.getAttribute('data-native-rank')).map(n=>n.children[0].textContent).join('|') === 'Leader|High Council|Officer|Officer Alt|Raid Leader|Veteran|Raider|Member|Alt|Initiate' && p.main.all(n=>!!n.getAttribute('data-office-key')).length === 103 && p.main.all(n=>n.getAttribute('data-tier-group')==='high_council').length===1 && p.main.all(n=>n.getAttribute('data-tier-group')==='officer_corps').length===1);
 // Current labels describe these five standing records without rewriting the historical model.
 const nativeDepartmentKeys218 = ['office_04','office_48','office_55','office_75','office_90'];
 const rawOfficeCard218 = key => p.main.all(n => n.classList.contains('org-office-card') && n.getAttribute('data-office-key') === key)[0];
@@ -114,7 +114,7 @@ const nativeDisplayRow218 = nativeDisplay218.one('org-list').children.find(row =
 check(".218 native reference list, inspector, disclosure and status use one natural display title without rewriting the raw model",
   !!nativeDisplayRow218 && nativeDisplay218.detail.children.some(n => n.tagName === 'H2' && n.textContent === 'In-game rank reference')
   && nativeDisplay218.one('org-detail-drawer').children[0].textContent === 'Office details · In-game rank reference'
-  && nativeDisplay218.main.all(n => n.getAttribute('role') === 'status').some(n => n.textContent === data.nodes.length + ' organizational groups · ' + data.terms.length + ' titles and terms · In-game rank reference: ten ranks.')
+  && nativeDisplay218.main.all(n => n.getAttribute('role') === 'status').some(n => n.textContent.includes('Rank and membership groupings have no command arrows'))
   && data.nodes.find(node => node.id === 'native').title === 'Ten native rank slots' && JSON.stringify(data) === originalDataCount208);
 const nativeDisplaySearch218 = nativeDisplay218.doc.getElementById('organization-search');
 nativeDisplaySearch218.value = 'In-game rank reference'; nativeDisplaySearch218.dispatch('input');
@@ -131,11 +131,11 @@ check("historical profiles are collapsed behind the named technical disclosure a
 check("all non-classification offices retain chart cards", p.main.all(n => !!n.getAttribute("data-organization-node")).length === data.nodes.filter(n => n.relation !== "classification").length);
 check("the Council remains initially selected", p.node("council").getAttribute("aria-pressed") === "true");
 const council = p.one("org-council-overview"), offices = p.one("org-council-offices");
-check("the current Council names its chair and all twelve distinct portfolios", JSON.stringify(offices.children.map(n => n.textContent)) === JSON.stringify(data.councilComposition.currentSeats.map(row=>row.label)) && offices.children.length === 13 && ['Lord High Treasurer','Lord High Factor','Co-Guild Master','Lord High Marshal of PvE','Lord High Marshal of PvP','Lord High Justiciar'].every(label=>offices.textContent.includes(label)));
+check("the current Council names its chair and the Co-Guild Master and twelve distinct portfolios", JSON.stringify(offices.children.map(n => n.textContent)) === JSON.stringify(data.councilComposition.currentSeats.map(row=>row.label)) && offices.children.length === 14 && ['Lord High Treasurer','Lord High Factor','Co-Guild Master','Lord High Marshal of PvE','Lord High Marshal of PvP','Lord High Justiciar'].every(label=>offices.textContent.includes(label)));
 check("regional operational leaders remain distinct from accepted alliance appointments", council.textContent.includes("Council seats require an accepted appointment") && council.textContent.includes("Regional Raid and PvP leads remain distinct Officer Corps responsibilities"));
 check("Justice keeps case designation and conflict review", council.textContent.includes("ordinarily serve the Council of Justice, subject to case designation and conflict review"));
-check("support, advisers and the current composition do not issue votes or permission", council.textContent.includes("technical support outside the High Council") && council.textContent.includes("not automatically voting councillors") && council.textContent.includes("does not itself issue an eligible vote, individual warrant, native rank or permission") && council.textContent.includes("One person still has one vote, subject to recusal"));
-check("current .222 Council reference and historical owner directions remain distinct", p.one("org-composition-status").textContent === data.councilComposition.formalStatus && data.councilComposition.recordedAt === '2026-11-02' && data.councilComposition.founderRatificationRecorded===false && data.councilComposition.eligibleSeatIssued===false && data.councilComposition.permissionsApplied===false && data.councilComposition.previousDirection.recordedAt==='2026-10-23' && data.councilComposition.historicalDirection.recordedAt==='2026-10-19');
+check("support, advisers and the current composition do not issue votes or permission", council.textContent.includes("Systems & Heraldry sets stewardship and heraldic standards") && council.textContent.includes("not automatically voting councillors") && council.textContent.includes("does not itself issue an eligible vote, individual warrant, native rank or permission") && council.textContent.includes("One person still has one vote, subject to recusal"));
+check("current .222 Council reference and historical owner directions remain distinct", p.one("org-composition-status").textContent === data.councilComposition.formalStatus && data.councilComposition.recordedAt === '2026-11-04' && data.councilComposition.founderRatificationRecorded===false && data.councilComposition.eligibleSeatIssued===false && data.councilComposition.permissionsApplied===false && data.councilComposition.previousDirection.recordedAt==='2026-10-23' && data.councilComposition.historicalDirection.recordedAt==='2026-10-19');
 check("current and historical directions stay reachable without relabelling R7 as adopted R8", council.all(n => n.tagName === "A").some(n => n.getAttribute("href") === data.councilComposition.sourcePath && n.textContent === "Read the current Council reference") && council.all(n=>n.tagName==='A').some(n=>n.getAttribute('href')===data.councilComposition.previousDirection.sourcePath && n.textContent.includes('19–23 October')) && data.revision === "R7");
 const councilRecord199 = fs.readFileSync(path.join(root, "public", data.councilComposition.previousDirection.sourcePath.replace(/^\/+/, "")));
 const councilPriorStart199 = councilRecord199.indexOf(Buffer.from("# Current composition clarification — 23 October 2026"));
@@ -249,9 +249,9 @@ before = k.stage.style.transform;
 check("ordinary wheel scrolling is left to the page", !k.viewport.dispatch("wheel", { deltaY: -1 }).defaultPrevented && k.stage.style.transform === before);
 check("Ctrl-wheel still zooms within the chart", k.viewport.dispatch("wheel", { ctrlKey: true, deltaY: -1, clientX: 100, clientY: 100 }).defaultPrevented && k.stage.style.transform !== before);
 const mobile = open({ mobile: true, width: 315 });
-check("small screens retain the initial reading view", mobile.viewport.hidden && !mobile.one("org-list").hidden);
+check("small screens open the full map", !mobile.viewport.hidden && mobile.one("org-list").hidden);
 mobile.button("Chart").click();
-check("mobile Chart initially opens a readable connected branch", scaleOf(mobile)>=.85 && mobile.button("Fit branch").getAttribute("aria-pressed")==="true");
+check("mobile Chart keeps the full map when selected", mobile.button("Full map").getAttribute("aria-pressed")==="true");
 mobile.button("Full map").click();
 check("opening Chart on mobile starts with all offices in a fitted complete overview", visibleIds(mobile).length === chartNodes.length && mobile.button("Full map").getAttribute("aria-pressed") === "true" && wholeMapFits(mobile));
 mobile.button("Fit branch").click();

@@ -20,11 +20,11 @@ const catalogue = load('governance-offices'), content = load('site-role-guides20
 const guides = content.OFFICE_ROLE_GUIDES_201, complete = content.roleGuides201(site.POSITIONS), meta = site.meta();
 const stable = catalogue.OFFICE_APPOINTMENTS.filter(row => /^office_\d{2,3}$/.test(row.key));
 const words = guide => [guide.definition, ...guide.responsibilities, ...guide.expectations, guide.commitment, guide.worksWith].join(' ').trim().split(/\s+/).length;
-check('all original96 offices and five new individual Council portfolios remain represented', stable.length === 102 && stable.every(row => guides[row.key]));
-check('all137 assignable display keys have exactly one guide', Object.keys(guides).length === 138 && catalogue.OFFICE_APPOINTMENTS.every(row => guides[row.key]?.key === row.key));
-check('102 office definitions are individually written', new Set(stable.map(row => guides[row.key].definition)).size === 102);
-check('102 office responsibility lists are individually written', new Set(stable.map(row => JSON.stringify(guides[row.key].responsibilities))).size === 102);
-check('102 office expectation lists are individually written', new Set(stable.map(row => JSON.stringify(guides[row.key].expectations))).size === 102);
+check('all original96 offices and five new individual Council portfolios remain represented', stable.length === 103 && stable.every(row => guides[row.key]));
+check('all137 assignable display keys have exactly one guide', Object.keys(guides).length === 139 && catalogue.OFFICE_APPOINTMENTS.every(row => guides[row.key]?.key === row.key));
+check('103 office definitions are individually written', new Set(stable.map(row => guides[row.key].definition)).size === 103);
+check('103 office responsibility lists are individually written', new Set(stable.map(row => JSON.stringify(guides[row.key].responsibilities))).size === 103);
+check('103 office expectation lists are individually written', new Set(stable.map(row => JSON.stringify(guides[row.key].expectations))).size === 103);
 for (const row of catalogue.OFFICE_APPOINTMENTS) {
   const guide = guides[row.key];
   check(row.key + ' has a definition, three duties, two expectations, commitment, colleagues and access boundary', !!guide && guide.definition.length > 100 && guide.responsibilities.length >= 3 && guide.responsibilities.every(text => typeof text === 'string' && text.length > 35) && guide.expectations.length >= 2 && guide.expectations.every(text => typeof text === 'string' && text.length > 35) && guide.commitment.length > 15 && guide.worksWith.length > 10 && /changes no game rank, Discord role, bank limit, signing authority or addon permission/.test(guide.boundaries));
