@@ -120,6 +120,23 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .228 reverses only the exact Evergreen release note.
+  const release228 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".228\", date: \"2026-11-04\", lines: [",
+    "      \"The role directory and governance book link to matching ranks, offices and articles. Admin settings group related tools.\",",
+    "      \"The guide library includes updated Forever class advice and a raid-team planning reference.\",",
+    "      \"The Discord command update prepares /raid hub and direct scheduling and roster commands alongside /event.\",",
+    "      \"Site controls reflow at higher zoom on narrow screens. Login artwork credits identify the stills and the optional portal render.\",",
+    "      \"Declined membership applications can complete ordinary account erasure. The permanent-denial process remains separate.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .228 prepend occurs once', originalNews.split(release228).length === 2);
+  originalNews = originalNews.replace(release228, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+
   // .227 reverses only this exact launch-readiness release note.
   const release227 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
