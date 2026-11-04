@@ -4160,8 +4160,8 @@
     {
       "path": "worker/public/static/talents/analysis.js",
       "mode": "100644",
-      "bytes": 78170,
-      "sha256": "5a1605910cf971e3436d8541db11f2175ca924af92c9ef6ab5548814c4b04372"
+      "bytes": 78855,
+      "sha256": "0e9641643791204b57b5f784531837c1da2a0ce087cd498bc3df9b7bc5a57718"
     },
     {
       "path": "worker/public/static/talents/art-provenance.json",

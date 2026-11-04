@@ -1430,8 +1430,8 @@
 };
   function freeze(value) { if (value && typeof value === "object") { Object.values(value).forEach(freeze); Object.freeze(value); } return value; }
   freeze(MAPPINGS);
-  const MISSING = Object.freeze(["Verified level-60 class/race base attributes and base health/mana", "Attribute-to-health, mana, armor, attack power and critical-chance conversions", "Stacking order, rounding and spell/form/weapon interactions", "Proc uptime, cooldown/GCD sequences, resource regeneration and rotations", "Target armor, resistance, hit/avoidance and encounter assumptions", "Sustained DPS, HPS, survivability and best-build rankings", "Legacy Talented extra talent points"]);
-  const unavailableReason = "Verified level-60 class/race base-stat tables are not included in this snapshot. Talent percentages alone cannot establish an unequipped character's final stats.";
+  const MISSING = Object.freeze(["Verified WoW Forever level-60 class/race base attributes and base health/mana", "Complete WoW Forever rules for attribute conversions, stacking, rounding and spell/form/weapon interactions", "Proc uptime, cooldown/GCD sequences, resource regeneration and rotations", "Target armor, resistance, hit/avoidance and encounter assumptions", "Sustained DPS, HPS, survivability and best-build rankings", "Legacy Talented extra talent points"]);
+  const unavailableReason = "Verified WoW Forever level-60 class/race base-stat tables are unavailable in this talent snapshot. The empty baseline records zero allocated talent points.";
   // Small synchronous UTF-8 SHA-256, so a changed tooltip cannot silently keep an old numeric interpretation.
   function sha256(text) {
     const bytes = new TextEncoder().encode(text), length = bytes.length;
@@ -1489,8 +1489,20 @@
     const el=(tag,text,cls)=>{const n=doc.createElement(tag);if(text!==undefined)n.textContent=String(text);if(cls)n.className=cls;return n;};
     const add=(n,...children)=>{children.flat().forEach(c=>{if(c)n.appendChild(c);});return n;};
     const section=el("section",undefined,"talent-analysis"),heading=el("h2","Build comparison"),intro=el("p","Compare talent choices and their stated effects. This is not a damage or healing simulator.","muted small"),controls=el("div",undefined,"btn-row"),capture=el("button","Use current as comparison","btn small"),reset=el("button","Compare with no talents","btn small"),outcome=el("p","","talent-analysis-outcome small muted"),body=el("div",undefined,"talent-analysis-body");
+    const sheetReference=el("p","The Level-60 character sheet uses graded Classic references and estimates. Its All classes table shows the selected race with no talents, no gear and no assumptions, and labels unavailable values.","muted small");
+    const sheet=host.closest?.(".talents-tool")?.querySelector(".talents-stats60-host"), sheetSummary=sheet?.querySelector("summary");
+    const openSheet=sheetSummary?el("button","Open Level-60 character sheet","btn small"):null;
+    if(openSheet){
+      openSheet.type="button";
+      openSheet.addEventListener("click",()=>{
+        // The existing details toggle owns lazy loading and retry.
+        if(!sheet.open)sheet.open=true;
+        sheetSummary.focus({preventScroll:true});
+        sheetSummary.scrollIntoView({block:"nearest",behavior:"instant"});
+      });
+    }
     // .186: one persistent polite line states what a comparison button did; point updates never write to it.
-    capture.type=reset.type="button";heading.setAttribute("tabindex","-1");outcome.setAttribute("role","status");outcome.setAttribute("aria-live","polite");add(controls,capture,reset);add(section,heading,intro,controls,outcome,body);host.appendChild(section);
+    capture.type=reset.type="button";heading.setAttribute("tabindex","-1");outcome.setAttribute("role","status");outcome.setAttribute("aria-live","polite");add(controls,capture,reset);add(section,heading,intro,sheetReference,openSheet,controls,outcome,body);host.appendChild(section);
     function table(headers,rows,label){const wrap=el("div",undefined,"table-wrap"),t=el("table",undefined,"data talent-analysis-table");t.setAttribute("aria-label",label);const head=el("thead"),tr=el("tr");headers.forEach(s=>{const th=el("th",s);th.setAttribute("scope","col");tr.appendChild(th);});head.appendChild(tr);t.appendChild(head);const tb=el("tbody");rows.forEach(row=>{const tr=el("tr");row.forEach((value,i)=>{const td=el(i===0?"th":"td",value);if(i===0)td.setAttribute("scope","row");td.className="wrap";tr.appendChild(td);});tb.appendChild(tr);});t.appendChild(tb);wrap.appendChild(t);return wrap;}
     const value=(n,unit)=>String(n)+(unit==="percent"?"%":unit==="percentage_points"?" pp":unit==="Rage"?" Rage":" skill");
     function effectCharts(effects,opened){
@@ -1518,9 +1530,9 @@
       // .186: "Compare with no talents" disables itself once used; focus moves to the panel heading (tabindex -1) instead of staying on a disabled control.
       const resetFocused=doc.activeElement===reset;reset.disabled=!comparison;if(resetFocused&&reset.disabled)heading.focus({preventScroll:true});
       add(body,el("p",result.classLabel+" · Current level "+result.current.level+", "+result.current.total+" points · "+(comparison?"Comparison level "+result.before.level+", "+result.before.total+" points":"No-talents comparison at level 60"),"talent-analysis-summary"));
-      add(body,el("p","Supported: exact talent-rank comparison. Conditional: the separately listed, source-described modifiers. Unavailable: naked level-60 character stats and final totals.","talent-analysis-status small"));
+      add(body,el("p","Supported: exact talent-rank comparison. Conditional: the separately listed, source-described modifiers. Verified WoW Forever character totals are unavailable.","talent-analysis-status small"));
       const chart=el("div",undefined,"talent-analysis-chart");chart.setAttribute("aria-label","Talent points by tree");result.trees.forEach(tree=>{const row=el("div",undefined,"talent-analysis-tree");add(row,el("strong",tree.name));[["Current",tree.current],["Comparison",tree.before]].forEach(([label,n])=>{const meter=el("meter",n);meter.min=0;meter.max=51;meter.value=n;meter.setAttribute("aria-label",tree.name+" "+label.toLowerCase()+" points");add(row,add(el("label",label+" "+n+" / 51 "),meter));});chart.appendChild(row);});body.appendChild(chart);if(result.coverage.numericMappingsWithheld)add(body,el("p","Some numeric mappings were withheld because the source revision or exact rank text changed. Descriptions remain available.","err"));
-      const unavailable=el("details",undefined,"talent-analysis-limits");unavailable.open=opened.get("talent-analysis-limits")===true;add(unavailable,el("summary","Why final character stats are unavailable"),el("p",unavailableReason),el("p","An empty talent allocation is not a measured naked character. No guessed race or base-stat totals are shown."));const missing=el("ul");result.missingMetrics.forEach(text=>missing.appendChild(el("li",text)));unavailable.appendChild(missing);body.appendChild(unavailable);
+      const unavailable=el("details",undefined,"talent-analysis-limits");unavailable.open=opened.get("talent-analysis-limits")===true;add(unavailable,el("summary","Limits of the talent comparison"),el("p",unavailableReason));const missing=el("ul");result.missingMetrics.forEach(text=>missing.appendChild(el("li",text)));unavailable.appendChild(missing);body.appendChild(unavailable);
       add(body,el("h3","Rank changes"),el("p","Each description is the exact selected rank's text. Removed ranks keep their comparison text.","small muted"));
       if(result.changes.length)body.appendChild(table(["Talent / tree","Change","Comparison","Current"],result.changes.map(n=>[n.name+" · "+n.tree,n.change,n.priorRank+" / "+n.maxRank+" — "+n.priorText,n.rank+" / "+n.maxRank+" — "+n.currentText]),"Talent rank changes"));else body.appendChild(el("p","No rank changes between these allocations."));
       const allocation=el("details",undefined,"talent-analysis-selected");allocation.open=opened.get("talent-analysis-selected")===true;add(allocation,el("summary","All selected talent effects"));const selected=result.nodes.filter(n=>n.rank);if(selected.length)allocation.appendChild(table(["Talent / tree","Rank","Exact selected-rank effect","Numeric coverage"],selected.map(n=>[n.name+" · "+n.tree,n.rank+" / "+n.maxRank,n.currentText,n.mappingVerified?"Reviewed components only":n.mappingReason]),"All selected talent effects"));else allocation.appendChild(el("p","No talents allocated."));body.appendChild(allocation);
