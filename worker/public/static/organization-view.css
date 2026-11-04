@@ -31,7 +31,6 @@
 .org-alliance :is(section, article, details, div, ul, ol, li, header, span) { min-width: 0; }
 .org-alliance [hidden] { display: none !important; }
 .org-alliance :is(button, a, input, select, summary):focus-visible { outline: 3px solid #ffe4a1; outline-offset: 3px; }
-.org-alliance :is(button, a, input, select, summary) { scroll-margin-top: 7rem; }
 .org-alliance :is(p, ul, ol) { margin-top: 0; }
 .org-alliance p:last-child { margin-bottom: 0; }
 .org-alliance :is(.small, small) { font-size: .9rem; line-height: 1.5; }

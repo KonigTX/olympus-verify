@@ -948,6 +948,28 @@
     const position = typeof getComputedStyle === "function" ? getComputedStyle(bar).position : "sticky";
     return position === "sticky" || position === "fixed" ? bar.getBoundingClientRect().height : 0;
   }
+  let disposeFocusInsets = null;
+  function observeFocusInsets() {
+    const style = document.documentElement.style;
+    if (!style?.setProperty || typeof getComputedStyle !== "function") return;
+    disposeFocusInsets?.();
+    const bar = app.querySelector(".topbar"), savebars = [...app.querySelectorAll("main.shell .savebar")];
+    const update = () => {
+      const top = pinnedBarHeight();
+      const bottom = Math.max(0, ...savebars.map(node => {
+        const rules = getComputedStyle(node), height = node.getBoundingClientRect().height;
+        return height && (rules.position === "sticky" || rules.position === "fixed") ? height + (parseFloat(rules.bottom) || 0) : 0;
+      }));
+      style.setProperty("--olympus-focus-top", `${top ? Math.ceil(top) + 12 : 0}px`);
+      style.setProperty("--olympus-focus-bottom", `${bottom ? Math.ceil(bottom) + 12 : 0}px`);
+    };
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(update) : null;
+    if (bar) observer?.observe(bar);
+    for (const savebar of savebars) observer?.observe(savebar);
+    window.addEventListener("resize", update);
+    disposeFocusInsets = () => { observer?.disconnect(); window.removeEventListener("resize", update); };
+    update();
+  }
   /** .109: the reload notice and the receipt bar both sit over the page under the top bar; when both show they stack (in document order) instead of covering each other. */
   function stackBars() {
     let y = pinnedBarHeight() + 8;
@@ -1620,12 +1642,16 @@
     try {
       const out = view(main, route.split("/").slice(1));
       const names = () => { if (main.parentNode === app && main.dataset.viewRequest === viewRequest) { pageHeading218(main); hydrateAppointmentNames(main, () => main.parentNode === app && main.dataset.viewRequest === viewRequest); } };
-      if (out && typeof out.then === "function") out.then(names).catch(error => { if (main.dataset.viewRequest === viewRequest) showError(main)(error); });
+      if (out && typeof out.then === "function") out.then(() => {
+        names();
+        if (main.parentNode === app && main.dataset.viewRequest === viewRequest) observeFocusInsets();
+      }).catch(error => { if (main.dataset.viewRequest === viewRequest) showError(main)(error); });
       else names();
     } catch (e) {
       showError(main)(e);
     }
     if (!reuseChrome) app.appendChild(footer());
+    observeFocusInsets();
     const target = scrollTo && document.getElementById(scrollTo);
     if (target) scrollToSection(target);
     else if (!keepBoard || trackSwitch) window.scrollTo(0, 0);
@@ -2341,7 +2367,7 @@
     if (changed) user.canReadTreasuryPlan = allowed;
     if (changed || visible !== treasuryPlanAllowed218()) {
       const bar = app.querySelector("header.topbar");
-      if (bar) bar.replaceWith(topbar(currentRoute()));
+      if (bar) { bar.replaceWith(topbar(currentRoute())); observeFocusInsets(); }
     }
     return allowed;
   }
