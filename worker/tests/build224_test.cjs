@@ -30,6 +30,10 @@ async function checks224(){
  check('signed Olympus guide links carry only the admitted root return query',
   r.answer.embeds[0].url==='https://guild.example/?to=resources'
   && controls(r.answer).find(c=>c.label==='Attunement checklist')?.url==='https://guild.example/?to=guides%2Ftools%2Fattunements');
+ const classChoices=controls(r.answer).find(c=>c.custom_id===classMenu)?.options;
+ const alphabeticalClasses=['Druid','Hunter','Mage','Paladin','Priest','Rogue','Shaman','Warlock','Warrior'];
+ check('signed private Olympus class picker alphabetizes labels and preserves all stored choice IDs',
+  JSON.stringify(classChoices)===JSON.stringify(alphabeticalClasses.map(label=>({label,value:label.toLowerCase()}))));
  r=await send({type:3,custom:classMenu,values:['warrior']});check('class selection uses the existing pinned guide reader',r.answer.embeds?.[0]?.title==='Warrior');
  r=await send({type:3,custom:classMenu,values:['administrator']});check('unknown class values are refused',!r.answer.embeds?.length&&/nine classes/.test(r.answer.content));
  r=await send({type:3,custom:talent});check('talent decoder opens an initial-response modal',r.initial.type===9&&r.initial.data.components.length===1);const talentForm=r.initial.data.custom_id;

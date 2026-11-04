@@ -8,10 +8,10 @@ import { guildActorBatch219, type GuildActor219 } from './guild-command-authorit
 import { guideLookup219, workshopLookup219, referenceLookup219, safeDiscordText219, type GuildEmbed219 } from './guild-utilities219';
 import type { HubAnswer222, HubRow222 } from './raid-hub222';
 import { siteMemberLink } from './site-return';
+import { CLASSES, classDisplayChoices } from './site-data';
 
 const CID=/^o224:([0-9]{17,20}):([0-9]{10}):([a-z]{2,16})$/;
 const SECTIONS=[['status','Verification & character status'],['guides','Forever guides & preparation'],['workshop','Workshop crafters & recipes'],['branches','Branch capacity & launch'],['council','Council, ranks & applications'],['treasury','Treasury & Stockades appeals']] as const;
-const CLASSES=['warrior','paladin','hunter','rogue','priest','shaman','mage','warlock','druid'];
 const controlDeadlines=new WeakMap<GuildActor219,number>();
 const id=(a:GuildActor219,action:string)=>`o224:${a.id}:${controlDeadlines.get(a)??a.deadline}:${action}`;
 const button=(a:GuildActor219,label:string,action:string)=>({type:2 as const,style:2,label,custom_id:id(a,action)});
@@ -56,10 +56,10 @@ export async function olympusHub224(env:Env,a:GuildActor219,i:Interaction):Promi
   components.push(row(link('My guild account',base+'/#/'),link('Account & privacy controls',base+'/#/data')));
  }else if(p==='guides'){
   embeds=[{title:'Forever guides & preparation',url:open('resources'),description:'Choose a class for its current guide, decode an Olympus talent build, or open the profession and raid-preparation tools. Every fact shows its source grade; pinned data comes from the beta, and the released game can differ.'}];
-  components.push(row({type:3,custom_id:id(a,'class'),placeholder:'Choose your class',min_values:1,max_values:1,options:CLASSES.map(value=>({label:value[0]!.toUpperCase()+value.slice(1),value}))}));
+  components.push(row({type:3,custom_id:id(a,'class'),placeholder:'Choose your class',min_values:1,max_values:1,options:classDisplayChoices().map(({name,value})=>({label:name,value}))}));
   components.push(row(button(a,'Decode talent build…','talent'),button(a,'Consumable checklist','consumes'),link('Professions',open('resources')),link('Attunement checklist',open('guides/tools/attunements'))));
  }else if(p==='class'){
-  const cls=selected(i);if(!CLASSES.includes(cls))throw Error('Choose one of the nine classes.');embeds=[await guideLookup219(env,a,'class',{class:cls})];
+  const cls=selected(i);if(!CLASSES.some(c=>c.key===cls))throw Error('Choose one of the nine classes.');embeds=[await guideLookup219(env,a,'class',{class:cls})];
  }else if(p==='talents')embeds=[await guideLookup219(env,a,'talent',{build:field(i,'build',512)})];
  else if(p==='consumes')embeds=[await guideLookup219(env,a,'consumes',{})];
  else if(p==='workshop'){
