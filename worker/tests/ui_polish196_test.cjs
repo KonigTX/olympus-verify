@@ -74,7 +74,7 @@ let tabPreference196=null;
  }
  const animation=bnet.app.querySelector('#login-animation'),saved=[];check('login animation is an explicit default-OFF setting with honest model provenance',!!animation&&!animation.checked&&bnet.app.textContent.includes('existing client-model render, not publisher video'));
  bnet.before((url,init)=>{if(url==='/api/admin/settings'&&init.method==='PUT')saved.push(JSON.parse(init.body));return false;});animation.checked=true;byText(bnet.app,'button','Save settings').click();await waitFor(()=>saved.length===1,'captured settings save');
- check('the existing settings save carries an exact boolean animation choice without a new authority route',saved.length===1&&saved[0].loginAnimation===true&&typeof saved[0].namesOpen==='boolean');
+ check('the existing settings save sends only the edited login animation choice',saved.length===1&&JSON.stringify(saved[0])==='{"loginAnimation":true}');
  await waitFor(()=>!byText(bnet.app,'button','Save settings').disabled,'settings request terminal');const detachedSave=byText(bnet.app,'button','Save settings');await bnet.go('#/roles');detachedSave.click();await settle();check('detached settings cannot save the new display option',saved.length===1);
  for(const code of ['cursor_expired','invalid_cursor']){
    const page=await openPage(MEMBER);let reads=0;

@@ -18,7 +18,7 @@ new Function('module', 'exports', 'require', brandCompiled.outputText)(brand, br
 const moduleCache = new Map();
 function loadRankSource(name) {
   if (moduleCache.has(name)) return moduleCache.get(name).exports;
-  assert.ok(['./governance-offices', './site-role-directory203', './policy-render'].includes(name), 'Unexpected planner import: ' + name);
+  assert.ok(['./governance-offices', './site-role-directory203', './policy-render', './policy-asset-cache'].includes(name), 'Unexpected planner import: ' + name);
   const module = { exports: {} };
   moduleCache.set(name, module);
   const output = ts.transpileModule(read(path.join(worker, 'src', name.slice(2) + '.ts')), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;

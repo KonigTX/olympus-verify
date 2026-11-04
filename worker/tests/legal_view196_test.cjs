@@ -10,7 +10,7 @@ function load(name) {
   name = name.replace(/^\.\//, '');
   if (name === 'site-core') return { securityHeaders: headers => { headers.set('Cache-Control','no-store, no-transform'); return headers; }, SESSION_COOKIE: '__Host-olg', currentUser: async () => { navigationReads++; if (!allowNavigationRead) throw Error('Public legal reader may not authenticate'); if (navigationFailure) throw Error('Fixture privacy hold'); return navigationUser; } };
   if (name === 'site-brand') return { olympusSocialMetadata: () => '' };
-  assert.ok(['policies', 'policy-content', 'policy-render', 'member-legal-navigation'].includes(name), name);
+  assert.ok(['policies', 'policy-content', 'policy-render', 'policy-asset-cache', 'member-legal-navigation'].includes(name), name);
   if (cache.has(name)) return cache.get(name).exports;
   const module = { exports: {} }; cache.set(name, module);
   const compiled = ts.transpileModule(read(path.join(worker, 'src', name + '.ts')), { reportDiagnostics: true, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } });
