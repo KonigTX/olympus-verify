@@ -174,6 +174,11 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   check('Warrior Slam and Flurry use the November ranks and cooldowns',
     official(specFact('warrior', 'arms').pro.priorities[5], ['15 seconds', '2.5 or 5 seconds'])
     && official(specFact('warrior', 'fury').pro.priorities[4], ['10%, 20% or 30%', 'no Death Wish prerequisite']));
+  const furyLeveling = DATA.presets.find(entry => entry.id === 'warrior-fury-leveling-30');
+  check('the Fury leveling preset distinguishes its October allocation from the November Flurry rule',
+    furyLeveling?.why.some(line => line.includes('October build takes Death Wish') && line.includes('Flurry no longer depends on it')));
+  check('class overviews defer shared editorial scope to the current catalogue header',
+    DATA.classes.every(entry => entry.overview.every(line => !line.startsWith('Besides the talent snapshot, this page uses Blizzard'))));
   check('Priest Holy Binding and Shadow Word: Death cite the official November update',
     official(classFact('priest').changes[7], ['replaced Binding Heal with Holy Binding', '30% of maximum health', 'no backlash on a miss'])
     && specFact('priest', 'holy').beginner.tips[2].includes('half the amount'));
