@@ -576,9 +576,10 @@ async function route(request: Request, env: Env, path: string, schemaReady = tru
       const versions=query.getAll('keyVersion');
       if (versions.length === 1 && versions[0] === STRICT_ROSTER_DISPLAY_PROTOCOL && request.method === "GET" && path === "/queue/unverified" && query.size === 1) {
         const report = await strictRosterDisplay(env, captureLaunchVerification(env));
-        const response = report ? json(report) : json({ error: "strict_roster_display_unavailable" }, 409);
-        response.headers.set("Cache-Control", "private, no-store, no-transform");
-        return response;
+        return new Response(JSON.stringify(report ?? { error: "strict_roster_display_unavailable" }), {
+          status: report ? 200 : 409,
+          headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store, no-transform" },
+        });
       }
       const presenceOnly=request.method==='GET'&&path==='/queue'&&query.getAll('presenceOnly').includes('1');
       const launch=captureLaunchVerification(env),ingest=request.method==='POST'&&['/ingest/verify','/ingest/roster','/ingest/events'].includes(path)&&launch.mode==='members-only'&&!!launch.scope&&launch.current();

@@ -24,7 +24,7 @@ const STRICT_ROSTER_DISPLAY_AGE = 3600;
  * invitation, moderation, signing or removal authority, even on a fresh read. */
 export async function strictRosterDisplay(env: Env, launch: LaunchVerificationCapture) {
   if (launch.mode !== "members-only" || !launch.scope || !launch.current()) return null;
-  const at = now();
+  const at = now(), cutoff = linksNotBefore(env);
   const rows = await env.DB.prepare(`WITH snapshot AS MATERIALIZED (
     SELECT id, exported_at, member_count FROM roster_snapshots
     WHERE id = (SELECT MAX(id) FROM roster_snapshots) AND source = ?1
@@ -55,13 +55,14 @@ export async function strictRosterDisplay(env: Env, launch: LaunchVerificationCa
   LEFT JOIN linked_guids g ON g.guid = rm.guid
   LEFT JOIN members m ON m.discord_id = c.discord_id
   LEFT JOIN site_users u ON u.discord_id = c.discord_id
-  ORDER BY rm.name_key LIMIT 1000`).bind(launch.scope.provenance, at, linksNotBefore(env)).all<{
+  ORDER BY rm.name_key LIMIT 1000`).bind(launch.scope.provenance, at, cutoff).all<{
     snapshotAt: number; memberCount: number; name: string; guid: string | null;
     status: "pending" | "unverified" | "verified" | "unknown";
     username: string | null; displayName: string | null;
   }>();
-  const first = rows.results[0];
-  if (!launch.current() || !rows.success || !first || rows.results.length !== first.memberCount) return null;
+  const first = rows.results[0], observedAt = now();
+  if (!launch.current() || cutoff !== linksNotBefore(env) || observedAt < at || !rows.success || !first
+      || first.snapshotAt < observedAt - STRICT_ROSTER_DISPLAY_AGE || rows.results.length !== first.memberCount) return null;
   const verified = [], unverified = [];
   for (const row of rows.results) {
     if (!row.guid || !/^Player-\d+-[0-9A-Fa-f]+$/.test(row.guid) || row.guid.length > 40) continue;

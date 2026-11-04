@@ -40,7 +40,7 @@ const checks227 = String.raw`
     throw Error('unexpected scoped verification fixture provider '+method+' '+p);
   };
   const fresh = async () => {
-    db=freshDb();reset();nativeBefore227=null;nativeAfter227=null;memberHook227=null;putHook227=null;putAfter227=null;
+    db=freshDb();reset();nativeBefore227=null;nativeAfter227=null;nativeRead227=null;memberHook227=null;putHook227=null;putAfter227=null;
     env=directEnv({DB:d1(db),PUBLIC_BASE_URL:'https://verify.example',VERIFY_SECRET:SECRET,ROLE_GUILD_MEMBER:ROLE,ADMISSION_MODE:'auto',OFFICER_CHARACTERS:'Fern Melder',ROSTER_MAX_SHRINK_PCT:'10',ROSTER_MIN_MEMBERS:'0',GUILD_ID:'1549537348516188200',REQUEST_CODES:'on',...SELECTED227,MEMBERSHIP_ROLE_SETTLEMENT_ENABLED:'true',DISCORD_APP_ID:BOT227,DISCORD_BOT_TOKEN:'fixture-only'});
     await env.DB.prepare('INSERT INTO pending(discord_id,name_key,name,created_at,expires_at,nonce) VALUES(?1,\'\',\'\',?2,?3,\'M2X\')').bind(A,T,T+86400).run();
     return codes.ticketFor(SECRET,'M2X',day());
@@ -83,6 +83,11 @@ const checks227 = String.raw`
   check('legacy mode cannot obtain strict reports',(await displayFetch227(displayPath227,true,{...env,VERIFY_MEMBERSHIP_ONLY:'false'})).status===409);
   check('held scope cannot obtain strict reports',(await displayFetch227(displayPath227,true,{...env,VERIFY_NATIVE_SCOPE:undefined})).status===409);
   check('strict display refuses an underlying snapshot from before the admission cutoff',(await displayFetch227(displayPath227,true,{...env,LINKS_NOT_BEFORE:String(T+1)})).status===409);
+  const displayClock227=T;
+  nativeRead227=sql=>{if(sql.includes('linked_guids AS MATERIALIZED'))T=displayClock227+1;};
+  display227=await displayFetch227(displayPath227,true,{...env,LINKS_NOT_BEFORE:String(T+1),LINKS_NOT_BEFORE_CLOCK_GATED:'true'});
+  check('cutoff activating during the real Native display read holds the pre-launch snapshot',T===displayClock227+1&&display227.status===409);
+  nativeRead227=null;T=displayClock227;
   for(const [label,change]of[
     ['unversioned provenance',"source='addon'"],['unfinished','complete=0'],['distrusted','trusted=0'],['wrong count','member_count=3'],
     ['stale','exported_at='+(T-3601)],['future','exported_at='+(T+1)]
@@ -267,5 +272,5 @@ const checks227 = String.raw`
 const module227 = new Module227(__filename, module);
 module227.filename = __filename;
 module227.paths = module.paths;
-const fixture227=parent227.slice(0,cuts227[0].index).replace(native227,"  return entry.originalNativePort(db,{beforeBatch:plan=>nativeBefore227?.(plan),afterBatch:plan=>nativeAfter227?.(plan)});");
-module227._compile('let nativeBefore227=null,nativeAfter227=null;\n'+fixture227 + checks227, __filename);
+const fixture227=parent227.slice(0,cuts227[0].index).replace(native227,"  return entry.originalNativePort(db,{beforeBatch:plan=>nativeBefore227?.(plan),afterBatch:plan=>nativeAfter227?.(plan),beforeRead:sql=>nativeRead227?.(sql)});");
+module227._compile('let nativeBefore227=null,nativeAfter227=null,nativeRead227=null;\n'+fixture227 + checks227, __filename);
