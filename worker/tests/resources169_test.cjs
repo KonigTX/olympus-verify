@@ -180,7 +180,8 @@ function renderer(fetcher) {
   const guides = guideRenderer.api.mount(guideHolder, { view: 'guides' }); await settle();
   const curatedGuides196 = walk(guideHolder).find(x => x.className === 'resources169-grid');
   check('.174 curated guide cards preserve dated scope without unrelated addon-install or internal audit copy; owner full directory is separate', walk(guideHolder).filter(x => x.tagName === 'ARTICLE').length === 12 && textOf(guideHolder).includes(catalog.checkedAt) && textOf(curatedGuides196).includes('Alchemy 225–300') && !/Choose the author.s Forever file|not every addon|direct extraction|full-body audit|blanket peer-review/.test(textOf(guideHolder)) && textOf(curatedGuides196).includes('current articles could not be read'));
-  check('.174 source metadata remains accessible in native disclosures beside visible compatibility cautions', walk(guideHolder).filter(x => x.tagName === 'DETAILS').length === 13 && textOf(guideHolder).includes('Source and compatibility details') && textOf(guideHolder).includes('Guide scope:') && textOf(guideHolder).includes('responsible editor'));
+  const curatedPanel196 = walk(guideHolder).find(x => x.className === 'resources169-curated');
+  check('.174 source metadata remains accessible in native disclosures beside visible compatibility cautions', walk(curatedPanel196).filter(x => x.tagName === 'DETAILS').length === 13 && textOf(guideHolder).includes('Source and compatibility details') && textOf(guideHolder).includes('Guide scope:') && textOf(guideHolder).includes('responsible editor'));
   const guideCount215 = walk(guideHolder).find(x => x.textContent === '12 of 12 curated entries.');
   check('.215 Guides keeps its polite result status inside the curated catalogue', politeCount215(guideCount215) && walk(guideHolder).filter(x => x.className === 'resources169-curated').some(x => walk(x).includes(guideCount215)));
   const guideSearch215 = walk(guideHolder).find(x => x.tagName === 'INPUT' && x.type === 'search'); guideRenderer.document.activeElement = guideSearch215; guideSearch215.value = 'no-such-reviewed-source-215'; guideSearch215.fire('input');
@@ -441,6 +442,16 @@ function renderer(fetcher) {
   const fullMount196 = full196.api.mount(fullHolder196, { view: 'guides' }); await settle();
   const fullRoot196 = walk(fullHolder196).find(x => x.className === 'resources169-owner-directory');
   check('.196 the complete directory is visible alongside all original curated guide cards', !!fullRoot196 && walk(fullRoot196).filter(x => x['data-directory-section']).length === 5 && walk(fullHolder196).filter(x => x.tagName === 'ARTICLE').length === 12 && directory196.sections.every(s => textOf(fullRoot196).includes(s.title) && s.blocks.every(b => textOf(fullRoot196).includes(b.heading) && b.text.every(p => textOf(fullRoot196).includes(p)))) && textOf(fullRoot196).includes('Corrections and limits') && full196.calls.length === 1);
+  const sourceCheckDetails = walk(fullRoot196).find(x => x.tagName === 'DETAILS' && x.children[0]?.textContent === 'How these sources were checked');
+  const correctionRows = walk(fullRoot196).filter(x => x.tagName === 'DL' && x.children[0]?.textContent === 'Claim');
+  check('.228 the publisher library groups review methods and pairs every original claim with its evidence',
+    walk(fullHolder196).some(x => x.tagName === 'H1' && x.textContent === 'Publisher library')
+    && sourceCheckDetails && !sourceCheckDetails.open && textOf(sourceCheckDetails).includes('2026-10-18')
+    && correctionRows.length === directory196.corrections.length && correctionRows.every((row, index) =>
+      row.children[1].textContent === directory196.corrections[index].claim
+      && row.children[3].textContent === directory196.corrections[index].treatment)
+    && !walk(fullRoot196).some(x => x.tagName === 'H4' && directory196.corrections.some(row => row.claim === x.textContent))
+    && textOf(fullRoot196).includes('build 70245, 8 October') && !textOf(fullRoot196).includes('I would use'));
   const installBlock212 = walk(fullRoot196).find(node => node.className === 'resources169-directory-block' && node.children[0]?.textContent === 'Install deliberately');
   check('.212 rendered installation guidance names published1.3.3 and its optional exporter without the stale adoption claim', !!installBlock212 && textOf(installBlock212).includes('Olympus Guild 1.3.3 is published and includes the optional website aggregate exporter.') && !textOf(installBlock212).includes('existing1.3.2') && !textOf(installBlock212).includes('has not adopted') && !textOf(installBlock212).includes('until the real upstream workflow supports it'));
   check('.212 rendered installation guidance keeps website availability and compatibility separate from publication', !!installBlock212 && textOf(installBlock212).includes('Website snapshot reporting has separate setup and availability; publication alone does not establish that the installed addon works with this website.') && textOf(installBlock212).includes('The retired standalone Army ZIP is not a replacement recommendation') && textOf(installBlock212).includes('publishing the addon does not enable website reporting.'));

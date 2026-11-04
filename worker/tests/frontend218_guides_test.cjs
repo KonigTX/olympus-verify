@@ -47,13 +47,16 @@ const WARRIOR60 = "ot1.260cf99b52db.warrior.60.053252130305152010505003000000000
   const p = await openPage(MEMBER); const head = head218(p); const guides = [], library = [];
   record218(p, "OlympusGuides", guides); record218(p, "OlympusResources", library);
   const resources = group218(p, "Resources"), hrefs = resources ? resources.querySelectorAll("a").map(a => a.getAttribute("href")) : [];
-  check(".218 the Resources menu opens with Guides & tools and keeps every existing entry", hrefs[0] === "#/resources" && resources.querySelectorAll("a")[0].textContent === "Guides & tools"
+  check(".228 the Resources menu distinguishes Olympus guides from the publisher library and keeps every entry", hrefs[0] === "#/resources"
+    && resources.querySelectorAll("a")[0].textContent === "Class & profession guides"
+    && resources.querySelector('a[href="#/guides"]').textContent === "Publisher library"
     && ["#/guide/member", "#/guide/officer", "#/talents", "#/addons", "#/guides", "#/updates"].every(h => hrefs.filter(x => x === h).length === 1));
   await p.go("#/resources"); await waitFor(() => guides.length === 1, "guides hub");
   check(".218 #/resources mounts the Olympus guides hub with the pinned talent revision", guides[0].options.view === "hub" && guides[0].options.talentRevision === p.boot.meta.talentSnapshotRevision
-    && head.querySelectorAll('link[data-olympus-tool="OlympusGuides"]').length === 1 && p.document.title === "Guides & tools — Olympus");
+    && head.querySelectorAll('link[data-olympus-tool="OlympusGuides"]').length === 1 && p.document.title === "Class & profession guides — Olympus");
   await p.go("#/guides"); await waitFor(() => library.length === 1, "publisher library");
-  check(".218 #/guides itself still mounts the reviewed publisher library, and the hub is disposed", library[0].options.view === "guides" && guides[0].destroyed === 1 && guides.length === 1);
+  check(".218 #/guides itself still mounts the reviewed publisher library, and the hub is disposed", library[0].options.view === "guides"
+    && guides[0].destroyed === 1 && guides.length === 1 && p.document.title === "Publisher library — Olympus");
   await p.go("#/guides/class/warrior/arms"); await waitFor(() => guides.length === 2, "class guide");
   check(".218 a class guide route passes the class, the spec and the attach handler", guides[1].options.view === "class" && guides[1].options.classId === "warrior" && guides[1].options.specId === "arms"
     && typeof guides[1].options.onAttach === "function" && guides[1].options.canAttach === true && p.document.title === "Warrior guide · Guides — Olympus");

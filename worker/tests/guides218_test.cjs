@@ -78,6 +78,7 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   refuse('another talent revision', d => { d.talentRevision = '000000000000'; });
   refuse('a source on an unlisted host', d => { d.sources[0].url = 'https://example.com/x'; });
   refuse('an http source', d => { d.sources[0].url = d.sources[0].url.replace('https:', 'http:'); });
+  refuse('a catalogue source on the licence host', d => { d.sources[0].url = 'https://creativecommons.org/licenses/by/4.0/'; });
   refuse('an Unavailable claim with a value', d => { const c = d.classes[0].specs[0].pro.priorities[0] || (d.classes[0].specs[0].pro.priorities[0] = { label: 'x', value: 'y', grade: 'E', sources: [0] }); c.grade = 'U'; c.value = 'guess'; });
   refuse('an unknown grade', d => { const c = d.classes[0].specs[0].pro.priorities[0] || (d.classes[0].specs[0].pro.priorities[0] = { label: 'x', value: 'y', grade: 'E', sources: [0] }); c.grade = 'Z'; });
   refuse('a citation past the source list', d => { d.classes[0].changes[0] ? d.classes[0].changes[0].sources = [d.sources.length] : d.tools.whatChanged[0].sources = [d.sources.length]; });
@@ -116,7 +117,8 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   check('the hub retains all existing class, spec, profession and tool links', DATA.classes.every(c => hubLinks.includes('#/guides/class/' + c.id) && c.specs.every(s => hubLinks.includes('#/guides/class/' + c.id + '/' + s.id)))
     && DATA.professions.every(p => hubLinks.includes('#/guides/profession/' + p.key)) && ['attunements', 'buffs', 'changes'].every(t => hubLinks.includes('#/guides/tools/' + t)));
   check('the hub keeps the calculator, addons, publisher library, game updates and member guide one click away', ['#/talents', '#/addons', '#/guides', '#/updates', '#/guide/member'].every(h => hubLinks.includes(h)));
-  check('the hub has exactly one h1 and states the scope note once', m.box.tags('h1').length === 1 && text(m.box).split(DATA.scopeNote.slice(0, 60)).length === 2);
+  check('the hub has one Class & profession guides heading and states the scope note once',
+    m.box.tags('h1').map(text).join('|') === 'Class & profession guides' && text(m.box).split(DATA.scopeNote.slice(0, 60)).length === 2);
   const classLandingLinks = hubLinks.filter(h => /^#\/guides\/class\/[a-z]+$/.test(h));
   const professionHeadings = m.box.tags('h3').map(text).filter(t => ['Primary crafting', 'Gathering', 'Secondary'].includes(t));
   check('the hub alphabetizes classes and groups professions by the kind of training',
@@ -268,6 +270,52 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   m = await mounted({ view: 'class', classId: DATA.classes[2].id, talentRevision: talents.revision });
   const external = m.box.tags('a').filter(a => /^https:/.test(a.getAttribute('href') || ''));
   check('external source links open safely and only on listed hosts', external.length > 0 && external.every(a => a.getAttribute('target') === '_blank' && a.getAttribute('rel') === 'noopener noreferrer'));
+  const sourceLines = box => box.all(node => node.className === 'guides218-sources');
+  const topic = 'https://us.forums.blizzard.com/en/wow/t/2360696';
+  check('the three topic aliases converge without changing the dated notes',
+    [1, 17, 118].every(index => DATA.sources[index].url === topic && DATA.sources[index].kind === 'official')
+    && [[47, 4], [48, 5], [49, 6], [50, 7], [150, 9]].every(([index, post]) => DATA.sources[index].url === topic + '/' + post));
+  const citationFixture = clone(DATA);
+  citationFixture.classes[0].changes[0].sources = [1, 1, 17, 118, 150, 86];
+  const citation = await mounted({ view: 'class', classId: DATA.classes[0].id, talentRevision: talents.revision }, citationFixture);
+  const [baseTopicLink, datedPostLink, playerPostLink] = sourceLines(citation.box)[0].tags('a');
+  check('a citation combines same-topic aliases and keeps every source title and the exact dated post',
+    links(sourceLines(citation.box)[0]).join('|') === [topic, topic + '/9', DATA.sources[86].url].join('|')
+    && text(baseTopicLink) === 'Blizzard Entertainment — ' + [1, 17, 118].map(index => DATA.sources[index].label).join(' / ')
+    && text(datedPostLink) === 'Blizzard Entertainment — ' + DATA.sources[150].label);
+  check('Blizzard hosts player posts without getting publisher credit for their claims',
+    [86, 120].every(index => DATA.sources[index].kind === 'community' && DATA.sources[index].publisher === 'Blizzard forums (player posts)')
+    && text(playerPostLink).startsWith('Blizzard forums (player posts) — Beta player report'));
+  const guideViews = [
+    ...DATA.classes.flatMap(c => [{ view: 'class', classId: c.id }, ...c.specs.map(s => ({ view: 'class', classId: c.id, specId: s.id }))]),
+    ...DATA.professions.map(p => ({ view: 'profession', profession: p.key })),
+    ...['attunements', 'buffs', 'raid-structure', 'changes'].map(tool => ({ view: 'tool', tool }))
+  ];
+  for (const opts of guideViews) {
+    const { box } = await mounted({ ...opts, talentRevision: talents.revision });
+    const purposeByName = new Map();
+    for (const line of sourceLines(box)) {
+      const anchors = line.tags('a');
+      assert.equal(new Set(links(line)).size, anchors.length, JSON.stringify(opts) + ': repeated destination in one citation');
+      for (const a of anchors) {
+        const [name, href] = [text(a), a.getAttribute('href')];
+        assert.match(name, /^.+ — .+$/, JSON.stringify(opts) + ': source title missing');
+        assert.ok(!purposeByName.has(name) || purposeByName.get(name) === href, JSON.stringify(opts) + ': same link name identifies different sources');
+        purposeByName.set(name, href);
+      }
+    }
+    const credit = box.all(e => e.className.includes('guides218-talent-credit'));
+    assert.equal(credit.length, opts.view === 'class' || opts.tool === 'changes' ? 1 : 0, JSON.stringify(opts));
+    if (credit.length) {
+      assert.deepEqual(links(credit[0]), ['https://talentsforever.com/', 'https://creativecommons.org/licenses/by/4.0/']);
+      assert.equal(text(credit[0]).match(/CC BY 4\.0/g).length, 1);
+    }
+    assert.ok(box.tags('a').filter(a => /^https:/.test(a.getAttribute('href') || ''))
+      .every(a => a.getAttribute('target') === '_blank' && a.getAttribute('rel') === 'noopener noreferrer'), JSON.stringify(opts));
+    const breadcrumbs = box.all(e => e.getAttribute('aria-label') === 'Breadcrumb')[0];
+    assert.equal(text(breadcrumbs.tags('a')[0]), 'Class & profession guides');
+  }
+  check('all guide pages use distinct names for different citations, safe source links, relevant credits and consistent breadcrumbs', guideViews.length === 52);
   let calls = 0; const failing = page(async () => { calls++; return { ok: false, status: 503, json: async () => ({}) }; });
   failing.api.mount(failing.box, { view: 'hub', talentRevision: talents.revision }); await settle(); await settle();
   check('a failed catalogue read says so and does not show part of a page', text(failing.box).includes('The guides could not be loaded.') && failing.box.tags('h1').length === 0);

@@ -4,6 +4,8 @@
 (function (root) {
   "use strict";
   const DATA_URL = "/static/guides218.json";
+  const GUIDES_TITLE = "Class & profession guides";
+  const TALENT_LICENSE_URL = "https://creativecommons.org/licenses/by/4.0/";
   const HOSTS = new Set(["worldofwarcraft.blizzard.com", "news.blizzard.com", "us.forums.blizzard.com", "eu.forums.blizzard.com", "warcraft.wiki.gg",
     "www.wowhead.com", "wowhead.com", "www.icy-veins.com", "icy-veins.com", "www.method.gg", "method.gg", "www.warcrafttavern.com", "warcrafttavern.com",
     "talentsforever.com", "www.talentsforever.com", "www.curseforge.com", "curseforge.com", "github.com", "wowpedia.fandom.com"]);
@@ -111,7 +113,8 @@
       return node;
     };
     const link = (href, text, cls) => el("a", { href, text, class: cls });
-    const external = (url, text) => safeUrl(url) ? el("a", { href: url, text, target: "_blank", rel: "noopener noreferrer" }) : el("span", { text });
+    const external = (url, text) => safeUrl(url) || url === TALENT_LICENSE_URL
+      ? el("a", { href: url, text, target: "_blank", rel: "noopener noreferrer" }) : el("span", { text });
     const icon = (name, alt = "") => el("img", { src: "/static/wow/" + name + ".png", alt, width: 32, height: 32, class: "guides218-icon", loading: "lazy" });
     const section = (title, ...kids) => el("section", { class: "card guides218-section" }, el("h2", { text: title }), ...kids);
     const list = (items, ordered) => el(ordered ? "ol" : "ul", { class: "guides218-list" }, items.map(t => el("li", { text: t })));
@@ -121,8 +124,20 @@
 
     function sourcesLine(data, ids) {
       if (!ids || !ids.length) return null;
-      return el("span", { class: "guides218-sources" }, "Source: ", ids.map((n, i) => [i ? ", " : "", external(data.sources[n].url, data.sources[n].publisher)]));
+      const citations = new Map();
+      for (const n of ids) {
+        const { url, publisher, kind, label } = data.sources[n];
+        const key = JSON.stringify([url, publisher, kind]);
+        if (!citations.has(key)) citations.set(key, { url, publisher, labels: new Set() });
+        citations.get(key).labels.add(label);
+      }
+      return el("span", { class: "guides218-sources" }, citations.size === 1 ? "Source: " : "Sources: ",
+        [...citations.values()].map(({ url, publisher, labels }, i) =>
+          [i ? " · " : "", external(url, publisher + " — " + [...labels].join(" / "))]));
     }
+    const talentCredit = () => el("p", { class: "muted small guides218-talent-credit" }, "Beta talent data from ",
+      external("https://talentsforever.com/", "Talents Forever"), " by Chris Baldwin, summarized by Olympus under ",
+      external(TALENT_LICENSE_URL, "CC BY 4.0"), ".");
     function grade(data, g) {
       return el("abbr", { class: "guides218-grade", "data-grade": g, title: data.grades[g], text: g });
     }
@@ -169,7 +184,7 @@
 
     const byName = (a, b) => a.name.localeCompare(b.name, "en");
     function hub(data) {
-      const frag = [header(data, "Olympus guides & tools", null, "Class, spec and profession guides written for Olympus, plus raid-preparation tools.")];
+      const frag = [header(data, GUIDES_TITLE, null, "Class, spec and profession guides written for Olympus, plus raid-preparation tools.")];
       frag.push(section("Class guides", el("div", { class: "guides218-grid" }, [...data.classes].sort(byName).map(c => el("article", { class: "guides218-card guides222-class", "data-theme": c.id },
         el("h3", null, icon("class-" + c.id), " ", link("#/guides/class/" + c.id, c.name)),
         el("p", { class: "small" }, c.specs.map((s, i) => [i ? " · " : "", link("#/guides/class/" + c.id + "/" + s.id, s.name)])))))));
@@ -193,7 +208,7 @@
 
     function classView(data, cls, spec) {
       const used = new Set();
-      const frag = [crumbs(["#/resources", "Guides & tools"], [null, cls.name + (spec ? " · " + spec.name : "")]), header(data, cls.name + " guide", "class-" + cls.id, cls.overview[0])];
+      const frag = [crumbs(["#/resources", GUIDES_TITLE], [null, cls.name + (spec ? " · " + spec.name : "")]), header(data, cls.name + " guide", "class-" + cls.id, cls.overview[0])];
       frag.push(el("nav", { class: "guides218-tabs", "aria-label": cls.name + " specs" }, cls.specs.map(s => el("a", { href: "#/guides/class/" + cls.id + "/" + s.id,
         class: "btn small" + (spec && s.id === spec.id ? " active" : ""), "aria-current": spec && s.id === spec.id ? "page" : null }, icon(ROLE_ICON[s.roles[0]]), " " + s.name))));
       if (cls.overview.length > 1) frag.push(section("Class overview", list(cls.overview.slice(1))));
@@ -223,14 +238,14 @@
       const w = s.whatChanged;
       frag.push(section(s.name + ": talent tree changes", el("p", { text: "Compared with Classic, the " + s.name + " tree in the talent snapshot has " + w.new + " new, " + w.changed + " changed, " + w.moved + " moved and " + w.same + " unchanged talents; " + w.classicOnly + " Classic talents are gone." }),
         el("p", null, link("#/talents/" + cls.id, "Open the calculator and switch on Compare to Classic", "btn small"))));
-      frag.push(legend(data, used));
+      frag.push(legend(data, used), talentCredit());
       return frag;
     }
 
     function professionView(data, p) {
       const used = new Set(); collect(used, [...p.changes, ...p.leveling, ...p.raidValue]);
       const pairs = p.pairsWith.map(k => data.professions.find(x => x.key === k)).filter(Boolean);
-      return [crumbs(["#/resources", "Guides & tools"], [null, p.name]), header(data, p.name + " guide", "prof-" + p.key.replace("-", "_"), p.overview[0]),
+      return [crumbs(["#/resources", GUIDES_TITLE], [null, p.name]), header(data, p.name + " guide", "prof-" + p.key.replace("-", "_"), p.overview[0]),
         p.overview.length > 1 ? section("Overview", list(p.overview.slice(1))) : null,
         pairs.length ? section("Pairs well with", el("p", null, pairs.map((x, i) => [i ? " · " : "", link("#/guides/profession/" + x.key, x.name)]))) : null,
         section("What Forever changes", claims(data, p.changes)), section("Leveling", claims(data, p.leveling)),
@@ -260,7 +275,7 @@
         section("One roster, three raid sizes",
           el("p", { text: "Adapted from Fox (akaFoxSlayer)’s raid leadership guidelines for Olympus. Use this as a planning framework and adjust it to the encounter, roster and availability." }),
           el("p", { text: "Start with eight groups of five. Keep the smaller groups familiar with one another and give each team comparable leadership, preparation and support." }),
-          el("p", null, "Blizzard announced December 9 for the first three Forever raids. See the ", link("https://worldofwarcraft.blizzard.com/en-us/news/24303009", "raid sizes and attunements"), "."),
+          el("p", null, "Blizzard announced December 9 for the first three Forever raids. See ", external("https://worldofwarcraft.blizzard.com/en-us/news/24303009", "Blizzard Entertainment — raid sizes and attunements"), "."),
           el("table", { class: "guides218-table" },
             el("caption", { text: "How the eight groups combine" }),
             el("thead", null, el("tr", null, ["Forever raid", "Group assignments"].map(text => el("th", { scope: "col", text })))),
@@ -288,7 +303,7 @@
 
     function toolView(data, id) {
       const t = data.tools, used = new Set(), title = (TOOLS.find(x => x[0] === id) || [])[1];
-      const frag = [crumbs(["#/resources", "Guides & tools"], [null, title]), header(data, title, null, (TOOLS.find(x => x[0] === id) || [])[2])];
+      const frag = [crumbs(["#/resources", GUIDES_TITLE], [null, title]), header(data, title, null, (TOOLS.find(x => x[0] === id) || [])[2])];
       if (id === "attunements") {
         for (const a of t.attunements) {
           collect(used, [a.requirement, ...a.steps]);
@@ -314,7 +329,7 @@
           el("tbody", null, [...data.classSummary].sort(byName).map(x => el("tr", null, el("th", { scope: "row" }, link("#/talents/" + x.id, x.name)),
             [x.new, x.changed, x.moved, x.same, x.classicOnly].map(n => el("td", { text: String(n) }))))))));
       }
-      frag.push(legend(data, used));
+      frag.push(legend(data, used), id === "changes" ? talentCredit() : null);
       return frag;
     }
 
@@ -353,14 +368,14 @@
       const view = options.view, frag = [];
       if (view === "class") {
         const cls = data.classes.find(c => c.id === options.classId), spec = cls && options.specId ? cls.specs.find(s => s.id === options.specId) : null;
-        if (!cls || (options.specId && !spec)) frag.push(el("p", { text: "There is no such guide." }), link("#/resources", "Back to guides & tools", "btn"));
+        if (!cls || (options.specId && !spec)) frag.push(el("p", { text: "There is no such guide." }), link("#/resources", "Back to " + GUIDES_TITLE, "btn"));
         else frag.push(...classView(data, cls, spec));
       } else if (view === "profession") {
         const p = data.professions.find(x => x.key === options.profession);
-        if (!p) frag.push(el("p", { text: "There is no such guide." }), link("#/resources", "Back to guides & tools", "btn"));
+        if (!p) frag.push(el("p", { text: "There is no such guide." }), link("#/resources", "Back to " + GUIDES_TITLE, "btn"));
         else frag.push(...professionView(data, p));
       } else if (view === "tool") {
-        if (!TOOLS.some(x => x[0] === options.tool)) frag.push(el("p", { text: "There is no such tool." }), link("#/resources", "Back to guides & tools", "btn"));
+        if (!TOOLS.some(x => x[0] === options.tool)) frag.push(el("p", { text: "There is no such tool." }), link("#/resources", "Back to " + GUIDES_TITLE, "btn"));
         else frag.push(...toolView(data, options.tool));
       } else frag.push(...hub(data));
       shell.replaceChildren(...frag.filter(Boolean));

@@ -1390,7 +1390,7 @@
         if (feat("census") && can("confirmedGuildData")) sections.push(["#/community/census", "Census preview"]);
         add(nav, group("Community", sections));
       }
-      const resources = [["#/resources", "Guides & tools"], ["#/guide/member", "Member guide"], ["#/guide/officer", "Officer guide"], ["#/talents", "Talent calculator"], ["#/addons", "Addons"], ["#/guides", "Class and profession guides"], ["#/updates", "Game updates"]];
+      const resources = [["#/resources", "Class & profession guides"], ["#/guide/member", "Member guide"], ["#/guide/officer", "Officer guide"], ["#/talents", "Talent calculator"], ["#/addons", "Addons"], ["#/guides", "Publisher library"], ["#/updates", "Game updates"]];
       if (S.qrVerification && S.qrVerification.enabled === true) resources.push(["/static/qr-phase1.html", "Verify in game"]);
       add(nav, group("Resources", resources));
     }
@@ -1482,13 +1482,13 @@
       return `Community · ${event || (own(community, sub || "") ? community[sub || ""] : "Not here")}`;
     }
     if (head === "talents") { const cls = M().classes.find(c => c.key === dec(sub || "warrior")); return cls ? `${cls.label} talents` : "Talents"; }
-    if (head === "resources") return "Guides & tools";
-    if (head === "guides" && sub) return guideTitle218(sub, detail);
+    if (head === "resources") return "Class & profession guides";
+    if (head === "guides") return sub ? guideTitle218(sub, detail) : "Publisher library";
     if (head === "vote") { const ballot = M().ballots.find(b => b.key === dec(sub || "")); return ballot ? `${ballot.label} · Vote` : "Vote"; }
     if (head === "roles" && sub) { const role = M().positions.find(p => p.key === dec(sub)); if (role) return `${role.label} · Roles`; }
     if (head === "guide") return sub === "officer" ? "Officer guide" : "Member guide";
     if (head === "legal") return sub === "privacy" ? "Privacy Policy" : sub === "terms" ? "Terms of Service" : "Legal";
-    return ({ "": "Home", apply: "Apply", vote: "Vote", roles: "Roles", governance: "Governance", organization: "Organization", "treasury-plan": "Treasury plan", addons: "Addons", guides: "Guides", updates: "Game updates", news: "Town Crier", army: sub === "report" ? "Army reporter" : "Army", data: "Account data", request: "Private request" })[head] || "Home";
+    return ({ "": "Home", apply: "Apply", vote: "Vote", roles: "Roles", governance: "Governance", organization: "Organization", "treasury-plan": "Treasury plan", addons: "Addons", updates: "Game updates", news: "Town Crier", army: sub === "report" ? "Army reporter" : "Army", data: "Account data", request: "Private request" })[head] || "Home";
   }
   let lastHash = location.hash;
   let ignoreHash = false;
@@ -1700,7 +1700,7 @@
   ROUTES.addons = resourcesView("addons");
   // .218: #/guides itself stays the reviewed publisher library; its sub-routes and #/resources are Olympus's own guides and tools.
   ROUTES.guides = (main, parts) => parts.length ? guidesView218(main, parts) : resourcesView("guides")(main);
-  ROUTES.resources = (main, parts) => parts.length ? add(main, frame("Guides & tools", null, h("p", { text: "There is no such page." }), h("a", { class: "btn", href: "#/resources", text: "Guides & tools" }))) : guidesView218(main, []);
+  ROUTES.resources = (main, parts) => parts.length ? add(main, frame("Class & profession guides", null, h("p", { text: "There is no such page." }), h("a", { class: "btn", href: "#/resources", text: "Class & profession guides" }))) : guidesView218(main, []);
   ROUTES.updates = resourcesView("updates");
   // .218 Olympus guides and tools (guides218.js renders them). "Attach to my application" only carries a build into the open
   // application form for the applicant to check and save; it never saves, never ticks a consent and never changes board sharing.
@@ -1717,7 +1717,7 @@
     const [kind, first, second] = parts.map(dec);
     const view = !parts.length ? "hub" : kind === "class" && first && parts.length <= 3 ? "class" : kind === "profession" && first && parts.length === 2 ? "profession"
       : kind === "tools" && first && parts.length === 2 ? "tool" : null;
-    if (!view) { add(main, frame("Guides", null, h("p", { text: "There is no such guide." }), h("a", { class: "btn", href: "#/resources", text: "Guides & tools" }))); return; }
+    if (!view) { add(main, frame("Guides", null, h("p", { text: "There is no such guide." }), h("a", { class: "btn", href: "#/resources", text: "Class & profession guides" }))); return; }
     return memberTool(main, "OlympusGuides", "/static/guides218.js", "/static/guides218.css", {
       view, classId: view === "class" ? first : undefined, specId: view === "class" && second ? second : undefined,
       profession: view === "profession" ? first : undefined, tool: view === "tool" ? first : undefined, talentRevision: M().talentSnapshotRevision,
