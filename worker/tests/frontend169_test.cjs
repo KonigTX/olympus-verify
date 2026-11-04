@@ -170,6 +170,33 @@ const recordTool169 = (page, namespace, calls) => {
   await waitFor(() => coRow175.querySelector('[data-appointment-status="co_gm"]').textContent.includes("Hand of the Sovereign · Co-Guild Master: The selected account is not currently eligible"), "role-specific real save refusal");
   check(".175 a changed selected account is named by office at its field and the real Worker refuses the whole save", one("SELECT value FROM site_settings WHERE key='appointed'")?.value === appointedBefore175 && !publication175.checked && coInput175.focusCalls === 1 && !coRow175.querySelector('[data-appointment-status="co_gm"]').textContent.includes(OTHER));
   await fixtureRun("UPDATE site_users SET denied=0 WHERE discord_id=?", OTHER);
+  const storedAppointment = one("SELECT value,updated_at,updated_by FROM site_settings WHERE key='appointed'");
+  const storedAutoQueue = one("SELECT value,updated_at,updated_by FROM site_settings WHERE key='autoQueue'");
+  const existingAppointment = JSON.stringify({co_gm: '<@' + OTHER + '>'});
+  const seedSetting = (key, row) => !row
+    ? fixtureRun("DELETE FROM site_settings WHERE key=?", key)
+    : fixtureRun("INSERT INTO site_settings(key,value,updated_at,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at,updated_by=excluded.updated_by", key, row.value, row.updated_at, row.updated_by);
+  try {
+    const fixtureTime = Math.floor(Date.now()/1000);
+    await seedSetting("appointed", {value:existingAppointment,updated_at:fixtureTime,updated_by:null});
+    await seedSetting("autoQueue", {value:"1",updated_at:fixtureTime,updated_by:null});
+    const queuePage = await openPage(STAFF);
+    await queuePage.go("#/admin/settings");
+    await waitFor(() => !!queuePage.app.querySelector('#appointed-characters-ok'), "unrelated queue settings");
+    const queueLabel = Array.from(queuePage.app.querySelectorAll('label')).find(label => label.textContent.includes('automatically queue approved reserved names'));
+    const queue = queueLabel.querySelector('input');
+    const saveQueue = byText(queuePage.app, "button", "Save settings");
+    queue.checked = false;
+    saveQueue.click();
+    await waitFor(() => !saveQueue.disabled, "unrelated settings save completed");
+    check("saving the queue setting preserves an existing account association without requesting publication consent",
+      one("SELECT value FROM site_settings WHERE key='autoQueue'")?.value === '0'
+      && one("SELECT value FROM site_settings WHERE key='appointed'")?.value === existingAppointment
+      && !queuePage.app.querySelector('#appointed-characters-ok').checked);
+  } finally {
+    await seedSetting("appointed", storedAppointment);
+    await seedSetting("autoQueue", storedAutoQueue);
+  }
   const lookup175 = await openPage(STAFF);
   await lookup175.go("#/admin/lookup/" + absent175);
   await waitFor(() => lookup175.app.textContent.includes("no current site profile"), "current-profile lookup wording");
