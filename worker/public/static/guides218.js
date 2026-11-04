@@ -67,7 +67,7 @@
     }
     if (!isList(data.professions, 12) || data.professions.length !== 12) fail("professions");
     for (const p of data.professions) {
-      if (!p || !/^[a-z-]+$/.test(p.key) || !isText(p.name, 40) || !isText(p.type, 20) || !textsOk(p.overview, 3) || !isList(p.pairsWith, 2)
+      if (!p || !/^[a-z-]+$/.test(p.key) || !isText(p.name, 40) || !["primary", "gathering", "secondary"].includes(p.type) || !textsOk(p.overview, 3) || !isList(p.pairsWith, 2)
         || !claimsOk(p.changes, 6) || !claimsOk(p.leveling, 8) || !claimsOk(p.raidValue, 4) || !isText(p.goldNote) || !textsOk(p.unknowns, 4)) fail("profession");
     }
     const t = data.tools;
@@ -158,18 +158,24 @@
         el("h3", { text: p.label }),
         el("p", { class: "muted small", text: "Level " + p.level + " · " + p.context + " · " + p.treePoints.map((n, i) => trees[i] + " " + n).join(" / ") }),
         list(p.why),
-        el("p", { class: "muted small", text: "Olympus editorial starting point, checked against talent snapshot " + data.talentRevision + " on " + p.provenance.reviewedAt + ". Adjust it to your gear and group." }),
+        el("p", { class: "muted small", text: "Beta snapshot build · " + data.talentRevision + " · checked " + p.provenance.reviewedAt + ". Blizzard has since changed talents. Review the current notes before using this build in game or attaching it to an application." }),
         el("div", { class: "btn-row" }, link(href, "Load this build in the talent calculator", "btn"), attach),
         options.canAttach === false && options.attachReason ? el("p", { class: "muted small", text: options.attachReason }) : null, status);
     }
 
     function hub(data) {
       const frag = [header(data, "Olympus guides & tools", null, "Class, spec and profession guides written for Olympus, plus raid-preparation tools.")];
-      frag.push(section("Class guides", el("div", { class: "guides218-grid" }, data.classes.map(c => el("article", { class: "guides218-card guides222-class", "data-theme": c.id },
+      const byName = (a, b) => a.name.localeCompare(b.name, "en");
+      frag.push(section("Class guides", el("div", { class: "guides218-grid" }, [...data.classes].sort(byName).map(c => el("article", { class: "guides218-card guides222-class", "data-theme": c.id },
         el("h3", null, icon("class-" + c.id), " ", link("#/guides/class/" + c.id, c.name)),
         el("p", { class: "small" }, c.specs.map((s, i) => [i ? " · " : "", link("#/guides/class/" + c.id + "/" + s.id, s.name)])))))));
-      frag.push(section("Profession guides", el("div", { class: "guides218-grid" }, data.professions.map(p => el("article", { class: "guides218-card guides222-profession", "data-theme": p.key },
-        el("h3", null, icon("prof-" + p.key.replace("-", "_")), " ", link("#/guides/profession/" + p.key, p.name)), el("p", { class: "small muted", text: p.type }))))));
+      const professionGroups = [["primary", "Primary crafting"], ["gathering", "Gathering"], ["secondary", "Secondary"]];
+      frag.push(section("Profession guides", professionGroups.map(([type, title]) => [
+        el("h3", { text: title }),
+        el("div", { class: "guides218-grid" }, data.professions.filter(p => p.type === type).sort(byName).map(p =>
+          el("article", { class: "guides218-card guides222-profession", "data-theme": p.key },
+            el("h4", null, icon("prof-" + p.key.replace("-", "_")), " ", link("#/guides/profession/" + p.key, p.name)))))
+      ])));
       frag.push(section("Raid preparation tools", el("div", { class: "guides218-grid" }, TOOLS.map(([id, name, text]) => el("article", { class: "guides218-card guides222-tool", "data-theme": id },
         el("h3", null, link("#/guides/tools/" + id, name)), el("p", { class: "small", text }))))));
       frag.push(section("More resources", el("ul", { class: "guides218-list" },

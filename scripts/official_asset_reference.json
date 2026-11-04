@@ -4052,14 +4052,14 @@
     {
       "path": "worker/public/static/guides218.js",
       "mode": "100644",
-      "bytes": 27426,
-      "sha256": "dcbb7541f06fa118a70900210a874a0b25b5b2b3e1abd586cd8bbeee8740b815"
+      "bytes": 27829,
+      "sha256": "37fac2f4deec1eee943d5de2d73f3afe462d9e3808ad01ab309a80e7dc3ba98d"
     },
     {
       "path": "worker/public/static/guides218.json",
       "mode": "100644",
-      "bytes": 337864,
-      "sha256": "2d207f5155104370e21ebdc1c3aeaf9d3bb87a0b14e4155d572d682f0f6b52a5"
+      "bytes": 335603,
+      "sha256": "aa7442b1afe7b57ceac861d9fe4137497b561367e1e8c439d447d6ad840bd4c0"
     },
     {
       "path": "worker/public/static/legal-view196.js",

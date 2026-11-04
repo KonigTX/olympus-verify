@@ -86,6 +86,7 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   refuse('a spec citing a missing preset', d => { d.classes[0].specs[0].presets.push('missing-preset'); });
   refuse('eight classes', d => { d.classes.pop(); });
   refuse('eleven professions', d => { d.professions.pop(); });
+  refuse('an unknown profession group', d => { d.professions[0].type = 'unknown'; });
 
   // 3. Every preset is a real, attachable build from the pinned snapshot.
   for (const p of DATA.presets) {
@@ -115,6 +116,10 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
     && DATA.professions.every(p => hubLinks.includes('#/guides/profession/' + p.key)) && ['attunements', 'buffs', 'changes'].every(t => hubLinks.includes('#/guides/tools/' + t)));
   check('the hub keeps the calculator, addons, publisher library, game updates and member guide one click away', ['#/talents', '#/addons', '#/guides', '#/updates', '#/guide/member'].every(h => hubLinks.includes(h)));
   check('the hub has exactly one h1 and states the scope note once', m.box.tags('h1').length === 1 && text(m.box).split(DATA.scopeNote.slice(0, 60)).length === 2);
+  const classLandingLinks = hubLinks.filter(h => /^#\/guides\/class\/[a-z]+$/.test(h));
+  const professionHeadings = m.box.tags('h3').map(text).filter(t => ['Primary crafting', 'Gathering', 'Secondary'].includes(t));
+  check('the hub alphabetizes classes and groups professions by the kind of training',
+    classLandingLinks.join(',') === [...classLandingLinks].sort().join(',') && professionHeadings.join(',') === 'Primary crafting,Gathering,Secondary');
   check('class and profession icons are local official art only', m.box.tags('img').every(i => /^\/static\/wow\/(class|prof|role)-[a-z_]+\.png$/.test(i.getAttribute('src'))));
   check('exactly one same-origin catalogue fetch', m.fetches.length === 1 && m.fetches[0][0] === '/static/guides218.json' && m.fetches[0][1].redirect === 'error');
 
@@ -126,6 +131,7 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
     && m.box.all(e => e.getAttribute('aria-current') === 'page' && e.getAttribute('href') === '#/guides/class/' + cls.id + '/' + spec.id).length === 1
     && [spec.name + ': quick start', spec.name + ': advanced', spec.name + ': PvP', spec.name + ': talent starting points', spec.name + ': talent tree changes'].every(t => m.box.tags('h2').some(h => text(h) === t)));
   const cards = m.box.all(e => e.getAttribute('data-preset'));
+  check('historical preset codes stay visible with an explicit beta snapshot label', cards.length > 0 && cards.every(card => text(card).includes('Beta snapshot build')));
   check('every preset of the spec renders once with its exact calculator link', cards.length === spec.presets.length && spec.presets.every(id => { const p = DATA.presets.find(x => x.id === id), card = cards.find(c => c.getAttribute('data-preset') === id);
     return card && card.tags('a').some(a => a.getAttribute('href') === '#/talents/' + p.classId + '/' + encodeURIComponent(p.code) && text(a) === 'Load this build in the talent calculator'); }));
   const attachButton = cards[0].tags('button').find(b => text(b) === 'Attach to my application');
@@ -133,6 +139,11 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   const first = DATA.presets.find(x => x.id === spec.presets[0]);
   check('Attach hands over exactly the preset identity and build, frozen, and says what happens next', attached.length === 1 && Object.isFrozen(attached[0]) && JSON.stringify(attached[0]) === JSON.stringify({ presetId: first.id, label: first.label, classId: first.classId, level: first.level, code: first.code })
     && text(cards[0]).includes('Opening your application with this build'));
+  const feralGuide = await mounted({ view: 'class', classId: 'druid', specId: 'feral-combat', talentRevision: talents.revision });
+  check('Feral instructions use the current first-party tuning while the build codes retain their snapshot',
+    text(feralGuide.box).includes('Berserk was removed') && text(feralGuide.box).includes('115% threat bonus')
+    && !text(feralGuide.box).includes('Berserk lasts 15 s')
+    && links(feralGuide.box).includes('https://us.forums.blizzard.com/en/wow/t/2360696/9'));
   m = await mounted({ view: 'class', classId: cls.id, talentRevision: talents.revision, canAttach: false, attachReason: 'Applications are closed right now, so a build cannot be attached.', onAttach: () => attached.push('no') });
   const closedButtons = m.box.tags('button').filter(b => text(b) === 'Attach to my application');
   check('with applications closed every attach button is disabled and the reason is shown', closedButtons.length > 0 && closedButtons.every(b => b.disabled) && text(m.box).includes('Applications are closed right now'));
