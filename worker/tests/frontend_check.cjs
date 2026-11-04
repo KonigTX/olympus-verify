@@ -262,7 +262,7 @@ async function openPage(who, over = {}, { clockNow, bootTransform } = {}) {
     __answer: null, // .107: when set and it returns a value, the Worker's answer to a matching request is replaced by that value as a 200 JSON body (a readable but wrong receipt)
     __intercept: null, // RT16 fixture only: an owned gate or early Response before the real Worker; default null.
     __before: null, // .107: when set and true, a matching request fails before the Worker sees it (never sent)
-    __hold: null, // The completed Worker reply waits for a fixed delay or an explicit fixture gate before delivery.
+    __hold: null, // .110: when set and it returns a number, the Worker's completed answer to a matching request is held that many ms before the page sees it
     fetch: async (pathname, init = {}) => {
       if (sandbox.__intercept) { const early = await sandbox.__intercept(pathname, init); if (early instanceof Response) return early; }
       const ms = sandbox.__delay ? sandbox.__delay(pathname, init) : 0;
@@ -273,9 +273,7 @@ async function openPage(who, over = {}, { clockNow, bootTransform } = {}) {
       const r = await indexMod.default.fetch(new Request("https://guild.example" + pathname, { method: init.method || "GET", headers: h2, body: init.body }), env({ ASSETS: governanceAssets, ...over }), ctx);
       if (sandbox.__drop && sandbox.__drop(pathname, init)) throw new TypeError("the network dropped the answer");
       if (sandbox.__garble && sandbox.__garble(pathname, init)) return new Response("<!doctype html><title>an edge page</title>", { status: 200, headers: { "Content-Type": "text/html" } }); // .104: a 2xx the browser cannot read, after the Worker handled it
-      const hold = sandbox.__hold?.(pathname, init);
-      if (typeof hold === "number" && hold > 0) await new Promise((resolve) => setTimeout(resolve, hold));
-      else if (hold) await hold;
+      { const ms2 = sandbox.__hold ? sandbox.__hold(pathname, init) : 0; if (ms2) await new Promise((res) => setTimeout(res, ms2)); } // .110: the answer is complete; the page sees it later
       if (sandbox.__answer) { const sub = sandbox.__answer(pathname, init); if (sub instanceof Response) return sub; if (sub !== null && sub !== undefined) return new Response(JSON.stringify(sub), { status: 200, headers: { "Content-Type": "application/json; charset=utf-8" } }); } // .107: a readable but wrong 200, after the Worker handled it
       return r;
     },
@@ -817,9 +815,17 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   await waitFor(() => picks().length === 2 && saves().length === 2, "two rows with roster controls");
   check("fixture: two rows with roster controls", rows() === 2);
   (await fixtureRun("UPDATE community_event_signups SET decision_revision = decision_revision + 1 WHERE event_id = ?", EVENT)); // both commands below are definite refusals (stale)
+  const realRosterReply = (pathname, init) => indexMod.default.fetch(new Request("https://guild.example" + pathname, {
+    method: init.method || "GET", headers: { Origin: "https://guild.example", ...(init.headers || {}), Cookie: o2.cookie }, body: init.body,
+  }), env({ ASSETS: governanceAssets }), ctx);
   let releaseFirstReadback, readbacks = 0;
   const firstReadback = new Promise(resolve => { releaseFirstReadback = resolve; });
-  o2.hold((p) => p.startsWith("/api/community/event?id=") && ++readbacks === 1 ? firstReadback : undefined);
+  o2.intercept(async (pathname, init) => {
+    if (!pathname.startsWith("/api/community/event?id=")) return;
+    const reply = await realRosterReply(pathname, init);
+    if (++readbacks === 1) await firstReadback;
+    return reply;
+  });
   picks()[0].value = "accepted"; saves()[0].click();
   const firstReadbackHeld = await waitFor(() => readbacks === 1, "the first completed roster readback waits at the gate", 8000);
   picks()[1].value = "bench"; saves()[1].click();
@@ -827,7 +833,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   releaseFirstReadback();
   await settle(); await settle();
   check("F4b: two overlapping row commands with reversed readbacks: the late readback is discarded, the list holds each row once and the latest readback's state", firstReadbackHeld && newerReadbackPainted && rows() === 2 && picks().length === 2 && JSON.stringify(picks().map((p) => p.value).sort()) === JSON.stringify(db.prepare("SELECT COALESCE(decision, '') AS d FROM community_event_signups WHERE event_id = ? ORDER BY d").all(EVENT).map((r) => r.d)) && (seen().match(/Not decided\./g) || []).length === 1, JSON.stringify([rows(), picks().map((p) => p.value), (seen().match(/Not decided\./g) || []).length, readbacks]));
-  o2.hold(null);
+  o2.intercept(null);
   // a failed readback says so, never that the list was re-read
   (await fixtureRun("UPDATE community_event_signups SET decision_revision = decision_revision + 1 WHERE event_id = ?", EVENT));
   o2.before((p) => p.startsWith("/api/community/event?id="));
@@ -853,12 +859,15 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   const acceptedCount = () => db.prepare("SELECT COUNT(*) AS n FROM community_event_signups WHERE event_id = ? AND decision = 'accepted'").get(EVENT).n;
   // F4b.2 (a): an older successful command whose reply is held while the rows are replaced and the replacement row is acknowledged anew
   await reload2();
-  let releaseOlderReply, olderReplyHeld = false;
+  let releaseOlderReply, ownsOlderCommand = false, olderReplyHeld = false;
   const olderReplyGate = new Promise(resolve => { releaseOlderReply = resolve; });
-  o2.hold((p) => {
-    if (p !== "/api/community/events/decide" || olderReplyHeld) return;
+  o2.intercept(async (pathname, init) => {
+    if (pathname !== "/api/community/events/decide" || ownsOlderCommand) return;
+    ownsOlderCommand = true;
+    const reply = await realRosterReply(pathname, init);
     olderReplyHeld = true;
-    return olderReplyGate;
+    await olderReplyGate;
+    return reply;
   });
   picks()[0].value = "declined"; saves()[0].click();
   const commandReplyHeld = await waitFor(() => olderReplyHeld, "the Worker reply waiting at the explicit gate", 8000);
@@ -873,7 +882,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   releaseOlderReply();
   await settle(); await settle();
   check("F4b.2: the older command's reply, arriving after the rows were replaced and the replacement row acknowledged, says nothing and changes nothing (no 'declined' toast, the newest decision shown, the counts current)", newerReplyPainted && !seen().includes("Roster: declined.") && picks()[fresh0].value === "bench" && !dbDecisions().includes("declined") && counts2().includes(`${acceptedCount()} accepted`));
-  o2.hold(null);
+  o2.intercept(null);
   // F4b.2 (b): a pagination response held across a readback that replaced the table is discarded; the cursor stays the readback's
   const extra = Array.from({ length: 100 }, (_, i) => "31000000000000" + String(100 + i));
   for (const who of extra) { await siteUser(who, { global_name: "Page " + who.slice(-3) }); await character(who, "Page " + who.slice(-3), "Player-9-" + who.slice(-4)); }
