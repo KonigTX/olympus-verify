@@ -167,9 +167,9 @@
         status);
     }
 
+    const byName = (a, b) => a.name.localeCompare(b.name, "en");
     function hub(data) {
       const frag = [header(data, "Olympus guides & tools", null, "Class, spec and profession guides written for Olympus, plus raid-preparation tools.")];
-      const byName = (a, b) => a.name.localeCompare(b.name, "en");
       frag.push(section("Class guides", el("div", { class: "guides218-grid" }, [...data.classes].sort(byName).map(c => el("article", { class: "guides218-card guides222-class", "data-theme": c.id },
         el("h3", null, icon("class-" + c.id), " ", link("#/guides/class/" + c.id, c.name)),
         el("p", { class: "small" }, c.specs.map((s, i) => [i ? " · " : "", link("#/guides/class/" + c.id + "/" + s.id, s.name)])))))));
@@ -216,7 +216,8 @@
         s.pvp.matchups.length ? el("dl", { class: "guides218-matchups" }, s.pvp.matchups.map(m => [el("dt", { text: "Against " + m.vs }), el("dd", { text: m.text })])) : null));
       const presets = s.presets.map(id => data.presets.find(p => p.id === id));
       frag.push(section(s.name + ": talent starting points",
-        el("p", { class: "muted small", text: "Compare these saved builds with Blizzard’s current talent notes before using one in game or attaching it to an application." }),
+        el("p", { class: "muted small" }, "Compare these saved builds with ",
+          link("https://us.forums.blizzard.com/en/wow/t/2360696/9", "Blizzard’s current talent notes"), " before using one in game or attaching it to an application."),
         options.canAttach === false && options.attachReason ? el("p", { class: "muted small", text: options.attachReason }) : null,
         el("div", { class: "guides218-presets" }, presets.map(p => presetCard(data, p)))));
       const w = s.whatChanged;
@@ -310,7 +311,7 @@
         frag.push(section("Talent changes by class", el("table", { class: "guides218-table" },
           el("caption", { text: "Beta talents compared with Classic 1.12 (rank-one text)" }),
           el("thead", null, el("tr", null, ["Class", "New", "Changed", "Moved", "Unchanged", "Removed"].map(h => el("th", { scope: "col", text: h })))),
-          el("tbody", null, data.classSummary.map(x => el("tr", null, el("th", { scope: "row" }, link("#/talents/" + x.id, x.name)),
+          el("tbody", null, [...data.classSummary].sort(byName).map(x => el("tr", null, el("th", { scope: "row" }, link("#/talents/" + x.id, x.name)),
             [x.new, x.changed, x.moved, x.same, x.classicOnly].map(n => el("td", { text: String(n) }))))))));
       }
       frag.push(legend(data, used));

@@ -599,7 +599,9 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
       return !/^\/(?:legal\/)?(?:privacy|terms)(?:\.html)?(?:\/|$)/i.test(target.pathname) && !/^#\/(?:legal\/)?(?:privacy|terms)(?:[/?#]|$)/i.test(target.hash);
     } catch { return false; }
   });
-  check(".197 attribution ends at the licence notice and footer contains no Terms/Privacy link", page.app.querySelector("footer").textContent.endsWith("the site\'s code licence does not extend to any of this.") && !page.app.querySelector("footer").textContent.includes("See the Terms of Service.") && footerHasNoPolicyTargets197(page.app.querySelector("footer")));
+  const footerAttribution228 = page.app.querySelector("footer").textContent;
+  check(".197 attribution ends at the licence notice and footer contains no Terms/Privacy link", footerAttribution228.endsWith("The site's code licence does not cover the artwork, icons or fonts.") && !footerAttribution228.includes("See the Terms of Service.") && footerHasNoPolicyTargets197(page.app.querySelector("footer")));
+  check(".228 footer credits the approved stills separately from the optional game-client render", footerAttribution228.includes("default login backgrounds are custom AI-generated stills") && footerAttribution228.includes("optional portal animation is a guild render"));
   check(".197 footer policy-target check rejects old and current legal routes while accepting the actual brand anchor", ["/legal/privacy", "/legal/terms", "#/legal/privacy", "#/legal/terms", "/privacy", "/terms", "privacy.html", "./terms.html", "https://guild.example/legal/privacy?view=1"].every((href) => {
     const detached = page.document.createElement("footer"), link = page.document.createElement("a");
     link.setAttribute("href", href); detached.appendChild(link);

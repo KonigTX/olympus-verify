@@ -12,7 +12,8 @@
 .guides218-section{min-width:0;overflow-wrap:anywhere}
 .guides218-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr))}
 .guides218-card{border:1px solid rgba(188,154,82,.35);border-radius:8px;padding:10px 12px;min-width:0}
-.guides218-card h3{margin:0 0 6px;display:flex;align-items:center;gap:8px}
+.guides218-card :is(h3,h4){margin:0 0 6px;display:flex;align-items:center;gap:8px}
+.guides218-card h4{font-family:var(--title);font-weight:400;font-size:16px;line-height:1.2;color:var(--gold);text-shadow:1px 1px 0 #000}
 .guides218-card a{display:inline-block;min-height:24px;min-width:24px;line-height:24px;padding:0 3px;text-align:center}
 .guides218-tabs{display:flex;flex-wrap:wrap;gap:8px}
 .guides218-tabs a{display:inline-flex;align-items:center;gap:6px}
