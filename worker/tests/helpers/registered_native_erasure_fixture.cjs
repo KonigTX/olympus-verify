@@ -4,15 +4,21 @@ const path = require('node:path');
 const { createHash } = require('node:crypto');
 const Module = require('node:module');
 
-function runNativeErasureFixture(run) {
+function runNativeErasureFixture(run, { lostAdmission = false } = {}) {
   const filename = path.join(__dirname, '..', 'privacy_native_erasure_mode_test.cjs');
   const source = fs.readFileSync(filename, 'utf8');
   const cuts = [...source.matchAll(/^\(async\(\)=>\{\r?\n \/\/ \.174:/gm)];
   if (cuts.length !== 1) throw Error('native erasure setup boundary changed');
-  const setup = source.slice(0, cuts[0].index);
+  let setup = source.slice(0, cuts[0].index);
   const hash = createHash('sha256').update(setup).digest('hex');
   if (hash !== '572066b31422497e89314f47c972536517104de10521a45434b4f041f6ad02a3') {
     throw Error('native erasure setup bytes changed');
+  }
+  if (lostAdmission) {
+    const original = "if(list.some(s=>s.sql.includes('privacy_terminal_unconfirmed')))";
+    if (setup.split(original).length !== 2) throw Error('native erasure commit hook changed');
+    const fault = "if(f.loseAdmission&&list.some(s=>s.sql.includes('privacy_admission_unconfirmed'))){f.loseAdmission=false;f.admissionReplyLost=true;throw Error('synthetic lost committed admission reply');}";
+    setup = setup.replace(original, fault + original);
   }
   const fixture = new Module(filename, module);
   fixture.filename = filename;
