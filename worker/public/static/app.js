@@ -4969,10 +4969,16 @@
       for (const targetRoute of ["status", "deny", "undeny", "delete"]) {
         if (!live()) return;
         const action = targetRoute === "delete" ? "partial_delete" : "business_only";
-        const prepared = await api("GET", `/api/admin/users/${encodeURIComponent(id)}/decision-target?route=${targetRoute}&decisionAction=${action}`, undefined, { live });
+        const permanentDenial = targetRoute === "deny" || targetRoute === "undeny";
+        const policy = permanentDenial ? "&decisionPolicy=permanent_denial" : "";
+        const prepared = await api("GET", `/api/admin/users/${encodeURIComponent(id)}/decision-target?route=${targetRoute}&decisionAction=${action}${policy}`, undefined, { live });
         if (!live()) return;
+        if (targetRoute === "deny" && prepared?.decisionAvailable === false && prepared.targetToken === null) continue;
+        const allowed = targetRoute === "deny" ? ["membership_rejection_v1"]
+          : targetRoute === "undeny" ? ["business_only", "membership_reconsideration_v1"] : [action];
         if (!prepared || typeof prepared.targetToken !== "string" || !prepared.targetToken || prepared.targetToken.length > 8192) throw new ApiError(409, { message: "The decision could not be prepared. Reload the application and review it again." });
-        targets.set(targetRoute, Object.freeze({ token: prepared.targetToken, action }));
+        if (!allowed.includes(prepared.decisionAction)) throw new ApiError(409, { message: "The prepared decision did not match this action. Reload the application and review it again." });
+        targets.set(targetRoute, Object.freeze({ token: prepared.targetToken, action: prepared.decisionAction }));
       }
       d = await api("GET", `/api/admin/applications/${encodeURIComponent(id)}`, undefined, { live });
       if (!live()) return;
@@ -5028,6 +5034,7 @@
       ? h("button", { class: "btn", type: "button", text: "Lift the denial", onclick: () => decide("undeny", async () =>
           await confirmBox("Lift the denial?", "They can use the site again. Reserved names released by the denial stay released.", "Lift it") ? undefined : null,
           () => { toast("Denial lifted."); adminApplication(body, id); }) })
+      : !targets.has("deny") ? h("p", { class: "small muted", text: "A permanent denial for this account requires an attended membership review." })
       : h("button", { class: "btn danger", type: "button", text: "Deny permanently", onclick: () => decide("deny", async () => {
           const reason = await promptBox("Deny permanently", "For joke, troll or abusive applications. They are signed out, cannot save anything again, their votes stop counting, their application leaves the board, and their reserved names are released.", "Reason (only site admins see it; an officer's lookup shows only that the account was denied)", "Deny permanently", { danger: true });
           return reason === null ? null : { reason };

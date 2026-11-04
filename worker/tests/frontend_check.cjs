@@ -3207,15 +3207,18 @@ function originalTerms218(terms) {
     await waitFor(() => !!dialog210() && !!dialog210().querySelector("textarea"), ".210 the deny prompt");
     if (dialog210()?.querySelector("textarea")) { dialog210().querySelector("textarea").value = "QA check"; byText(dialog210(), "button", "Deny permanently")?.click(); }
     await waitFor(() => denied210() === 1, ".210 the denial");
-    check(".210 Deny permanently on the admin page records the denial", denied210() === 1);
+    check("Deny permanently records its explicit rejection and prevents a business-only downgrade",
+      denied210() === 1 && one("SELECT source FROM privacy_rejection_decisions").source === "explicit_membership_deny"
+      && sent210.some(([m, p, action, target]) => m === "POST" && p === `/api/admin/users/${APP210}/deny` && action === "membership_rejection_v1" && target));
     await waitFor(() => !!byText(adm210.app, "button", "Lift the denial"), ".210 the lift control");
     const wasDenied210 = denied210() === 1;
     byText(adm210.app, "button", "Lift the denial")?.click();
     await waitFor(() => !!dialog210() && !!byText(dialog210(), "button", "Lift it"), ".210 the lift confirmation");
     if (dialog210()) byText(dialog210(), "button", "Lift it")?.click();
     await waitFor(() => denied210() === 0, ".210 the lifted denial");
-    check(".210 Lift the denial on the admin page clears a recorded denial through an admitted decision",
-      wasDenied210 && denied210() === 0 && sent210.some(([m, p, action, target]) => m === "POST" && p === `/api/admin/users/${APP210}/undeny` && action === "business_only" && target));
+    check("Lift the denial clears the recorded rejection through explicit reconsideration",
+      wasDenied210 && denied210() === 0 && !one("SELECT 1 FROM privacy_rejection_decisions")
+      && sent210.some(([m, p, action, target]) => m === "POST" && p === `/api/admin/users/${APP210}/undeny` && action === "membership_reconsideration_v1" && target));
     await adm210.go(`#/admin/applications/${DEL210}`);
     await waitFor(() => !!byText(adm210.app, "button", "Delete their site data"), ".210 the second application page");
     byText(adm210.app, "button", "Delete their site data")?.click();
@@ -3258,7 +3261,7 @@ function originalTerms218(terms) {
 
     { const id = await seed210(), { p, rows } = await open210(id); await ready210(p);
       const detail = rows.findIndex(r => r.path === `/api/admin/applications/${id}`);
-      check("RT16 all four route/action preparations precede the displayed detail GET", detail === 4 && preparations210(rows).length === 4 && ["status", "deny", "undeny", "delete"].every((route, i) => rows[i]?.path === `/api/admin/users/${id}/decision-target?route=${route}&decisionAction=${route === "delete" ? "partial_delete" : "business_only"}`));
+      check("RT16 all four route/action preparations precede the displayed detail GET", detail === 4 && preparations210(rows).length === 4 && ["status", "deny", "undeny", "delete"].every((route, i) => rows[i]?.path === `/api/admin/users/${id}/decision-target?route=${route}&decisionAction=${route === "delete" ? "partial_delete" : "business_only"}${route === "deny" || route === "undeny" ? "&decisionPolicy=permanent_denial" : ""}`));
       await fixtureRun("UPDATE site_applications SET status = 'reviewing', admin_note = 'Separate reviewed state', updated_at = updated_at + 1 WHERE discord_id = ?", id);
       byText(p.app, "button", "Save note")?.click(); await refused210(p);
       const first = posts210(rows).length; byText(p.app, "button", "Save note")?.click(); await settle();

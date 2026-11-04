@@ -1,6 +1,8 @@
 import type { AppRow } from './site-core';
 import { sha256 } from './account-generation-contracts';
 
+export const ORDINARY_DECLINE_ANSWER_KEY = '_olympusOrdinaryDeclineV1';
+
 /** Applicant-owned content only. Staff notes and decisions never enter a token
  * exposed to the applicant. The consuming SQL separately preserves those fields.
  * Exact raw answers make same-second edits distinct without another D1 column. */

@@ -123,7 +123,7 @@ export async function handleAdmin(request: Request, env: Env, path: string, admi
     }
   }
   if (m === "GET" && parts[0] === "applications" && !parts[1]) return listApplications(env, q);
-  if(m==='GET'&&parts[0]==='users'&&parts[2]==='decision-target'){if(!decisionOrigin)return apiJson({error:'original_membership_decision_held'},409);const route=q.get('route');if(!['status','deny','undeny','delete'].includes(route??''))return apiJson({error:'bad_request'},400);return apiJson({targetToken:await membershipDecisionTargetToken(decisionOrigin,env,route as 'status'|'deny'|'undeny'|'delete')});}
+  if(m==='GET'&&parts[0]==='users'&&parts[2]==='decision-target'){if(!decisionOrigin)return apiJson({error:'original_membership_decision_held'},409);const route=q.get('route');if(!['status','deny','undeny','delete'].includes(route??''))return apiJson({error:'bad_request'},400);return apiJson(await membershipDecisionTargetToken(decisionOrigin,env,route as 'status'|'deny'|'undeny'|'delete',q.get('decisionPolicy')==='permanent_denial'));}
   if (m === "GET" && parts[0] === "applications" && parts[1]) return applicationDetail(env, parts[1]);
   if (m === "POST" && parts[0] === "applications" && parts[2] === "status") return setStatus(env, actor, parts[1], body,decisionOrigin);
   if (m === "POST" && parts[0] === "users" && parts[2] === "deny") return deny(env, actor, parts[1], body,decisionOrigin);
