@@ -4008,8 +4008,16 @@
     royalWrits.id = "royal-writs-on";
     const notice = h("input", { type: "text", maxlength: "300", value: s.notice || "", placeholder: "Shown at the top of every page (optional)" });
     const was = s.appointed || {};
-    const appointed = (M().appointments || M().ballots).map((b) => [b, h("input", { type: "text", maxlength: "40", value: Object.prototype.hasOwnProperty.call(was, b.key) ? was[b.key] : "", placeholder: "Open", autocomplete: "off", "aria-label": `${b.label}: appointed to` })]);
-    const associationStatus = new Map(appointed.map(([office]) => [office.key, h("span", { class: "hint", role: "status", "data-appointment-status": office.key })]));
+    const appointmentKind = office => {
+      if (office.key === "co_gm" || office.key === "treasurer") return "Treasury-plan access appointment";
+      if (office.group === "native") return `Native rank display · Rank ${office.nativeRankOrdinal}`;
+      if (office.aliasOf) return office.group === "leadership" ? "Leadership display alias" : "Historical display alias";
+      if (office.group === "class") return "Class lead appointment";
+      return office.group === "office" ? "Office record" : "Leadership appointment";
+    };
+    const appointmentTitle = office => `${office.label} — ${appointmentKind(office)} (${office.key})`;
+    const appointed = (M().appointments || M().ballots).map((b) => [b, h("input", { id: `appointed-holder-${b.key}`, type: "text", maxlength: "40", value: Object.prototype.hasOwnProperty.call(was, b.key) ? was[b.key] : "", placeholder: "Open", autocomplete: "off", "aria-label": `${appointmentTitle(b)}: appointed to`, "aria-describedby": `appointed-status-${b.key}` })]);
+    const associationStatus = new Map(appointed.map(([office]) => [office.key, h("span", { id: `appointed-status-${office.key}`, class: "hint", role: "status", "data-appointment-status": office.key })]));
     for (const [b, input] of appointed) {
       const status = associationStatus.get(b.key);
       if (!status) continue;
@@ -4017,9 +4025,9 @@
       input.addEventListener("input", edit); edit();
     }
     const appointedRow = ([b, input]) =>
-      h("div", { class: "field appointed-row", "data-appointment-field203": b.key }, h("label", null, h("span", { class: "lab small" }, posIcon(b.key, "s"), h("span", { text: b.label }), officeBadge199(b)), input),
+      h("div", { class: "field appointed-row", "data-appointment-field203": b.key }, h("label", { for: input.id }, h("span", { class: "lab small" }, posIcon(b.key, "s"), h("span", { text: appointmentTitle(b) }), officeBadge199(b)), input),
         b.councilSeat ? h("p", {class:"small muted role-reporting218",text:b.ministry + " · Council portfolio: " + b.councilSeat}) : null,
-        picker({ label: `${b.label}: associate Discord account`, placeholder: "Search Discord by name or user ID…", allowTyped: false, allowSelf: true, appointmentOnly: true,
+        picker({ label: `${appointmentTitle(b)}: associate Discord account`, placeholder: "Search Discord by name or user ID…", allowTyped: false, allowSelf: true, appointmentOnly: true,
           onPick: person => { input.value = `<@${person.key}>`; namesOk.checked = false; characterPublication.checked = false; associationStatus.get(b.key).textContent = `${person.label}: eligible for association at the last check. Save checks again; review both consent boxes.`; } }),
         associationStatus.get(b.key));
     const appointedGrid = group => h("div", { class: "appointed-grid" }, appointed.filter(([b]) => b.group === group).map(appointedRow));
@@ -4099,6 +4107,7 @@
       h("h3", { text: "Appointed roles" }),
       h("p", { class: "muted small", text: "A role with a name here has an appointment display record. Its historical voting board and write-ins close while the appointment is recorded; prior votes and nominations are preserved. Clearing the holder can restore historical board visibility, but Leader, High Council and Officer Corps applications remain closed. An empty field is not an application vacancy." }),
       h("p", { class: "muted small", text: "Every office and rank below has a Discord name or exact user ID selector. Search and Save check current server membership and account standing. A website sign-in, character link or roster confirmation is not required to associate a current Discord member. These website records do not change Discord roles, native ranks, bank access or signing authority. Existing ballot roles remain closed while appointed; extended offices are separate records." }),
+      h("p", { class: "muted small", text: "Co-Guild Master (co_gm) and Treasurer (treasurer) are the Treasury-plan access appointments. A current published Discord account association on either record can qualify for officer Treasury plan access. Their separately listed office records retain their own scope." }),
       appointmentControls203,
       namesOkRow,
       characterPublicationRow,

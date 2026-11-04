@@ -88,10 +88,62 @@ const body196=String.raw`
   await staff.go('#/admin/settings');await waitFor(()=>!!labeledPicker196(staff,'Olympus I: associate Guild Master account'),'current leadership account pickers mounted');
   check('all10 branches expose separate account associations without changing139 appointment-key pickers or inferring authority',staff.app.querySelectorAll('label[for]').filter(node=>node.textContent.endsWith('associate Guild Master account')).length===10&&staff.app.querySelectorAll('label[for]').filter(node=>node.textContent.endsWith('associate officer account')).length===10&&staff.app.querySelectorAll('.appointed-row').length===139&&staff.app.textContent.includes('A typed name remains a staff-entered, unverified label')&&staff.app.textContent.includes('Neither form proves a game character or grants any permission'));
   const adminRows203=staff.app.querySelectorAll('[data-appointment-field203]'),adminKeys203=adminRows203.map(node=>node.getAttribute('data-appointment-field203'));
-  check('Admin family grouping keeps all139 original independent fields, exact labels, association statuses and source-key scopes',adminRows203.length===139&&new Set(adminKeys203).size===139&&JSON.stringify([...adminKeys203].sort())===JSON.stringify(staff.boot.meta.appointments.map(office=>office.key).sort())&&staff.boot.meta.appointments.every(office=>{const row=staff.app.querySelector('[data-appointment-field203="'+office.key+'"]');return !!row&&row.classList.contains('appointed-row')&&row.closest('[data-appointment-family203]')?.getAttribute('data-appointment-family203')===staff.boot.meta.roleDirectory203.keyToFamily[office.key]&&row.querySelectorAll('input').filter(input=>input.getAttribute('aria-label')===office.label+': appointed to').length===1&&row.querySelectorAll('[data-appointment-status="'+office.key+'"]').length===1;}));
+  const officeFields=key=>{
+    const row=staff.app.querySelector('[data-appointment-field203="'+key+'"]'),holder=row?.querySelector('input[type="text"]'),picker=row?.querySelector('input[role="combobox"]');
+    return {row,holder,picker,label:holder?.id?row.querySelector('label[for="'+holder.id+'"]'):null,
+      pickerLabel:picker?.id?row.querySelector('label[for="'+picker.id+'"]'):null,status:row?.querySelector('[data-appointment-status="'+key+'"]')};
+  };
+  check('Admin family grouping keeps all139 original independent fields, association statuses and source-key scopes',
+    adminRows203.length===139&&new Set(adminKeys203).size===139&&JSON.stringify([...adminKeys203].sort())===JSON.stringify(staff.boot.meta.appointments.map(office=>office.key).sort())&&staff.boot.meta.appointments.every(office=>{
+      const {row,holder,picker,status}=officeFields(office.key);
+      return !!row&&row.classList.contains('appointed-row')&&row.closest('[data-appointment-family203]')?.getAttribute('data-appointment-family203')===staff.boot.meta.roleDirectory203.keyToFamily[office.key]&&!!holder&&!!picker&&!!status;
+    }));
+  const duplicateMeta=Object.values(Object.groupBy(staff.boot.meta.appointments,office=>office.label)).filter(rows=>rows.length>1);
+  check('CC-009 exact fixture reproduces 14 repeated source titles shared by 29 independent settings records',
+    duplicateMeta.length===14&&duplicateMeta.flat().length===29);
+  const holderNames=adminKeys203.map(key=>officeFields(key).holder?.getAttribute('aria-label'));
+  const pickerNames=adminKeys203.map(key=>officeFields(key).pickerLabel?.textContent);
+  check('CC-009 all visible holder labels and accessible holder/picker names identify exactly one record',
+    new Set(holderNames).size===139&&new Set(pickerNames).size===139&&staff.boot.meta.appointments.every(office=>{
+      const {label,holder,pickerLabel,status}=officeFields(office.key),name=holder?.getAttribute('aria-label');
+      return name?.startsWith(office.label)&&name.includes('('+office.key+')')&&label?.textContent.includes(name.replace(/: appointed to$/,''))&&
+        pickerLabel?.textContent===name.replace(/: appointed to$/,': associate Discord account')&&
+        holder.id==='appointed-holder-'+office.key&&status.id==='appointed-status-'+office.key&&holder.getAttribute('aria-describedby')===status.id;
+    }),new Set(holderNames).size,new Set(pickerNames).size);
+  check('CC-009 Officer title distinguishes a stable office, legacy leadership alias and Rank 3 display',
+    [['office_62','Office record'],['officer','Leadership display alias'],['rank_officer','Native rank display · Rank 3']].every(([key,kind])=>
+      officeFields(key).holder?.getAttribute('aria-label')==='Officer — '+kind+' ('+key+'): appointed to'));
+  check('CC-009 exactly the two existing Treasury-plan access appointment records say so in both controls',
+    JSON.stringify(adminKeys203.filter(key=>officeFields(key).label?.textContent.includes('Treasury-plan access appointment')).sort())===JSON.stringify(['co_gm','treasurer'])&&
+    ['co_gm','treasurer'].every(key=>officeFields(key).pickerLabel?.textContent.includes('Treasury-plan access appointment'))&&
+    ['office_19','office_86'].every(key=>officeFields(key).label?.textContent.includes('Office record ('+key+')'))&&
+    staff.app.textContent.includes('A current published Discord account association on either record can qualify for officer Treasury plan access.'));
   const tradingField208 = staff.app.querySelector('[data-appointment-field203="office_96"]');
-  check('.208 Admin keeps the Trading association in its own exact-key family without copying the Treasurer field', tradingField208?.closest('[data-appointment-family203]')?.getAttribute('data-appointment-family203') === 'head_trading' && tradingField208.querySelector('input')?.getAttribute('aria-label') === 'Lord High Factor · Minister of Trading & Markets: appointed to' && tradingField208.querySelectorAll('[data-appointment-status="office_96"]').length === 1 && !tradingField208.querySelector('[data-appointment-status="office_86"]') && staff.app.textContent.includes('Neither form proves a game character or grants any permission'));
+  check('.208 Admin keeps the Trading association in its own exact-key family without copying the Treasurer field', tradingField208?.closest('[data-appointment-family203]')?.getAttribute('data-appointment-family203') === 'head_trading' && tradingField208.querySelector('input')?.getAttribute('aria-label') === 'Lord High Factor · Minister of Trading & Markets — Office record (office_96): appointed to' && tradingField208.querySelectorAll('[data-appointment-status="office_96"]').length === 1 && !tradingField208.querySelector('[data-appointment-status="office_86"]') && staff.app.textContent.includes('Neither form proves a game character or grants any permission'));
   const pick196=async(label)=>{const input=labeledPicker196(staff,label);if(!input)throw Error('current leadership picker absent');input.value='Agreed';input.dispatchEvent(new Event('keydown',{key:'ArrowDown',bubbles:true}));await waitFor(()=>!!input.closest('.picker').querySelector('[role="option"]'),'eligible account result');input.closest('.picker').querySelector('[role="option"]').dispatchEvent(new Event('mousedown',{bubbles:true}));};
+  const coGM=officeFields('co_gm'),coGMOffice=officeFields('office_19'),coGMOfficeBefore=coGMOffice.holder.value;
+  const namesConsent=staff.app.querySelector('#appointed-names-ok'),charactersConsent=staff.app.querySelector('#appointed-characters-ok');
+  namesConsent.checked=charactersConsent.checked=true;
+  coGM.picker.value='Agreed';coGM.picker.dispatchEvent(new Event('keydown',{key:'ArrowDown',bubbles:true}));
+  await waitFor(()=>!!coGM.row.querySelector('[role="option"]'),'exact Co-GM account result');
+  coGM.row.querySelector('[role="option"]').dispatchEvent(new Event('mousedown',{bubbles:true}));
+  check('CC-009 choosing the Co-GM account sets only its original holder and clears both consents',
+    coGM.holder.value===tag196&&coGMOffice.holder.value===coGMOfficeBefore&&!namesConsent.checked&&!charactersConsent.checked);
+  let settingsAttempt=null;
+  staff.intercept((url,init)=>{
+    if(url!=='/api/admin/settings'||init.method!=='PUT')return null;
+    settingsAttempt=JSON.parse(init.body);
+    return new Response(JSON.stringify({error:'appointed_account_unavailable',role:'co_gm',message:'Fixture account became unavailable.'}),
+      {status:409,headers:{'Content-Type':'application/json'}});
+  });
+  namesConsent.checked=charactersConsent.checked=true;
+  byText(staff.app,'button','Save settings').click();
+  await waitFor(()=>settingsAttempt&&coGM.status.textContent.includes('Fixture account became unavailable.'),'exact Co-GM refusal');
+  check('CC-009 the original save sends only the selected appointment key and the refusal focuses that exact holder',
+    settingsAttempt?.appointed?.co_gm===tag196&&settingsAttempt?.appointed?.office_19===(coGMOfficeBefore||undefined)&&
+    settingsAttempt.namesConfirmed===true&&settingsAttempt.appointedCharactersConfirmed===true&&
+    staff.document.activeElement===coGM.holder&&!charactersConsent.checked&&!coGMOffice.status.textContent);
+  staff.intercept(null);
   const consent196=staff.app.querySelector('#lead-names-ok'),identityConsent197=staff.app.querySelector('#lead-identities-ok');consent196.checked=identityConsent197.checked=true;await pick196('Olympus I: associate Guild Master account');
   check('GM pick stores only the canonical account pointer and invalidates both independent publication consents',staff.app.querySelector('#lead-gm-0').value===tag196&&!consent196.checked&&!identityConsent197.checked&&!staff.app.querySelector('#lead-gm-0').value.includes(searchLabel196));
   consent196.checked=identityConsent197.checked=true;await pick196('Olympus I: associate officer account');await pick196('Olympus I: associate officer account');
