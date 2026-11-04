@@ -4058,8 +4058,8 @@
     {
       "path": "worker/public/static/guides218.json",
       "mode": "100644",
-      "bytes": 335603,
-      "sha256": "aa7442b1afe7b57ceac861d9fe4137497b561367e1e8c439d447d6ad840bd4c0"
+      "bytes": 334155,
+      "sha256": "c467fbf9284049cba5a62cba7a6ccf37012ac400766400e6939c58c4cb9574a2"
     },
     {
       "path": "worker/public/static/legal-view196.js",

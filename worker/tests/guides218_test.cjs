@@ -144,6 +144,9 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
     text(feralGuide.box).includes('Berserk was removed') && text(feralGuide.box).includes('115% threat bonus')
     && !text(feralGuide.box).includes('Berserk lasts 15 s')
     && links(feralGuide.box).includes('https://us.forums.blizzard.com/en/wow/t/2360696/9'));
+  const arcaneSnapshot = DATA.presets.find(entry => entry.id === 'mage-arcane-raid-60');
+  check('the historical Arcane raid preset flags its points in the removed Arcane Focus talent',
+    arcaneSnapshot?.why.some(text => text.includes('still contains points in Arcane Focus') && text.includes('Blizzard removed that talent')));
   m = await mounted({ view: 'class', classId: cls.id, talentRevision: talents.revision, canAttach: false, attachReason: 'Applications are closed right now, so a build cannot be attached.', onAttach: () => attached.push('no') });
   const closedButtons = m.box.tags('button').filter(b => text(b) === 'Attach to my application');
   check('with applications closed every attach button is disabled and the reason is shown', closedButtons.length > 0 && closedButtons.every(b => b.disabled) && text(m.box).includes('Applications are closed right now'));
@@ -179,6 +182,10 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   check('choosing a buff updates the combined effect, labelled when it rests on Classic numbers', text(total).includes('Combined effect of 1 selected') && (['D', 'E'].includes(statRows[0].grade) ? text(total).includes('not Forever-verified') : true));
   m = await mounted({ view: 'tool', tool: 'changes', talentRevision: talents.revision });
   check('the compendium shows the class table with every class and a calculator link each', m.box.tags('tr').length === 10 && DATA.classSummary.every(x => links(m.box).includes('#/talents/' + x.id)));
+  const legacy = DATA.tools.whatChanged.find(row => row.topic === 'Legacy challenges and spending');
+  check('the Legacy challenge count and spending cap appear with Blizzard’s official article',
+    legacy?.status === 'announced' && legacy.text.includes('65 Legacy Challenges') && legacy.text.includes('16 points per character')
+    && legacy.sources.some(index => DATA.sources[index].url === 'https://news.blizzard.com/en-us/article/24307383'));
   const structureUrl = '#/guides/tools/raid-structure';
   const hubWithStructure = await mounted({ view: 'hub', talentRevision: talents.revision });
   const raidTools = hubWithStructure.box.tags('section').find(s => text(s.tags('h2')[0]) === 'Raid preparation tools');
