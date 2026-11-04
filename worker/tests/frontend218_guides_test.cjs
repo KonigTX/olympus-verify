@@ -67,6 +67,9 @@ const WARRIOR60 = "ot1.260cf99b52db.warrior.60.053252130305152010505003000000000
   check(".218 an unknown guide route says so without mounting anything", p.app.textContent.includes("There is no such guide.") && guides.length === 5);
   await p.go("#/resources/extra");
   check(".218 the hub has no sub-pages", p.app.textContent.includes("There is no such page.") && guides.length === 5);
+  await p.go("#/guides/tools/raid-structure"); await waitFor(() => guides.length === 6, "raid structure guide");
+  check("the raid structure guide opens through the normal member tool route with its page title", guides[5].options.view === "tool"
+    && guides[5].options.tool === "raid-structure" && p.document.title === "Raid team structure & leadership · Guides — Olympus");
 
   console.log("\n== .218: Attach to my application (prefill only) ==");
   const a = await openPage(MEMBER); head218(a); const calls = []; record218(a, "OlympusGuides", calls); const writes = [];

@@ -1,8 +1,11 @@
 # Olympus guides and tools (.218)
 
-The site's own class, spec and profession guides and three raid-preparation tools. They live at `#/resources` (the hub),
-`#/guides/class/<class>[/<spec>]`, `#/guides/profession/<key>` and `#/guides/tools/<attunements|buffs|changes>`. `#/guides`
+The site's own class, spec and profession guides and raid preparation tools. They live at `#/resources` (the hub),
+`#/guides/class/<class>[/<spec>]`, `#/guides/profession/<key>` and `#/guides/tools/<attunements|buffs|raid-structure|changes>`. `#/guides`
 itself is unchanged: it is still the reviewed publisher library (`resources169`).
+
+The raid structure tool adapts Fox’s guild leadership guidelines into a planning reference for roster grouping,
+progression stability and farm rotations. It links to the standing raid and loot rules.
 
 ## Files
 - `worker/public/static/guides218.js`: the renderer (`window.OlympusGuides.mount(box, options)`). It validates the whole catalogue

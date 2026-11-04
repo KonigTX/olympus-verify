@@ -112,7 +112,7 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   // 5. Hub.
   let m = await mounted({ view: 'hub', talentRevision: talents.revision });
   const hubLinks = links(m.box);
-  check('the hub links all 9 class guides, 27 spec guides, 12 profession guides and 3 tools', DATA.classes.every(c => hubLinks.includes('#/guides/class/' + c.id) && c.specs.every(s => hubLinks.includes('#/guides/class/' + c.id + '/' + s.id)))
+  check('the hub retains all existing class, spec, profession and tool links', DATA.classes.every(c => hubLinks.includes('#/guides/class/' + c.id) && c.specs.every(s => hubLinks.includes('#/guides/class/' + c.id + '/' + s.id)))
     && DATA.professions.every(p => hubLinks.includes('#/guides/profession/' + p.key)) && ['attunements', 'buffs', 'changes'].every(t => hubLinks.includes('#/guides/tools/' + t)));
   check('the hub keeps the calculator, addons, publisher library, game updates and member guide one click away', ['#/talents', '#/addons', '#/guides', '#/updates', '#/guide/member'].every(h => hubLinks.includes(h)));
   check('the hub has exactly one h1 and states the scope note once', m.box.tags('h1').length === 1 && text(m.box).split(DATA.scopeNote.slice(0, 60)).length === 2);
@@ -179,6 +179,18 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   check('choosing a buff updates the combined effect, labelled when it rests on Classic numbers', text(total).includes('Combined effect of 1 selected') && (['D', 'E'].includes(statRows[0].grade) ? text(total).includes('not Forever-verified') : true));
   m = await mounted({ view: 'tool', tool: 'changes', talentRevision: talents.revision });
   check('the compendium shows the class table with every class and a calculator link each', m.box.tags('tr').length === 10 && DATA.classSummary.every(x => links(m.box).includes('#/talents/' + x.id)));
+  const structureUrl = '#/guides/tools/raid-structure';
+  const hubWithStructure = await mounted({ view: 'hub', talentRevision: talents.revision });
+  const raidTools = hubWithStructure.box.tags('section').find(s => text(s.tags('h2')[0]) === 'Raid preparation tools');
+  check('Raid preparation tools links to Fox’s guide', !!raidTools && links(raidTools).includes(structureUrl));
+  m = await mounted({ view: 'tool', tool: 'raid-structure', talentRevision: talents.revision });
+  const assignments = m.box.tags('tbody')[0]?.tags('tr').map(row =>
+    text(row.tags('td')[0]).match(/\d–\d/g)?.join(','));
+  check('Fox’s guide credits the author and groups one roster into four 10s, two 20s and one 40',
+    text(m.box.tags('h1')[0]) === 'Raid team structure & leadership' && text(m.box).includes('akaFoxSlayer')
+    && assignments?.join('|') === '1–2,3–4,5–6,7–8|1–4,5–8|1–8');
+  check('farm rotation advice links directly to the governing article', links(m.box).includes('#/governance/the-guild-statute-of-olympus/article-s11')
+    && text(m.box).includes('affected participants’ consent'));
   m = await mounted({ view: 'tool', tool: 'nope', talentRevision: talents.revision });
   check('an unknown tool says so', text(m.box).includes('There is no such tool.'));
 

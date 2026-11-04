@@ -13,6 +13,7 @@
   const TOOLS = [
     ["attunements", "Attunements & pre-raid checklist", "Raid access, what Blizzard has announced, and a slot-by-slot gearing checklist."],
     ["buffs", "World buffs & consumables", "Pick a role, tick what you will bring and see the combined effect, with every Classic number labelled."],
+    ["raid-structure", "Raid team structure & leadership", "Fox’s guide to organizing one roster for 10-, 20- and 40-player raids."],
     ["changes", "What changed in Forever", "The systems Forever changes, and the talent snapshot's changes for every class."],
   ];
   const STAT_LABEL = { strength: "Strength", agility: "Agility", stamina: "Stamina", intellect: "Intellect", spirit: "Spirit", attackPower: "Attack power",
@@ -241,6 +242,41 @@
       }))];
     }
 
+    function raidStructure() {
+      const groups = [
+        ["10-player teams", "Groups 1–2, 3–4, 5–6 and 7–8 each form a team."],
+        ["20-player teams", "Groups 1–4 form one team and Groups 5–8 form the other."],
+        ["40-player raid", "Groups 1–8 raid together."],
+      ];
+      return [
+        section("One roster, three raid sizes",
+          el("p", { text: "Adapted from Fox (akaFoxSlayer)’s raid leadership guidelines for Olympus. Use this as a planning framework and adjust it to the encounter, roster and availability." }),
+          el("p", { text: "Start with eight groups of five. Keep the smaller groups familiar with one another and give each team comparable leadership, preparation and support." }),
+          el("table", { class: "guides218-table" },
+            el("caption", { text: "How the eight groups combine" }),
+            el("thead", null, el("tr", null, ["Raid size", "Group assignments"].map(text => el("th", { scope: "col", text })))),
+            el("tbody", null, groups.map(([size, assignment]) => el("tr", null,
+              el("th", { scope: "row", text: size }), el("td", { text: assignment })))))),
+        section("Lead, deputy and one caller",
+          list([
+            "Assign a lead and deputy to each 10-player team. The lead sets the strategy and makes encounter calls. The deputy handles agreed assignments, logistics and player support.",
+            "When teams combine, name one overall caller and agree on the deputies’ responsibilities before the pull.",
+            "Raid leaders share attendance, progression blockers, role coverage and upcoming changes across teams.",
+          ])),
+        section("Keep progression teams steady",
+          el("p", { text: "Start with roughly two to three weeks of stable groups, then use consistent clears and player readiness to decide when a raid is on farm. Adjust sooner for attendance or a specific encounter requirement." }),
+          el("p", { text: "Agree in advance who can switch between tanking, healing and damage when groups combine. Plan backups and distribute buffs and utility across teams. Set the final composition from the encounter and the current game’s mechanics." })),
+        section("Rotate on farm with notice",
+          list([
+            "Try swapping a whole 10-player team between the two 20-player raids, or agree to a smaller exchange when that suits the schedule and role coverage.",
+            "Give players advance notice, confirm that both leads and affected players agree, and publish eligibility, reserve places and loot rules before signups.",
+            "When a rotation also helps distribute gear, agree on eligibility up front. After the event starts, get affected participants’ consent for a loot rule change or defer it.",
+            "Share strategies and recognize progress across teams. Apply the same published selection criteria to each team.",
+          ]),
+          el("p", null, "Read the ", link("#/governance/the-guild-statute-of-olympus/article-s11", "Olympus raid and loot rules"), " alongside this guide.")),
+      ];
+    }
+
     function toolView(data, id) {
       const t = data.tools, used = new Set(), title = (TOOLS.find(x => x[0] === id) || [])[1];
       const frag = [crumbs(["#/resources", "Guides & tools"], [null, title]), header(data, title, null, (TOOLS.find(x => x[0] === id) || [])[2])];
@@ -255,6 +291,8 @@
           el("h3", { text: "Before your first raid" }), ...checklist(data, t.preBis.checklist, c => c.label, c => c)));
       } else if (id === "buffs") {
         frag.push(buffCalculator(data, used));
+      } else if (id === "raid-structure") {
+        frag.push(...raidStructure());
       } else if (id === "changes") {
         const groups = [["announced", "Announced by Blizzard"], ["pinned-data", "From the talent snapshot"], ["pending", "Not settled yet"]];
         for (const [status, name] of groups) {

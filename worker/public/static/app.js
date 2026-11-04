@@ -1703,7 +1703,7 @@
   ROUTES.updates = resourcesView("updates");
   // .218 Olympus guides and tools (guides218.js renders them). "Attach to my application" only carries a build into the open
   // application form for the applicant to check and save; it never saves, never ticks a consent and never changes board sharing.
-  const GUIDE_TOOLS218 = { attunements: "Attunements & pre-raid checklist", buffs: "World buffs & consumables", changes: "What changed in Forever" };
+  const GUIDE_TOOLS218 = { attunements: "Attunements & pre-raid checklist", buffs: "World buffs & consumables", "raid-structure": "Raid team structure & leadership", changes: "What changed in Forever" };
   let talentAttachment218 = null;
   function guideTitle218(kind, key) {
     const k = dec(key || "");
