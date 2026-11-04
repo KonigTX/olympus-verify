@@ -1441,7 +1441,11 @@
     if (dirtyKeys.size && !(await confirmBox("Leave without saving?", "You have changes that are not saved yet.", "Sign out anyway"))) return;
     decisionActorRevision++;
     if (disposeArmyCapacity) disposeArmyCapacity(); // Clear dated capacity before logout transport; preserve publisher custody.
-    try { await api("POST", "/auth/logout"); } catch { /* signed out either way */ }
+    const original = S.user;
+    try {
+      const result = await api("POST", "/auth/logout");
+      if (result?.ok === true && S.user === original) publishTreasurySignout218();
+    } catch { /* Preserve the existing local sign-out navigation on an unconfirmed reply. */ }
     location.href = "/";
   }
 
@@ -2138,40 +2142,149 @@
     window.addEventListener("afterprint", restorePrint);
     disposeGovernancePrint = () => { restorePrint(); window.removeEventListener("beforeprint", preparePrint); window.removeEventListener("afterprint", restorePrint); disposeGovernancePrint = null; };
   };
-  // Owner request, 28 October 2026: publish a planning programme without any bank, payment or settings writer.
-  // .218 (owner, 31 Oct 2026): officers and above only. The Worker also refuses the plan's files to everyone else.
+  // The Treasury source is public. The website bounds the lifetime of its officer presentation.
   ROUTES["treasury-plan"] = async (main, parts) => {
-    const user = S.user, settings = S.settings, route = currentRoute(), view = main.dataset.viewRequest, revision = decisionActorRevision;
-    const current = () => app.contains(main) && main.dataset.viewRequest === view && S.user === user && S.settings === settings && currentRoute() === route && S.signedIn && !S.denied && decisionActorRevision === revision;
-    add(main, h("p", { role: "status", text: "Opening the treasury programme…" }));
-    try {
-      if (!treasuryPlanAllowed218()) {
-        const allowed = await refreshTreasuryAccess218({ fresh: true });
-        if (!current()) return;
-        if (!allowed) { clear(main); add(main, treasuryRefusal218()); return; }
-      }
-      const { renderTreasuryPlan207 } = await import("/static/treasury-plan207.js");
+    const user = S.user, settings = S.settings, route = currentRoute(), view = main.dataset.viewRequest;
+    const revision = decisionActorRevision, generation = treasuryGeneration218;
+    let disposed = false, pending = false, finished = false, mounted = false, timer = null, disposePlan = null;
+    const active = () => !disposed && app.contains(main) && main.dataset.viewRequest === view && S.user === user && S.settings === settings && currentRoute() === route && S.signedIn && !S.denied && decisionActorRevision === revision;
+    const current = () => active() && generation === treasuryGeneration218 && !treasurySignoutHeld218();
+    const removePlan = () => {
+      clearTimeout(timer);
+      timer = null;
+      const cleanup = disposePlan;
+      disposePlan = null;
+      mounted = false;
+      clear(main);
+      cleanup?.();
+    };
+    const dispose = () => {
+      if (disposed) return;
+      disposed = true;
+      document.removeEventListener("visibilitychange", checkExpiry);
+      window.removeEventListener("pageshow", pageRestored);
+      if (disposeTool === dispose) disposeTool = null;
+      if (treasuryView218 === dismiss) treasuryView218 = null;
+      removePlan();
+    };
+    const dismiss = () => {
+      const show = active();
+      dispose();
+      if (show) add(main, treasurySignedOutNotice218());
+    };
+    const waiting = () => add(main, h("p", { role: "status", text: "Opening the treasury programme…" }));
+    const refuse = () => { finished = true; clear(main); add(main, treasuryRefusal218()); };
+    const verifyAccess = () => refreshTreasuryAccess218({ fresh: true, live: current });
+    const arm = () => {
+      clearTimeout(timer);
+      const answer = treasuryCached218();
+      if (answer?.canRead) timer = setTimeout(checkExpiry, Math.max(0, answer.at + TREASURY_ACCESS_TTL218 - Date.now()));
+    };
+    const mountPlan = renderTreasuryPlan207 => {
       if (!current()) return;
       const dispose = renderTreasuryPlan207(main, { h, add, clear, posIcon, parts, scrollToSection, isCurrent: current });
-      if (typeof dispose === "function") disposeTool = dispose;
-    } catch (error) {
-      if (!current()) return;
-      clear(main); add(main, treasuryUnavailable218(error, current));
+      disposePlan = typeof dispose === "function" ? dispose : null;
+      mounted = true;
+      arm();
+    };
+    const loadPlan = async () => {
+      if (!current() || pending || finished) return;
+      pending = true;
+      removePlan();
+      waiting();
+      try {
+        if (!treasuryPlanAllowed218() && !await verifyAccess()) { if (current()) refuse(); return; }
+        if (!current()) return;
+        const { renderTreasuryPlan207 } = await import("/static/treasury-plan207.js");
+        if (!current()) return;
+        // A held module import can outlive the grant that started it.
+        if (!treasuryPlanAllowed218() && !await verifyAccess()) { if (current()) refuse(); return; }
+        if (!current()) return;
+        if (!treasuryPlanAllowed218()) throw new ApiError(0, { error: "access_unconfirmed" });
+        mountPlan(renderTreasuryPlan207);
+      } catch (error) {
+        if (!current()) return;
+        finished = true;
+        removePlan();
+        add(main, treasuryUnavailable218(error, current));
+      } finally { pending = false; }
+    };
+    function checkExpiry() {
+      if (!current() || pending || finished) return;
+      if (mounted && treasuryPlanAllowed218()) { arm(); return; }
+      if (mounted) { removePlan(); waiting(); }
+      if (!document.hidden) void loadPlan();
     }
+    function pageRestored(event) {
+      // A bfcached tab may have missed a sign-out message while frozen.
+      if (event.persisted && current() && !finished) {
+        treasuryGeneration218++;
+        treasuryAnswer218 = null;
+        treasuryCheck218 = null;
+        dispose();
+        void ROUTES["treasury-plan"](main, parts);
+      } else checkExpiry();
+    }
+    if (treasurySignoutHeld218()) { add(main, treasurySignedOutNotice218()); return; }
+    disposeTool = dispose;
+    treasuryView218 = dismiss;
+    document.addEventListener("visibilitychange", checkExpiry);
+    window.addEventListener("pageshow", pageRestored);
+    return loadPlan();
   };
-  // .218 officer access. The page only decides what to show; the Worker decides every plan file and access answer.
-  // One check per page load (kept in page memory for 15 minutes, never in storage) keeps a member's visit to one Discord read.
   const TREASURY_ACCESS_TTL218 = 15 * 60 * 1000;
-  let treasuryCheck218 = null, treasuryChecked218 = null, treasuryAnswer218 = null;
-  function treasuryPlanAllowed218() { return !!(S.signedIn && !S.denied && S.user && (S.user.isAdmin === true || S.user.canReadTreasuryPlan === true)); }
+  let treasuryCheck218 = null, treasuryChecked218 = null, treasuryGeneration218 = 0, treasuryView218 = null, treasurySignedOut218 = null;
+  const bootTreasuryUser218 = S.signedIn && !S.denied ? S.user : null;
+  let treasuryAnswer218 = bootTreasuryUser218 && (bootTreasuryUser218.isAdmin === true || bootTreasuryUser218.canReadTreasuryPlan === true)
+    ? { user: bootTreasuryUser218, id: bootTreasuryUser218.id, revision: decisionActorRevision, generation: treasuryGeneration218, canRead: true, at: Date.now() }
+    : null;
+  function treasurySignoutHeld218() {
+    return treasurySignedOut218?.user === S.user && treasurySignedOut218?.id === S.user?.id && treasurySignedOut218?.revision === decisionActorRevision;
+  }
+  function treasurySignedOutNotice218() {
+    return frame("Treasury programme", null, h("p", { role: "status", text: "Treasury access was cleared after sign-out. Sign in again to check your current officer access." }));
+  }
+  function invalidateTreasurySignout218() {
+    treasuryGeneration218++;
+    treasurySignedOut218 = { user: S.user, id: S.user?.id, revision: decisionActorRevision };
+    treasuryAnswer218 = null;
+    treasuryCheck218 = null;
+    treasuryChecked218 = null;
+    treasuryView218?.();
+    app.querySelector("header.topbar")?.querySelector('a[href="#/treasury-plan"]')?.remove();
+  }
+  let treasurySignoutChannel218 = null;
+  try {
+    if (typeof window.BroadcastChannel === "function") {
+      treasurySignoutChannel218 = new window.BroadcastChannel("olympus-treasury-presentation-v1");
+      treasurySignoutChannel218.addEventListener("message", event => {
+        if (event.data === "signed-out") invalidateTreasurySignout218();
+      });
+    }
+  } catch { /* The presentation expiry still applies if cross-tab messaging is unavailable. */ }
+  function publishTreasurySignout218() {
+    invalidateTreasurySignout218();
+    try { treasurySignoutChannel218?.postMessage("signed-out"); } catch { /* A failed notice does not extend the cache. */ }
+  }
+  function treasuryCached218() {
+    const answer = treasuryAnswer218, age = answer && Date.now() - answer.at;
+    return answer && answer.user === S.user && answer.id === S.user?.id && answer.revision === decisionActorRevision
+      && answer.generation === treasuryGeneration218 && age >= 0 && age < TREASURY_ACCESS_TTL218 ? answer : null;
+  }
+  function treasuryPlanAllowed218() {
+    return !!(S.signedIn && !S.denied && S.user && !treasurySignoutHeld218()
+      && (S.user.isAdmin === true || S.user.canReadTreasuryPlan === true) && treasuryCached218()?.canRead);
+  }
+
   function treasuryNavLinks218() {
+    if (treasurySignoutHeld218()) return [];
     if (treasuryPlanAllowed218()) return [["#/treasury-plan", "Treasury plan"]];
     const user = S.user, revision = decisionActorRevision;
     if (S.signedIn && !S.denied && user && (!treasuryChecked218 || treasuryChecked218.user !== user || treasuryChecked218.revision !== revision)) {
       const queued = { user, revision };
       treasuryChecked218 = queued;
       setTimeout(() => {
-        if (treasuryChecked218 === queued && S.signedIn && !S.denied && S.user === user && decisionActorRevision === revision) refreshTreasuryAccess218({}).catch(() => {});
+        if (treasuryChecked218 === queued && S.signedIn && !S.denied && S.user === user && decisionActorRevision === revision && !treasurySignoutHeld218()) refreshTreasuryAccess218({}).catch(() => {});
       }, 0);
     }
     return [];
@@ -2192,39 +2305,47 @@
       h("p", { class: "muted small", text: "Nothing is being retried automatically. Reloading checks access again; this message does not confirm or deny your officer role." }),
       h("div", { class: "btn-row" }, h("button", { class: "btn", type: "button", text: "Reload Treasury plan", onclick: () => { if (current()) location.reload(); } }), h("a", { class: "btn", href: "#/roles", text: "Roles" })));
   }
-  async function refreshTreasuryAccess218({ fresh = false } = {}) {
-    if (!S.signedIn || S.denied || !S.user) return false;
-    const user = S.user, id = user.id, revision = decisionActorRevision;
-    const current = () => S.signedIn && !S.denied && S.user === user && S.user.id === id && decisionActorRevision === revision;
+  async function refreshTreasuryAccess218({ fresh = false, live = () => true } = {}) {
+    if (!S.signedIn || S.denied || !S.user || treasurySignoutHeld218()) return false;
+    const user = S.user, id = user.id, revision = decisionActorRevision, generation = treasuryGeneration218;
+    const current = () => S.signedIn && !S.denied && S.user === user && S.user.id === id
+      && decisionActorRevision === revision && treasuryGeneration218 === generation && !treasurySignoutHeld218();
     treasuryChecked218 = { user, revision };
-    const cached = treasuryAnswer218;
-    const fromCache = !fresh && cached && cached.user === user && cached.id === id && cached.revision === revision && Date.now() - cached.at < TREASURY_ACCESS_TTL218;
-    let allowed;
-    if (fromCache) allowed = cached.canRead;
-    else {
+    const cached = treasuryCached218();
+    const fromCache = !fresh && cached && (!cached.canRead || treasuryPlanAllowed218());
+    let answer = cached;
+    if (!fromCache) {
       let check = treasuryCheck218;
-      if (!check || check.user !== user || check.id !== id || check.revision !== revision) {
-        check = { user, id, revision, promise: null };
-        check.promise = api("GET", "/api/treasury-plan/access", undefined, { live: current })
+      if (!check || check.user !== user || check.id !== id || check.revision !== revision || check.generation !== generation) {
+        const at = Date.now();
+        check = { user, id, revision, generation, readers: new Set(), promise: null };
+        check.promise = api("GET", "/api/treasury-plan/access", undefined, { live: () => current() && [...check.readers].some(read => read()) })
           .then(data => {
             if (!data || data.format !== "olympus-treasury-access-v1" || typeof data.canRead !== "boolean") throw new ApiError(200, { error: "unreadable_answer" });
-            return data.canRead;
+            return { user, id, revision, generation, canRead: data.canRead, at };
           })
           .finally(() => { if (treasuryCheck218 === check) treasuryCheck218 = null; });
         treasuryCheck218 = check;
       }
-      allowed = await check.promise;
+      const reader = () => live();
+      check.readers.add(reader);
+      try { answer = await check.promise; } finally { check.readers.delete(reader); }
     }
-    if (!current()) return false;
-    if (!fromCache) treasuryAnswer218 = { user, id, revision, canRead: allowed, at: Date.now() };
-    if ((user.canReadTreasuryPlan === true) !== allowed) {
-      // This presentation flag must not replace the identity object captured by active readers.
-      user.canReadTreasuryPlan = allowed;
+    if (!current() || !live()) return false;
+    const age = Date.now() - answer.at;
+    if (age < 0 || age >= TREASURY_ACCESS_TTL218) throw new ApiError(0, { error: "access_unconfirmed" });
+    const visible = treasuryPlanAllowed218(), allowed = answer.canRead;
+    const changed = (user.canReadTreasuryPlan === true) !== allowed;
+    treasuryAnswer218 = answer;
+    // Keep the identity object captured by unrelated active readers.
+    if (changed) user.canReadTreasuryPlan = allowed;
+    if (changed || visible !== treasuryPlanAllowed218()) {
       const bar = app.querySelector("header.topbar");
       if (bar) bar.replaceWith(topbar(currentRoute()));
     }
     return allowed;
   }
+
   ROUTES.organization = async (main, parts) => {
     const user = S.user, settings = S.settings, context = COM(), route = currentRoute(), view = main.dataset.viewRequest;
     const current = () => app.contains(main) && main.dataset.viewRequest === view && S.user === user && S.settings === settings && COM() === context && currentRoute() === route;
