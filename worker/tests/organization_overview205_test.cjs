@@ -124,6 +124,11 @@ check('seven departmental lanes retain their current portfolio context and expli
 const rankNames = ['Leader', 'High Council', 'Officer', 'Officer Alt', 'Raid Leader', 'Veteran', 'Raider', 'Member', 'Alt', 'Initiate'];
 check('the overview preserves the exact ten native ranks and zero-based slots', overview.ranks.length === 10 && overview.ranks.every((rank, slot) => rank.nativeSlot === slot && rank.nativeRankOrdinal === slot + 1 && (rank.label || rank.name) === rankNames[slot]));
 check('rendered native strip has slots0–9 once and creates no eleventh native rank', same(page.section.all(node => node.getAttribute('data-alliance-rank') !== null).map(node => node.getAttribute('data-alliance-rank')), rankNames.map((_, slot) => String(slot))) && !page.section.all(node => node.getAttribute('data-native-rank') !== null).length);
+check('CC-118 the Alliance rank filter, ladder and rank-one role badge share the display name and retain their original slot',
+  page.document.getElementById('org-alliance-rank205').children[1].textContent === 'Rank 1 · Leader (Guild Master)'
+  && page.section.all(node => node.getAttribute('data-alliance-rank') === '0')[0].children[0].textContent === '1. Leader (Guild Master)'
+  && page.families().find(node => node.getAttribute('data-alliance-family') === 'leader').textContent.includes('Rank 1 Leader (Guild Master) (Slot 0)')
+  && overview.ranks[0].label === 'Leader');
 check('rendered overview contains every canonical family once before filtering', page.families().length === 72 && page.visible().length === 72 && new Set(page.visible()).size === 72 && page.section.classList.contains('org-alliance'));
 
 const sourceRows = new Map([...model.appointments, ...(model.roleRank199.offices || [])].map(row => [row.key, row]));

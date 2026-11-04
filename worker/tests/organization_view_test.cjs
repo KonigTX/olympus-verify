@@ -97,7 +97,14 @@ const deepNode205=open({overview205:true,parts:['treasury']});
 check('.205 an existing department deep link reveals and focuses the requested mandate',deepNode205.one('org-relationship-map205').open&&deepNode205.doc.activeElement===deepNode205.detail&&deepNode205.detail.textContent.includes('Federal Treasury'));
 wide205.main.all(n=>n.getAttribute('data-office-key')==='office_08')[0].children[0].click(0);
 check('.205 historical catalogue selections reveal the outer map before focusing its reader',wide205.one('org-relationship-map205').open&&wide205.doc.activeElement===wide205.detail);
-check(".218 exact ten ranks and all103 current office records are visible", p.main.all(n=>!!n.getAttribute('data-native-rank')).map(n=>n.children[0].textContent).join('|') === 'Leader|High Council|Officer|Officer Alt|Raid Leader|Veteran|Raider|Member|Alt|Initiate' && p.main.all(n=>!!n.getAttribute('data-office-key')).length === 103 && p.main.all(n=>n.getAttribute('data-tier-group')==='high_council').length===1 && p.main.all(n=>n.getAttribute('data-tier-group')==='officer_corps').length===1);
+check(".218 exact ten ranks and all103 current office records are visible", p.main.all(n=>!!n.getAttribute('data-native-rank')).map(n=>n.children[0].textContent).join('|') === 'Leader (Guild Master)|High Council|Officer|Officer Alt|Raid Leader|Veteran|Raider|Member|Alt|Initiate' && p.main.all(n=>!!n.getAttribute('data-office-key')).length === 103 && p.main.all(n=>n.getAttribute('data-tier-group')==='high_council').length===1 && p.main.all(n=>n.getAttribute('data-tier-group')==='officer_corps').length===1);
+const leader118 = open({ parts: ['office_43'] });
+check('CC-118 the relationship map explains the exact in-game name and labels the rank-one mandate and badges without changing the data',
+  leader118.one('org-rank-guide').textContent.includes('The in-game name for slot 0 is Guild Master.')
+  && leader118.detail.all(node => node.getAttribute('data-native-placement') !== null).some(node => node.textContent.startsWith('Rank 1 Leader (Guild Master) · zero-based slot 0.'))
+  && leader118.detail.all(node => node.classList.contains('org-office-badges')).some(node => node.children.some(part => part.textContent === 'Rank 1 · Leader (Guild Master)'))
+  && data.nativeRanks[0].name === 'Leader' && data.nativeRanks[0].nativeSlot === 0);
+leader118.dispose();
 // Current labels describe these five standing records without rewriting the historical model.
 const nativeDepartmentKeys218 = ['office_04','office_48','office_55','office_75','office_90'];
 const rawOfficeCard218 = key => p.main.all(n => n.classList.contains('org-office-card') && n.getAttribute('data-office-key') === key)[0];

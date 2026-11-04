@@ -153,8 +153,9 @@
     if (appointmentPointer(value)) return "Appointed member";
     return typeof value === "string" && value.length <= 40 && !/[\u0000-\u001f\u007f<>]/.test(value) && !/^[0-9]{17,20}$/.test(value.trim()) ? value : "Name withheld";
   }
+  const nativeRankDisplayName = (slot, name) => slot === 0 ? "Leader (Guild Master)" : name;
   function officeBadge199(row) {
-    return row?.nativeRankOrdinal ? h("span", { class: "badge rank-office199", text: `${row.tierLabel} · Rank ${row.nativeRankOrdinal} ${row.nativeRankName} (Slot ${row.nativeSlot}) · Title ${(row.codexTitles || []).join(" / ")}` }) : null;
+    return row?.nativeRankOrdinal ? h("span", { class: "badge rank-office199", text: `${row.tierLabel} · Rank ${row.nativeRankOrdinal} ${nativeRankDisplayName(row.nativeSlot, row.nativeRankName)} (Slot ${row.nativeSlot}) · Title ${(row.codexTitles || []).join(" / ")}` }) : null;
   }
   function applicationBadges199(intent) {
     const t = track199(intent?.applicationTrack), o = office199(intent?.targetOffice);
@@ -196,11 +197,11 @@
       directory ? h("ol", { class: "role-ranks203" }, directory.ranks.map(rank => {
         const source = offices199().find(row => row.group === "native" && row.nativeSlot === rank.nativeSlot);
         return h("li", null, h("a", { href: "#/roles/" + encodeURIComponent(rank.familyKey), "data-rank-family203": rank.familyKey, "data-native-slot": String(rank.nativeSlot) },
-          posIcon(source?.key || familyPrimary203(directory,rank.familyKey),"s"), h("span", { class: "role-rank-number203", text: String(rank.nativeRankOrdinal) }), h("span", { text: rank.label })));
+          posIcon(source?.key || familyPrimary203(directory,rank.familyKey),"s"), h("span", { class: "role-rank-number203", text: String(rank.nativeRankOrdinal) }), h("span", { text: nativeRankDisplayName(rank.nativeSlot, rank.label) })));
       })) : h("p", { class: "muted", text: "The linked rank directory is unavailable. No rank or appointment has been changed." }),
       directory ? h("details", {class:"technical-profile199"},h("summary",{text:"Rank Slot & Technical Metadata"}),
-        h("p",{text:"The exact 10-rank Olympus In-Game Hierarchy uses the following zero-based game slots."}),
-        h("ul",null,directory.ranks.map(rank=>h("li",{text:`Rank ${rank.nativeRankOrdinal} ${rank.label} · slot ${rank.nativeSlot}`})))) : null);
+        h("p",{text:"The exact 10-rank Olympus In-Game Hierarchy uses the following zero-based game slots. The in-game name for slot 0 is Guild Master."}),
+        h("ul",null,directory.ranks.map(rank=>h("li",{text:`Rank ${rank.nativeRankOrdinal} ${nativeRankDisplayName(rank.nativeSlot, rank.label)} · slot ${rank.nativeSlot}`})))) : null);
   }
   const governanceTitleRoutes228 = Object.freeze({
     I: "title-i-the-sovereign-royal-decrees",
@@ -225,7 +226,7 @@
       h("table", { class: "rosetta-table199" }, h("thead", null, h("tr", null, headings.map(text => h("th", { scope: "col", text })))), h("tbody", null, ranks199().map(rank => {
         const rows = offices199().filter(row => row.nativeSlot === rank.nativeSlot), tiers = [...new Set(rows.map(row => row.tierLabel))], titleOrder = ["I", "II", "III", "IV", "V"], titles = [...new Set(rows.flatMap(row => row.codexTitles || []))].sort((a,b) => titleOrder.indexOf(a) - titleOrder.indexOf(b));
         const familyKey = directory?.ranks[rank.nativeSlot]?.familyKey;
-        const rankLabel = "Rank " + rank.nativeRankOrdinal + " " + (rank.nativeSlot === 0 ? "Leader (Guild Master)" : rank.name);
+        const rankLabel = "Rank " + rank.nativeRankOrdinal + " " + nativeRankDisplayName(rank.nativeSlot, rank.name);
         const cells = [h("div", { class: "role-reference-links228" },
           familyKey ? h("a", { href: "#/roles/" + encodeURIComponent(familyKey), text: rankLabel }) : h("strong", { text: rankLabel }),
           rankPlannerLink228(rank.nativeSlot)), h("div", null, tiers.join(" / "),

@@ -9,6 +9,7 @@ import { TALENT_ATTACHMENT_CLASSES } from './talent-build-contract';
 import { talentBuildAttachment } from './talent-build-attachment';
 import { parsedArmySnapshot219, armyKey, type ArmySnapshot } from './army-census';
 import { ROYAL_WRIT_POLICY } from './royal-writs199';
+import { NATIVE_RANKS_199 } from './governance-offices';
 
 export interface GuildEmbed219 { title:string;description?:string;url?:string;fields?:{name:string;value:string;inline?:boolean}[];footer?:{text:string} }
 export const safeDiscordText219=(input:unknown,max=1000)=>String(input??'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/[@`*_~|<>\\]/g,c=>'\\'+c).slice(0,max);
@@ -107,7 +108,8 @@ export async function referenceLookup219(env:Env,a:GuildActor219,name:string):Pr
   const org=await assetJson219(env,a,'/static/governance/organization.json'),seats=org.councilComposition?.currentSeats;
   if(!Array.isArray(seats)||seats.length!==14||!Array.isArray(org.nativeRanks))throw Error('The current Council guide is unavailable.');
   const labels=seats.filter((row:Any219)=>row.id!=='gm-chair').map((row:Any219,index:number)=>index===0?row.label:index+'. '+row.label);
-  return {title:'The ten ranks & current High Council',url:base+'/#/organization',description:'The Guild Master chairs the High Council. The Co-Guild Master serves alongside twelve numbered portfolios. Council portfolios, Officer Corps remits and native rank standing remain separate; this guide appoints nobody.',fields:[field('Exact in-game ladder','1 Leader · 2 High Council · 3 Officer · 4 Officer Alt · 5 Raid Leader · 6 Veteran · 7 Raider · 8 Member · 9 Alt · 10 Initiate'),{name:'Current Council portfolios',value:discordLines219(labels,'\n',1000)||'Unavailable'},field('Reserved authority','Leadership seats are reserved appointments, not public application tracks. A title, roster entry or payment creates no Discord, bank, cryptographic or addon authority.')]};
+  const ladder=NATIVE_RANKS_199.map(rank=>`${rank.nativeRankOrdinal} ${rank.nativeSlot===0?'Leader (Guild Master)':rank.name}`).join(' · ');
+  return {title:'The ten ranks & current High Council',url:base+'/#/organization',description:'The Guild Master chairs the High Council. The in-game name for slot 0 is Guild Master. The Co-Guild Master serves alongside twelve numbered portfolios. Council portfolios, Officer Corps remits and native rank standing remain separate; this guide appoints nobody.',fields:[field('Exact in-game ladder',ladder),{name:'Current Council portfolios',value:discordLines219(labels,'\n',1000)||'Unavailable'},field('Reserved authority','Leadership seats are reserved appointments, not public application tracks. A title, roster entry or payment creates no Discord, bank, cryptographic or addon authority.')]};
  }
  throw Error('Unknown guild reference.');
 }

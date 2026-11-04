@@ -97,6 +97,9 @@ async function guildCommands219(){
    const actualSeats=embed?.fields?.find(row=>row.name==='Current Council portfolios')?.value;
    check('CC-015 Council lists the Co-GM and twelve numbered portfolios on 13 separate lines',
     expectedSeats.length===13&&actualSeats===expectedSeats.join('\n')&&actualSeats.length<=1024);
+   check('CC-118 Council gives Rank 1 its display name and exact native slot name without changing the ten-rank order',
+    embed?.fields?.find(row=>row.name==='Exact in-game ladder')?.value==='1 Leader (Guild Master) · 2 High Council · 3 Officer · 4 Officer Alt · 5 Raid Leader · 6 Veteran · 7 Raider · 8 Member · 9 Alt · 10 Initiate'
+    &&embed.description.includes('The in-game name for slot 0 is Guild Master.')&&org219.nativeRanks[0].name==='Leader');
   }
   if(name==='branches')check('CC-018 no Army snapshots gives one plain empty state and retains capacity, history and authority boundaries',
    embed?.description.includes('No published capacity snapshot for Olympus I–X yet. Live capacity is unknown.')&&

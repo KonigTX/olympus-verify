@@ -7,6 +7,7 @@ function svg(tag, attrs = {}) {
 }
 export function renderOrganization(main, data, ui) {
   const { h, add, clear, posIcon, parts } = ui;
+  const nativeRankDisplayName = (slot, name) => slot === 0 ? "Leader (Guild Master)" : name;
   const nodeTitle218 = node => node.id === "native" && node.title === "Ten native rank slots" ? "In-game rank reference" : node.title;
   clear(main);
   if (!document.getElementById("organization-view-style")) {
@@ -133,7 +134,7 @@ export function renderOrganization(main, data, ui) {
   }
   function focusNode(id) { if (branchMode) branchLayout(); const p = position.get(id); if (!p) return; scale = Math.max(.85, scale); x = viewport.clientWidth / 2 - p.x * scale; y = Math.max(50, viewport.clientHeight / 3) - p.y * scale; transform(); }
   const termPlacement = term => Number.isInteger(term.nativeSlot)
-    ? `Rank ${term.nativeRankOrdinal} ${term.nativeRankName} · zero-based slot ${term.nativeSlot}. Display association; no rank or permission is applied.`
+    ? `Rank ${term.nativeRankOrdinal} ${nativeRankDisplayName(term.nativeSlot, term.nativeRankName)} · zero-based slot ${term.nativeSlot}. Display association; no rank or permission is applied.`
     : "No native rank placement or promotion follows from this title or status.";
   const reservedTerm201 = term => term.reservedSeat201 || ["leader", "high_council", "officer_corps"].includes(term.tier);
   const termFamily218 = term => ui.roleDirectory203?.families?.find(row => row.key === ui.roleDirectory203.keyToFamily[term.officeKey]);
@@ -145,7 +146,7 @@ export function renderOrganization(main, data, ui) {
   };
   const officeBadges = term => h("p", { class: "org-office-badges" },
     h("span", { class: "org-tier-badge org-tier-" + term.tier, text: termFamily218(term)?.kind === "institution" ? "Governance institution" : term.tierLabel }),
-    termFamily218(term)?.kind === "institution" ? null : h("span", { class: "small", text: "Rank " + term.nativeRankOrdinal + " · " + term.nativeRankName }),
+    termFamily218(term)?.kind === "institution" ? null : h("span", { class: "small", text: "Rank " + term.nativeRankOrdinal + " · " + nativeRankDisplayName(term.nativeSlot, term.nativeRankName) }),
     h("span", { class: "small", text: term.codexTitles.map(title => "Title " + title).join(" · ") }));
   function select(id, move = false, focus = false, term = null) {
     const n = byId.get(id); if (!n) return; selected = id; detailSummary.textContent = "Office details · " + nodeTitle218(n);
@@ -324,8 +325,8 @@ export function renderOrganization(main, data, ui) {
     h("p", {class:"role-standing-scope218 small muted",text:ui.standingIntro218 || "These labels record a member’s current guild standing; they are not open positions. Ask the responsible officer to review a change in status."}),
     relationshipMap205,
     allianceOverview205,
-    h("section", { class: "frame org-rank-guide" }, h("h2", { text: "The Ten In-Game Ranks of Olympus" }), h("p", { text: "High Council is Rank 2 (slot 1). The Officer Corps occupies Ranks 3–5: Officer, Officer Alt and Raid Leader. Co-Guild Master and Treasurer are Council appointments, not extra native ranks." }),
-      h("ol", { class: "organization-ranks" }, data.nativeRanks.map(r => h("li", { "data-native-rank": String(r.order) }, h("a", { href:"#/roles/" + encodeURIComponent(ui.roleDirectory203?.ranks?.find(rank=>rank.nativeSlot===r.nativeSlot)?.familyKey || "rosetta-stone"), text:r.name }), h("small", { text: "Rank " + r.order + " · zero-based slot " + r.nativeSlot })))),
+    h("section", { class: "frame org-rank-guide" }, h("h2", { text: "The Ten In-Game Ranks of Olympus" }), h("p", { text: "The in-game name for slot 0 is Guild Master. High Council is Rank 2 (slot 1). The Officer Corps occupies Ranks 3–5: Officer, Officer Alt and Raid Leader. Co-Guild Master and Treasurer are Council appointments, not extra native ranks." }),
+      h("ol", { class: "organization-ranks" }, data.nativeRanks.map(r => h("li", { "data-native-rank": String(r.order) }, h("a", { href:"#/roles/" + encodeURIComponent(ui.roleDirectory203?.ranks?.find(rank=>rank.nativeSlot===r.nativeSlot)?.familyKey || "rosetta-stone"), text:nativeRankDisplayName(r.nativeSlot, r.name) }), h("small", { text: "Rank " + r.order + " · zero-based slot " + r.nativeSlot })))),
       h("p", { class: "small muted", text: "The owner-directed hierarchy is a planning and application guide. Current native installation, signing profiles, accepted appointments, Council votes and actual access require their own records." })),
     h("section", { class: "org-council-overview frame", "aria-label": "High Council offices" }, h("h2", { text: "The High Council at a glance" }),
       h("p", { text: data.councilComposition?.summary || "Guild Master, Co-Guild Master and Treasurer form the core Council offices, supported by accepted portfolio mandates." }),

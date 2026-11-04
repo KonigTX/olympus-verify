@@ -20,6 +20,14 @@ async function evergreen221(){
  search.value='NA';fire(search,'input');check('a short region token does not match Finance',!visible('bank_custody')&&!visible('treasurer'));
  search.value='<img src=x onerror=alert(1)>';fire(search,'input');check('hostile search stays text and creates no executable node',!page.app.querySelector('img[onerror],script[src="x"]'));
  search.value='';fire(search,'input');
+ const nativeRanks118=page.app.querySelectorAll('.role-ranks203 [data-native-slot]');
+ const leader118=page.app.querySelector('[data-role-family203="leader"] summary .rank-office199');
+ const rosettaLeader118=page.app.querySelector('[data-rank-crosswalk="1"] td a');
+ check('CC-118 Roles and Rosetta present Leader (Guild Master) while the canonical rank name and slot remain stable',
+  nativeRanks118.length===10&&nativeRanks118[0].textContent.endsWith('Leader (Guild Master)')
+  &&nativeRanks118[1].textContent.endsWith('High Council')&&leader118?.textContent.includes('Rank 1 Leader (Guild Master) (Slot 0)')
+  &&rosettaLeader118?.textContent==='Rank 1 Leader (Guild Master)'&&page.app.textContent.includes('The in-game name for slot 0 is Guild Master.')
+  &&page.boot.meta.roleDirectory203.ranks[0].label==='Leader'&&page.boot.meta.roleDirectory203.ranks[0].nativeSlot===0);
  const council=page.app.querySelector('[data-rank-crosswalk="2"]');
  const cells=council.querySelectorAll('td');
  check('Council portal guidance is one specification rather than concatenated near-duplicates',(cells[3].textContent.match(/High Council access requires/g)||[]).length<=1&&!/appointment;.*appointment;/s.test(cells[3].textContent));
