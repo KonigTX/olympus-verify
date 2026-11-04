@@ -26,7 +26,7 @@ const loginDigests = Object.freeze({
 
 export const POLICY_ASSETS = Object.freeze(Object.keys(policyDigests));
 export const LOGIN_ASSETS = Object.freeze(Object.keys(loginDigests));
-export const POLICY_ASSET_DIGEST_PREFIX = "/static/public-by-digest/";
+export const POLICY_ASSET_DIGEST_PREFIX = "/public-assets/by-digest/";
 const digests = Object.freeze({ ...policyDigests, ...loginDigests });
 type PolicyAssetPath = keyof typeof digests;
 
