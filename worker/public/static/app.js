@@ -166,7 +166,7 @@
   }
   function goldBanner199() {
     const policy = M().royalWritPolicy || {};
-    return noticeBox("info", "pos-treasurer", h("p", { class: "gold-policy199", text: policy.banner || "100% World of Warcraft: Forever in-game gold only, via in-game mail/trade to Fernmelder. Zero real-world money, USD, Twitch subscriptions or crypto; all addons remain free with no paid addon gating. Subject to Blizzard policy, officer review and Discord Trust & Safety rules." }));
+    return noticeBox("info", "pos-treasurer", h("p", { class: "gold-policy199", text: policy.banner || "100% World of Warcraft: Forever in-game gold only, via in-game mail or trade to Fern Melder. Zero real-world money, USD, Twitch subscriptions or crypto. All addons remain free. Blizzard policy, officer review and Discord Trust & Safety rules apply." }));
   }
   function writsPanel199(page, { checklist = false, keys = null } = {}) {
     if (!royalWritsVisible200()) return null;

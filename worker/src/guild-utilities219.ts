@@ -8,6 +8,7 @@ import { APPLICATION_SPECS_219 } from './application-specs219';
 import { TALENT_ATTACHMENT_CLASSES } from './talent-build-contract';
 import { talentBuildAttachment } from './talent-build-attachment';
 import { parsedArmySnapshot219, armyKey, type ArmySnapshot } from './army-census';
+import { ROYAL_WRIT_POLICY } from './royal-writs199';
 
 export interface GuildEmbed219 { title:string;description?:string;url?:string;fields?:{name:string;value:string;inline?:boolean}[];footer?:{text:string} }
 export const safeDiscordText219=(input:unknown,max=1000)=>String(input??'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/[@`*_~|<>\\]/g,c=>'\\'+c).slice(0,max);
@@ -75,11 +76,15 @@ export async function referenceLookup219(env:Env,a:GuildActor219,name:string):Pr
   const launch=1793833200,remaining=Math.max(0,launch-Math.floor(Date.now()/1000)),days=Math.floor(remaining/86400),hours=Math.floor(remaining%86400/3600),minutes=Math.floor(remaining%3600/60);
   return {title:'World of Warcraft: Forever · November 4',url:base+'/#/',description:'Announced global launch: <t:'+launch+':F>\n'+(remaining?days+' days, '+hours+' hours, '+minutes+' minutes remaining.':'The announced time has passed. Check Blizzard service notices for actual availability.'),fields:[{name:'Official reference',value:'https://worldofwarcraft.blizzard.com/en-us/forever/'}]};
  }
- if(name==='stockades')return {title:'The Stockades & Court of Appeals',url:base+'/#/governance',description:'Ordinary appeals are free. Open a private MEE6 appeal ticket in Olympus: The Stockades & Court of Appeals; do not post case evidence publicly.',fields:[field('Eligible conditional clemency only','100g standard; a reasoned 250–500g for eligible repeat/escalated minor community or RP infractions. In-game gold only to Fernmelder after an officer accepts the case; a bondsman may include the Case ID in the mail subject. Payment never guarantees an unban.'),field('Excluded severe safety offenses','Doxxing, clear Discord Trust & Safety / ToS violations, exploitation, credible threats and severe harassment are not eligible for gold bail. No automated unban or removal of keyed login rejections is performed by this command.')]};
+ if(name==='stockades')return {title:'The Stockades & Court of Appeals',url:base+'/#/governance',description:ROYAL_WRIT_POLICY.stockadesStatus,fields:[
+  field('Eligible conditional clemency only',`100g standard. An unconflicted reviewer may set 250–500g for eligible repeat or escalated minor community or RP infractions. Send in-game gold to ${ROYAL_WRIT_POLICY.recipient} only after an officer accepts the case. Include the Case ID in the mail subject. Payment never guarantees an unban.`),
+  field('Excluded severe safety offenses','Doxxing, clear Discord Trust & Safety / ToS violations, exploitation, credible threats and severe harassment are not eligible for gold bail. No automated unban or removal of keyed login rejections is performed by this command.')]};
  if(name==='treasury'){
   const out=await guildActorBatch219(env,a,[env.DB.prepare("SELECT value FROM site_settings WHERE key='royalWritsOn'")]);
   const on=(out[0]!.results[0] as {value?:unknown}|undefined)?.value==='1';
-  return {title:'Imperial Treasury · Fernmelder',url:base+'/#/governance',description:'World of Warcraft: Forever in-game gold only, by in-game trade/mail to Fernmelder. Zero real-world money, USD, subscriptions or crypto. Addons remain free; no paid addon access.',fields:[field('Royal Writs schedule',on?'The website reference schedule is ON. Every transaction still needs the separately authorized officer process.':'The Royal Writs, Indulgences & Guild Services schedule is OFF. This command cannot offer, sell or activate a paused service.'),field('Provider and custody limits','This command performs no payment, bank action, role grant or cosmetic provider dispatch. Officer review and platform safety rules still apply.')]};
+  return {title:'Imperial Treasury · Fernmelder',url:base+'/#/governance',description:ROYAL_WRIT_POLICY.banner,fields:[
+   field('Royal Writs schedule',on?'The website reference schedule is ON. Every transaction still needs the separately authorized officer process.':'The website Royal Writs schedule is OFF. The existing MEE6 appeal and eligible 100g standard bail remain available through /stockades.'),
+   field('Provider and custody limits','This command performs no payment, bank action, role grant or cosmetic provider dispatch. Officer review and platform safety rules still apply.')]};
  }
  if(name==='branches'){
   const org=await assetJson219(env,a,'/static/governance/organization.json');
