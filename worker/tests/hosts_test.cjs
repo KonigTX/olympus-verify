@@ -292,6 +292,51 @@ const check = (name, cond, ...why) => { n++; if (cond) ok++; else if (why.length
   }
   let assetCalls = 0;
   const assetEnv = env({ ASSETS: { fetch: async () => { assetCalls++; return new Response('protected-source'); } } });
+  const localDataPath = '/static/qr-beta-window-data.html', cameraPath = '/static/qr-phase1.html';
+  const localDataModule = '/static/qr-beta-window.mjs', cameraModule = '/static/qr-phase1.mjs';
+  const qrFiles = new Map([localDataPath, cameraPath, localDataModule, cameraModule].map(file => [file, fs.readFileSync(path.join(root, 'public', file))]));
+  const qrAssetCalls = [];
+  const qrAssets = { fetch: async request => {
+    const url = new URL(request.url), pathname = url.pathname;
+    qrAssetCalls.push({ path: pathname, method: request.method, search: url.search });
+    // Cloudflare's default auto-trailing-slash redirects a physical .html URL
+    // and serves its extensionless key. The browser must stay on the Worker route.
+    if (pathname.endsWith('.html') && qrFiles.has(pathname)) {
+      return new Response(null, { status: 307, headers: { Location: pathname.slice(0, -5) + url.search } });
+    }
+    const html = qrFiles.get(pathname + '.html');
+    const file = html ?? qrFiles.get(pathname);
+    return file ? new Response(request.method === 'HEAD' ? null : file, {
+      headers: { 'Content-Type': html ? 'text/html; charset=utf-8' : 'text/javascript; charset=utf-8' }
+    }) : new Response('asset not found', { status: 404 });
+  } };
+  const localDataEnv = env({ ASSETS: qrAssets, DB: d1(db, { trap: () => { throw Error('public browser data controls must not touch D1'); } }) });
+  const localCsp = "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'";
+  const cameraClosed = 'camera=(), microphone=(), geolocation=(), payment=(), usb=()';
+  const cameraOpen = 'camera=(self), microphone=(), geolocation=(), payment=(), usb=()';
+  const privateAsset = r => r.headers.get('Cache-Control') === 'private, no-store, no-transform' && r.headers.get('Vary') === 'Cookie';
+  const exactFile = async (r, file) => r.status === 200 && !r.headers.has('Location') && Buffer.from(await r.arrayBuffer()).equals(qrFiles.get(file));
+  res = await get('https://guild.example' + localDataPath + '?local=1', localDataEnv);
+  check('CC-063 signed out, exact local-data HTML serves pinned bytes without a redirect, D1 or relaxed headers',
+    /^text\/html/.test(res.headers.get('Content-Type')) && await exactFile(res, localDataPath) &&
+    res.headers.get('Content-Security-Policy') === localCsp && res.headers.get('Permissions-Policy') === cameraClosed && privateAsset(res) &&
+    qrAssetCalls[0]?.path === localDataPath.slice(0, -5) && qrAssetCalls[0]?.search === '?local=1', res.status, res.headers.get('Location'));
+  res = await get('https://guild.example' + localDataPath, localDataEnv, { method: 'HEAD', headers: { Cookie: '__Host-olg=stale-removed-account' } });
+  check('CC-063 local-data HEAD stays public after account loss and has the same CSP with no body',
+    res.status === 200 && !res.headers.has('Location') && res.body === null &&
+    res.headers.get('Content-Security-Policy') === localCsp && qrAssetCalls[1]?.method === 'HEAD', res.status, res.headers.get('Location'));
+  res = await get('https://guild.example' + localDataModule, localDataEnv);
+  check('CC-063 the exact local-data module remains public with its strict headers',
+    await exactFile(res, localDataModule) && res.headers.get('Content-Security-Policy') === localCsp && res.headers.get('Permissions-Policy') === cameraClosed);
+  const beforeRefusals = qrAssetCalls.length;
+  res = await get('https://guild.example' + localDataPath, localDataEnv, { method: 'POST' });
+  check('CC-063 public local-data writes still refuse before the binding', res.status === 405 && res.headers.get('Allow') === 'GET, HEAD');
+  for (const target of ['https://verify.example' + localDataPath, 'https://unknown.example' + localDataPath,
+    'https://guild.example' + localDataPath.slice(0, -5), 'https://guild.example' + cameraPath.slice(0, -5)]) {
+    const reply = await get(target, env({ ASSETS: qrAssets }));
+    check('CC-063 no public HTML exception at ' + target, [401, 404].includes(reply.status) && !reply.headers.has('Location'));
+  }
+  check('CC-063 refusals above never reach the asset binding', qrAssetCalls.length === beforeRefusals);
   const core = load('./site-core'), viewer = '300000000000000091';
   const admittedSetup=load('./privacy-write-admission').createPrivacyWriteAdmissionDatabase(assetEnv.DB,'writer','canonical',entryFixture.ENTRY_EPOCH);
   await admittedSetup.prepare('INSERT INTO site_users(discord_id,username,in_server,first_login,last_login,session_version) VALUES(?1,?2,1,?3,?3,1)').bind(viewer,'member',Math.floor(Date.now()/1000)).run();
@@ -342,17 +387,26 @@ const check = (name, cond, ...why) => { n++; if (cond) ok++; else if (why.length
     res = await get('https://guild.example/static/wow/talents/bg-302.jpg', faultEnv, { headers: { Cookie: faultCookie } });
     check('a fresh request after a membership failure rechecks current Discord membership before private delivery', res.status === 200 && await res.text() === 'protected-fault-source' && faultMemberCalls === 2 && faultAssetCalls === 2 && gateLogs.length === 3 && db.prepare('SELECT checked_at FROM site_users WHERE discord_id=?1').get(faultViewer).checked_at > faultAt-7200);
   } finally { console.error = beforeGateConsole; fetchResponder = null; }
-  // The councillor page is the one response that may use the device camera (owner item 32 fallback); its own counter keeps the deliveries above intact.
-  let cameraAssetCalls = 0;
-  const cameraEnv = env({ ASSETS: { fetch: async () => { cameraAssetCalls++; return new Response('protected-source'); } } });
-  res = await get('https://guild.example/static/qr-phase1.html', cameraEnv, { headers: { Cookie: validCookie } });
-  check('signed in, the councillor page alone allows the same-origin camera and keeps every other private-asset header', res.status === 200 && await res.text() === 'protected-source' && cameraAssetCalls === 1 && res.headers.get('Permissions-Policy') === 'camera=(self), microphone=(), geolocation=(), payment=(), usb=()' && res.headers.get('Cache-Control') === 'private, no-store, no-transform' && res.headers.get('Vary') === 'Cookie' && /noindex/.test(res.headers.get('X-Robots-Tag')) && res.headers.get('X-Frame-Options') === 'DENY');
-  res = await get('https://guild.example/static/qr-phase1.mjs', cameraEnv, { headers: { Cookie: validCookie } });
-  check('every other private asset keeps the camera closed', res.status === 200 && cameraAssetCalls === 2 && res.headers.get('Permissions-Policy') === 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
-  res = await get('https://guild.example/static/qr-phase1.html', cameraEnv);
-  check('signed out, the councillor page carries no camera allowance and reaches no asset', res.status === 401 && cameraAssetCalls === 2 && res.headers.get('Permissions-Policy') === 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
-  res = await get('https://guild.example/static/qr-phase1.html', cameraEnv, { method: 'POST', headers: { Cookie: validCookie } });
-  check('the camera page accepts only GET and HEAD', res.status !== 200 && cameraAssetCalls === 2);
+  // The councillor page is the one response that may use the device camera (owner item 32 fallback).
+  const cameraEnv = env({ ASSETS: qrAssets }), memberHeaders = { Cookie: validCookie };
+  res = await get('https://guild.example' + cameraPath, cameraEnv, { headers: memberHeaders });
+  check('CC-063 signed in, exact camera HTML serves pinned bytes and only that route grants the same-origin camera',
+    /^text\/html/.test(res.headers.get('Content-Type')) && await exactFile(res, cameraPath) &&
+    qrAssetCalls.at(-1)?.path === cameraPath.slice(0, -5) && res.headers.get('Permissions-Policy') === cameraOpen &&
+    privateAsset(res) && /noindex/.test(res.headers.get('X-Robots-Tag')) && res.headers.get('X-Frame-Options') === 'DENY', res.status, res.headers.get('Location'));
+  res = await get('https://guild.example' + cameraPath, cameraEnv, { method: 'HEAD', headers: memberHeaders });
+  check('CC-063 signed-in camera HEAD has no body or redirect and preserves camera and cache headers',
+    res.status === 200 && res.body === null && !res.headers.has('Location') &&
+    res.headers.get('Permissions-Policy') === cameraOpen && privateAsset(res), res.status, res.headers.get('Location'));
+  for (const other of [cameraModule, cameraPath.slice(0, -5)]) {
+    res = await get('https://guild.example' + other, cameraEnv, { headers: memberHeaders });
+    check('CC-063 every other private asset keeps the camera closed: ' + other, res.status === 200 && res.headers.get('Permissions-Policy') === cameraClosed);
+  }
+  const beforeCameraRefusals = qrAssetCalls.length;
+  res = await get('https://guild.example' + cameraPath, cameraEnv);
+  check('signed out, the councillor page carries no camera allowance and reaches no asset', res.status === 401 && qrAssetCalls.length === beforeCameraRefusals && res.headers.get('Permissions-Policy') === cameraClosed);
+  res = await get('https://guild.example' + cameraPath, cameraEnv, { method: 'POST', headers: memberHeaders });
+  check('the camera page accepts only GET and HEAD', res.status !== 200 && qrAssetCalls.length === beforeCameraRefusals);
   await admittedSetup.prepare('UPDATE site_users SET session_version=? WHERE discord_id=?').bind(originalVersion+1,viewer).run();
   res = await get('https://guild.example/static/app.js', assetEnv, { headers: { Cookie: validCookie } });
   check('revoked cookie never reaches the asset binding', res.status === 401 && assetCalls === 1);

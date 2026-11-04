@@ -93,6 +93,14 @@ export function privateSiteAsset(response: Response): Response {
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
+/** Fetch a verified .html route's extensionless ASSETS key so the provider's
+ * default HTML redirect cannot move the browser outside its exact policy route. */
+export function fetchCanonicalHtmlAsset(request: Request, assets: Env['ASSETS'], htmlPath: string): Promise<Response> {
+  const url = new URL(request.url);
+  url.pathname = htmlPath.slice(0, -'.html'.length);
+  return assets.fetch(new Request(url, { method: request.method, headers: request.headers, redirect: 'manual' }));
+}
+
 /** The councillor verification page alone may use the device camera (owner item 32 fallback, 14 October 2026): an
  * attended, local QR read of a screen this browser cannot capture. Same origin only, delivered only behind the member
  * gate; every other response keeps camera=(). Microphone and the rest stay closed. */

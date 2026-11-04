@@ -44,7 +44,7 @@ import { bnetLoginState } from "./bnet-switch";
 import { sweepRenameHolds } from "./rename-review";
 import { policyResponse } from "./policies";
 import { memberLegalNavigation } from "./member-legal-navigation";
-import { CAMERA_PAGE_PATH, memberSiteGate, privateCameraPageAsset, privateSiteAsset } from './site-access';
+import { CAMERA_PAGE_PATH, fetchCanonicalHtmlAsset, memberSiteGate, privateCameraPageAsset, privateSiteAsset } from './site-access';
 import { forwardPrivateProductionControl } from './privacy-private-control-adapter';
 import { LOGIN_ASSETS, POLICY_ASSETS, policyHeaders } from "./policy-render";
 import { immutablePolicyAsset, POLICY_ASSET_DIGEST_PREFIX } from "./policy-asset-cache";
@@ -199,7 +199,10 @@ export default {
     // This exact page/module pair has no server-data fetch, form submission or serving authority.
     if (host === 'site' && (path === '/static/qr-beta-window-data.html' || path === '/static/qr-beta-window.mjs')) {
       if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('method not allowed', { status: 405, headers: securityHeaders(new Headers({ Allow: 'GET, HEAD' })) });
-      const asset = privateSiteAsset(await env.ASSETS.fetch(request));
+      const source = path === '/static/qr-beta-window-data.html'
+        ? await fetchCanonicalHtmlAsset(request, env.ASSETS, path)
+        : await env.ASSETS.fetch(request);
+      const asset = privateSiteAsset(source);
       const headers = new Headers(asset.headers);
       headers.set('Content-Security-Policy', "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'");
       return new Response(request.method === 'HEAD' ? null : asset.body, { status: asset.status, statusText: asset.statusText, headers });
@@ -233,7 +236,10 @@ export default {
         // .218: the Treasury plan's files and its access check are for officers and above (site-treasury-access.ts).
         const treasuryPrivate = await treasuryAfterMemberGate(request, env, path);
         if (treasuryPrivate) return treasuryPrivate;
-        if ((request.method === 'GET' || request.method === 'HEAD') && path.startsWith('/static/')) return path === CAMERA_PAGE_PATH ? privateCameraPageAsset(await env.ASSETS.fetch(request)) : privateSiteAsset(await env.ASSETS.fetch(request));
+        if ((request.method === 'GET' || request.method === 'HEAD') && path.startsWith('/static/')) {
+          if (path === CAMERA_PAGE_PATH) return privateCameraPageAsset(await fetchCanonicalHtmlAsset(request, env.ASSETS, path));
+          return privateSiteAsset(await env.ASSETS.fetch(request));
+        }
       }
       // This build's columns and tables (schema.ts); a no-op once done in this isolate, retried on the next request
       // after a failure. Until it has succeeded, the watcher's endpoints answer 503 (the watcher keeps its work and
