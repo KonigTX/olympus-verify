@@ -1413,17 +1413,7 @@
       add(nav, [["#/", "Home"], ["#/apply", "Apply"], ["#/vote", "Vote"]].map(link));
       add(nav, group("Guild", [["#/roles", "Roles"], ["#/governance", "Governance"], ["#/organization", "Organization"], ...treasuryNavLinks218()]));
       if (can("applicantWrite") && (anyCommunity() || can("armyRead"))) {
-        const sections = [["#/community", "Community overview"]];
-        if (can("armyRead")) sections.push(["#/community/army", "Army"]);
-        if (feat("directory")) sections.push(["#/community/directory", "Discord member list"], ["#/community/profile", "My profile"]);
-        if (feat("crafting")) sections.push(["#/community/workshop", "Crafters & Artisans"]);
-        if (feat("events")) sections.push(["#/community/calendar", "Calendar"]);
-        if (feat("trials")) sections.push(["#/community/trial", "My trial"]);
-        if (feat("contributions")) sections.push(["#/community/dues", "Treasury & tithes"]);
-        if (newsOn()) sections.push(["#/news", "Town Crier"]);
-        if (anyCommunity()) sections.push(["#/community/leadership", "Leadership"]);
-        if (feat("census") && can("confirmedGuildData")) sections.push(["#/community/census", "Census preview"]);
-        add(nav, group("Community", sections));
+        add(nav, group("Community", visibleCommunitySections().map(({ href, label }) => [href, label])));
       }
       const resources = [["#/resources", "Class & profession guides"], ["#/guide/member", "Member guide"], ["#/guide/officer", "Officer guide"], ["#/talents", "Talent calculator"], ["#/addons", "Addons"], ["#/guides", "Publisher library"], ["#/updates", "Game updates"]];
       if (S.qrVerification && S.qrVerification.enabled === true) resources.push(["/static/qr-phase1.html", "Verify in game"]);
@@ -1511,14 +1501,13 @@
   // Titles identify the section, never a private account, event or case from an address.
   function routeTitle(route) {
     const [head, sub, detail, action] = route.split("/");
-    const community = { "": "Overview", directory: "Discord member list", profile: "My profile", workshop: "Crafters & Artisans", calendar: "Calendar", census: "Census preview", trial: "My trial", dues: "My dues", news: "Guild news", army: "Army", leadership: "Leadership" };
     const staff = { "": "Overview", applications: detail ? "Application details" : "Applications", votes: "Votes", names: "Reserved names", friends: "Friends", lookup: "Lookup", settings: "Settings", ranks: "Rank planner", treasury: "Treasury", "approved-guilds": "Signed guild list", renames: "Renames", news: "News", audit: "Audit log", "ruleset-publication": "Ruleset publication", "directory-visibility": "Discord member list preferences", community: "Community" };
     const staffCommunity = { trials: "Trials", departures: "Departures", cases: "Restriction cases", ledger: "Contribution ledger", inbox: "Private requests", claims: "Character claims" };
     if (head === "admin") return `Admin · ${sub === "community" && own(staffCommunity, detail) ? staffCommunity[detail] : own(staff, sub || "") ? staff[sub || ""] : "Overview"}`;
     if (head === "community") {
       const eventActions = { edit: "Edit event", attendance: "Attendance", discord: "Discord announcement" };
       const event = sub === "calendar" && detail ? (detail === "new" ? "New event" : own(eventActions, action) ? eventActions[action] : "Event details") : "";
-      return `Community · ${event || (own(community, sub || "") ? community[sub || ""] : "Not here")}`;
+      return `Community · ${event || communitySection(sub || "")?.label || "Not here"}`;
     }
     if (head === "talents") { const cls = M().classes.find(c => c.key === dec(sub || "warrior")); return cls ? `${cls.label} talents` : "Talents"; }
     if (head === "resources") return "Class & profession guides";
@@ -1527,7 +1516,9 @@
     if (head === "roles" && sub) { const role = M().positions.find(p => p.key === dec(sub)); if (role) return `${role.label} · Roles`; }
     if (head === "guide") return sub === "officer" ? "Officer guide" : "Member guide";
     if (head === "legal") return sub === "privacy" ? "Privacy Policy" : sub === "terms" ? "Terms of Service" : "Legal";
-    return ({ "": "Home", apply: "Apply", vote: "Vote", roles: "Roles", governance: "Governance", organization: "Organization", "treasury-plan": "Treasury plan", addons: "Addons", updates: "Game updates", news: "Town Crier", army: sub === "report" ? "Army reporter" : "Army", data: "Account data", request: "Private request" })[head] || "Home";
+    if (head === "news") return communitySection("news").label;
+    if (head === "army") return sub === "report" ? "Army reporter" : communitySection("army").label;
+    return ({ "": "Home", apply: "Apply", vote: "Vote", roles: "Roles", governance: "Governance", organization: "Organization", "treasury-plan": "Treasury plan", addons: "Addons", updates: "Game updates", data: "Account data", request: "Private request" })[head] || "Home";
   }
   let lastHash = location.hash;
   let ignoreHash = false;
@@ -1624,8 +1615,9 @@
     let route = currentRoute();
     const first = route.split("/")[0];
     let scrollTo = "";
-    if (own(OLD, first)) {
-      route = OLD[first];
+    const legacyNews = route === "community/news" || route === "community/news/";
+    if (legacyNews || own(OLD, first)) {
+      route = legacyNews ? "news" : OLD[first];
       if (first === "names" || first === "friends") scrollTo = first;
       history.replaceState(null, "", "#/" + route);
       lastHash = location.hash;
@@ -4343,7 +4335,7 @@
     const [appsOpen, appsOpenRow] = box(s.applicationsOpen, "Applications are open");
     const [votingOpen, votingOpenRow] = box(s.votingOpen, "Voting is open (the board and write-in nominations)");
     // .115 (Viktor's item A, 2 Oct 2026): the members' News page is off until an administrator switches it on here (site-news.ts)
-    const [newsBox, newsRow] = box(!!s.newsOn, "News page: guild members and site administrators can read Community → News", "Off: the page is hidden, no notice can be posted or changed and the figures stop; notices already posted keep their time and can still be deleted under Admin → News.");
+    const [newsBox, newsRow] = box(!!s.newsOn, "Town Crier: guild members and site administrators can read the dispatches", "Off: the page is hidden, no notice can be posted or changed and the figures stop; notices already posted keep their time and can still be deleted under Admin → News.");
     newsBox.id = "news-on";
     const [loginAnimation, loginAnimationRow] = box(s.loginAnimation === true, "Use the optional animated login background", "Off by default: keeps the previously approved still image. On: uses the existing client-model render, not publisher video; reduced-motion and data-saving fallbacks still apply.");
     loginAnimation.id = "login-animation";
@@ -5351,7 +5343,7 @@
     add(body, [
       message ? noticeBox("warn", "icon-warning", h("p", { text: message })) : null,
       frame("News", h("span", { class: "badge " + (d.newsOn ? "green" : "muted"), text: d.newsOn ? "on" : "off" }),
-        h("p", { class: "muted small", text: "Community → News for guild members and site administrators: your notices, whether Olympus I has room, the guild in figures (counts only), the next events, when the leadership directory changed, the Forever schedule. Site updates are visible only to the owner. Switch it in Admin → Settings." }),
+        h("p", { class: "muted small", text: "The Town Crier is visible to guild members and site administrators. It covers your notices, whether Olympus I has room, the guild in figures (counts only), the next events, when the leadership directory changed, the Forever schedule. Site updates are visible only to the owner. Switch it in Admin → Settings." }),
         d.newsOn ? null : noticeBox("info", "icon-clock", h("p", { text: "News is switched off (Admin → Settings); notices cannot be posted while it is off." })),
         kv([["Shown now", `${notices.length} of ${limits.liveMax || 20}`], ["Past their time, awaiting the cleanup", String(d.awaitingCleanup || 0)], ["Operation records kept (120 days each)", String(d.operationRecords || 0)]])),
       frame("Notices shown now", null, list.length ? list : h("p", { class: "muted small", text: "No notice is shown right now." })),
@@ -5988,18 +5980,34 @@
 
   // ---------- the community pages ----------
   const newsOn = () => !!(S.settings && S.settings.newsOn); // .115: SiteSettings.newsOn, off unless an administrator switched it on
+  const COMMUNITY_SECTIONS = [
+    { key: "", label: "Overview", href: "#/community", visible: () => anyCommunity() || can("armyRead") },
+    { key: "profile", label: "My profile", href: "#/community/profile", visible: () => feat("directory"), icon: "pos-member",
+      description: "Choose whether to show your detailed profile in Member profiles and share any Workshop offers you add. The Discord member list has its own visibility control." },
+    { key: "trial", label: "My trial", href: "#/community/trial", visible: () => feat("trials"), icon: "icon-shield",
+      description: "Your trial period as the officers recorded it: the review date and the outcome." },
+    { key: "dues", label: "My dues", href: "#/community/dues", visible: () => feat("contributions"), icon: "pos-treasurer",
+      description: "The weeks the policy counts for you, what was applied, and the mail reference for paying." },
+    { key: "directory", label: "Discord member list", href: "#/community/directory", visible: () => feat("directory"), icon: "icon-friends",
+      description: "Current holders of an Olympus membership or rank role in Discord. Shows names, portraits and permitted public roles, plus verified characters for eligible website accounts." },
+    { key: "workshop", label: "Crafters & Artisans", href: "#/community/workshop", visible: () => feat("crafting"), icon: "pos-professions",
+      description: "Search members' rare-recipe and profession offers, and list your own crafts through My profile." },
+    { key: "calendar", label: "Calendar", href: "#/community/calendar", visible: () => feat("events"), icon: "icon-clock",
+      description: () => `Guild events, your answers${feat("attendance") ? " and what the organizers recorded afterwards" : ""}. For guild members and site administrators.` },
+    { key: "leadership", label: "Leadership", href: "#/community/leadership", visible: anyCommunity, icon: "pos-guild_master",
+      description: "The Guild Master and officers of each Olympus guild, I to X. For guild members and site administrators." },
+    { key: "news", label: "Town Crier", href: "#/news", visible: newsOn, icon: "icon-launch",
+      description: "Notices from the site's administrators, whether Olympus I has room, the guild in figures and what is coming up. For guild members and site administrators." },
+    { key: "army", label: "Army", href: "#/community/army", visible: () => can("armyRead"), icon: "icon-friends",
+      description: "Read guild snapshots shared for signed-in Olympus members by authorized reporters. These unverified figures count characters, not people." },
+    { key: "census", label: "Census preview", href: "#/community/census", visible: () => feat("census") && can("confirmedGuildData"), icon: "icon-friends",
+      description: "Paste an optional addon export to inspect unsigned guild observations. Private preview only; nothing is saved." },
+  ];
+  const visibleCommunitySections = () => COMMUNITY_SECTIONS.filter(section => section.visible());
+  const communitySection = key => COMMUNITY_SECTIONS.find(section => section.key === key);
   function communityTabs(sub) {
-    const tabs = anyCommunity() || can("armyRead") ? [["", "Overview"]] : [];
-    if (feat("directory")) tabs.push(["directory", "Directory"], ["profile", "My profile"]);
-    if (feat("crafting")) tabs.push(["workshop", "Crafters & Artisans"]);
-    if (feat("events")) tabs.push(["calendar", "Calendar"]);
-    if (feat("census") && can("confirmedGuildData")) tabs.push(["census", "Census preview"]);
-    if (feat("trials")) tabs.push(["trial", "My trial"]);
-    if (feat("contributions")) tabs.push(["dues", "My dues"]);
-    if (newsOn()) tabs.push(["news", "News"]); // .115: only while an administrator has News switched on
-    if (can("armyRead")) tabs.push(["army", "Army"]);
-    if (anyCommunity()) tabs.push(["leadership", "Leadership"]); // .114: the Olympus I-X directory (confirmed members)
-    return h("nav", { class: "btn-row", "aria-label": "Community sections" }, tabs.map(([k, t]) => h("a", { class: "btn small", href: "#/community" + (k ? "/" + k : ""), text: t, "aria-current": sub === k ? "page" : false })));
+    return h("nav", { class: "btn-row", "aria-label": "Community sections" }, visibleCommunitySections().map(({ key, href, label }) =>
+      h("a", { class: "btn small", href, text: label, "aria-current": sub === key ? "page" : false })));
   }
   const sourceStrip = (source, freshness) => h("div", { class: "source-strip", "data-source-strip": true },
     h("span", { class: "badge", text: source }), h("span", { class: "small muted", text: freshness }));
@@ -6050,7 +6058,7 @@
     if (!S.signedIn || S.denied || !can("applicantWrite")) { add(main, standingNotice()); return; }
     const editing = parts[0] === "edit";
     add(main, writsPanel199("news"));
-    add(main, frame("Town Crier", null,
+    add(main, frame(communitySection("news").label, null,
       h("p", { text: "Guild announcements and the Lead Correspondent's dispatches." }),
       h("div", { class: "btn-row" }, h("a", { class: "btn small", href: "#/news", text: "Read dispatches" }),
         S.user && S.user.canEditTownCrier ? h("a", { class: "btn small", href: "#/news/edit", text: "Edit dispatches" }) : null)));
@@ -6083,7 +6091,6 @@
     // .181: aggregate Army reads use ordinary account standing; all other Community gates remain below.
     if (sub === "army") { if (!can("armyRead")) { add(body, noticeBox("warn", "icon-warning", h("p", { text: "Army access is not available for this account’s current standing. Reload the page to check your current access." }))); return; } return communityArmyReview(body); }
     if (!communityReader()) { add(body, standingNotice()); return; }
-    if (sub === "news" && newsOn()) return communityNews(body); // .115
     if (sub === "leadership") return communityLeadership(body); // .114
     if (sub === "census" && feat("census")) { if (!can("confirmedGuildData")) { add(body, memberActionNotice()); return; } return communityCensus(body); }
     if (sub === "directory" && feat("directory")) return communityDirectory(body);
@@ -6104,19 +6111,10 @@
     add(body, frame("Not here", null, h("p", { text: "There is no such community page, or it is not switched on." })));
   };
   async function communityOverview(body) {
-    const cards = [];
-    if (can("armyRead")) cards.push(h("a", { class: "card", href: "#/community/army" }, h("div", { class: "card-head" }, icon("icon-friends"), h("h3", { text: "Army" })), h("p", { class: "muted small", text: "Read guild snapshots shared for signed-in Olympus members by authorized reporters. These unverified figures count characters, not people." })));
-    if (feat("census") && can("confirmedGuildData")) cards.push(h("a", { class: "card", href: "#/community/census" }, h("div", { class: "card-head" }, icon("icon-friends"), h("h3", { text: "Census preview" })), h("p", { class: "muted small", text: "Paste an optional addon export to inspect unsigned guild observations. Private preview only; nothing is saved." })));
-    if (feat("directory")) {
-      cards.push(h("a", { class: "card", href: "#/community/directory" }, h("div", { class: "card-head" }, icon("icon-friends"), h("h3", { text: "Discord member list" })), h("p", { class: "muted small", text: "Current holders of an Olympus membership or rank role in Discord. Shows names, portraits and permitted public roles, plus verified characters for eligible website accounts." })));
-      cards.push(h("a", { class: "card", href: "#/community/profile" }, h("div", { class: "card-head" }, icon("pos-member"), h("h3", { text: "My profile" })), h("p", { class: "muted small", text: "Choose whether to show your detailed profile in Member profiles and share any Workshop offers you add. The Discord member list has its own visibility control." })));
-    }
-    if (feat("crafting")) cards.push(h("a", { class: "card", href: "#/community/workshop" }, h("div", { class: "card-head" }, icon("pos-professions"), h("h3", { text: "Crafters & Artisans" })), h("p", { class: "muted small", text: "Search members' rare-recipe and profession offers, and list your own crafts through My profile." })));
-    if (feat("events")) cards.push(h("a", { class: "card", href: "#/community/calendar" }, h("div", { class: "card-head" }, icon("icon-clock"), h("h3", { text: "Calendar" })), h("p", { class: "muted small", text: `Guild events, your answers${feat("attendance") ? " and what the organizers recorded afterwards" : ""}. For guild members and site administrators.` })));
-    if (feat("trials")) cards.push(h("a", { class: "card", href: "#/community/trial" }, h("div", { class: "card-head" }, icon("icon-shield"), h("h3", { text: "My trial" })), h("p", { class: "muted small", text: "Your trial period as the officers recorded it: the review date and the outcome." })));
-    if (feat("contributions")) cards.push(h("a", { class: "card", href: "#/community/dues" }, h("div", { class: "card-head" }, icon("pos-treasurer"), h("h3", { text: "My dues" })), h("p", { class: "muted small", text: "The weeks the policy counts for you, what was applied, and the mail reference for paying." })));
-    if (newsOn()) cards.push(h("a", { class: "card", href: "#/community/news" }, h("div", { class: "card-head" }, icon("icon-launch"), h("h3", { text: "News" })), h("p", { class: "muted small", text: "Notices from the site's administrators, whether Olympus I has room, the guild in figures and what is coming up. For guild members and site administrators." }))); // .115
-    if (anyCommunity()) cards.push(h("a", { class: "card", href: "#/community/leadership" }, h("div", { class: "card-head" }, icon("pos-guild_master"), h("h3", { text: "Leadership" })), h("p", { class: "muted small", text: "The Guild Master and officers of each Olympus guild, I to X. For guild members and site administrators." }))); // .114
+    const cards = visibleCommunitySections().filter(section => section.icon).map(({ href, label, icon: cardIcon, description }) =>
+      h("a", { class: "card", href },
+        h("div", { class: "card-head" }, icon(cardIcon), h("h3", { text: label })),
+        h("p", { class: "muted small", text: typeof description === "function" ? description() : description })));
     add(body, [communityReader() ? null : standingNotice(), h("section", { class: "grid three" }, cards)]);
   }
   // A fresh memberSeats read is separate from volunteer Army observations and
