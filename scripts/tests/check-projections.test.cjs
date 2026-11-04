@@ -139,7 +139,8 @@ try {
 const talentCalculator218 = 'worker/public/static/talents/calculator.js';
 const talentGenerator218 = 'scripts/build-talent-build-contract.cjs', talentProjection218 = 'worker/src/talent-build-contract.ts';
 const talentPriorSource218 = 'fbed6f34d022cea57a6760d96bd7b04f0419effa25b0f47eaa85d72e92636b14';
-const talentCurrentSource218 = '0830ff6fc69ef3a3430bf1cdf31a272f3a5a84da4bcedfba2ae398748cd131c8';
+const talentRecoverySource218 = '0830ff6fc69ef3a3430bf1cdf31a272f3a5a84da4bcedfba2ae398748cd131c8';
+const talentCurrentSource218 = '259235a2bc371c7f227a486bc39e26064661add952e5dd8c647d9ad75cac684b';
 const talentNewHeading218 = 'h("h1", { class: "talents-eyebrow", text: "Olympus · Forever talents" })';
 const talentOldHeading218 = 'h("p", { class: "talents-eyebrow", text: "Olympus · Forever talents" })';
 const actualCalculator218 = base.get(talentCalculator218).toString('utf8');
@@ -154,12 +155,26 @@ const talentRecoveryEdits218 = [
     "new": "        if (incoming.ok) {\n          build = incoming.build;\n          if (!linkedClass) message = \"That linked class is unavailable. Showing the checked \" + classOf(data, build.className).name + \" shared plan.\";\n        } else message = incoming.error + (!linkedClass ? \" That linked class is unavailable. Showing a blank Warrior plan; choose a supported class below.\" : \"\");"
   }
 ];
-let headingOnlyCalculator218 = actualCalculator218;
+const talentDisplayLines228 = [
+  '      const displayClasses = [...data.classes].sort((a, b) => a.name.localeCompare(b.name, "en"));\n',
+  '        h("p", { class: "talents-diff-note" }, "This calculator uses the 16 October beta talent snapshot. Check shared builds against your current in-game talents and ",\n'
+  + '          h("a", { href: "https://us.forums.blizzard.com/en/wow/t/2360696/9", rel: "noopener noreferrer", text: "Blizzard\'s 2 November notes" }), "."),\n',
+];
+let recoveryCalculator218 = actualCalculator218;
+for (const line of talentDisplayLines228) {
+  if (recoveryCalculator218.split(line).length !== 2) throw Error('one exact calculator display addition required');
+  recoveryCalculator218 = recoveryCalculator218.replace(line, '');
+}
+if (recoveryCalculator218.split('displayClasses.map(').length !== 3) throw Error('both calculator class controls must use display order');
+recoveryCalculator218 = recoveryCalculator218.replaceAll('displayClasses.map(', 'data.classes.map(');
+check('the calculator display changes preserve the complete previous allocation and recovery source',
+  hash(base.get(talentCalculator218)) === talentCurrentSource218 && hash(Buffer.from(recoveryCalculator218)) === talentRecoverySource218);
+let headingOnlyCalculator218 = recoveryCalculator218;
 for (const edit of talentRecoveryEdits218.slice().reverse()) {
   if (headingOnlyCalculator218.split(edit.new).length !== 2) throw Error("one exact reviewed calculator recovery edit required");
   headingOnlyCalculator218 = headingOnlyCalculator218.replace(edit.new, edit.old);
 }
-check("the exact two reviewed unknown-class recovery edits preserve the entire heading-only calculator", hash(base.get(talentCalculator218)) === talentCurrentSource218
+check("the exact two reviewed unknown-class recovery edits preserve the entire heading-only calculator", hash(Buffer.from(recoveryCalculator218)) === talentRecoverySource218
   && hash(Buffer.from(headingOnlyCalculator218)) === talentHeadingSource218);
 check('the exact reviewed talent heading successor preserves every old calculator byte outside p-to-h1', hash(Buffer.from(headingOnlyCalculator218)) === talentHeadingSource218
   && headingOnlyCalculator218.split(talentNewHeading218).length === 2 && !headingOnlyCalculator218.includes(talentOldHeading218)
@@ -187,7 +202,7 @@ const talentMetadata218 = [
   ['TALENT_SNAPSHOT_REVISION', '260cf99b52db', /talent upstream and revision pins/],
   ['TALENT_SNAPSHOT_DATA_SHA256', '8b174d764836675b2b759050f441e2dfe12c7bad6a5b279ef39b05d8b1288a0c', /talent normalized input and generated data pin/],
   ['TALENT_SNAPSHOT_UPSTREAM_SHA256', '260cf99b52db5fd0085043d4d3c2d5dde1b47dffe88b9696c94caccc9fb03588', /talent upstream and revision pins/],
-  ['TALENT_SERIALIZER_SOURCE_SHA256', '0830ff6fc69ef3a3430bf1cdf31a272f3a5a84da4bcedfba2ae398748cd131c8', /talent calculator source and generated serializer pin/],
+  ['TALENT_SERIALIZER_SOURCE_SHA256', talentCurrentSource218, /talent calculator source and generated serializer pin/],
 ];
 for (const [name, value, error] of talentMetadata218) {
   const declaration = 'export const ' + name + ' = "' + value + '";', stale = '0'.repeat(value.length);
@@ -209,7 +224,7 @@ for (const [name, value, error] of talentMetadata218) {
 const talentGeneratorFields218 = [
   ['INPUT_SHA256', '8b174d764836675b2b759050f441e2dfe12c7bad6a5b279ef39b05d8b1288a0c', /talent normalized input and generated data pin/],
   ['UPSTREAM_SHA256', '260cf99b52db5fd0085043d4d3c2d5dde1b47dffe88b9696c94caccc9fb03588', /talent upstream and revision pins/],
-  ['CALCULATOR_SHA256', '0830ff6fc69ef3a3430bf1cdf31a272f3a5a84da4bcedfba2ae398748cd131c8', /talent calculator source and generated serializer pin/],
+  ['CALCULATOR_SHA256', talentCurrentSource218, /talent calculator source and generated serializer pin/],
   ['REVISION', '260cf99b52db', /talent upstream and revision pins/],
 ];
 for (const [name, value, error] of talentGeneratorFields218) {

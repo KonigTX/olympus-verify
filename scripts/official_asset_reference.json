@@ -650,8 +650,8 @@
     {
       "path": "worker/public/static/talents/calculator.js",
       "mode": "100644",
-      "bytes": 65881,
-      "sha256": "0830ff6fc69ef3a3430bf1cdf31a272f3a5a84da4bcedfba2ae398748cd131c8"
+      "bytes": 66306,
+      "sha256": "259235a2bc371c7f227a486bc39e26064661add952e5dd8c647d9ad75cac684b"
     },
     {
       "path": "worker/public/static/talents/calculator.css",
@@ -4052,8 +4052,8 @@
     {
       "path": "worker/public/static/guides218.js",
       "mode": "100644",
-      "bytes": 31867,
-      "sha256": "5d517a79ade9fc5e368d7ec6915a40d4969bb342b6890feb8a4a729c0862568c"
+      "bytes": 31871,
+      "sha256": "34cd3fe630bf784cf758835945df6e5be16275fc05d0c2c907e1d6fcfd82cd9b"
     },
     {
       "path": "worker/public/static/guides218.json",

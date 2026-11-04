@@ -371,9 +371,10 @@
       const treeRefs = [], placements = new Map(cls.trees.flatMap(tree => [...classicPlacements(tree)]));
       let laidOut = "forever", firstPaint = true;
       if (!talents.some(t => t.id === selected)) selected = talents[0].id;
-      const classSelect = h("select", { id: "olympus-talent-class", "aria-label": "Character class", tabindex: "-1", onchange(event) { chooseClass(event.target.value); } }, data.classes.map(c => h("option", { value: c.id, text: c.name })));
+      const displayClasses = [...data.classes].sort((a, b) => a.name.localeCompare(b.name, "en"));
+      const classSelect = h("select", { id: "olympus-talent-class", "aria-label": "Character class", tabindex: "-1", onchange(event) { chooseClass(event.target.value); } }, displayClasses.map(c => h("option", { value: c.id, text: c.name })));
       classSelect.value = cls.id;
-      const classRow = h("nav", { class: "talents-classes", "aria-label": "Character classes" }, data.classes.map(c => {
+      const classRow = h("nav", { class: "talents-classes", "aria-label": "Character classes" }, displayClasses.map(c => {
         const button = h("button", { type: "button", class: "talents-class-button", "data-class": c.id, "aria-pressed": String(c.id === cls.id), onclick() { chooseClass(c.id); } }, image(art.classIcons[c.id]), h("span", { text: c.name }));
         classButtons.set(c.id, button); return button;
       }));
@@ -621,6 +622,8 @@
             const meter = h("meter", { min: "0", max: String(state.budget), value: String(state.treePoints[index]), "aria-label": tree.name + " points" }, String(state.treePoints[index])), label = h("b", { text: String(state.treePoints[index]) });
             specPointRefs.push({ meter, label }); return h("div", null, h("span", { text: tree.name }), meter, label);
           }))),
+        h("p", { class: "talents-diff-note" }, "This calculator uses the 16 October beta talent snapshot. Check shared builds against your current in-game talents and ",
+          h("a", { href: "https://us.forums.blizzard.com/en/wow/t/2360696/9", rel: "noopener noreferrer", text: "Blizzard's 2 November notes" }), "."),
         guidePanel, moduleNote, h("div", { class: "talents-summary" }, split, pointsLeft, levelNeeded), legend, layoutNote,
         artworkNotice, h("div", { class: "talents-workspace" }, h("div", { class: "talents-trees" }, treeCards)), status,
         analysisHost, h("div", { class: "talents-insights" }, changesPanel, statsHost),

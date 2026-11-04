@@ -4,7 +4,7 @@ const fs = require('node:fs'), path = require('node:path'), crypto = require('no
 const root = path.join(__dirname, '..');
 const INPUT_SHA256 = '8b174d764836675b2b759050f441e2dfe12c7bad6a5b279ef39b05d8b1288a0c';
 const UPSTREAM_SHA256 = '260cf99b52db5fd0085043d4d3c2d5dde1b47dffe88b9696c94caccc9fb03588';
-const CALCULATOR_SHA256 = '0830ff6fc69ef3a3430bf1cdf31a272f3a5a84da4bcedfba2ae398748cd131c8';
+const CALCULATOR_SHA256 = '259235a2bc371c7f227a486bc39e26064661add952e5dd8c647d9ad75cac684b';
 const REVISION = '260cf99b52db';
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 function projectSnapshot(data, calculator) {

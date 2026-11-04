@@ -13,8 +13,7 @@ progression stability and farm rotations. It links to the standing raid and loot
   and `textContent` only: no HTML strings, inline styles, storage, eval or randomness.
 - `worker/public/static/guides218.css`: scoped `.guides218-*` styles, no `url()`, reduced-motion and forced-colors rules,
   restacking at 560 px.
-- `worker/public/static/guides218.json`: the catalogue, member-gated like every `/static` file. It is generated, never edited by
-  hand (see Authoring).
+- `worker/public/static/guides218.json` is the maintained catalogue. Member access is required to load it on the site.
 
 ## Honesty rules
 Every fact carries a grade, and the page explains the grades once:
@@ -44,10 +43,11 @@ Every fact carries a grade, and the page explains the grades once:
   lives in page memory for five minutes and is used once.
 
 ## Authoring
-The catalogue is built from schema-checked authoring files in `perfection-2026-10-31/claude/l2/`:
-`SCHEMA.md`, `validate_content.py` and `build_guides.py`. Each authoring file was written from the dated research record and
-then adversarially checked for grounding, grades, policy and originality. The talent-change counts come from `talents/data.json`
-itself.
+The October 31 release was built from the archived `perfection-2026-10-31/claude/l2/` authoring files. Since November 4,
+maintain copy and references in the tracked `guides218.json` catalogue. The October generator reproduces the historical
+catalogue. For current updates, preserve existing source indices and preset codes, add dated references for changed claims,
+and check the catalogue through `guides218_test.cjs` and the asset projection checks. The talent-change counts come from
+`talents/data.json`, which remains the source for the frozen build snapshot.
 
 ## Tests
 - `worker/tests/guides218_test.cjs`: source policy, closed validation and refusals, preset round trips, talent-count parity,

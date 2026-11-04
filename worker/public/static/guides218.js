@@ -217,7 +217,7 @@
       const presets = s.presets.map(id => data.presets.find(p => p.id === id));
       frag.push(section(s.name + ": talent starting points",
         el("p", { class: "muted small" }, "Compare these saved builds with ",
-          link("https://us.forums.blizzard.com/en/wow/t/2360696/9", "Blizzard’s current talent notes"), " before using one in game or attaching it to an application."),
+          external("https://us.forums.blizzard.com/en/wow/t/2360696/9", "Blizzard’s current talent notes"), " before using one in game or attaching it to an application."),
         options.canAttach === false && options.attachReason ? el("p", { class: "muted small", text: options.attachReason }) : null,
         el("div", { class: "guides218-presets" }, presets.map(p => presetCard(data, p)))));
       const w = s.whatChanged;

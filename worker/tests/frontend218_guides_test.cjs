@@ -82,7 +82,7 @@ const WARRIOR60 = "ot1.260cf99b52db.warrior.60.053252130305152010505003000000000
   const rows = a.app.querySelectorAll(".talent-application-character");
   const at60 = rows[0] ? rows[0].querySelectorAll("textarea")[1] : null;
   check(".218 Attach fills only the main character's level 60 build, sets the class and says nothing was sent", !!at60 && at60.value === WARRIOR60 && rows[0].querySelectorAll("textarea")[0].value === ""
-    && a.app.textContent.includes("Your class is now Warrior.") && a.app.textContent.includes("nothing has been sent yet") && writes.length === 0);
+    && a.app.textContent.includes("Your class is now Warrior.") && a.app.textContent.includes("Nothing has been sent yet.") && writes.length === 0);
   check(".228 Attach identifies the beta build and asks the applicant to verify it in game", a.app.textContent.includes("level 60 beta build")
     && a.app.textContent.includes("Review it against the current in-game talents."));
   const board = a.app.querySelector("#board-talent-builds-opt-in");
