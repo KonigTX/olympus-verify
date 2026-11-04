@@ -132,6 +132,10 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
     && [spec.name + ': quick start', spec.name + ': advanced', spec.name + ': PvP', spec.name + ': talent starting points', spec.name + ': talent tree changes'].every(t => m.box.tags('h2').some(h => text(h) === t)));
   const cards = m.box.all(e => e.getAttribute('data-preset'));
   check('historical preset codes stay visible with an explicit beta snapshot label', cards.length > 0 && cards.every(card => text(card).includes('Beta snapshot build')));
+  check('the saved builds carry one shared caution, with short card headings and no visible revision hash',
+    text(m.box).split('Compare these saved builds with Blizzard’s current talent notes').length === 2
+    && cards.every(card => !text(card).includes(DATA.talentRevision) && !text(card.tags('h3')[0]).startsWith('Olympus starting point'))
+    && !text(m.box).includes('Talent snapshot Talent snapshot'));
   check('every preset of the spec renders once with its exact calculator link', cards.length === spec.presets.length && spec.presets.every(id => { const p = DATA.presets.find(x => x.id === id), card = cards.find(c => c.getAttribute('data-preset') === id);
     return card && card.tags('a').some(a => a.getAttribute('href') === '#/talents/' + p.classId + '/' + encodeURIComponent(p.code) && text(a) === 'Load this build in the talent calculator'); }));
   const attachButton = cards[0].tags('button').find(b => text(b) === 'Attach to my application');
@@ -162,7 +166,7 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   const withU = clone(DATA), raid = withU.classes[0].specs[0].pro.raid; raid.splice(0, raid.length ? 1 : 0, { label: 'Hit cap in Forever', value: null, grade: 'U', sources: [] });
   m = await mounted({ view: 'class', classId: withU.classes[0].id, specId: withU.classes[0].specs[0].id, talentRevision: talents.revision }, withU);
   const uClaim = m.box.all(e => e.getAttribute('data-grade') === 'U' && e.tagName === 'LI').find(li => text(li).includes('Hit cap in Forever'));
-  check('an unavailable value renders as "Unavailable" with its legend, never 0', !!uClaim && text(uClaim).includes('Hit cap in Forever: Unavailable') && !/:\s*0\b/.test(text(uClaim)) && m.box.tags('details').some(d => text(d).includes('How to read the grades')));
+  check('an unavailable value renders as "Unavailable" with its legend, never 0', !!uClaim && text(uClaim.tags('strong')[0]) === 'Hit cap in Forever' && text(uClaim.tags('span')[0]) === 'Unavailable' && m.box.tags('details').some(d => text(d).includes('How to read the grades')));
 
   // 8. Profession and tools.
   const prof = DATA.professions[0];

@@ -128,7 +128,7 @@
     }
     function claim(data, c) {
       return el("li", { class: "guides218-claim", "data-grade": c.grade },
-        el("strong", { text: c.label + ": " }), el("span", { text: c.grade === "U" ? "Unavailable" : c.value }), " ", grade(data, c.grade),
+        el("strong", { text: c.label }), " ", el("span", { text: c.grade === "U" ? "Unavailable" : c.value }), " ", grade(data, c.grade),
         c.note ? el("span", { class: "muted guides218-note", text: " " + c.note }) : null, " ", sourcesLine(data, c.sources));
     }
     const claims = (data, items, empty = "Nothing confirmed yet.") => items.length ? el("ul", { class: "guides218-claims" }, items.map(c => claim(data, c))) : el("p", { class: "muted", text: empty });
@@ -149,6 +149,10 @@
     function presetCard(data, p) {
       const cls = data.classes.find(c => c.id === p.classId), trees = cls ? cls.specs.map(s => s.name) : ["", "", ""];
       const href = "#/talents/" + p.classId + "/" + encodeURIComponent(p.code);
+      const context = p.context === "pvp" ? "PvP" : p.context[0].toUpperCase() + p.context.slice(1);
+      const title = p.label.replace(/^Olympus starting point · /, "");
+      const pointsSuffix = " (" + p.treePoints.join("/") + ")";
+      const label = (title.endsWith(pointsSuffix) ? title.slice(0, -pointsSuffix.length) : title) || p.label;
       const status = el("p", { class: "muted small", role: "status" });
       let attach = null;
       if (typeof options.onAttach === "function") {
@@ -156,12 +160,11 @@
           onclick: () => { status.textContent = "Opening your application with this build…"; options.onAttach(Object.freeze({ presetId: p.id, label: p.label, classId: p.classId, level: p.level, code: p.code })); } });
       }
       return el("article", { class: "guides218-preset", "data-preset": p.id },
-        el("h3", { text: p.label }),
-        el("p", { class: "muted small", text: "Level " + p.level + " · " + p.context + " · " + p.treePoints.map((n, i) => trees[i] + " " + n).join(" / ") }),
+        el("h3", { text: label.charAt(0).toUpperCase() + label.slice(1) }),
+        el("p", { class: "muted small", text: "Beta snapshot build · Level " + p.level + " · " + context + " · " + p.treePoints.map((n, i) => trees[i] + " " + n).join(" / ") }),
         list(p.why),
-        el("p", { class: "muted small", text: "Beta snapshot build · " + data.talentRevision + " · checked " + p.provenance.reviewedAt + ". Blizzard has since changed talents. Review the current notes before using this build in game or attaching it to an application." }),
         el("div", { class: "btn-row" }, link(href, "Load this build in the talent calculator", "btn"), attach),
-        options.canAttach === false && options.attachReason ? el("p", { class: "muted small", text: options.attachReason }) : null, status);
+        status);
     }
 
     function hub(data) {
@@ -195,7 +198,8 @@
         class: "btn small" + (spec && s.id === spec.id ? " active" : ""), "aria-current": spec && s.id === spec.id ? "page" : null }, icon(ROLE_ICON[s.roles[0]]), " " + s.name))));
       if (cls.overview.length > 1) frag.push(section("Class overview", list(cls.overview.slice(1))));
       if (cls.changes.length) frag.push(section("What Forever changes for " + cls.name, el("ul", { class: "guides218-list" }, cls.changes.map(x =>
-        el("li", null, el("span", { class: "guides218-status", "data-status": x.status, text: x.status === "announced" ? "Announced" : x.status === "pinned-data" ? "Talent snapshot" : "Pending" }), " ", x.text, " ", sourcesLine(data, x.sources))))));
+        el("li", null, el("span", { class: "guides218-status", "data-status": x.status, text: x.status === "announced" ? "Announced" : x.status === "pinned-data" ? "Talent snapshot" : "Pending" }), " ",
+          x.status === "pinned-data" ? x.text.replace(/^Talent snapshot, /, "") : x.text, " ", sourcesLine(data, x.sources))))));
       if (cls.classQuests.length) { collect(used, cls.classQuests); frag.push(section("Class quests", el("ul", { class: "guides218-claims" }, cls.classQuests.map(q =>
         el("li", { class: "guides218-claim" }, el("strong", { text: q.title }), " (" + q.levelHint + ") ", grade(data, q.grade), " ", q.note, " ", sourcesLine(data, q.sources)))))); }
       const s = spec || cls.specs[0];
@@ -211,7 +215,10 @@
       frag.push(section(s.name + ": PvP", s.pvp.overview.length ? list(s.pvp.overview) : el("p", { class: "muted", text: "No PvP notes yet." }),
         s.pvp.matchups.length ? el("dl", { class: "guides218-matchups" }, s.pvp.matchups.map(m => [el("dt", { text: "Against " + m.vs }), el("dd", { text: m.text })])) : null));
       const presets = s.presets.map(id => data.presets.find(p => p.id === id));
-      frag.push(section(s.name + ": talent starting points", el("div", { class: "guides218-presets" }, presets.map(p => presetCard(data, p)))));
+      frag.push(section(s.name + ": talent starting points",
+        el("p", { class: "muted small", text: "Compare these saved builds with Blizzard’s current talent notes before using one in game or attaching it to an application." }),
+        options.canAttach === false && options.attachReason ? el("p", { class: "muted small", text: options.attachReason }) : null,
+        el("div", { class: "guides218-presets" }, presets.map(p => presetCard(data, p)))));
       const w = s.whatChanged;
       frag.push(section(s.name + ": talent tree changes", el("p", { text: "Compared with Classic, the " + s.name + " tree in the talent snapshot has " + w.new + " new, " + w.changed + " changed, " + w.moved + " moved and " + w.same + " unchanged talents; " + w.classicOnly + " Classic talents are gone." }),
         el("p", null, link("#/talents/" + cls.id, "Open the calculator and switch on Compare to Classic", "btn small"))));
@@ -300,7 +307,7 @@
           if (rows.length) frag.push(section(name, el("dl", { class: "guides218-compendium" }, rows.map(x => [el("dt", { text: x.topic }), el("dd", null, x.text, " ", sourcesLine(data, x.sources))]))));
         }
         frag.push(section("Talent changes by class", el("table", { class: "guides218-table" },
-          el("caption", { text: "Talent snapshot " + data.talentRevision + " compared with Classic 1.12 (rank-one text)" }),
+          el("caption", { text: "Beta talents compared with Classic 1.12 (rank-one text)" }),
           el("thead", null, el("tr", null, ["Class", "New", "Changed", "Moved", "Unchanged", "Removed"].map(h => el("th", { scope: "col", text: h })))),
           el("tbody", null, data.classSummary.map(x => el("tr", null, el("th", { scope: "row" }, link("#/talents/" + x.id, x.name)),
             [x.new, x.changed, x.moved, x.same, x.classicOnly].map(n => el("td", { text: String(n) }))))))));
