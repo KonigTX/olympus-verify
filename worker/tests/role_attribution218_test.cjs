@@ -61,7 +61,7 @@ const body218 = String.raw`
     const card=page.app.querySelector('[data-role-family203="'+familyKey+'"]');
     check('.218 '+familyKey+' stays one job and one application choice across native aliases', card.querySelectorAll('.role-guide201').length === 1
       && card.querySelectorAll('[data-family-apply203]').length === 1 && sourceKeys.every(key => directory.keyToFamily[key] === familyKey));
-    check('.219 '+familyKey+' native standing is metadata on the main card, without a duplicate specification', !card.querySelector('[data-role-key201="rank_'+familyKey+'"]') && card.querySelector('.role-primary203 .rank-office199').textContent.includes('Slot ') && card.querySelector('.role-primary203').querySelectorAll('.role-guide201').length===1);
+    check('.219 '+familyKey+' native standing is metadata on the main card, without a duplicate specification', !card.querySelector('[data-role-key201="rank_'+familyKey+'"]') && card.querySelector('summary .rank-office199').textContent.includes('Slot ') && !card.querySelector('.role-primary203 .rank-office199') && card.querySelector('.role-primary203').querySelectorAll('.role-guide201').length===1);
 
   }
   const vice=page.app.querySelector('[data-role-key201="office_92"]'), co=page.app.querySelector('[data-role-family203="co_gm"] .role-primary203');

@@ -328,7 +328,7 @@ async function frontendOwner197() {
   check('.203 each canonical family retains local art and substantial duties, expectations and time guidance',families203.every(row=>{
     const family=model203.families.find(item=>item.key===row.getAttribute('data-role-family203')),primary=row.querySelector('.role-primary203'),guide=primary?.querySelector('.role-info');
     return row.querySelector('summary img')?.getAttribute('src')?.startsWith('/static/wow/')&&fs.existsSync(path.join(root,'public',row.querySelector('summary img').getAttribute('src')))
-      &&!!family&&!!primary&&(family.kind==='institution'?!primary.querySelector('.rank-office199'):(primary.querySelector('.rank-office199')||['member','raider','pvp_team'].includes(family.primaryKey)))
+      &&!!family&&!!primary&&(family.kind==='institution'?!primary.querySelector('.rank-office199'):(row.querySelector('summary .rank-office199')||['member','raider','pvp_team'].includes(family.primaryKey)))
       &&guide?.textContent.includes('Responsibilities')&&guide.textContent.includes('Expectations')&&guide.textContent.includes('Time')&&guide.querySelectorAll('li').length>=4;
   }));
   const institutionFamiliesP2 = ['court','high_council','justice','loot_council','privy_council','war_head'];
