@@ -210,6 +210,8 @@
     IV: "title-iv-the-grand-alliance-concordat",
     V: "title-v-the-guild-workshop-artisans-charter-and-the-heralds-accord"
   });
+  const councilFamilyOrder228 = directory => new Map(["leader", ...directory.councilOrder].map((key, index) => [key, index]));
+  const compareCouncilFamilies228 = order => (a, b) => (order.get(a.key) ?? order.size) - (order.get(b.key) ?? order.size);
   const titleLink228 = title => h("a", { href: "#/governance/" + governanceTitleRoutes228[title], text: "Title " + title });
   const rankPlannerLink228 = slot => S.user?.isAdmin === true
     ? h("a", { href: "/admin/ranks#current-rank-" + (slot + 1), text: "Rank planner" }) : null;
@@ -376,7 +378,7 @@
       if (workshopFamilies.has(family.key)) return "workshop";
       return family.tier === "officer_corps" ? "officers" : "members";
     }
-    const councilOrder = new Map(["leader", ...directory.councilOrder].map((key, index) => [key, index]));
+    const councilOrder = councilFamilyOrder228(directory);
     const rankOrder = new Map(directory.ranks.map(rank => [rank.familyKey, rank.nativeSlot]));
     const ballotKeys = new Set(M().ballots.map(ballot => ballot.key));
     const sourceLabel = key => directory.families.find(family => family.primaryKey === key && family.kind === "institution")?.label
@@ -393,7 +395,7 @@
     };
     for (const [id, label] of sectionsByRole) {
       const families = directory.families.filter(family => groupForFamily(family) === id);
-      if (id === "council") families.sort((a, b) => (councilOrder.get(a.key) ?? Infinity) - (councilOrder.get(b.key) ?? Infinity));
+      if (id === "council") families.sort(compareCouncilFamilies228(councilOrder));
       if (id === "members") families.sort((a, b) => (rankOrder.get(a.key) ?? directory.ranks.length) - (rankOrder.get(b.key) ?? directory.ranks.length));
       if (!families.length) continue;
       const grid = h("div", {class:"role-directory-grid201 role-family-grid203"});
@@ -1980,7 +1982,7 @@
       const referenceNodes = { I: "founder", II: "council", III: "treasury", IV: "guilds", V: "artisanry" };
       const directory = roleDirectory203();
       const related = title && directory ? directory.families.filter(family =>
-        family.sourceKeys.some(key => office199(key)?.codexTitles.includes(title))) : [];
+        family.sourceKeys.some(key => office199(key)?.codexTitles.includes(title))).sort(compareCouncilFamilies228(councilFamilyOrder228(directory))) : [];
       const references = h("nav", { class: "role-reference-links228", "aria-label": "Chapter references" },
         h("a", { href: "#/organization/" + (referenceNodes[title] || "alliance-overview"), text: "Organization" }),
         h("a", { href: "#/roles/rosetta-stone", text: "Rank crosswalk" }),
@@ -4227,11 +4229,12 @@
         associationStatus.get(b.key));
     const appointedGrid = group => h("div", { class: "appointed-grid" }, appointed.filter(([b]) => b.group === group).map(appointedRow));
     const appointmentDirectory203 = roleDirectory203();
-    const appointmentControls203 = appointmentDirectory203 ? appointmentDirectory203.families.map(family => {
+    const appointmentFamilies203 = appointmentDirectory203
+      ? [...appointmentDirectory203.families].sort(compareCouncilFamilies228(councilFamilyOrder228(appointmentDirectory203))) : [];
+    const appointmentControls203 = appointmentDirectory203 ? appointmentFamilies203.map(family => {
       const rows = appointed.filter(([office]) => family.sourceKeys.includes(office.key));
       return rows.length ? h("details", {class:"appointment-family203", "data-appointment-family203":family.key},
         h("summary", null,h("span",{text:family.label}),h("span",{class:"badge muted",text:`${rows.length} separate display ${rows.length === 1 ? "record" : "records"}`})),
-        h("p",{class:"small muted",text:"Each field below retains its original scope. Changing one display record does not change another alias, region, class or rank record, and never grants shared permissions."}),
         h("div",{class:"appointed-grid"},rows.map(appointedRow))) : null;
     }) : [h("p",{class:"muted small",text:"Family grouping is unavailable. The original scoped controls below remain unchanged."}),
       h("div",{class:"group-label",text:"Leadership"}),appointedGrid("leadership"),h("div",{class:"group-label",text:"Class leads"}),appointedGrid("class"),
@@ -4303,6 +4306,7 @@
       h("p", { class: "muted small", text: "A role with a name here has an appointment display record. Its historical voting board and write-ins close while the appointment is recorded; prior votes and nominations are preserved. Clearing the holder can restore historical board visibility, but Leader, High Council and Officer Corps applications remain closed. An empty field is not an application vacancy." }),
       h("p", { class: "muted small", text: "Every office and rank below has a Discord name or exact user ID selector. Search and Save check current server membership and account standing. A website sign-in, character link or roster confirmation is not required to associate a current Discord member. These website records do not change Discord roles, native ranks, bank access or signing authority. Existing ballot roles remain closed while appointed; extended offices are separate records." }),
       h("p", { class: "muted small", text: "Co-Guild Master (co_gm) and Treasurer (treasurer) are the Treasury-plan access appointments. A current published Discord account association on either record can qualify for officer Treasury plan access. Their separately listed office records retain their own scope." }),
+      h("p", { class: "muted small appointment-scope228", text: "Separate offices, aliases, regions, classes and ranks each keep their own display record." }),
       appointmentControls203,
       namesOkRow,
       characterPublicationRow,

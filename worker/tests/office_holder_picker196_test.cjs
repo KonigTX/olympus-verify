@@ -35,7 +35,7 @@ const body196=String.raw`
     nativeLinks203.length===10&&nativeLinks203.every((link,index)=>link.getAttribute('data-rank-family203')===exactNativeFamiliesP2[index]&&link.getAttribute('href')==='#/roles/'+exactNativeFamiliesP2[index])
     &&directory203.ranks.length===10&&directory203.ranks.every((rank,index)=>rank.familyKey===exactNativeFamiliesP2[index]));
   const slotDrawers218=page.app.querySelectorAll('details.technical-profile199').filter(node=>node.querySelector('summary')?.textContent==='Rank Slot & Technical Metadata');
-  const expectedSlotRows218=exactNativeNames199.map((name,index)=>'Rank '+(index+1)+' '+name+' · slot '+index);
+  const expectedSlotRows218=exactNativeNames199.map((name,index)=>'Rank '+(index+1)+' '+(index===0?'Leader (Guild Master)':name)+' · slot '+index);
   check('current ten-slot mapping stays complete inside one closed technical drawer',slotDrawers218.length===1&&!slotDrawers218[0].open&&slotDrawers218[0].querySelectorAll('li').length===10&&JSON.stringify(slotDrawers218[0].querySelectorAll('li').map(node=>node.textContent))===JSON.stringify(expectedSlotRows218)&&nativeMeta199.length===10&&nativeMeta199.every((office,index)=>office.nativeIndex===index&&office.nativeSlot===index&&office.nativeRankOrdinal===index+1&&office.label===exactNativeNames199[index]&&office.nativeRankName===exactNativeNames199[index])&&directory203.ranks.length===10&&directory203.ranks.every((rank,index)=>rank.nativeSlot===index&&rank.nativeRankOrdinal===index+1&&rank.label===exactNativeNames199[index]));
   check('Treasurer retains its independent historical holder inline in the canonical family, never an eleventh native rank',page.boot.meta.appointments.find(office=>office.key==='rank_treasurer')?.aliasOf==='office_86'&&directory203.keyToFamily.rank_treasurer==='treasurer'&&panel.querySelectorAll('[data-role-family203="treasurer"]').length===1&&panel.querySelector('[data-role-family203="treasurer"] .role-primary203 [data-appointment-scope203="rank_treasurer"][data-office-assignment="rank_treasurer"]')&&!panel.querySelector('[data-role-key201="rank_treasurer"]')&&nativeLinks203.every(link=>link.getAttribute('href')!=='#/roles/rank_treasurer'&&link.getAttribute('data-rank-family203')!=='treasurer'));
   page.document.hidden=true;page.document.dispatchEvent(new Event('visibilitychange'));
@@ -88,6 +88,13 @@ const body196=String.raw`
   await staff.go('#/admin/settings');await waitFor(()=>!!labeledPicker196(staff,'Olympus I: associate Guild Master account'),'current leadership account pickers mounted');
   check('all10 branches expose separate account associations without changing139 appointment-key pickers or inferring authority',staff.app.querySelectorAll('label[for]').filter(node=>node.textContent.endsWith('associate Guild Master account')).length===10&&staff.app.querySelectorAll('label[for]').filter(node=>node.textContent.endsWith('associate officer account')).length===10&&staff.app.querySelectorAll('.appointed-row').length===139&&staff.app.textContent.includes('A typed name remains a staff-entered, unverified label')&&staff.app.textContent.includes('Neither form proves a game character or grants any permission'));
   const adminRows203=staff.app.querySelectorAll('[data-appointment-field203]'),adminKeys203=adminRows203.map(node=>node.getAttribute('data-appointment-field203'));
+  const cabinetOrder228=['leader',...staff.boot.meta.roleDirectory203.councilOrder];
+  const adminFamilyOrder228=staff.app.querySelectorAll('[data-appointment-family203]').map(node=>node.getAttribute('data-appointment-family203'));
+  check('CC-028 Admin begins with the chair, Co-Guild Master and the twelve published portfolios in order',
+    cabinetOrder228.length===14&&cabinetOrder228[1]==='co_gm'&&cabinetOrder228.at(-1)==='systems_heraldry'
+    &&adminFamilyOrder228.slice(0,14).join()===cabinetOrder228.join());
+  check('CC-009 Admin gives one scope note for all the separate appointment records',staff.app.querySelectorAll('.appointment-scope228').length===1
+    &&staff.app.querySelector('.appointment-scope228').textContent.includes('Separate offices, aliases, regions, classes and ranks each keep their own display record'));
   const officeFields=key=>{
     const row=staff.app.querySelector('[data-appointment-field203="'+key+'"]'),holder=row?.querySelector('input[type="text"]'),picker=row?.querySelector('input[role="combobox"]');
     return {row,holder,picker,label:holder?.id?row.querySelector('label[for="'+holder.id+'"]'):null,
