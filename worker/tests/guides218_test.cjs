@@ -89,6 +89,8 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   refuse('eight classes', d => { d.classes.pop(); });
   refuse('eleven professions', d => { d.professions.pop(); });
   refuse('an unknown profession group', d => { d.professions[0].type = 'unknown'; });
+  refuse('an unknown checklist row kind', d => { d.tools.preBis.checklist[0].kind = 'task'; });
+  refuse('an unavailable raid fact treated as an action', d => { d.tools.attunements[0].steps.find(row => row.grade === 'U').kind = 'action'; });
 
   // 3. Every preset is a real, attachable build from the pinned snapshot.
   for (const p of DATA.presets) {
@@ -222,12 +224,56 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   const prof = DATA.professions[0];
   m = await mounted({ view: 'profession', profession: prof.key, talentRevision: talents.revision });
   check('a profession guide shows its sections and the policy-caveated gold note', text(m.box.tags('h1')[0]) === prof.name + ' guide' && ['What Forever changes', 'Leveling', 'Value for the raid', 'Gold'].every(t => m.box.tags('h2').some(h => text(h) === t)) && text(m.box).includes(prof.goldNote));
-  m = await mounted({ view: 'tool', tool: 'attunements', talentRevision: talents.revision });
-  const slotBoxes = m.box.all(e => e.tagName === 'INPUT' && e.getAttribute('type') === 'checkbox');
-  check('the attunement tool lists all three raids and a sixteen-slot checklist', DATA.tools.attunements.every(a => m.box.tags('h2').some(h => text(h).startsWith(a.raid))) && text(m.box).includes('0 of 16 done'));
-  const slotList = m.box.tags('h2').find(h => text(h) === 'Pre-raid gear checklist').parentNode, slotInput = slotList.all(e => e.tagName === 'INPUT')[0];
+  const attunements = { view: 'tool', tool: 'attunements', talentRevision: talents.revision };
+  m = await mounted(attunements);
+  const raidSections = DATA.tools.attunements.map(a => m.box.tags('section').find(s => text(s.tags('h2')[0]).startsWith(a.raid)));
+  const gearSection = m.box.tags('section').find(s => text(s.tags('h2')[0]) === 'Pre-raid gear checklist');
+  const actionLabels = section => section.tags('label').map(text);
+  const taskCounts = box => box.all(e => e.getAttribute('role') === 'status').map(text);
+  check('only the five concrete Onyxia quest steps are raid checkboxes',
+    raidSections.map(s => s.tags('input').length).join('|') === '5|0|0'
+    && actionLabels(raidSections[0]).join('|') === '1. Burning Steppes|2. The True Masters|3. Blackrock Depths|4. Stormwind|5. Upper Blackrock Spire');
+  const [slots, prep] = gearSection.tags('ul').filter(list => list.className === 'guides218-checklist');
+  check('the sixteen gear slots use reader-facing names and only five pre-raid rows are actions',
+    actionLabels(slots).join('|') === 'Head|Neck|Shoulders|Back|Chest|Wrists|Hands|Waist|Legs|Feet|Ring 1|Ring 2|Trinket 1|Trinket 2|Main hand|Off hand / Ranged'
+    && actionLabels(prep).join('|') === 'Start the Onyxia attunement early|Build fire resistance for Onyxia|Run the new max-level dungeons|Plan with Forever tools|Plan raid buffs');
+  const rowFor = (section, label) => section.tags('li').find(li => [...li.tags('strong'), ...li.tags('label')].some(e => text(e) === label));
+  const evidenceShown = (section, claim, action) => {
+    const row = rowFor(section, claim.label);
+    return !!row && row.getAttribute('data-grade') === claim.grade && !!row.tags('input').length === action
+      && text(row).includes(claim.value === null ? 'Unavailable' : claim.value)
+      && (!claim.note || text(row).includes(claim.note))
+      && claim.sources.every(index => links(row).includes(DATA.sources[index].url));
+  };
+  check('the raid requirements, preparation references and gear guidance retain each grade, value, note and source',
+    DATA.tools.attunements.every((a, i) => evidenceShown(raidSections[i], a.requirement, false)
+      && a.steps.every(row => evidenceShown(raidSections[i], row, row.kind === 'action')))
+    && DATA.tools.preBis.checklist.every(row => evidenceShown(gearSection, row, row.kind === 'action'))
+    && DATA.tools.preBis.slots.every(slot => evidenceShown(slots, slot.guidance, true)));
+  const allBoxes = m.box.tags('input'), labelTargets = m.box.tags('label').map(e => e.getAttribute('for'));
+  check('all 26 checkbox labels are associated and the page-only notice appears once',
+    allBoxes.length === 26 && new Set(labelTargets).size === 26
+    && allBoxes.every(box => box.getAttribute('type') === 'checkbox' && labelTargets.includes(box.getAttribute('id')))
+    && text(m.box).split('Ticks stay on this page only').length === 2);
+  const questInput = raidSections[0].tags('input')[0], slotInput = slots.tags('input')[0], prepInput = prep.tags('input')[0];
+  questInput.checked = true; questInput.fire('change');
   slotInput.checked = true; slotInput.fire('change');
-  check('ticking a slot updates its own counter and keeps nothing outside the page', text(slotList).includes('1 of 16 done') && slotBoxes.length >= 16);
+  check('checking quest and gear tasks updates only their two counters', taskCounts(m.box).join('|') === '1 of 5 done.|1 of 16 done.|0 of 5 done.');
+  questInput.checked = false; questInput.fire('change');
+  prepInput.checked = true; prepInput.fire('change');
+  check('unchecking restores the quest count without changing other tasks', taskCounts(m.box).join('|') === '0 of 5 done.|1 of 16 done.|1 of 5 done.');
+  m.instance.destroy();
+  const reopened = m.api.mount(m.box, attunements);
+  await settle(); await settle();
+  check('reopening the same cached catalogue starts with every checkbox and counter reset',
+    m.fetches.length === 1 && m.box.tags('input').length === 26 && m.box.tags('input').every(box => !box.checked)
+    && taskCounts(m.box).join('|') === '0 of 5 done.|0 of 16 done.|0 of 5 done.');
+  reopened.destroy();
+  const legacyAttunements = clone(DATA);
+  for (const row of [...legacyAttunements.tools.attunements.flatMap(a => a.steps), ...legacyAttunements.tools.preBis.checklist]) delete row.kind;
+  const legacyChecklist = await mounted(attunements, legacyAttunements);
+  check('an older catalogue retains readable references and does not guess which ones are tasks',
+    legacyChecklist.box.tags('input').length === 16 && text(legacyChecklist.box).includes(legacyAttunements.tools.attunements[0].steps[5].note));
   m = await mounted({ view: 'tool', tool: 'buffs', talentRevision: talents.revision });
   const statRows = [...DATA.tools.worldBuffs, ...DATA.tools.consumables].filter(r => r.stats && Object.keys(r.stats).length);
   const firstInput = m.box.all(e => e.tagName === 'INPUT' && e.getAttribute('id') === 'guides218-buff-' + statRows[0].id.replace(/[^a-z0-9-]/g, ''))[0];

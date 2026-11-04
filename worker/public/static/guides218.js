@@ -22,6 +22,7 @@
     spellPower: "Spell power", healing: "Healing", crit: "Critical strike %", spellCrit: "Spell critical %", hit: "Hit %", spellHit: "Spell hit %", armor: "Armor",
     mp5: "Mana per 5 sec", hp5: "Health per 5 sec", fireResistance: "Fire resistance", frostResistance: "Frost resistance",
     natureResistance: "Nature resistance", shadowResistance: "Shadow resistance", arcaneResistance: "Arcane resistance" };
+  const SLOT_LABEL = { "finger 1": "Ring 1", "finger 2": "Ring 2", "off hand/ranged": "Off hand / Ranged" };
   let dataPromise = null;
 
   const fail = message => { throw Error(message); };
@@ -43,6 +44,8 @@
     const claimOk = c => c && isText(c.label, 160) && GRADES.includes(c.grade) && (c.grade === "U" ? c.value === null : isText(c.value)) && sourceOk(c.sources)
       && (c.note === undefined || isText(c.note));
     const claimsOk = (list, max) => isList(list, max) && list.every(claimOk);
+    const checklistRowsOk = (list, max) => claimsOk(list, max)
+      && list.every(c => c.kind === undefined || c.kind === "fact" || (c.kind === "action" && c.grade !== "U"));
     const textsOk = (list, max) => isList(list, max) && list.every(t => isText(t));
     if (!isList(data.classes, 9) || data.classes.length !== 9) fail("classes");
     const presetIds = new Set();
@@ -75,8 +78,8 @@
     }
     const t = data.tools;
     if (!t || !isList(t.attunements, 3) || !t.preBis || !isList(t.worldBuffs, 12) || !isList(t.consumables, 30) || !isList(t.whatChanged, 30)) fail("tools");
-    if (t.attunements.some(a => !a || !isText(a.raid, 60) || !isText(a.opens, 120) || !isText(a.size, 2) || !claimOk(a.requirement) || !claimsOk(a.steps, 8))) fail("attunements");
-    if (!isText(t.preBis.note) || !isList(t.preBis.slots, 16) || t.preBis.slots.some(s => !s || !isText(s.slot, 40) || !claimOk(s.guidance)) || !claimsOk(t.preBis.checklist, 10)) fail("pre-raid");
+    if (t.attunements.some(a => !a || !isText(a.raid, 60) || !isText(a.opens, 120) || !isText(a.size, 2) || !claimOk(a.requirement) || !checklistRowsOk(a.steps, 8))) fail("attunements");
+    if (!isText(t.preBis.note) || !isList(t.preBis.slots, 16) || t.preBis.slots.some(s => !s || !isText(s.slot, 40) || !claimOk(s.guidance)) || !checklistRowsOk(t.preBis.checklist, 10)) fail("pre-raid");
     const statsOk = st => st === undefined || (st && typeof st === "object" && Object.keys(st).every(k => STAT_LABEL[k] && Number.isFinite(st[k])));
     for (const r of [...t.worldBuffs, ...t.consumables]) {
       if (!r || !isText(r.id, 80) || !isText(r.name, 80) || !isText(r.effect) || !GRADES.includes(r.grade) || !sourceOk(r.sources) || !statsOk(r.stats)
@@ -141,10 +144,12 @@
     function grade(data, g) {
       return el("abbr", { class: "guides218-grade", "data-grade": g, title: data.grades[g], text: g });
     }
+    function claimEvidence(data, c) {
+      return [el("span", { text: c.grade === "U" ? "Unavailable" : c.value }), " ", grade(data, c.grade),
+        c.note ? el("span", { class: "muted guides218-note", text: " " + c.note }) : null, " ", sourcesLine(data, c.sources)];
+    }
     function claim(data, c) {
-      return el("li", { class: "guides218-claim", "data-grade": c.grade },
-        el("strong", { text: c.label }), " ", el("span", { text: c.grade === "U" ? "Unavailable" : c.value }), " ", grade(data, c.grade),
-        c.note ? el("span", { class: "muted guides218-note", text: " " + c.note }) : null, " ", sourcesLine(data, c.sources));
+      return el("li", { class: "guides218-claim", "data-grade": c.grade }, el("strong", { text: c.label }), " ", claimEvidence(data, c));
     }
     const claims = (data, items, empty = "Nothing confirmed yet.") => items.length ? el("ul", { class: "guides218-claims" }, items.map(c => claim(data, c))) : el("p", { class: "muted", text: empty });
     function legend(data, used) {
@@ -253,16 +258,24 @@
         p.unknowns.length ? section("Still unknown", list(p.unknowns)) : null, legend(data, used)];
     }
 
-    function checklist(data, rows, labelOf, claimOf) {
-      const done = new Set(), count = el("p", { class: "muted small", role: "status" });
-      const update = () => { count.textContent = done.size + " of " + rows.length + " done. Ticks stay on this page only."; };
+    function checklist(data, rows) {
+      const done = new Set(), count = el("p", { class: "muted small", role: "status" }), listId = "guides218-check-" + (++sequence);
+      const update = () => { count.textContent = done.size + " of " + rows.length + " done."; };
       update();
       return [count, el("ul", { class: "guides218-checklist" }, rows.map((r, i) => {
-        const id = "guides218-check-" + (++sequence) + "-" + i;
+        const id = listId + "-" + i, c = r.guidance || r;
         const box = el("input", { type: "checkbox", id, onchange: () => { if (box.checked) done.add(i); else done.delete(i); update(); } });
-        const c = claimOf(r);
-        return el("li", null, box, el("label", { for: id, text: labelOf(r) }), " ", c ? el("span", { class: "small" }, c.grade === "U" ? "Unavailable" : c.value, " ", grade(data, c.grade), " ", sourcesLine(data, c.sources)) : null);
+        return el("li", { "data-grade": c.grade }, box, el("label", { for: id, text: r.label }),
+          el("div", { class: "small" }, r.guidance ? [el("strong", { text: c.label }), " "] : null, claimEvidence(data, c)));
       }))];
+    }
+    function checklistSections(data, rows, actionTitle, referenceTitle) {
+      // The historical catalogue had no action marker. Keep those entries as readable evidence.
+      const actions = rows.filter(c => c.kind === "action"), facts = rows.filter(c => c.kind !== "action");
+      return [
+        actions.length ? [el("h3", { text: actionTitle }), checklist(data, actions)] : null,
+        facts.length ? [el("h3", { text: referenceTitle }), claims(data, facts)] : null,
+      ];
     }
 
     function raidStructure() {
@@ -305,14 +318,18 @@
       const t = data.tools, used = new Set(), title = (TOOLS.find(x => x[0] === id) || [])[1];
       const frag = [crumbs(["#/resources", GUIDES_TITLE], [null, title]), header(data, title, null, (TOOLS.find(x => x[0] === id) || [])[2])];
       if (id === "attunements") {
+        frag.push(el("p", { class: "muted small", text: "Ticks stay on this page only and reset when you reopen it." }));
         for (const a of t.attunements) {
           collect(used, [a.requirement, ...a.steps]);
           frag.push(section(a.raid + " (" + a.size + " players)", el("p", { text: "Opens: " + a.opens }), el("ul", { class: "guides218-claims" }, claim(data, a.requirement)),
-            a.steps.length ? [el("h3", { text: "Steps" }), ...checklist(data, a.steps, s => s.label, s => s)] : null));
+            checklistSections(data, a.steps, "Attunement steps", "Raid details")));
         }
         collect(used, [...t.preBis.slots.map(s => s.guidance), ...t.preBis.checklist]);
-        frag.push(section("Pre-raid gear checklist", el("p", { text: t.preBis.note }), ...checklist(data, t.preBis.slots, s => s.slot, s => s.guidance),
-          el("h3", { text: "Before your first raid" }), ...checklist(data, t.preBis.checklist, c => c.label, c => c)));
+        const gear = t.preBis.slots.map(({ slot, guidance }) => ({
+          label: Object.hasOwn(SLOT_LABEL, slot) ? SLOT_LABEL[slot] : slot[0].toUpperCase() + slot.slice(1), guidance,
+        }));
+        frag.push(section("Pre-raid gear checklist", el("p", { text: t.preBis.note }), el("h3", { text: "Gear by slot" }), checklist(data, gear),
+          checklistSections(data, t.preBis.checklist, "Before your first raid", "Preparation references")));
       } else if (id === "buffs") {
         frag.push(buffCalculator(data, used));
       } else if (id === "raid-structure") {
