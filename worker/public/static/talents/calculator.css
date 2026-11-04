@@ -88,6 +88,13 @@
 .talents-change-group ul{margin:0;padding-left:18px;color:#cac6b9;font-size:12px}.talents-change-group li{margin:2px 0;overflow-wrap:anywhere}.talents-change-source{margin:10px 0 0!important;color:#aaa69c;font-size:11px;overflow-wrap:anywhere}
 @media(forced-colors:active){.talents-node-tag,.talents-tag,.talents-delta{border-color:CanvasText;color:CanvasText;background:Canvas}.talents-tree.talents-classic-layout .talents-grid::before{border-color:CanvasText}}
 
+/* A solid plate keeps spec names and point totals readable across the banner. */
+.talents-spec-bars {
+  padding: 4px 6px;
+  background: #29231b;
+  border-radius: 4px;
+}
+
 @media (max-width: 319px) {
   .talents-spec-bars, .talents-spec-bars > div { min-width: 0; width: 100%; }
   .talents-spec-bars > div { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }

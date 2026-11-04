@@ -8,8 +8,8 @@
     {
       "path": "worker/public/static/app.css",
       "mode": "100644",
-      "bytes": 88083,
-      "sha256": "8ee8ecc826a3c7d5769427c8a6eb7d628423b05ea0a28c84cde9d505345fe0ac"
+      "bytes": 88159,
+      "sha256": "e899f1ccbbe7262694c29493b78233d814d45449b547e31d88625199dd989a40"
     },
     {
       "path": "worker/public/static/app.js",
@@ -656,8 +656,8 @@
     {
       "path": "worker/public/static/talents/calculator.css",
       "mode": "100644",
-      "bytes": 34230,
-      "sha256": "5c14deaf9fbb656698146a8d6162318c12ad930081ea7a106336655e2d55a0f5"
+      "bytes": 34401,
+      "sha256": "628ad8e6b224a68a56aaaf1f469a86f9d3838789a7eeccabbf74af61bd65bfd6"
     },
     {
       "path": "worker/public/static/resources169.js",

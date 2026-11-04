@@ -152,10 +152,11 @@ a.card:hover { filter: brightness(1.2); }
 
 /* The quest log's parchment, for text meant to be read. */
 .parchment {
-  background: #e3cc98 url("/static/wow/parchment.jpg") center / cover;
+  background: linear-gradient(rgba(239, 223, 184, 0.74), rgba(239, 223, 184, 0.74)),
+    #e3cc98 url("/static/wow/parchment.jpg") center / cover;
   color: var(--ink);
   border: 1px solid #4a3718;
-  box-shadow: inset 0 0 22px rgba(90, 58, 16, 0.5), 0 4px 16px rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 22px rgba(90, 58, 16, 0.12), 0 4px 16px rgba(0, 0, 0, 0.55);
   padding: 16px 22px 16px 24px;
   text-shadow: none;
 }
@@ -163,7 +164,7 @@ a.card:hover { filter: brightness(1.2); }
 .parchment h4 { font-family: var(--font); font-size: 0.78rem; line-height: 1.35; letter-spacing: 0.06em; text-transform: uppercase; color: #4a1204; margin-top: 1em; }
 .parchment b, .parchment strong { color: #000; }
 .parchment a { color: #5a1a08; }
-.parchment .muted { color: #5b4526; }
+.parchment .muted { color: #3b2816; }
 .parchment ul { margin: 0 0 0.6em; padding-left: 22px; list-style: none; }
 .parchment li { position: relative; margin: 0 0 0.3em; }
 .parchment li::before { content: ""; position: absolute; left: -20px; top: 0.35em; width: 12px; height: 12px; background: url("/static/wow/bullet.png") center / 12px 12px no-repeat; }
