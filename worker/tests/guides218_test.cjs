@@ -2,6 +2,7 @@
 // Pure local computation: no Worker, browser session, provider, network or account action.
 'use strict';
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), assert = require('node:assert/strict'), ts = require('typescript');
+const crypto = require('node:crypto');
 const worker = path.join(__dirname, '..'), stat = path.join(worker, 'public/static');
 const SOURCE = fs.readFileSync(path.join(stat, 'guides218.js'), 'utf8'), CSS = fs.readFileSync(path.join(stat, 'guides218.css'), 'utf8');
 const DATA_TEXT = fs.readFileSync(path.join(stat, 'guides218.json'), 'utf8'), DATA = JSON.parse(DATA_TEXT);
@@ -151,6 +152,53 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   const arcaneSnapshot = DATA.presets.find(entry => entry.id === 'mage-arcane-raid-60');
   check('the historical Arcane raid preset flags its points in the removed Arcane Focus talent',
     arcaneSnapshot?.why.some(text => text.includes('still contains points in Arcane Focus') && text.includes('Blizzard removed that talent')));
+  const source9 = DATA.sources.findIndex(row => row.url === 'https://us.forums.blizzard.com/en/wow/t/2360696/9');
+  const classFact = id => DATA.classes.find(row => row.id === id);
+  const specFact = (id, spec) => classFact(id).specs.find(row => row.id === spec);
+  const official = (row, needles) => row?.sources.includes(source9) && (row.grade === 'B' || row.status === 'announced')
+    && needles.every(needle => (row.value || row.text).includes(needle));
+  const feralFacts = specFact('druid', 'feral-combat');
+  check('Feral quick start distinguishes talented Lacerate and the two late Feral choices',
+    official(classFact('druid').changes[1], ['Lacerate', 'row 4']) && !classFact('druid').changes[1].text.includes('Lacerate at 42')
+    && feralFacts.beginner.rotation[1].includes('Predatory Discipline') && feralFacts.beginner.rotation[1].includes('31 points')
+    && feralFacts.beginner.rotation[2].includes('Lacerate on row 4') && feralFacts.beginner.rotation[2].includes('Primal Bite on row 7'));
+  check('the Arcane beginner rotation uses the confirmed 18-second stack duration',
+    specFact('mage', 'arcane').beginner.rotation[4].includes('18-second duration') && !specFact('mage', 'arcane').beginner.rotation[4].includes('datamine'));
+  check('Warrior Slam and Flurry use the November ranks and cooldowns',
+    official(specFact('warrior', 'arms').pro.priorities[5], ['15 seconds', '2.5 or 5 seconds'])
+    && official(specFact('warrior', 'fury').pro.priorities[4], ['10%, 20% or 30%', 'no Death Wish prerequisite']));
+  check('Priest Holy Binding and Shadow Word: Death cite the official November update',
+    official(classFact('priest').changes[7], ['replaced Binding Heal with Holy Binding', '30% of maximum health', 'no backlash on a miss'])
+    && specFact('priest', 'holy').beginner.tips[2].includes('half the amount'));
+  check('Rogue current rows explain Shank, Death Mark and retired talents',
+    official(classFact('rogue').changes[5], ['loses Murder', 'Shank'])
+    && official(classFact('rogue').changes[7], ['Quietus', 'Cutthroat', 'Thousand Cuts', 'Death Mark'])
+    && official(specFact('rogue', 'subtlety').pro.priorities[1], ['Rupture and Garrote', '15%']));
+  check('Shaman specs use Totemic Call, Call of Thunder, updated Stormstrike and Riptide',
+    official(classFact('shaman').changes[2], ['Totemic Call', '30 seconds'])
+    && official(specFact('shaman', 'elemental').pro.priorities[0], ['Replaces Lava Burst', '5% critical strike chance'])
+    && official(specFact('shaman', 'enhancement').pro.priorities[0], ['150% normalized weapon damage', 'six-second cooldown'])
+    && official(specFact('shaman', 'restoration').pro.priorities[0], ['no initial heal', '12 seconds']));
+  check('Paladin updates distinguish retired Holy and Protection talents from the new Retribution capstone',
+    specFact('paladin', 'holy').beginner.leveling[0].includes('Voice of Truth was removed from the Holy tree')
+    && specFact('paladin', 'protection').beginner.leveling[0].includes('Improved Seal of Fury is gone')
+    && official(specFact('paladin', 'retribution').pro.priorities[1], ['15 seconds', 'three stacks'])
+    && official(specFact('paladin', 'retribution').pro.priorities[2], ['five times']));
+  check('Hunter notes retain trap and Sniper Shot mechanics alongside November tuning',
+    official(classFact('hunter').changes[1], ['in combat', 'scale with Attack Power', '30-second cooldown'])
+    && official(specFact('hunter', 'marksmanship').pro.priorities[2], ['4-second cast', '15-second cooldown', '45-yard range', 'three shots gain 10 yards', 'doubled']));
+  const originalPresetIdentities = DATA.presets.map(({ id, code, provenance }) => ({ id, code, provenance }));
+  check('the ordered 58 beta builds, codes and provenance are frozen across factual updates',
+    originalPresetIdentities.length === 58 && crypto.createHash('sha256').update(JSON.stringify(originalPresetIdentities)).digest('hex') === '1d1bf9833dde57644f6bf6ef93d0ff64d06c6d4987ab5ca158857a67e438c775');
+  const presetWarning = id => DATA.presets.find(row => row.id === id).why[2];
+  check('affected beta builds name their own removed, moved or re-ranked allocations',
+    presetWarning('druid-feral-combat-raid-60').includes('Berserk removed')
+    && presetWarning('paladin-protection-raid-60').includes('Improved Seal of Fury removed')
+    && presetWarning('rogue-subtlety-pvp-60').includes('Cutthroat removed')
+    && presetWarning('priest-holy-dungeon-30').includes('Binding Heal replaced by Holy Binding')
+    && presetWarning('shaman-elemental-leveling-30').includes('Lava Burst replaced by Call of Thunder')
+    && presetWarning('mage-fire-raid-60').includes('Critical Mass now caps at 3')
+    && presetWarning('warrior-fury-raid-60').includes('Flurry now caps at 3'));
   m = await mounted({ view: 'class', classId: cls.id, talentRevision: talents.revision, canAttach: false, attachReason: 'Applications are closed right now, so a build cannot be attached.', onAttach: () => attached.push('no') });
   const closedButtons = m.box.tags('button').filter(b => text(b) === 'Attach to my application');
   check('with applications closed every attach button is disabled and the reason is shown', closedButtons.length > 0 && closedButtons.every(b => b.disabled) && text(m.box).includes('Applications are closed right now'));
@@ -186,6 +234,14 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   check('choosing a buff updates the combined effect, labelled when it rests on Classic numbers', text(total).includes('Combined effect of 1 selected') && (['D', 'E'].includes(statRows[0].grade) ? text(total).includes('not Forever-verified') : true));
   m = await mounted({ view: 'tool', tool: 'changes', talentRevision: talents.revision });
   check('the compendium shows the class table with every class and a calculator link each', m.box.tags('tr').length === 10 && DATA.classSummary.every(x => links(m.box).includes('#/talents/' + x.id)));
+  const classLabels = m.box.tags('tr').slice(1).map(row => text(row.tags('th')[0]));
+  const alphabetical = DATA.classSummary.map(row => row.name).sort((a, b) => a.localeCompare(b, 'en'));
+  check('the compendium renders alphabetical class labels from Druid to Warrior',
+    JSON.stringify(classLabels) === JSON.stringify(alphabetical) && classLabels[0] === 'Druid' && classLabels.at(-1) === 'Warrior');
+  const raidAura = DATA.tools.whatChanged.find(row => row.topic === 'Raid auras');
+  check('the raid aura compendium retains the October raid-wide coverage and November crit conflict rule',
+    official(raidAura, ['Battle Shout', 'Trueshot Aura', 'Grace of Air', 'Strength of Earth', 'Windfury', 'Flametongue', 'mutually exclusive'])
+    && raidAura.sources.includes(49));
   const legacy = DATA.tools.whatChanged.find(row => row.topic === 'Legacy challenges and spending');
   check('the Legacy challenge count and spending cap appear with Blizzard’s official article',
     legacy?.status === 'announced' && legacy.text.includes('65 Legacy Challenges') && legacy.text.includes('16 points per character')
