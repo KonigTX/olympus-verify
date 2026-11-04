@@ -1,6 +1,6 @@
 'use strict';
 const {createHash}=require('node:crypto');
-const EXPECTED_SOURCE_SHA256 = '2bfc4bf2a8d2e981c1518bac6875ec625e0b82ef82642d0dc3393929153466ff';
+const EXPECTED_SOURCE_SHA256 = '309e148d046f4c3a791cad7b7947c6f6c834e85a4f9a0ca57d9c62fefaaaae2f';
 function transformApp(source){
   if(typeof source!=='string'||createHash('sha256').update(source).digest('hex')!==EXPECTED_SOURCE_SHA256)throw Error('Exact reviewed production app source is required.');
   const once=(before,after)=>{if(source.split(before).length!==2)throw Error('Local Army source seam is not unique.');source=source.replace(before,after);};

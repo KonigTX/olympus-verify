@@ -140,6 +140,95 @@ const visibility218=(p,hidden=false)=>{
   const dirty = a.app.querySelectorAll("span.dirty").find(el => el.textContent === "Unsaved changes");
   check(".218 the attached build marks the application unsaved, so leaving asks first and saving stays the applicant's choice", !!dirty && dirty.hidden === false && writes.length === 0);
 
+  const classKeys041 = ["druid", "hunter", "mage", "paladin", "priest", "rogue", "shaman", "warlock", "warrior"];
+  const professionGroups041 = [
+    ["Primary Crafting", ["alchemy", "blacksmithing", "enchanting", "engineering", "leatherworking", "tailoring"]],
+    ["Gathering", ["herbalism", "mining", "skinning"]],
+    ["Secondary", ["cooking", "first_aid", "fishing"]],
+  ];
+  const professionLayout041 = s => s.querySelectorAll("optgroup").map(group =>
+    [group.getAttribute("label"), group.querySelectorAll("option").map(option => option.value)]);
+  const same041 = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const apply041 = await openPage(MEMBER);
+  await apply041.go("#/apply");
+  await waitFor(() => !!apply041.app.querySelector('[data-field="class"] select'), ".228 Apply pickers");
+  const applyClass041 = apply041.app.querySelector('[data-field="class"] select');
+  const leadClass041 = apply041.app.querySelector('[data-field="classLead"] select');
+  const altClass041 = apply041.app.querySelector('.talent-application-character select');
+  check(".228 Apply class, class-lead and build selectors sort labels without changing the blank and Undecided choices",
+    applyClass041.value === "" && same041(applyClass041.options.map(o => o.value), ["", ...classKeys041, "undecided"])
+    && [leadClass041, altClass041].every(s => same041(s.options.map(o => o.value), ["", ...classKeys041]))
+    && leadClass041.options.slice(1).every(o => o.textContent.toLowerCase().startsWith(o.value)));
+  const prof041 = apply041.app.querySelector('[data-field="professions"]');
+  const profLabels041 = prof041.querySelectorAll(".profs").map(group => [
+    prof041.querySelector("#" + group.getAttribute("aria-labelledby")).textContent,
+    group.querySelectorAll("button").map(button => button.textContent),
+  ]);
+  check(".228 Apply separates crafting, gathering and secondary professions and alphabetizes each group",
+    same041(profLabels041, [
+      ["Primary Crafting", ["Alchemy", "Blacksmithing", "Enchanting", "Engineering", "Leatherworking", "Tailoring"]],
+      ["Gathering", ["Herbalism", "Mining", "Skinning"]],
+      ["Secondary", ["Cooking", "First Aid", "Fishing"]],
+    ]));
+  const pick041 = name => byText(prof041, "button", name);
+  for (const name of ["Mining", "Herbalism", "Alchemy", "First Aid"]) pick041(name).click();
+  check(".228 two gathering choices exhaust the primary limit while First Aid stays selectable",
+    prof041.querySelector("#prof-count").textContent === "2 of 2 chosen"
+    && ["Mining", "Herbalism", "First Aid"].every(name => pick041(name).getAttribute("aria-pressed") === "true")
+    && pick041("Alchemy").getAttribute("aria-pressed") === "false" && pick041("Alchemy").getAttribute("aria-disabled") === "true");
+  pick041("Mining").click(); pick041("Alchemy").click();
+  check(".228 a freed gathering slot can be used for a crafting choice", pick041("Mining").getAttribute("aria-pressed") === "false"
+    && pick041("Alchemy").getAttribute("aria-pressed") === "true" && prof041.querySelector("#prof-count").textContent === "2 of 2 chosen");
+  await p.go("#/vote/officer");
+  await waitFor(() => !!p.app.querySelector("select.role-pick"), ".228 Board role picker");
+  const boardClass041 = p.app.querySelector('select.role-pick optgroup[label="Class leads"]');
+  check(".228 the Board's class-lead choices use the same alphabetical display order",
+    !!boardClass041 && same041(boardClass041.querySelectorAll("option").map(o => o.value), classKeys041.map(key => "class_lead:" + key)));
+
+  const workshop041 = await openPage(MEMBER), queries041 = [];
+  workshop041.intercept((pathname) => {
+    if (!pathname.startsWith("/api/community/crafting?")) return null;
+    const query = new URL("https://guild.example" + pathname).searchParams;
+    queries041.push(query);
+    return Response.json({ workshop: { version: 1, mode: "recipes" }, results: [], nextCursor: query.has("profession") && !query.has("cursor") ? "page-2" : null });
+  });
+  await workshop041.go("#/community/workshop");
+  await waitFor(() => !!workshop041.app.querySelector("#f-craft-prof"), ".228 Workshop picker");
+  const workshopProfession041 = workshop041.app.querySelector("#f-craft-prof");
+  check(".228 Workshop keeps the empty filter and groups the original profession keys",
+    workshopProfession041.value === "" && workshopProfession041.options[0].textContent === "Any profession"
+    && same041(professionLayout041(workshopProfession041), professionGroups041));
+  workshopProfession041.value = "first_aid";
+  fire(workshopProfession041.closest("form"), "submit");
+  const more041 = byText(workshop041.app, "button", "Show more");
+  await waitFor(() => !more041.hidden && !more041.disabled, ".228 Workshop filtered continuation");
+  more041.click();
+  await waitFor(() => queries041.some(query => query.has("cursor")), ".228 Workshop second page");
+  check(".228 a grouped Workshop choice preserves the exact profession filter on continuation",
+    queries041.some(query => query.get("profession") === "first_aid" && !query.has("cursor"))
+    && queries041.some(query => query.get("profession") === "first_aid" && query.get("cursor") === "page-2"));
+  await workshop041.go("#/community/profile");
+  await waitFor(() => !!byText(workshop041.app, "button", "Add an offer"), ".228 Profile pickers");
+  byText(workshop041.app, "button", "Add a profession").click();
+  byText(workshop041.app, "button", "Add an offer").click();
+  const profile041 = workshop041.app.querySelector('select[aria-label="Profession"]');
+  const offer041 = workshop041.app.querySelector('select[aria-label="Offer profession"]');
+  check(".228 Profile and Offer use the same groups and preserve empty defaults",
+    [profile041, offer041].every(s => s.value === "" && same041(professionLayout041(s), professionGroups041)));
+  await siteUser(STAFF, { global_name: "Staff" });
+  const admin041 = await openPage(STAFF), adminQueries041 = [];
+  admin041.before((pathname) => { if (pathname.startsWith("/api/admin/applications?")) adminQueries041.push(pathname); return false; });
+  await admin041.go("#/admin/applications");
+  await waitFor(() => !!admin041.app.querySelector("#application-filter-profession"), ".228 Admin profession filter");
+  const adminProfession041 = admin041.app.querySelector("#application-filter-profession");
+  check(".228 Admin profession filter shares the same groups and keeps Any profession as its default",
+    adminProfession041.value === "" && same041(professionLayout041(adminProfession041), professionGroups041));
+  adminProfession041.value = "mining"; fire(adminProfession041, "change");
+  await waitFor(() => adminQueries041.some(path => path.includes("profession=mining")), ".228 Admin profession key");
+  await waitFor(() => admin041.app.querySelector("#application-filter-profession") !== adminProfession041, ".228 Admin selected filter");
+  check(".228 Admin re-render preserves the selected gathering key",
+    adminQueries041.some(path => path.includes("profession=mining")) && admin041.app.querySelector("#application-filter-profession").value === "mining");
+
 
   console.log("\n== .218: Treasury reply owns its original client identity ==");
   const deferred218=()=>{let resolve;const promise=new Promise(r=>{resolve=r;});return{promise,resolve};};

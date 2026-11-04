@@ -541,6 +541,7 @@
   const anyCommunity = () => Object.values(COM().features).some(Boolean);
   const byKey = (list, key) => list.find((x) => x.key === key);
   const labelOf = (list, key, fallback) => (byKey(list, key) || {}).label || fallback || key || "—";
+  const byDisplayLabel = (a, b) => a.label.localeCompare(b.label, "en");
   const classColor = (key) => (byKey(M().classes, key) || {}).color || "";
   /** A role key as people read it: a position, or "Class Lead (Mage)". */
   function roleName(key) {
@@ -2775,6 +2776,25 @@
     // .109: `placeholder: null` for a select that must always hold a value (no empty choice to submit)
     return h("select", null, placeholder === null ? null : h("option", { value: "", text: placeholder }), [...list, ...extra].map((o) => h("option", { value: o.key, text: o.label, selected: o.key === value })));
   }
+  const gatheringProfessionKeys = new Set(["herbalism", "mining", "skinning"]);
+  const secondaryProfessionKeys = new Set(["cooking", "first_aid", "fishing"]);
+  function professionDisplayGroups(list) {
+    const groups = [
+      { key: "crafting", label: "Primary Crafting", items: [] },
+      { key: "gathering", label: "Gathering", items: [] },
+      { key: "secondary", label: "Secondary", items: [] },
+    ];
+    for (const p of [...list].sort(byDisplayLabel)) {
+      const group = p.kind === "secondary" || secondaryProfessionKeys.has(p.key) ? 2 : gatheringProfessionKeys.has(p.key) ? 1 : 0;
+      groups[group].items.push(p);
+    }
+    return groups.filter(group => group.items.length);
+  }
+  function professionSelect(list, value, placeholder, props = null) {
+    return h("select", props, h("option", { value: "", text: placeholder }),
+      professionDisplayGroups(list).map(({ label, items }) => h("optgroup", { label },
+        items.map(p => h("option", { value: p.key, text: p.label, selected: p.key === value })))));
+  }
   function showFieldError(form, field, message) {
     const ownError = box => [...box.children].find(child => child.classList.contains("err"));
     for (const f of form.querySelectorAll(".invalid")) { f.classList.remove("invalid"); const control = f.querySelector("input, select, textarea, button"); if (control) control.setAttribute("aria-invalid", "false"); const e = ownError(f); if (e) { e.hidden = true; e.textContent = ""; } }
@@ -2956,8 +2976,9 @@
     const pickedKey = position === "class_lead" ? ((pickClass || a?.classLead) ? `class_lead:${pickClass || a.classLead}` : "") : position;
     const positionBoxes = [];
     const classText = (c) => { const who = appointedTo(`class_lead:${c.key}`); return who ? `${c.label} (appointed: ${who})` : noVoteFor(`class_lead:${c.key}`) ? `${c.label} (no public vote)` : c.label; };
+    const displayClasses = [...meta.classes].sort(byDisplayLabel);
     const classLeadSel = h("select", null, h("option", { value: "", text: "Choose…" }),
-      meta.classes.map((c) => h("option", { value: c.key, text: classText(c), selected: picked === "class_lead" ? pickClass === c.key : !!a && a.classLead === c.key, disabled: !!appointedTo(`class_lead:${c.key}`) || !!intent199 && targetRoleKeys199.length > 0 && !targetRoleKeys199.includes(`class_lead:${c.key}`) })));
+      displayClasses.map((c) => h("option", { value: c.key, text: classText(c), selected: picked === "class_lead" ? pickClass === c.key : !!a && a.classLead === c.key, disabled: !!appointedTo(`class_lead:${c.key}`) || !!intent199 && targetRoleKeys199.length > 0 && !targetRoleKeys199.includes(`class_lead:${c.key}`) })));
     const quietMarks = []; // [position, its "no public vote" line, its radio]: sync() keeps them to the current list
     const classLeadBox = fieldBox("classLead", "Which class would you lead?", classLeadSel, { required: true });
     const leaderBlock = h("div");
@@ -3008,7 +3029,7 @@
         line.hidden = !noVoteOf(p);
         if (line.hidden) radio.removeAttribute("aria-describedby"); else radio.setAttribute("aria-describedby", line.id);
       }
-      meta.classes.forEach((c, i) => { const o = classLeadSel.options[i + 1]; if (o) o.textContent = classText(c); });
+      displayClasses.forEach((c, i) => { const o = classLeadSel.options[i + 1]; if (o) o.textContent = classText(c); });
       classLeadBox.hidden = position !== "class_lead";
       leaderBlock.hidden = !isLeading();
       const voted = isVoted();
@@ -3064,7 +3085,7 @@
 
     // 3. about you
     const character = h("input", { type: "text", value: (a && a.character) || "", maxlength: "40", placeholder: "First Last", autocomplete: "off", spellcheck: "false" });
-    const cls = selectOf(meta.classes, a ? a.class : "", { extra: [{ key: "undecided", label: "Undecided" }] });
+    const cls = selectOf(displayClasses, a ? a.class : "", { extra: [{ key: "undecided", label: "Undecided" }] });
     const role = selectOf(meta.roles, a ? a.role : "");
     const specialization = selectOf(meta.applicationSpecs219?.[cls.value] || [], ans.specialization || "", {placeholder:"Undecided / flexible"});
     cls.addEventListener("change", () => {clear(specialization); add(specialization,[h("option",{value:"",text:"Undecided / flexible"}),...(meta.applicationSpecs219?.[cls.value] || []).map(spec => h("option",{value:spec.key,text:spec.label}))]);touch();});
@@ -3076,7 +3097,7 @@
       if (talentRows.length >= 3) return;
       const id = ++talentRowSequence;
       const name = h("input", {type:"text",maxlength:"40",value:primary ? character.value : stored.character || "",readonly:primary});
-      const classPick = selectOf(meta.classes, primary ? cls.value : stored.class || "", {placeholder:"Choose class…"}); classPick.disabled = primary;
+      const classPick = selectOf(displayClasses, primary ? cls.value : stored.class || "", {placeholder:"Choose class…"}); classPick.disabled = primary;
       const at30 = h("textarea", {rows:"2",maxlength:"768",value:stored.build30 || "",spellcheck:"false",autocomplete:"off"});
       const at60 = h("textarea", {rows:"2",maxlength:"768",value:stored.build60 || "",spellcheck:"false",autocomplete:"off"});
       const row = {name,classPick,at30,at60,primary};
@@ -3145,11 +3166,11 @@
     const profField = professions.length
       ? h("fieldset", { class: "field", "data-field": "professions" },
           h("legend", { class: "lab", text: "Professions you plan to take (optional)" }),
-          h("span", { class: "hint", text: `On your main character: up to ${primaryWord} primary professions, plus any of Cooking, First Aid and Fishing. The Profession Coordinator plans the guild's crafting with this; only the guild's leadership sees it.` }),
-          h("div", { class: "prof-group" }, h("span", { class: "prof-kind", id: "prof-primary", text: "Primary" }), profCount),
-          h("div", { class: "profs", role: "group", "aria-labelledby": "prof-primary" }, professions.filter((p) => p.kind === "primary").map(profButton)),
-          h("div", { class: "prof-group" }, h("span", { class: "prof-kind", id: "prof-secondary", text: "Secondary" })),
-          h("div", { class: "profs", role: "group", "aria-labelledby": "prof-secondary" }, professions.filter((p) => p.kind === "secondary").map(profButton)),
+          h("span", { class: "hint", text: `On your main character: up to ${primaryWord} primary professions across crafting and gathering, plus any of Cooking, First Aid and Fishing. The Profession Coordinator plans the guild's crafting with this; only the guild's leadership sees it.` }),
+          professionDisplayGroups(professions).map(({ key, label, items }) => [
+            h("div", { class: "prof-group" }, h("span", { class: "prof-kind", id: "prof-" + key, text: label }), key === "crafting" ? profCount : null),
+            h("div", { class: "profs", role: "group", "aria-labelledby": "prof-" + key }, items.map(profButton)),
+          ]),
           h("span", { class: "err", hidden: true }))
       : null;
     drawProfs();
@@ -3482,7 +3503,7 @@
       return a;
     };
     const lead = meta.ballots.filter((b) => b.group === "leadership");
-    const classes = meta.ballots.filter((b) => b.group === "class");
+    const classes = meta.ballots.filter((b) => b.group === "class").sort(byDisplayLabel);
     const roleList = shell ? shell.roleList : h("nav", { class: "role-list", "aria-label": "Roles" },
       h("p", { class: "role-list-hint small muted", text: "Scroll this list for every role." }),
       h("div", { class: "group-label", text: "Leadership" }), lead.map(item),
@@ -3650,7 +3671,7 @@
     const sum = V.summary && V.summary.roles.find((x) => x.key === role);
     if (sum) Object.assign(sum, boardRoleCounts.get(box));
     showRoleProgress({ key: role, ...boardRoleCounts.get(box) });
-    const clsSel = h("select", null, h("option", { value: "", text: "Any class" }), meta.classes.map((c) => h("option", { value: c.key, text: c.label, selected: V.cls === c.key })));
+    const clsSel = h("select", null, h("option", { value: "", text: "Any class" }), [...meta.classes].sort(byDisplayLabel).map((c) => h("option", { value: c.key, text: c.label, selected: V.cls === c.key })));
     const fitSel = h("select", null, [["", "Any raid evenings"], ["na", "NA raid evenings (3+ a week)"], ["eu", "EU raid evenings (3+ a week)"]].map(([k, t]) => h("option", { value: k, text: t, selected: V.fit === k })));
     const todo = h("input", { type: "checkbox", checked: V.todo });
     const refilter = () => { V.cls = clsSel.value; V.fit = fitSel.value; V.todo = todo.checked; V.offset = 0; drawBoard(box, closed, role); };
@@ -4030,7 +4051,7 @@
     const profMax = Math.max(1, ...Object.values(profCount));
     const profTable = h("table", { class: "data" },
       h("thead", null, h("tr", null, h("th", { text: "Profession" }), h("th", { class: "num", text: "Applicants" }), h("th", { text: "" }))),
-      h("tbody", null, (M().professions || []).map((p) => {
+      h("tbody", null, professionDisplayGroups(M().professions || []).flatMap(group => group.items).map((p) => {
         const n = profCount[p.key] || 0;
         const bar = h("div", { class: "bar" }, h("i"));
         bar.firstChild.style.width = `${Math.round((n / profMax) * 100)}%`;
@@ -5169,7 +5190,7 @@
     const data = await api("GET", "/api/admin/applications?" + qs({ position: sent.position, backups: sent.position ? sent.backups : false, profession: sent.profession, status: sent.status, q: sent.q, offset: sent.offset, sort: sent.sort === "old" ? "old" : "" }));
     if (applicationListReads.get(body) !== read || !app.contains(body)) return;
     const position = h("select", { id: "application-filter-position" }, h("option", { value: "", text: "All positions" }), M().positions.map((p) => h("option", { value: p.key, text: p.label, selected: sent.position === p.key })));
-    const profession = h("select", { id: "application-filter-profession" }, h("option", { value: "", text: "Any profession" }), (M().professions || []).map((p) => h("option", { value: p.key, text: p.label, selected: sent.profession === p.key })));
+    const profession = professionSelect(M().professions || [], sent.profession, "Any profession", { id: "application-filter-profession" });
     const withBackups = h("input", { id: "application-filter-backups", type: "checkbox", checked: sent.backups });
     const status = h("select", { id: "application-filter-status" }, [["open", "Open (not decided yet)"], ["", "All"], ["submitted", "Submitted"], ["reviewing", "Under review"], ["accepted", "Accepted"], ["declined", "Not accepted"], ["withdrawn", "Withdrawn"], ["denied", "Denied accounts"]].map(([k, t]) => h("option", { value: k, text: t, selected: sent.status === k })));
     const search = h("input", { id: "application-filter-search", type: "search", value: sent.q, placeholder: "Name or character" });
@@ -5413,7 +5434,7 @@
       h("div", { class: "rule" }),
       h("div", { class: "grid three" }, board.roles.filter((b) => !b.key.startsWith("class_lead:")).map(card)),
       h("div", { class: "group-label", text: "Class leads" }),
-      h("div", { class: "grid three" }, board.roles.filter((b) => b.key.startsWith("class_lead:")).map(card))));
+      h("div", { class: "grid three" }, board.roles.filter((b) => b.key.startsWith("class_lead:")).sort(byDisplayLabel).map(card))));
     } catch { read.failed(); }
   }
   async function adminRole(body, role) {
@@ -5684,7 +5705,7 @@
   // `community` (community-context.ts contextDto) and are re-read after a refusal. Nothing here changes a role or a
   // membership: the pages show what the Worker admits and say so when it does not.
   const PROFESSION_LABELS = { alchemy: "Alchemy", blacksmithing: "Blacksmithing", enchanting: "Enchanting", engineering: "Engineering", herbalism: "Herbalism", leatherworking: "Leatherworking", mining: "Mining", skinning: "Skinning", tailoring: "Tailoring", cooking: "Cooking", fishing: "Fishing", first_aid: "First Aid" };
-  const PROFESSION_KEYS = Object.keys(PROFESSION_LABELS);
+  const COMMUNITY_PROFESSIONS = Object.entries(PROFESSION_LABELS).map(([key, label]) => ({ key, label }));
   const RAID_ROLE_LABELS = { tank: "Tank", healer: "Healer", damage: "Damage" };
   const profLabel = (k) => PROFESSION_LABELS[k] || k;
   const profIcon = (k) => h("img", { class: "ico s", src: art("prof-" + k), alt: "", width: "20", height: "20" });
@@ -6412,7 +6433,7 @@
   }
   function craftingPanel(workshop = false) {
     const q = h("input", { type: "search", maxlength: "60", placeholder: "a recipe name (two letters or more)", "aria-label": "Recipe" });
-    const prof = selectOf(PROFESSION_KEYS.map((k) => ({ key: k, label: profLabel(k) })), "", { placeholder: "Any profession" });
+    const prof = professionSelect(COMMUNITY_PROFESSIONS, "", "Any profession");
     const mode = selectOf([{ key: "recipes", label: "Recipes & commissions" }, { key: "professions", label: "Profession directory" }], "recipes");
     const results = h("div", { class: "stack" });
     const status = h("p", { class: "muted small" });
@@ -6486,9 +6507,9 @@
       addBtn.hidden = box.children.length >= max;
       return { box, addBtn };
     };
-    const professions = rows(p.professions, (it, row) => { row.dataset.kind = "profession"; return [labelled(selectOf(PROFESSION_KEYS.map((k) => ({ key: k, label: profLabel(k) })), it ? it.name : "", { placeholder: "Profession…" }), "Profession"), h("input", { type: "number", min: "0", max: String(limits.skillMax), value: it && it.skill !== null && it.skill !== undefined ? String(it.skill) : "", placeholder: "skill", "aria-label": "Skill level" })]; }, limits.maxProfessions, "Add a profession", "profession");
+    const professions = rows(p.professions, (it, row) => { row.dataset.kind = "profession"; return [labelled(professionSelect(COMMUNITY_PROFESSIONS, it ? it.name : "", "Profession…"), "Profession"), h("input", { type: "number", min: "0", max: String(limits.skillMax), value: it && it.skill !== null && it.skill !== undefined ? String(it.skill) : "", placeholder: "skill", "aria-label": "Skill level" })]; }, limits.maxProfessions, "Add a profession", "profession");
     const alts = rows(p.alts, (it, row) => { row.dataset.kind = "alt"; return [h("input", { type: "text", maxlength: String(limits.nameMax), value: it ? it.name : "", placeholder: "First Last", "aria-label": "Alt name" }), it ? altBadge(it) : null]; }, limits.maxAlts, "Add an alt", "alt");
-    const crafts = feat("crafting") ? rows(p.crafts, (it, row) => { row.dataset.kind = "craft"; return [labelled(selectOf(PROFESSION_KEYS.map((k) => ({ key: k, label: profLabel(k) })), it ? it.profession : "", { placeholder: "Profession…" }), "Offer profession"), h("input", { type: "text", maxlength: String(limits.recipeMax), value: it ? it.recipe : "", placeholder: "recipe", "aria-label": "Recipe" })]; }, limits.maxCrafts, "Add an offer", "offer") : null;
+    const crafts = feat("crafting") ? rows(p.crafts, (it, row) => { row.dataset.kind = "craft"; return [labelled(professionSelect(COMMUNITY_PROFESSIONS, it ? it.profession : "", "Profession…"), "Offer profession"), h("input", { type: "text", maxlength: String(limits.recipeMax), value: it ? it.recipe : "", placeholder: "recipe", "aria-label": "Recipe" })]; }, limits.maxCrafts, "Add an offer", "offer") : null;
     const err = errorLine(""); err.hidden = true;
     const notice = h("div");
     const save = h("button", { class: "btn", type: "submit", text: "Save" });

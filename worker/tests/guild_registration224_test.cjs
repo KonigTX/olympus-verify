@@ -21,7 +21,18 @@ function load(name){const cache=new Map();function read(file){file=path.resolve(
  const catalog228=load('guild-command-definitions228'),raid228=catalog228.RAID_COMMAND_228,event228=defs.find(c=>c.name==='event');
  const custody228={...custody,expectedExistingSHA256:normal.digestCommands219(normal.normalizeCommands219(final))};
  const plan228=planner228.prepareGuildCommandPlan228(final,raid228,custody228),after228=plan228.commands.map(scope);
- check('successor catalogue changes only /raid and copies every /event subcommand and option',catalog228.GUILD_COMMANDS_228.length===defs.length&&normal.digestCommands219(catalog228.GUILD_COMMANDS_228.filter(c=>c.name!=='raid'))===normal.digestCommands219(defs.filter(c=>c.name!=='raid'))&&raid228.options.every(c=>c.type===1)&&raid228.options.map(c=>c.name).join(',')==='hub,schedule,create,list,roster,rsvp,remind,attendance'&&normal.digestCommands219(raid228.options.slice(1))===normal.digestCommands219(event228.options));
+ check('the raid definition copies every /event subcommand and option',raid228.options.every(c=>c.type===1)&&raid228.options.map(c=>c.name).join(',')==='hub,schedule,create,list,roster,rsvp,remind,attendance'&&normal.digestCommands219(raid228.options.slice(1))===normal.digestCommands219(event228.options));
+ const classOption=(commands,name,sub)=>commands.find(c=>c.name===name).options.find(o=>o.name===sub).options.find(o=>o.name==='class');
+ const candidateCommands=structuredClone(catalog228.GUILD_COMMANDS_228);
+ const classKeys=['druid','hunter','mage','paladin','priest','rogue','shaman','warlock','warrior'];
+ const historicClassKeys=['warrior','paladin','hunter','rogue','priest','shaman','mage','warlock','druid'];
+ const variants=[['guide','class'],['forever','guide']];
+ check('both .228 Discord guide class menus use alphabetical labels and the same stored values',
+  variants.every(([name,sub])=>JSON.stringify(classOption(candidateCommands,name,sub).choices)===JSON.stringify(classKeys.map(value=>({name:value[0].toUpperCase()+value.slice(1),value})))
+  && JSON.stringify(classOption(defs,name,sub).choices.map(c=>c.value))===JSON.stringify(historicClassKeys)));
+ for(const [name,sub] of variants)classOption(candidateCommands,name,sub).choices=classOption(defs,name,sub).choices;
+ check('only the two guide choice arrays and the separate raid command differ from the .224 catalogue',
+  candidateCommands.length===defs.length&&normal.digestCommands219(candidateCommands.filter(c=>c.name!=='raid'))===normal.digestCommands219(defs.filter(c=>c.name!=='raid')));
  check('registered raid hub has the old optional find as one nested autocomplete',raid228.options[0].options.length===1&&raid228.options[0].options[0].name==='find'&&raid228.options[0].options[0].autocomplete===true&&raid228.options[0].options[0].required===false);
  check('raid successor preserves the twenty identities and all nineteen unrelated command bodies',plan228.expectedCount===20&&plan228.changedCommands.join(',')==='1:raid'&&planner228.verifyGuildCommandReadback228(plan228,after228).nineteenOtherCommandsPreserved);
  check('raid successor rejects wrong scope, stale baseline, altered subcommands or permissions',refused(()=>planner228.prepareGuildCommandPlan228(final.map(c=>({...c,guild_id:'300000000000000000'})),raid228,custody228))&&refused(()=>planner228.prepareGuildCommandPlan228(before,raid228,custody228))&&refused(()=>planner228.prepareGuildCommandPlan228(final,{...raid228,options:raid228.options.slice(0,-1)},custody228))&&refused(()=>planner228.prepareGuildCommandPlan228(final,{...raid228,default_member_permissions:'0'},custody228))&&refused(()=>planner228.prepareGuildCommandPlan228(final,{...raid228,contexts:[0]},custody228)));

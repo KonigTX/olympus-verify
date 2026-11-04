@@ -480,6 +480,9 @@ export const CLASSES: ClassInfo[] = [
   { key: "druid", label: "Druid", color: "#FF7C0A" },
 ];
 const CLASS_KEYS = new Set(CLASSES.map((c) => c.key));
+export const classDisplayChoices = () => [...CLASSES]
+  .sort((a, b) => a.label.localeCompare(b.label, "en"))
+  .map(({ key, label }) => ({ name: label, value: key }));
 
 export const ROLES = [
   { key: "tank", label: "Tank" },
