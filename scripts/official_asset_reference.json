@@ -650,14 +650,14 @@
     {
       "path": "worker/public/static/talents/calculator.js",
       "mode": "100644",
-      "bytes": 66306,
-      "sha256": "259235a2bc371c7f227a486bc39e26064661add952e5dd8c647d9ad75cac684b"
+      "bytes": 71316,
+      "sha256": "b626de0b68cc93edc0ea45565e463e1fe241666d012e16bd5ee38d7f5d571cb0"
     },
     {
       "path": "worker/public/static/talents/calculator.css",
       "mode": "100644",
-      "bytes": 34401,
-      "sha256": "628ad8e6b224a68a56aaaf1f469a86f9d3838789a7eeccabbf74af61bd65bfd6"
+      "bytes": 35208,
+      "sha256": "1cf75ce048a7c15ff1979bde3652b7a917e585d64a99f289bf8e1c6350fcf657"
     },
     {
       "path": "worker/public/static/resources169.js",

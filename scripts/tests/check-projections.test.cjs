@@ -141,7 +141,7 @@ const talentCalculator218 = 'worker/public/static/talents/calculator.js';
 const talentGenerator218 = 'scripts/build-talent-build-contract.cjs', talentProjection218 = 'worker/src/talent-build-contract.ts';
 const talentPriorSource218 = 'fbed6f34d022cea57a6760d96bd7b04f0419effa25b0f47eaa85d72e92636b14';
 const talentRecoverySource218 = '0830ff6fc69ef3a3430bf1cdf31a272f3a5a84da4bcedfba2ae398748cd131c8';
-const talentCurrentSource218 = '259235a2bc371c7f227a486bc39e26064661add952e5dd8c647d9ad75cac684b';
+const talentCurrentSource218 = 'b626de0b68cc93edc0ea45565e463e1fe241666d012e16bd5ee38d7f5d571cb0';
 const talentNewHeading218 = 'h("h1", { class: "talents-eyebrow", text: "Olympus · Forever talents" })';
 const talentOldHeading218 = 'h("p", { class: "talents-eyebrow", text: "Olympus · Forever talents" })';
 const actualCalculator218 = base.get(talentCalculator218).toString('utf8');
