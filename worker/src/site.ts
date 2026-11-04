@@ -1,7 +1,7 @@
 import {privacyAccountIncarnation,privacyAccountIncarnationLiteralFenceSql,privacyGenerationLiteralFenceSql} from './privacy-serving-authority';
 import {assertOriginalSiteSessionRead,type OriginalSiteSession} from './privacy-site-session-incarnation';
 import { admittedPrivacyOAuthWrite, admittedPrivacySubjectWrite, readPrivacySubject, type PrivacySubject } from './privacy-serving-authority';
-import {captureSiteOAuthAccount,dispatchSiteOAuthProfile,siteOAuthCallbackInput,assertSiteOAuthCallbackCustody,verifySiteOAuthState,signSiteOAuthCookie,type SiteOAuthOrigin} from './privacy-serving-site-oauth';
+import {captureSiteOAuthAccount,confirmSiteOAuthNoLocalAccount,dispatchSiteOAuthProfile,siteOAuthCallbackInput,assertSiteOAuthCallbackCustody,verifySiteOAuthState,signSiteOAuthCookie,type SiteOAuthOrigin} from './privacy-serving-site-oauth';
 import {RecoveryFloorHeld} from './privacy-recovery-floor';
 /**
  * The Olympus guild site (build .41, 29 Sep 2026; .43, 30 Sep: the game's own art, the voting board): registration,
@@ -274,13 +274,19 @@ async function callback(env: Env, request: Request, url: URL, build: string, wai
   // The one thing this site needs to know about someone's servers: are they in this one. guilds.members.read answers
   // for this server only, with 404 for "not a member".
   const memRes = await step(()=>credentialFetch(`${API}/users/@me/guilds/${env.SITE_GUILD_ID}/member`, { headers: auth }));
-  if (memRes.status === 404) {
+  const membershipRefusal = async (kind: 'not_member'|'pending', exact: boolean) => {
+    const render = (status: number, reason: string) => siteSignInWithMedia(request, env, status, reason, [...clear, clearCookie(SESSION_COOKIE)]);
     try {
+      if (exact && (!privacyCapture || privacyCapture.state === 'retired')
+          && await step(()=>confirmSiteOAuthNoLocalAccount(original))) {
+        return await step(()=>render(403, kind));
+      }
       await step(()=>admittedPrivacySubjectWrite(env, me.id, privacyCapture, [env.DB.prepare('UPDATE site_users SET in_server=0,checked_at=?2,session_version=session_version+1 WHERE discord_id=?1').bind(me.id, now())]));
-    } catch { return siteSignInWithMedia(request, env, 503, 'privacy_held', [...clear, clearCookie(SESSION_COOKIE)]); }
-    await step(()=>audit(env, 'site', "site.login_not_member"));
-    return siteSignInWithMedia(request, env, 403, 'not_member', [...clear, clearCookie(SESSION_COOKIE)]);
-  }
+    } catch { return render(503, 'privacy_held'); }
+    if (kind === 'not_member') await step(()=>audit(env, 'site', "site.login_not_member"));
+    return render(403, kind);
+  };
+  if (memRes.status === 404) return membershipRefusal('not_member', true);
   if (memRes.status === 429) return flash("busy", 429);
   if (!memRes.ok) {
     await step(()=>audit(env, 'site', "site.login_failed", undefined, { step: "member", status: memRes.status }));
@@ -288,12 +294,7 @@ async function callback(env: Env, request: Request, url: URL, build: string, wai
   }
   const member = (await step(()=>memRes.json())) as DiscordMember;
   // Membership screening not finished (the server's rules not accepted yet): not a member in any useful sense.
-  if (member.pending) {
-    try {
-      await step(()=>admittedPrivacySubjectWrite(env, me.id, privacyCapture, [env.DB.prepare('UPDATE site_users SET in_server=0,checked_at=?2,session_version=session_version+1 WHERE discord_id=?1').bind(me.id, now())]));
-    } catch { return siteSignInWithMedia(request, env, 503, 'privacy_held', [...clear, clearCookie(SESSION_COOKIE)]); }
-    return siteSignInWithMedia(request, env, 403, 'pending', [...clear, clearCookie(SESSION_COOKIE)]);
-  }
+  if (member.pending) return membershipRefusal('pending', member.pending === true);
 
   const t = now();
   const avatar = member.avatar ? `g:${member.avatar}` : me.avatar ? `u:${me.avatar}` : null;
