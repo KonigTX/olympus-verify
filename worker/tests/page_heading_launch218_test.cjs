@@ -47,12 +47,14 @@ async function headingAndLaunch218() {
   const observe = page => page.before((pathname, init) => { reads.push({pathname,method:init.method || 'GET'}); return false; });
   const official = (main, label, clock = earlyClock) => {
     const banners = main.querySelectorAll('.launch-notice218');
+    // Evergreen Stage 2 (4 Nov 2026): the notice shows only the next milestone; Blizzard's closed reservation window
+    // and the one statement that the names list reserves nothing live on the Home names panel instead.
     check('.218 '+label+' has one official announcement, independent of guild thresholds', banners.length === 1 && banners[0].getAttribute('aria-label') === 'Forever global launch'
       && banners[0].textContent.includes('4 November 2026 · 23:00 UTC · 3:00 PM PST')
-      && banners[0].textContent.includes('27 October–3 November') && banners[0].textContent.includes('up to three characters total across rulesets')
+      && !banners[0].textContent.includes('27 October') && !/reservation/i.test(banners[0].textContent)
       && exactCountdown(banners[0], officialAt, clock));
-    check('.218 '+label+' distinguishes an in-game reservation from a website record', banners.length === 1
-      && banners[0].textContent.includes('The website neither reserves names nor verifies character ownership.')
+    check('.218 '+label+' links the website name list without a second reservation disclaimer', banners.length === 1
+      && !banners[0].textContent.includes('neither reserves')
       && !!banners[0].querySelector('a[href="#/names"]'));
   };
   try {
@@ -67,8 +69,9 @@ async function headingAndLaunch218() {
     check('.218 Home keeps its later frame titles as secondary headings', frameTitles(main).length > 1 && frameTitles(main).every(node => node.tagName === 'H2'));
     official(main, 'Home');
     const admission = main.querySelector('.launch-and-admission218');
+    // Evergreen Stage 2: a switched-off entry whose date has passed reads closed, not "not open yet" or "planned from".
     check('.218 elapsed website threshold does not imply open entry while the switch is OFF', !!admission && admission.textContent.includes('Website name entry is closed') && !admission.textContent.includes('Website name entry is open')
-      && main.textContent.includes('Website name entry is not open yet.') && admission.textContent.includes("It records names already chosen in game; it does not reserve them."));
+      && main.textContent.includes('Website name entry is closed.') && !main.textContent.includes('Website name entry is not open yet.') && !admission.textContent.includes('Name entry on this site is planned from'));
     check('.218 guild invite countdown keeps its independently configured target', !!admission && admission.textContent.includes('Guild invites are planned from')
       && exactCountdown(admission.querySelector('.frame'), guildLaunchAt * 1000, earlyClock)
       && admission.textContent.includes('It guarantees neither service availability, an invite nor a free seat.'));
@@ -107,7 +110,7 @@ async function headingAndLaunch218() {
         }));
     }
     await page.go('#/community/news');
-    await must(() => mainOf(page).textContent.includes('The road to launch'), 'actual News road-to-launch response');
+    await must(() => mainOf(page).textContent.includes('Forever schedule'), 'actual News Forever schedule response');
     official(mainOf(page),'News with deliberately different guild date');
     check('.218 News keeps the guild date in an explicitly separate invite reference',
       !!mainOf(page).querySelector('.guild-invite-plan218') && mainOf(page).querySelector('.guild-invite-plan218').textContent.includes('This is the guild’s schedule, separate from Blizzard’s global launch')
@@ -172,8 +175,8 @@ async function headingAndLaunch218() {
 
     const passed = await openPage(MEMBER, {}, {clockNow:officialAt+1000}); observe(passed);
     const passedBanner = mainOf(passed).querySelector('.launch-notice218');
-    check('.221 elapsed launch advances to the announced raid date without inventing an unlock hour or live availability', passedBanner?.textContent.includes('First raids are announced for 9 December 2026')
-      && passedBanner.textContent.includes('regional opening hour is not confirmed here')
+    check('.221 elapsed launch advances to the announced raid date without inventing an unlock hour or live availability', passedBanner?.textContent.includes('First raids open on 9 December 2026')
+      && passedBanner.textContent.includes('Blizzard has not announced the hour')
       && !passedBanner.querySelector('[role="timer"]') && !passedBanner.textContent.includes('Open now')
       && passedBanner.getAttribute('aria-label') === 'Forever raid schedule');
     check('.218 Home links to an application without implying an editable form is on Home',

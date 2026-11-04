@@ -116,14 +116,14 @@ const HISTORICAL_POSITION_COPY: Position[] = [
     info: {
       about: "Olympus uses a 1,000-character branch planning boundary; the current Forever game cap has not been independently verified here. To organize demand, the community plans several guilds: Olympus 2, Olympus 3 and so on. Each needs a Guild Master who holds the top rank in game, leads it day to day, and answers to the Olympus leadership.",
       duties: [
-        "Found your guild at launch: the charter and its signatures, the tabard, and ranks and permissions set up the way Olympus does it.",
+        "Found your guild and keep it in order: the charter and its signatures, the tabard, and ranks and permissions set up the way Olympus does it.",
         "Pick your officers with the Olympus leadership, and hold them to the same rules as everyone else.",
         "Run your roster: invites, promotions, and removals when the guild is full.",
         "Enforce the Olympus rules in your guild, and settle what your officers cannot.",
         "Speak for your guild to the Olympus leadership and the other Guild Masters: shared events, raids, and problems that cross guilds.",
       ],
       expect: [
-        "Online most evenings, NA or EU, and a lot in the first weeks after launch.",
+        "Online most evenings, NA or EU, and more while your guild is new.",
         "An authenticator on your Battle.net account.",
         "Calm and fair in public: you represent Asmongold's community.",
         "You follow the Olympus leadership's decisions, and raise disagreements privately.",
@@ -226,9 +226,9 @@ const HISTORICAL_POSITION_COPY: Position[] = [
     },
   },
   {
-    key: "leveling", label: "Leveling Lead", group: "leadership", blurb: "Organizes leveling groups and dungeon runs at launch, and helps newcomers and alts catch up after.",
+    key: "leveling", label: "Leveling Lead", group: "leadership", blurb: "Organizes leveling groups and dungeon runs, and helps newcomers and alts catch up.",
     info: {
-      about: "When Forever launches, everyone starts at level 1. The Leveling Lead turns a thousand people leveling alone into groups that level together, and later helps newcomers and alts catch up.",
+      about: "Forever is a fresh start at level 1. The Leveling Lead turns a thousand people leveling alone into groups that level together, and helps newcomers and alts catch up.",
       duties: [
         "Organize leveling groups by level range and time zone, above all in the first weeks.",
         "Set up dungeon runs and groups for elite quests as people reach them.",
@@ -237,7 +237,7 @@ const HISTORICAL_POSITION_COPY: Position[] = [
         "Plan leveling events, like a race to level 10 or a dungeon night.",
       ],
       expect: [
-        "Playing a lot at launch: you are leveling too, in NA or EU hours.",
+        "Playing a lot in NA or EU hours: you are leveling too.",
         "You know the old world well, and learn Forever's changes fast.",
         "Patient and encouraging with new players.",
       ],
@@ -662,6 +662,7 @@ export interface SiteSettings {
   newsOn: boolean;            // .115: the members' News page (site-news.ts); off until an administrator switches it on
   loginAnimation: boolean;    // owner-selected nonpersonal login artwork; approved stills by default
   royalWritsOn: boolean;      // .200: display the Royal Writs schedule only after an administrator enables it
+  reservedQueueOnSite: boolean; // Evergreen Stage 2: false during launch verification, when officers invite in game
 }
 
 /**
@@ -743,8 +744,15 @@ function parseNoVote(raw: string | undefined): string[] {
 /** Blizzard's 20 Oct announcement: North America opens 27 Oct 2026 at 13:00 PDT = 20:00 UTC. Other regions differ.
  * https://news.blizzard.com/en-us/article/24303866/claim-your-world-of-warcraft-forever-character-names */
 export const DEFAULT_NAMES_OPEN_AT = 1793131200;
-/** 4 Nov 2026, 3:00 p.m. PST: Blizzard's announced launch (the same timestamp the channel intros show). */
-export const DEFAULT_LAUNCH_AT = 1793833200;
+/**
+ * Blizzard's announced Forever schedule (Evergreen Stage 2, 4 Nov 2026), the same values as app.js FOREVER_SCHEDULE so
+ * the bot's /launch and the website's launch notice change together: the global launch on 4 Nov 2026 at 3:00 p.m. PST
+ * (23:00 UTC), then the first raids on 9 December 2026. No hour is announced for the raids, so that milestone lasts
+ * until the day ends in PST, the guild's westernmost region (10 Dec 2026, 08:00 UTC), and then retires.
+ */
+export const FOREVER_SCHEDULE = Object.freeze({ launchAt: 1793833200, firstRaids: "9 December 2026", raidDayEndAt: 1796889600 });
+/** The default guild invite time (settings.launchAt): Blizzard's launch, the same timestamp the channel intros show. */
+export const DEFAULT_LAUNCH_AT = FOREVER_SCHEDULE.launchAt;
 
 export function parseTime(raw: string | undefined | null, fallback: number): number {
   const v = (raw ?? "").trim();
@@ -755,6 +763,24 @@ export function parseTime(raw: string | undefined | null, fallback: number): num
 }
 
 const bool = (v: string | undefined, fallback: boolean) => (v === undefined ? fallback : v === "1" || v === "true");
+
+/**
+ * Whether approved reserved names go into the website's invite queue (Evergreen Stage 2, 4 Nov 2026): only in the
+ * historical admission workflow, which launch-verification227.ts captureLaunchVerification selects as "legacy" from
+ * VERIFY_MEMBERSHIP_ONLY alone (absent, or an own value of undefined or "false"). This copy only words Home and the
+ * admin pages; site-queue.ts holds the queue on the capture itself. It is mirrored rather than imported because that
+ * module's imports lead back here, and launch_transition228_test checks the two agree. Like the capture, it reads
+ * descriptors only and never invokes a configuration getter.
+ */
+function reservedQueueOnSite(env: Env): boolean {
+  try {
+    const d = Object.getOwnPropertyDescriptor(env, "VERIFY_MEMBERSHIP_ONLY");
+    if (!d) return !("VERIFY_MEMBERSHIP_ONLY" in env);
+    return Object.hasOwn(d, "value") && (d.value === undefined || d.value === "false");
+  } catch {
+    return false;
+  }
+}
 
 export function settingsFrom(env: Env, rows: Array<{ key: string; value: string }>): SiteSettings {
   const m = new Map(rows.map((r) => [r.key, r.value]));
@@ -773,6 +799,7 @@ export function settingsFrom(env: Env, rows: Array<{ key: string; value: string 
     newsOn: bool(m.get("newsOn"), false), // .115: a missing row means off (fail closed)
     loginAnimation: m.get("loginAnimation") === "1", // strict operator boolean; malformed values retain the approved still
     royalWritsOn: m.get("royalWritsOn") === "1", // absent or malformed settings keep the schedule off
+    reservedQueueOnSite: reservedQueueOnSite(env), // from the Worker's configuration, never a stored row
   };
 }
 

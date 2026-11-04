@@ -10,6 +10,7 @@ import { talentBuildAttachment } from './talent-build-attachment';
 import { parsedArmySnapshot219, armyKey, type ArmySnapshot } from './army-census';
 import { ROYAL_WRIT_POLICY } from './royal-writs199';
 import { NATIVE_RANKS_199 } from './governance-offices';
+import { FOREVER_SCHEDULE } from './site-data';
 
 export interface GuildEmbed219 { title:string;description?:string;url?:string;fields?:{name:string;value:string;inline?:boolean}[];footer?:{text:string} }
 export const safeDiscordText219=(input:unknown,max=1000)=>String(input??'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/[@`*_~|<>\\]/g,c=>'\\'+c).slice(0,max);
@@ -33,11 +34,12 @@ export async function guideLookup219(env:Env,a:GuildActor219,sub:string,v:Record
   const build=talentBuildAttachment(v.build,destination(env)!.host);
   if(!build?.code||!build.className||!build.level)throw Error('Paste a valid current Olympus talent code or its exact site share URL. Historical or third-party URLs are not fetched.');
   const ranks=build.code.split('.')[4]!,rows=TALENT_ATTACHMENT_CLASSES[build.className]!,specs=APPLICATION_SPECS_219[build.className]!;
-  return {title:'Talent preview · '+build.className,url:base+'/#/talents/'+build.className+'/'+build.code,description:'Pinned beta snapshot; a declared allocation, not verified character ownership or a performance guarantee.',fields:[field('Level / allocated points',build.level+' / '+build.points),...specs.map((spec,index)=>field(spec.label,rows.reduce((n,row,i)=>n+(row[2]===index?Number(ranks[i]):0),0)+' points'))]};
+  return {title:'Talent preview · '+build.className,url:base+'/#/talents/'+build.className+'/'+build.code,description:'Talents from the pinned beta snapshot; the released game can differ. A declared allocation, not verified character ownership or a performance guarantee.',fields:[field('Level / allocated points',build.level+' / '+build.points),...specs.map((spec,index)=>field(spec.label,rows.reduce((n,row,i)=>n+(row[2]===index?Number(ranks[i]):0),0)+' points'))]};
  }
  const guide=await assetJson219(env,a,'/static/guides218.json');
  if(guide.schema!=='olympus-guides-v1'||!Array.isArray(guide.classes)||!Array.isArray(guide.presets)||!guide.tools)throw Error('The current guide catalogue is unavailable.');
- const evidence='Grades: A pinned client data · B official announcement · C community · D derived · E Classic reference · U unknown. Launch may change beta details.';
+ // Evergreen Stage 2 (4 Nov 2026): true before and after the launch; the pinned data stays a beta snapshot until replaced.
+ const evidence='Grades: A pinned client data · B official announcement · C community · D derived · E Classic reference · U unknown. Pinned data comes from the beta; the released game can differ.';
  if(sub==='class'){
   const cls=guide.classes.find((row:Any219)=>row.id===v.class),specQuery=typeof v.spec==='string'?v.spec.trim().toLowerCase():'';
   if(!cls||!Array.isArray(cls.specs))throw Error('Choose one of the nine classes.');
@@ -77,8 +79,12 @@ export async function workshopLookup219(env:Env,a:GuildActor219,query:unknown,pa
 export async function referenceLookup219(env:Env,a:GuildActor219,name:string):Promise<GuildEmbed219> {
  const base='https://'+destination(env)!.host;
  if(name==='launch'){
-  const launch=1793833200,remaining=Math.max(0,launch-Math.floor(Date.now()/1000)),days=Math.floor(remaining/86400),hours=Math.floor(remaining%86400/3600),minutes=Math.floor(remaining%3600/60);
-  return {title:'World of Warcraft: Forever · November 4',url:base+'/#/',description:'Announced global launch: <t:'+launch+':F>\n'+(remaining?days+' days, '+hours+' hours, '+minutes+' minutes remaining.':'The announced time has passed. Check Blizzard service notices for actual availability.'),fields:[{name:'Official reference',value:'https://worldofwarcraft.blizzard.com/en-us/forever/'}]};
+  // Evergreen Stage 2 (4 Nov 2026): a countdown before the launch; after it the live date and the next milestone, the
+  // first raids (date only), until 9 December ends in PST. /olympus Branch capacity & launch shows this same card.
+  const {launchAt,firstRaids,raidDayEndAt}=FOREVER_SCHEDULE,at=Math.floor(Date.now()/1000),remaining=Math.max(0,launchAt-at),official=[{name:'Official reference',value:'https://worldofwarcraft.blizzard.com/en-us/forever/'}];
+  if(remaining){const days=Math.floor(remaining/86400),hours=Math.floor(remaining%86400/3600),minutes=Math.floor(remaining%3600/60);
+   return {title:'World of Warcraft: Forever · November 4',url:base+'/#/',description:'Announced global launch: <t:'+launchAt+':F>\n'+days+' days, '+hours+' hours, '+minutes+' minutes remaining.',fields:official};}
+  return {title:'World of Warcraft: Forever · live since 4 November 2026',url:base+'/#/',description:'Global launch: <t:'+launchAt+':F>'+(at<raidDayEndAt?'\nFirst raids open on '+firstRaids+'; Blizzard has not announced the hour.':''),fields:official};
  }
  if(name==='stockades')return {title:'The Stockades & Court of Appeals',url:base+'/#/governance',description:ROYAL_WRIT_POLICY.stockadesStatus,fields:[
   field('Eligible conditional clemency only',`100g standard. An unconflicted reviewer may set 250–500g for eligible repeat or escalated minor community or RP infractions. Send in-game gold to ${ROYAL_WRIT_POLICY.recipient} only after an officer accepts the case. Include the Case ID in the mail subject. Payment never guarantees an unban.`),

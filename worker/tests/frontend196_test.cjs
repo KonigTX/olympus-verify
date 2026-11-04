@@ -13,7 +13,9 @@ const body196=String.raw`
   const member=await openPage(MEMBER), staff=await openPage(STAFF);
   const archive=byText(member.app,'h2','Beta Epoch Archive')?.closest('section');
   check('archive retains the later announced shutdown plan without claiming observed closure',!!archive && archive.textContent.includes('23 October 2026') && archive.textContent.includes('10:00 AM PDT (17:00 UTC)') && archive.textContent.includes("Blizzard's announced plan") && archive.textContent.includes('not a server closure observed') && archive.textContent.includes('no former-member roster') && !archive.textContent.includes('Mia One'));
-  check('name reservation copy separates eligible-account total and local input limits',member.app.textContent.includes('three characters total across all rulesets') && member.app.textContent.includes('Skyborne Heroic Pack') && member.app.textContent.includes('local limits are not a claim'));
+  // Evergreen Stage 2 (4 Nov 2026): Blizzard's reservation closed on 3 November, so Home records it once in the past
+  // tense; the guild form's own input limits are stated plainly beside the boxes, without the earlier hedge.
+  check('name reservation copy records the closed window once and states the local input limits plainly',member.app.textContent.includes("Blizzard's early name reservation ran from 27 October to 3 November 2026.") && member.app.textContent.includes('each a first and last name of 2–12 letters') && !member.app.textContent.includes('local limits are not a claim') && !member.app.textContent.includes('Skyborne Heroic Pack'));
   check('unappointed member has no Stream Shield affordance',!member.app.querySelector(".stream-shield-toggle"));
   const shield=staff.app.querySelector(".stream-shield-toggle"), commands=[];
   staff.before((pathname,init)=>{if((init.method||'GET')!=='GET')commands.push(pathname);return false;});

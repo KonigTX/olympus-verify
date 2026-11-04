@@ -10,6 +10,10 @@
  * Before launch the names do not exist in game, so approved names wait until settings.launchAt (the cron queues them
  * then, when settings.autoQueue is on). An admin can also queue them by hand.
  *
+ * Only the historical admission workflow queues them (Evergreen Stage 2, 4 Nov 2026). In the .227 membership-only
+ * launch verification getQueue serves no officer any row, so a queued name would only look invited while officers
+ * invite in game: the cron and the admin Queue are held there, reading and writing nothing.
+ *
  * Set-based on purpose: one SELECT picks up to CHUNK names, then one batch of five statements moves all of them, so
  * the cost of a run does not grow with the number of names.
  */
@@ -18,21 +22,32 @@ import type { Env } from "./env";
 import { audit, now } from "./db";
 import { loadSettings } from "./site-data";
 import { SCHEDULED_CAPS } from './scheduled-budget';
+import { captureLaunchVerification, type LaunchVerificationCapture } from './launch-verification227';
 
 const CHUNK = 250; // ids go into the SQL as integers, not bound parameters, so D1's 100-parameter cap does not apply
 const ROUNDS = 4;  // up to 1,000 names per run: more than the guild has seats
 const ACTIVE = "('queued','written','invited')";
 
-export interface QueueOutcome { queued: number; bumped: number; inGuild: number; blocked: number; contested: number; more: boolean }
+/** `held` only when launch verification stopped the queue; the other outcomes keep their original shape. */
+export interface QueueOutcome { queued: number; bumped: number; inGuild: number; blocked: number; contested: number; more: boolean; held?: true }
+
+const heldOutcome = (): QueueOutcome => ({ queued: 0, bumped: 0, inGuild: 0, blocked: 0, contested: 0, more: false, held: true });
+
+/** The captured legacy (historical admission) mode, or null: membership-only, a held configuration or a changed one. */
+function websiteQueue(env: Env): LaunchVerificationCapture | null {
+  const launch = captureLaunchVerification(env);
+  return launch.mode === "legacy" && launch.current() ? launch : null;
+}
 
 /**
  * Queue approved names: the given ids, or every approved one (oldest approval first). Names claimed by more than one
  * account where more than one claim is approved are left alone ("contested") until an admin releases one of them.
  */
 export async function queueReserved(env: Env, actor: string, ids?: number[]): Promise<QueueOutcome> {
-  return queueReservedRounds(env,actor,ids,ROUNDS);
+  return queueReservedRounds(env,actor,ids,ROUNDS,websiteQueue(env));
 }
-async function queueReservedRounds(env: Env, actor: string, ids: number[]|undefined,rounds:number): Promise<QueueOutcome> {
+async function queueReservedRounds(env: Env, actor: string, ids: number[]|undefined,rounds:number,launch:LaunchVerificationCapture|null): Promise<QueueOutcome> {
+  if (!launch) return heldOutcome();
   const out: QueueOutcome = { queued: 0, bumped: 0, inGuild: 0, blocked: 0, contested: 0, more: false };
   const only = ids?.filter((x) => Number.isInteger(x) && x > 0).slice(0, 500);
   if (ids && !only?.length) return out;
@@ -61,6 +76,8 @@ async function queueReservedRounds(env: Env, actor: string, ids: number[]|undefi
     const go = cand.results.slice(0, CHUNK).map((r) => r.id);
     out.more = cand.results.length > CHUNK;
     if (!go.length) break;
+    // A switch to launch verification during the run stops it before the next write.
+    if (!launch.current()) { out.held = true; break; }
     const step = await queueChunk(env, go);
     out.inGuild += step.inGuild;
     out.bumped += step.bumped;
@@ -111,12 +128,17 @@ async function queueChunk(env: Env, go: number[]): Promise<{ inGuild: number; bu
   return { inGuild: res[0]?.meta?.changes ?? 0, bumped: res[2]?.meta?.changes ?? 0, queued: res[3]?.meta?.changes ?? 0 };
 }
 
-/** The cron's part: from launch, approved names go into the queue by themselves (settings.autoQueue). Never throws. */
+/**
+ * The cron's part: from launch, approved names go into the queue by themselves (settings.autoQueue). Never throws.
+ * Held before the settings read during launch verification, so a held run spends no statement of its budget line.
+ */
 export async function autoQueueReserved(env: Env): Promise<QueueOutcome | null> {
   try {
+    const launch = websiteQueue(env);
+    if (!launch) return heldOutcome();
     const s = await loadSettings(env);
     if (!s.autoQueue || now() < s.launchAt) return null;
-    return await queueReservedRounds(env, "system",undefined,SCHEDULED_CAPS.autoQueueRounds);
+    return await queueReservedRounds(env, "system",undefined,SCHEDULED_CAPS.autoQueueRounds,launch);
   } catch (e) {
     console.error("reserved names: auto-queue failed", errorRef(e));
     return null;

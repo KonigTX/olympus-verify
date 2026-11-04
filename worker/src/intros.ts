@@ -104,7 +104,8 @@ export const INTROS: Intro[] = [
         fields: [
           { name: "Launch", value: "<t:1793833200:F> (November 4, 2026, 3:00 p.m. PST, global). Included with a WoW subscription or Game Time." },
           { name: "Beta", value: "Began September 17, 2026. Blizzard's October 20 announcement planned the final shutdown for October 23 at 10:00 a.m. PDT (17:00 UTC); this is the announced schedule, not an observed server-closure receipt. Access was for selected invited testers and eligible Skyborne Epic Pack or Warcraft Forever Collection accounts; a guild application does not grant beta access." },
-          { name: "Early name reservation", value: "October 27 – November 3, 2026. North America opens October 27 at 1:00 p.m. PDT (20:00 UTC); other regions have separate hours. Skyborne Heroic Pack, Skyborne Epic Pack or Warcraft Forever Collection purchase is required on that WoW account. Up to three characters total across all Rulesets, first come, first served. A name on our guild planning list does not reserve it in the game." },
+          // Evergreen Stage 2 (4 Nov 2026): the window closed on 3 November, so the field is a dated record, true either side of launch.
+          { name: "Early name reservation", value: "October 27 – November 3, 2026 (closed). North America opened October 27 at 1:00 p.m. PDT (20:00 UTC); other regions had separate hours. A Skyborne Heroic Pack, Skyborne Epic Pack or Warcraft Forever Collection purchase was required on that WoW account. Up to three characters total across all Rulesets, first come, first served. A name on our guild planning list does not reserve it in the game." },
           { name: "First new raids", value: "Unlock December 9, 2026." },
           { name: "Olympus ruleset", value: "{ruleset-ruleset} · {ruleset-faction} ({ruleset-decided}). Forever is realmless: choose the guild's ruleset and region, rather than a traditional realm." },
           { name: "New in Forever", value: "The Skyborne race (Zephras Isle), Mount Hyjal, Shen'dralas and Riverglades, nine new dungeons, the Hyjal Summit (20-player) and Barrow Deeps (10-player) raids, the Darkspear Islands 15 vs 15 battleground, Legacy progression for alts, camping and opt-in transmog." },
@@ -125,7 +126,7 @@ export const INTROS: Intro[] = [
           `• [What's Next panel recap](${LINKS.whatsNext})`,
           `• [Deep Dive panel recap](${LINKS.deepDive})`,
           "",
-          "**Community guides** (unofficial; written from the beta, so details can change before launch)",
+          "**Community guides** (unofficial; written from the beta, so the released game can differ)",
           `• [Wowhead Forever hub](${LINKS.wowheadHub}): overview, zones, dungeons, raids, talent calculator`,
           `• [Icy Veins Forever hub](${LINKS.icyHub}): class and spec guides, choosing a class, races, rulesets, camping, Legacy`,
           `• [Warcraft Tavern professions guide](${LINKS.tavernProfessions})`,
