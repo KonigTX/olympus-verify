@@ -48,17 +48,9 @@ class Element {
   }
   click(detail = 1) { return this.dispatch("click", { detail }); }
   focus() { this.doc.activeElement = this; }
-  setPointerCapture(id) {
-    const previous = this.doc.pointerOwners.get(id);
-    if (previous && previous !== this) {
-      previous.captures.delete(id);
-      this.doc.captureLoss.push(() => previous.dispatch("lostpointercapture", { pointerId: id }));
-    }
-    this.doc.pointerOwners.set(id, this);
-    this.captures.add(id);
-  }
+  setPointerCapture(id) { this.captures.add(id); }
   hasPointerCapture(id) { return this.captures.has(id); }
-  releasePointerCapture(id) { this.captures.delete(id); this.doc.pointerOwners.delete(id); this.dispatch("lostpointercapture", { pointerId: id }); }
+  releasePointerCapture(id) { this.captures.delete(id); this.dispatch("lostpointercapture", { pointerId: id }); }
   get clientWidth() { return this.inDialog() ? this.doc.dialogWidth : this.doc.viewportWidth; }
   get clientHeight() { return this.inDialog() ? 780 : 600; }
   inDialog() { for (let n = this; n; n = n.parentNode) if (n.tagName === "DIALOG" && n.open) return true; return false; }
@@ -69,7 +61,6 @@ class Element {
 function open({ mobile = false, width = 800, officeAvailability = undefined, parts = [], overview205 = false, model = data } = {}) {
   const doc = new Element("#document"); doc.doc = doc; doc.head = new Element("head", doc); doc.body = new Element("body", doc); doc.append(doc.head, doc.body);
   doc.viewportWidth = width; doc.dialogWidth = mobile ? width : 1100;
-  doc.pointerOwners = new Map(); doc.captureLoss = [];
   doc.createElement = t => new Element(t, doc); doc.createElementNS = (_ns, t) => new Element(t, doc);
   doc.getElementById = id => doc.all(n => n.id === id)[0] || null;
   const h = (tag, attrs, ...nodes) => { const el = doc.createElement(tag); for (const [k, v] of Object.entries(attrs || {})) { if (k === "text") el.textContent = v; else if (k.startsWith("on")) el.addEventListener(k.slice(2), v); else el.setAttribute(k, v); } el.append(...nodes); return el; };
@@ -85,19 +76,7 @@ function open({ mobile = false, width = 800, officeAvailability = undefined, par
   const one = cls => main.all(n => n.classList.contains(cls))[0];
   const button = text => main.all(n => n.tagName === "BUTTON" && n.textContent === text)[0];
   const node = id => main.all(n => n.getAttribute("data-organization-node") === id)[0];
-  const pointer = (target, type, x, y, more = {}) => {
-    const init = { pointerId: 1, pointerType: "mouse", button: 0, isPrimary: true, clientX: x, clientY: y, ...more };
-    const id = init.pointerId;
-    while (doc.captureLoss.length) doc.captureLoss.shift()();
-    // Touch first captures on the actual target. Transfer emits a bubbling loss before the next event.
-    if (init.pointerType === "touch") {
-      if (type === "pointerdown") target.setPointerCapture(id);
-      else target = doc.pointerOwners.get(id) || target;
-    }
-    const event = target.dispatch(type, init);
-    if (init.pointerType === "touch" && (type === "pointerup" || type === "pointercancel")) doc.pointerOwners.get(id)?.releasePointerCapture(id);
-    return event;
-  };
+  const pointer = (target, type, x, y, more = {}) => target.dispatch(type, { pointerId: 1, button: 0, isPrimary: true, clientX: x, clientY: y, ...more });
   const resize = width => { doc.viewportWidth = width; for (const observer of observers) if (!observer.disconnected) observer.fn(); flush(); };
   return { main, doc, flush, one, button, node, pointer, resize, dispose, observers, viewport: one("org-viewport"), stage: one("org-stage"), detail: one("org-inspector"), dialog: one("org-fullscreen") };
 }
@@ -245,7 +224,31 @@ check("cancelled pointers release pan state", !p.viewport.hasPointerCapture(1) &
 
 const touchView = open({ mobile: true, width: 390 });
 const touchViewport = touchView.viewport, touchCard = touchView.node("war"), touchLabel = touchCard.children[1];
-const touch = (target, type, x, y, id = 1) => touchView.pointer(target, type, x, y, { pointerType: "touch", pointerId: id, isPrimary: id === 1 });
+const touchOwners = new Map(), touchCaptureLoss = [];
+for (const target of [touchViewport, touchLabel]) {
+  target.setPointerCapture = id => {
+    const previous = touchOwners.get(id);
+    if (previous && previous !== target) {
+      previous.captures.delete(id);
+      touchCaptureLoss.push(() => previous.dispatch("lostpointercapture", { pointerId: id }));
+    }
+    touchOwners.set(id, target);
+    target.captures.add(id);
+  };
+  target.releasePointerCapture = id => {
+    target.captures.delete(id);
+    touchOwners.delete(id);
+    target.dispatch("lostpointercapture", { pointerId: id });
+  };
+}
+function touch(target, type, x, y, id = 1) {
+  // Touch starts captured by the hit element. A transfer reports its loss before the next pointer event.
+  for (const deliver of touchCaptureLoss.splice(0)) deliver();
+  if (type === "pointerdown") target.setPointerCapture(id);
+  else target = touchOwners.get(id) || target;
+  touchView.pointer(target, type, x, y, { pointerType: "touch", pointerId: id, isPrimary: id === 1 });
+  if (type === "pointerup" || type === "pointercancel") touchOwners.get(id)?.releasePointerCapture(id);
+}
 const pose = () => /translate\(([^p]+)px, ([^p]+)px\) scale\(([^)]+)\)/.exec(touchView.stage.style.transform).slice(1).map(Number);
 const near = (a, b) => Math.abs(a - b) < 1e-8;
 const [firstX, firstY] = pose();
