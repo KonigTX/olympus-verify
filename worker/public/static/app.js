@@ -1572,12 +1572,19 @@
     const section = link && document.getElementById(link.getAttribute("href").slice(2));
     if (!section) return;
     e.preventDefault();
-    scrollToSection(section, true);
+    jumpToSection(section, true);
   });
   /** Scrolls so `el` starts just below the sticky top bar (which would otherwise cover its heading). */
   function scrollToSection(el, smooth = false) {
     const top = el.getBoundingClientRect().top + window.scrollY - pinnedBarHeight() - 12;
     window.scrollTo({ top: Math.max(0, top), behavior: smooth ? "smooth" : "auto" });
+  }
+  function jumpToSection(section, smooth = false) {
+    if (!section) return;
+    const destination = section.querySelector("h2, h3") || section;
+    destination.setAttribute("tabindex", "-1");
+    destination.focus({ preventScroll: true });
+    scrollToSection(section, smooth);
   }
   const setDirty = (key, on, el) => { if (on) dirtyKeys.add(key); else dirtyKeys.delete(key); if (el) el.hidden = !on; };
 
@@ -3280,7 +3287,7 @@
     ]);
     add(form, [
       h("nav", { class: "btn-row application-sections", "aria-label": "Application sections" }, [["application-choices", "Role choices"], ["application-about", "About you"], ["application-availability", "When you play"], ["application-submit", "Review and submit"]].map(([id, text]) =>
-        h("button", { class: "btn small", type: "button", text, onclick: () => { const target = document.getElementById(id); if (target) scrollToSection(target); } }))),
+        h("button", { class: "btn small", type: "button", text, onclick: () => jumpToSection(document.getElementById(id)) }))),
       h("div", { class: "section-title", id: "application-choices" }, icon("icon-apply"), h("h3", { text: "Your first choice" })),
       intent199 ? applicationBadges199(intent199) : h("p", {class:"muted small",text:"This older application has no track recorded. Choose a track below to add one; its existing role choices remain until then."}),
       trackPicker199,
@@ -3330,7 +3337,7 @@
           h("p", null, h("strong", { text: "Read this before you submit. " }), "Joke, troll or abusive applications are permanently denied, and the denial covers everything this account does here: its votes, nominations and reserved names. It is not reconsidered. So is registering several accounts to vote more than once."),
           h("label", { class: "check" }, ack, h("span", { text: "I understand, and everything above is true." }))),
         h("span", { class: "err", hidden: true })),
-      h("div", { class: "savebar apply-savebar", id: "application-submit" }, h("div", { class: "btn-row" }, submit, h("button", { class: "btn small", type: "button", text: "Back to role choices", onclick: () => scrollToSection(document.getElementById("application-choices")) })), unsaved),
+      h("div", { class: "savebar apply-savebar", id: "application-submit" }, h("div", { class: "btn-row" }, submit, h("button", { class: "btn small", type: "button", text: "Back to role choices", onclick: () => jumpToSection(document.getElementById("application-choices")) })), unsaved),
       a && (a.status === "submitted" || a.status === "reviewing")
         ? h("div", { class: "btn-row mt" }, h("button", { class: "btn small", type: "button", text: "Withdraw my application", onclick: withdraw }), h("span", { class: "muted small", text: a.boardAt ? "It comes off the voting board; you can apply again while applications are open." : "You can apply again while applications are open." }))
         : null,

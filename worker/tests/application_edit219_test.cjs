@@ -54,6 +54,14 @@ async function applicationEdit219(){
  const own=await openPage(MEMBER);await own.go('#/vote/raider/new');
  check('track editor preloads current values and exposes Edit application and Save changes while paused',!!byText(own.app,'button','Edit application')&&!!byText(own.app,'button','Save changes')&&own.app.querySelector('[data-field="character"] input')?.value==='Editor Main'&&own.app.textContent.includes('original submission time'));
  check('track chooser remains usable for an existing open applicant during pause',!own.app.querySelector('[data-family-apply203="member"]').disabled);
+ const ownNote=own.app.querySelector('[data-field="extra"] textarea');
+ ownNote.value='Keep this local draft while jumping';fire(ownNote,'input');
+ const jumps=[['Role choices','application-choices'],['About you','application-about'],['When you play','application-availability'],['Review and submit','application-submit'],['Back to role choices','application-choices']];
+ check('application section jumps focus their destinations and keep the current unsaved draft',jumps.every(([label,id])=>{
+  const destination=own.app.querySelector('#'+id),focus=destination.querySelector('h2, h3')||destination;
+  byText(own.app,'button',label).click();
+  return own.document.activeElement===focus&&focus.getAttribute('tabindex')==='-1';
+ })&&ownNote.value==='Keep this local draft while jumping'&&own.location.hash==='#/vote/raider/new');
  const copy=await request('GET','/api/me/export');
  check('own copy includes all declared characters and updated private answers',copy.status===200&&copy.body.site.application.answers.talentBuilds.characters[1].character==='Editor Alt'&&copy.body.site.application.answers.extra==='Updated private note.');
  r=await request('PUT','/api/application',{...body,character:'Other One'},OTHER);
