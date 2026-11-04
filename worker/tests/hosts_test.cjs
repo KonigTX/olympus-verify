@@ -225,6 +225,64 @@ const check = (name, cond, ...why) => { n++; if (cond) ok++; else if (why.length
   res = await get('https://guild.example/static/wow/login/dark-portal.webm', env({ ASSETS: { fetch: async () => new Response('missing media', { status: 404 }) } }));
   check('a missing login asset stays an actual asset 404, never a fabricated200', res.status === 404 && await res.text() === 'missing media');
 
+  console.log("\n== exact immutable login and policy asset addresses ==");
+  const cache = load("./policy-asset-cache");
+  const projection = JSON.parse(fs.readFileSync(path.join(root, "..", "scripts", "official_asset_reference.json"), "utf8"));
+  const digest = bytes => require("node:crypto").createHash("sha256").update(bytes).digest("hex");
+  const immutable = "public, max-age=31536000, immutable, no-transform";
+  const files = new Map([...cache.POLICY_ASSETS, ...cache.LOGIN_ASSETS].map(assetPath => [assetPath, fs.readFileSync(path.join(root, "public", assetPath))]));
+  const digestedCalls = [];
+  const exactEnv = env({ DB: d1(db, { trap: () => { throw Error("The public asset closure is database-free"); } }), ASSETS: { fetch: async request => {
+    const url = new URL(request.url), file = files.get(url.pathname);
+    digestedCalls.push({ path: url.pathname, query: url.search, method: request.method, range: request.headers.get("Range"),
+      cookie: request.headers.get("Cookie"), authorization: request.headers.get("Authorization") });
+    const etag = '"' + digest(file) + '"';
+    const headers = { ETag: etag, "Content-Type": "application/octet-stream", "Set-Cookie": "provider-fixture=withheld", Vary: "Cookie", Location: "/private" };
+    if (request.headers.get("If-None-Match") === etag) return new Response(null, { status: 304, headers });
+    if (request.headers.get("Range") === "bytes=0-3") return new Response(file.subarray(0, 4), { status: 206, headers: { ...headers, "Content-Range": "bytes 0-3/" + file.length } });
+    return new Response(request.method === "HEAD" ? null : file, { status: 200, headers });
+  } } });
+  check("the immutable inventory is limited to 13 policy and four login assets", cache.POLICY_ASSETS.length === 13 && cache.LOGIN_ASSETS.length === 4 && files.size === 17);
+  for (const [assetPath, file] of files) {
+    const sha = digest(file), alias = cache.immutablePolicyAssetUrl(assetPath);
+    const pin = projection.assets.find(row => row.path === "worker/public" + assetPath);
+    const served = await get("https://guild.example" + alias, exactEnv, { headers: { Cookie: "session=fixture", Authorization: "Bearer fixture" } });
+    const headers = served.headers;
+    const bytes = Buffer.from(await served.arrayBuffer());
+    const call = digestedCalls.at(-1);
+    check("canonical source, digest URL and delivered bytes agree: " + assetPath,
+      pin?.sha256 === sha && pin.bytes === file.length && alias === cache.POLICY_ASSET_DIGEST_PREFIX + sha + "/" + assetPath.slice("/static/".length)
+        && served.status === 200 && bytes.equals(file) && call.path === assetPath && call.query === "" && call.cookie === null && call.authorization === null
+        && headers.get("Cache-Control") === immutable && headers.get("X-Content-Type-Options") === "nosniff"
+        && !headers.has("Set-Cookie") && !headers.has("Vary") && !headers.has("Location"));
+    const head = await get("https://guild.example" + alias, exactEnv, { method: "HEAD" });
+    const legacy = await get("https://guild.example" + assetPath, exactEnv);
+    check("immutable HEAD is bodyless, and legacy GET retains the no-store bytes: " + assetPath,
+      head.status === 200 && await head.text() === "" && head.headers.get("Cache-Control") === immutable
+        && legacy.status === 200 && Buffer.from(await legacy.arrayBuffer()).equals(file) && legacy.headers.get("Cache-Control") === "private, no-store, no-transform");
+  }
+  const clip = "/static/wow/login/dark-portal.webm", clipPath = cache.immutablePolicyAssetUrl(clip);
+  const partial = await get("https://guild.example" + clipPath, exactEnv, { headers: { Range: "bytes=0-3" } });
+  check("the opted-in video retains byte-range serving on its exact digest address", partial.status === 206 && partial.headers.get("Cache-Control") === immutable
+    && partial.headers.get("Content-Range") === "bytes 0-3/" + files.get(clip).length && Buffer.from(await partial.arrayBuffer()).equals(files.get(clip).subarray(0, 4)));
+  const unchanged = await get("https://guild.example" + clipPath, exactEnv, { headers: { "If-None-Match": '"' + digest(files.get(clip)) + '"' } });
+  check("digest revalidation retains the bodyless ETag response", unchanged.status === 304 && unchanged.headers.get("Cache-Control") === immutable && !await unchanged.text());
+  const callCount = digestedCalls.length;
+  for (const url of [clipPath + "?v=other", clipPath + "/", clipPath.replace(/\/[a-f0-9]{64}\//, "/" + "a".repeat(64) + "/"),
+    cache.POLICY_ASSET_DIGEST_PREFIX + digest(files.get(clip)) + "/app.js"]) {
+    const denied = await get("https://guild.example" + url, exactEnv);
+    check("unrecognized or ambiguous cache address is closed before assets: " + url, denied.status === 404 && /no-store/.test(denied.headers.get("Cache-Control")) && digestedCalls.length === callCount);
+  }
+  const post = await get("https://guild.example" + clipPath, exactEnv, { method: "POST" });
+  const bot = await get("https://verify.example" + clipPath, exactEnv);
+  const missing = await get("https://guild.example" + clipPath, env({ ASSETS: { fetch: async () => new Response("missing", { status: 404 }) } }));
+  check("write methods, the bot's login boundary and asset failures cannot mint public cache entries",
+    post.status === 405 && post.headers.get("Allow") === "GET, HEAD" && bot.status === 404 && digestedCalls.length === callCount
+      && missing.status === 404 && /no-store/.test(missing.headers.get("Cache-Control")));
+  const botPolicy = await get("https://verify.example" + cache.immutablePolicyAssetUrl("/static/policies.css"), exactEnv);
+  check("public policy assets keep their existing host scope at the new digest address",
+    botPolicy.status === 200 && botPolicy.headers.get("Cache-Control") === immutable);
+
   console.log("\n== the site's static files go through the host check (.51) ==");
   res = await get("https://guild.example/static/app.css?v=x");
   check('signed out, the application stylesheet is refused before the asset binding', res.status === 401 && !(await res.text()).includes('/* asset'), res.status);

@@ -47,6 +47,7 @@ import { memberLegalNavigation } from "./member-legal-navigation";
 import { CAMERA_PAGE_PATH, memberSiteGate, privateCameraPageAsset, privateSiteAsset } from './site-access';
 import { forwardPrivateProductionControl } from './privacy-private-control-adapter';
 import { LOGIN_ASSETS, POLICY_ASSETS, policyHeaders } from "./policy-render";
+import { immutablePolicyAsset, POLICY_ASSET_DIGEST_PREFIX } from "./policy-asset-cache";
 import { ensureSchema } from "./schema";
 import { recordRelay, relayReportFromQuery, relayStatus, ticketsReady } from "./relays";
 import { handleIntros, INTROS, INTROS_COMMAND, parseChannels } from "./intros";
@@ -180,6 +181,7 @@ export default {
       }
       return policy;
     }
+    if (url.pathname.startsWith(POLICY_ASSET_DIGEST_PREFIX)) return immutablePolicyAsset(request, url, env.ASSETS, host === "site");
     if ((POLICY_ASSETS as readonly string[]).includes(path)) {
       if (request.method === "GET" || request.method === "HEAD") return privateSiteAsset(await env.ASSETS.fetch(request));
       const headers = policyHeaders(); headers.set("Allow", "GET, HEAD"); return new Response("method not allowed", { status: 405, headers });
