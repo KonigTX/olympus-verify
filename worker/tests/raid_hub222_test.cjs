@@ -14,6 +14,7 @@ async function checks222(){
   const r=await worker.fetch(new Request('https://verify.example/interactions',{method:'POST',headers:{'Content-Type':'application/json','X-Signature-Timestamp':ts,'X-Signature-Ed25519':sig},body}),env(over219),{waitUntil:p=>pending.push(p)});
   const text=await r.text(),initial=text?JSON.parse(text):null;await Promise.all(pending);return {status:r.status,initial,answer:answers219.at(-1),id};
  };
+ const hubOptions=(options=[])=>[{type:1,name:'hub',options}];
  const controls=a=>(a?.components??[]).flatMap(r=>r.components),control=(a,label)=>controls(a).find(c=>c.label===label||c.placeholder===label)?.custom_id;
  await fresh219();
  const raid=catalog222.GUILD_COMMANDS_222.find(c=>c.name==='raid');
@@ -22,6 +23,8 @@ async function checks222(){
  let r=await send222({who:MEMBER});
  check('member opens a private empty hub without organizer controls',r.initial.type===5&&r.initial.data.flags===64&&r.answer.embeds[0].title==='Olympus raid & event hub'&&!control(r.answer,'Schedule an event…'));
  check('opening the hub creates no event, reminder, signup or public message',one('SELECT COUNT(*) n FROM community_events').n===0&&one('SELECT COUNT(*) n FROM community_event_reminders').n===0&&publicEffects219().length===0);
+ r=await send222({who:MEMBER,options:hubOptions()});
+ check('registered /raid hub opens the same private member hub as legacy bare /raid',r.initial?.type===5&&r.initial.data.flags===64&&r.answer?.embeds?.[0]?.title==='Olympus raid & event hub'&&!control(r.answer,'Schedule an event…'));
  r=await send222();const create=control(r.answer,'Schedule an event…');
  r=await send222({type:3,custom:create});
  check('organizer Schedule opens a real initial-response modal before any write',r.initial.type===9&&r.initial.data.components.length===5&&one('SELECT COUNT(*) n FROM community_events').n===0);
@@ -33,6 +36,18 @@ async function checks222(){
  check('replayed modal submits cannot create a second event',r.initial.type===5&&one('SELECT COUNT(*) n FROM community_events').n===1);
  r=await send222({type:4,options:[{type:3,name:'find',value:'private',focused:true}]});
  check('event autocomplete returns current matching calendar IDs without a write',r.initial.type===8&&r.initial.data.choices.length===1&&r.initial.data.choices[0].value===event.id);
+ r=await send222({type:4,options:hubOptions([{type:3,name:'find',value:'private',focused:true}])});
+ check('nested hub find autocomplete returns the same private calendar ID as legacy find',r.initial?.type===8&&r.initial.data.choices.length===1&&r.initial.data.choices[0].value===event.id);
+ r=await send222({options:hubOptions([{type:3,name:'find',value:event.id}]),who:MEMBER});
+ check('nested hub find opens event detail without saving a signup',r.initial?.type===5&&r.answer?.embeds?.[0]?.title===event.title&&one('SELECT COUNT(*) n FROM community_event_signups').n===0);
+ r=await send222({options:hubOptions(),who:MEMBER});const openById=control(r.answer,'Open event by ID…');
+ const lookup=openById?await send222({type:3,custom:openById,who:MEMBER}):null;
+ check('registered hub opens the existing private event-ID modal',lookup?.initial?.type===9&&lookup.initial.data.components[0].components[0].custom_id==='id');
+ const opened=lookup?.initial?.type===9?await send222({type:5,custom:lookup.initial.data.custom_id,fields:[['id',event.id]],who:MEMBER}):null;
+ check('registered hub modal opens details through the original guarded path',opened?.initial?.type===5&&opened.answer?.embeds?.[0]?.title===event.title&&one('SELECT COUNT(*) n FROM community_event_signups').n===0);
+ const rosterOptions=[{type:1,name:'roster',options:[{type:3,name:'id',value:event.id}]}];
+ const raidRoster=await send222({options:rosterOptions,who:MEMBER}),eventRoster=await send222({name:'event',options:rosterOptions,who:MEMBER});
+ check('direct /raid roster and /event roster still share the same private reply',raidRoster.initial?.type===5&&eventRoster.initial?.type===5&&raidRoster.answer?.embeds?.[0]?.title.endsWith(' · roster')&&JSON.stringify(raidRoster.answer)===JSON.stringify(eventRoster.answer));
  r=await send222({who:MEMBER});const choose=control(r.answer,'Choose a raid or guild event');
  r=await send222({type:3,custom:choose,values:[event.id],who:MEMBER});const memberDetail=r.answer;
  check('event dropdown opens current details without signing the member up',memberDetail.embeds[0].title===event.title&&one('SELECT COUNT(*) n FROM community_event_signups').n===0);
@@ -65,6 +80,8 @@ async function checks222(){
  over219.COMMUNITY_FEATURES='directory';
  r=await send222({type:4,options:[{type:3,name:'find',value:'fixture',focused:true}]});
  check('events OFF returns a valid empty autocomplete without leaking event titles',r.initial.type===8&&r.initial.data.choices.length===0);
+ r=await send222({type:4,options:hubOptions([{type:3,name:'find',value:'fixture',focused:true}])});
+ check('events OFF also returns empty nested hub autocomplete',r.initial?.type===8&&r.initial.data.choices.length===0);
  over219.COMMUNITY_FEATURES='events,attendance,directory,crafting';
  await fresh219();
  const attendanceEnv222=directEnv(over219);

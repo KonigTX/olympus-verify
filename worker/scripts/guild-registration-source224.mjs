@@ -1,12 +1,19 @@
 import {verifyGuildCommandReadback224} from './guild-command-plan224.mjs';
+import {verifyGuildCommandReadback228} from './guild-command-plan228.mjs';
 /** Generates a short-lived, single-purpose legacy preview. The resulting source
  * includes a private random capability: never write, hash or log that result.
  * It inherits only the existing Discord credential, never downloads it, and is
  * not a production deployment or persistent registration endpoint. */
-export function createRegistrationSource224({capability,issuedAt,expiresAt,requestHost,plan}) {
+export function createRegistrationSource224(args) {
+ return createRegistrationSource(args,'olympus-guild-command-plan224/v1',19,verifyGuildCommandReadback224);
+}
+export function createRegistrationSource228(args) {
+ return createRegistrationSource(args,'olympus-guild-command-plan228/v1',20,verifyGuildCommandReadback228);
+}
+function createRegistrationSource({capability,issuedAt,expiresAt,requestHost,plan},schema,previousCount,verify) {
  if(!/^[a-f0-9]{64}$/.test(capability)||!Number.isSafeInteger(issuedAt)||!Number.isSafeInteger(expiresAt)||expiresAt<=issuedAt||expiresAt-issuedAt>180000||!/^olympus-verify\.[a-z0-9-]+\.workers\.dev$/.test(requestHost))throw Error('registration_preview_bounds');
- if(plan?.schema!=='olympus-guild-command-plan224/v1'||plan.applicationId!=='1550176895671341076'||plan.guildId!=='236932545793490944'||plan.expectedCount!==20||!Array.isArray(plan.commands)||plan.commands.length!==20||!Array.isArray(plan.existing)||plan.existing.length!==19||!['head','tree'].every(k=>/^[a-f0-9]{40}$/.test(plan[k]))||!['definitionSHA256','existingSHA256','payloadSHA256'].every(k=>/^[a-f0-9]{64}$/.test(plan[k])))throw Error('registration_preview_plan');
- verifyGuildCommandReadback224(plan,plan.commands.map(r=>({...r,application_id:plan.applicationId,guild_id:plan.guildId})));
+ if(plan?.schema!==schema||plan.applicationId!=='1550176895671341076'||plan.guildId!=='236932545793490944'||plan.expectedCount!==20||!Array.isArray(plan.commands)||plan.commands.length!==20||!Array.isArray(plan.existing)||plan.existing.length!==previousCount||!['head','tree'].every(k=>/^[a-f0-9]{40}$/.test(plan[k]))||!['definitionSHA256','existingSHA256','payloadSHA256'].every(k=>/^[a-f0-9]{64}$/.test(plan[k])))throw Error('registration_preview_plan');
+ verify(plan,plan.commands.map(r=>({...r,application_id:plan.applicationId,guild_id:plan.guildId})));
  const settings={capability,issuedAt,expiresAt,requestHost,plan};
  return '('+registrationRuntime224.toString()+')('+JSON.stringify(settings)+');\nexport default globalThis.__olympusRegistration224;';
 }

@@ -10,7 +10,7 @@ import { rateLimited } from './site-core';
 import { destination, type ActionRow } from './community-event-delivery';
 import { runEventReminders } from './community-event-reminders';
 import { captureGuildActor219, currentGuildActor219, guildActorBatch219, type GuildActor219 } from './guild-command-authority219';
-import { GUILD_COMMAND_NAMES_224 } from './guild-command-definitions224';
+import { GUILD_COMMAND_NAMES_228 } from './guild-command-definitions228';
 import { workshopOrderDraft221 } from './guild-workshop-order221';
 import { createCalendar219, readCalendar219, calendarRoster219, rsvpCalendar219, attendanceCalendar219, eventId219, type CalendarEvent219, ROSTER_PAGE_219 } from './guild-calendar219';
 import { consentCalendarReminder219 } from './guild-reminder219';
@@ -18,10 +18,10 @@ import { RSVP_CHOICES_219 } from './guild-calendar-metadata219';
 import { guideLookup219, workshopLookup219, referenceLookup219, safeDiscordText219, type GuildEmbed219 } from './guild-utilities219';
 
 const COMPONENT=/^raid219:rsvp:([A-Za-z0-9_-]{22}):([1-9][0-9]{0,8}):(tank|healer|melee|ranged|tentative|bench|absent)$/;
-export const isGuildCommand219=(i:Interaction):boolean=>isOlympusHub224(i)||isRaidHub222(i)||(i.type===2&&GUILD_COMMAND_NAMES_224.has(i.data?.name??''))||(i.type===3&&COMPONENT.test(i.data?.custom_id??''));
+export const isGuildCommand219=(i:Interaction):boolean=>isOlympusHub224(i)||isRaidHub222(i)||(i.type===2&&GUILD_COMMAND_NAMES_228.has(i.data?.name??''))||(i.type===3&&COMPONENT.test(i.data?.custom_id??''));
 export function guildCommandReadOnly219(i:Interaction):boolean {
  if(isOlympusHub224(i))return true;
- if(i.type!==2||!GUILD_COMMAND_NAMES_224.has(i.data?.name??''))return false;
+ if(i.type!==2||!GUILD_COMMAND_NAMES_228.has(i.data?.name??''))return false;
  return !['raid','event'].includes(i.data!.name!)||['list','roster'].includes(subcommand(i)??'');
 }
 const options219=(i:Interaction):Record<string,unknown>=>{
@@ -99,7 +99,7 @@ export async function handleGuildCommand219(env:Env,i:Interaction,signedAt:numbe
  let a:GuildActor219;
  try{a=await captureGuildActor219(env,i,now(),signedAt);}catch{return i.type===4?json({type:8,data:{choices:[]}}):reply('Verify a character and sign in on the Olympus website first. This command needs a current, eligible site account in this server.');}
  if(rateLimited('gc219:'+a.id,30,60))return i.type===4?json({type:8,data:{choices:[]}}):reply('Too many guild commands in one minute. Wait a moment before trying again.');
- try{if(i.type===4&&isRaidHub222(i))return json(await raidAutocomplete222(env,a,i));const modal=isOlympusHub224(i)?olympusModal224(i,a):isRaidHub222(i)?raidModal222(i,a):null;if(modal)return json(modal);}catch{return i.type===4?json({type:8,data:{choices:[]}}):reply('This private control expired or changed. Run /olympus or /raid for a fresh hub.');}
+ try{if(i.type===4&&isRaidHub222(i))return json(await raidAutocomplete222(env,a,i));const modal=isOlympusHub224(i)?olympusModal224(i,a):isRaidHub222(i)?raidModal222(i,a):null;if(modal)return json(modal);}catch{return i.type===4?json({type:8,data:{choices:[]}}):reply('This private control expired or changed. Open /olympus or the raid hub again.');}
  const path=`${API}/webhooks/${env.DISCORD_APP_ID}/${i.token}/messages/@original`;
  defer(async()=>{
   let answer:Answer219;

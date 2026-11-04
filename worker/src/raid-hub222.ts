@@ -3,7 +3,7 @@
  * No hub state, interaction token or attendance preference is persisted here. */
 import type { Env } from './env';
 import type { Interaction } from './discord';
-import { subcommand } from './discord';
+import { focusedOption, option, subcommand } from './discord';
 import { now } from './db';
 import { destination } from './community-event-delivery';
 import { runEventReminders } from './community-event-reminders';
@@ -19,10 +19,16 @@ export type HubRow222={type:1;components:(Button222|Select222)[]};
 export interface HubAnswer222 {content?:string;embeds?:GuildEmbed219[];components?:HubRow222[]}
 const CID=/^r222:([0-9]{17,20}):([0-9]{10}):([a-z]{2,10}):(-|[A-Za-z0-9_-]{22}):([0-9]{1,9}):([0-9]{1,3})(?::([0-9]{17,20}))?$/;
 const choices=['tank','healer','melee','ranged','tentative','bench','absent'];
-const field=(i:Interaction,name:string)=>i.data?.options?.find(v=>v.name===name)?.value;
-export const isRaidHub222=(i:Interaction)=>((i.type===2||i.type===4)&&i.data?.name==='raid'&&!subcommand(i))||([3,5].includes(i.type)&&(i.data?.custom_id??'').startsWith('r222:'));
+export function isRaidHub222(i:Interaction):boolean {
+ if((i.type===2||i.type===4)&&i.data?.name==='raid'){
+  const sub=subcommand(i);
+  // Discord can still send the old bare command and top-level find during registration.
+  return sub===undefined||sub==='hub';
+ }
+ return (i.type===3||i.type===5)&&(i.data?.custom_id??'').startsWith('r222:');
+}
 function parsed(i:Interaction,a:GuildActor219){
- const m=CID.exec(i.data?.custom_id??'');if(!m||m[1]!==a.id||Number(m[2])<=now()||Number(m[2])>a.deadline||Number(m[6])>100)throw Error('This private control has expired. Run /raid for a fresh hub.');
+ const m=CID.exec(i.data?.custom_id??'');if(!m||m[1]!==a.id||Number(m[2])<=now()||Number(m[2])>a.deadline||Number(m[6])>100)throw Error('This private control has expired. Open the raid hub again.');
  return {action:m[3]!,id:m[4]!,revision:Number(m[5]),page:Number(m[6]),target:m[7]};
 }
 function cid(a:GuildActor219,action:string,event?:CalendarEvent219,page=1,target?:string){return ['r222',a.id,a.deadline,action,event?.id??'-',event?.revision??0,page,...(target?[target]:[])].join(':');}
@@ -48,14 +54,16 @@ export function raidModal222(i:Interaction,a:GuildActor219):unknown|null {
  return {type:9,data:{custom_id:cid(a,p.action==='create'?'save':p.action==='find'?'open':p.action==='remind'?'send':'final',p.id==='-'?undefined:{id:p.id,revision:p.revision} as CalendarEvent219,p.page),title:def.title,components:def.fields.map(([custom_id,label,max_length,required])=>({type:1,components:[{type:4,custom_id,label,style:max_length>100?2:1,max_length,required}]}))}};
 }
 export async function raidAutocomplete222(env:Env,a:GuildActor219,i:Interaction){
- if(!communityFeatures(env).has('events'))return {type:8,data:{choices:[]}};
- const term=String(field(i,'find')??'').toLowerCase().slice(0,80);
+ const focused=focusedOption(i);
+ if(focused?.name!=='find'||!communityFeatures(env).has('events'))return {type:8,data:{choices:[]}};
+ const term=focused.value.toLowerCase().slice(0,80);
  const out=await guildActorBatch219(env,a,[env.DB.prepare('SELECT id,title,starts_at FROM community_events WHERE retain_until>'+DB_NOW+" AND status='scheduled' AND starts_at>"+DB_NOW+' AND (id=?1 OR instr(lower(title),?1)>0) ORDER BY starts_at,id LIMIT 25').bind(term)]);
  const events=out[0]!.results as unknown as Pick<CalendarEvent219,'id'|'title'|'starts_at'>[];
  return {type:8,data:{choices:events.filter(e=>(e.title+' '+e.id).toLowerCase().includes(term)).slice(0,5).map(e=>({name:safeDiscordText219(e.title,75)+' · '+new Date(e.starts_at*1000).toISOString().slice(0,16)+'Z',value:e.id}))}};
 }
 export async function raidHub222(env:Env,a:GuildActor219,i:Interaction):Promise<HubAnswer222>{
- const p=i.type===2?{action:'hub',id:typeof field(i,'find')==='string'?eventId219(field(i,'find')):'-',revision:0,page:1,target:undefined}:parsed(i,a);
+ const find=i.type===2?option<unknown>(i,'find'):undefined;
+ const p=i.type===2?{action:'hub',id:typeof find==='string'?eventId219(find):'-',revision:0,page:1,target:undefined}:parsed(i,a);
  const host=destination(env)!.host,staff=await guildStaffNow219(env,a);
  let note='',event:CalendarEvent219|undefined;
  if(i.type===5&&p.action==='save'){
@@ -64,7 +72,7 @@ export async function raidHub222(env:Env,a:GuildActor219,i:Interaction):Promise<
   event=await createCalendar219(env,a,{...f,minutes:Number(f.minutes),capacity:f.capacity?Number(f.capacity):undefined});note='Event created. No public announcement or reminder was sent.';
  }else if(i.type===5&&p.action==='open'){const f=modalFields(i,['id']);p.id=eventId219(f.id);}
  if(!event&&p.id!=='-')event=(await readCalendar219(env,a,p.id))[0];
- if(p.id!=='-'&&!event)throw Error('This event is unavailable. Run /raid to check the current calendar.');
+ if(p.id!=='-'&&!event)throw Error('This event is unavailable. Open the raid hub to check the current calendar.');
  if(event&&p.revision&&p.revision!==event.revision)throw Error('This event changed. Open a fresh hub before acting.');
  if(['send','final','attend','person','record','remind','lock'].includes(p.action)&&!staff)throw Error('Only a currently eligible event organizer may use these controls.');
  if(i.type===5&&p.action==='send'&&event){
