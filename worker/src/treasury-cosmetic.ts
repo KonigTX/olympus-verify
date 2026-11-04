@@ -9,6 +9,7 @@ import { contributionRetentionDays, contributionsWritable, contributionScope, ma
 import { privacyGenerationLiteralFenceSql } from './privacy-serving-authority';
 import { captureTreasuryReservedRoles } from './treasury-reserved-roles';
 import { parseNativeRoleMap } from './native-rank-adapter';
+import { ROYAL_WRIT_POLICY } from './royal-writs199';
 
 export const TREASURY_PURPOSE = 'treasury_cosmetic';
 export const TREASURY_EXTRA_PREFIX = 'treasury-extra-v1:';
@@ -185,7 +186,7 @@ export async function handleTreasuryCosmeticAdmin(request: Request, env: Treasur
       if (!keys(body,['discordId']) || typeof body.discordId !== 'string') return fail('treasury_invalid_target',400);
       const auth = await capture(env,request,user,body.discordId,ctx,e), a = treasuryAuthorityFacts(env,auth), reference = await mailReference(env,a.guildScope,a.target.id); a.check();
       if (!await treasuryAuthorityCurrent(env,auth)) return fail('treasury_facts_changed');
-      return apiJson({discordId:a.target.id,mailReference:reference,recipient:'Fern Melder',seasonStartsAt:a.config.seasonStartsAt,seasonEndsAt:a.config.seasonStartsAt+TREASURY_WINDOW_SECONDS,tiers:TREASURY_TIERS.map(t=>({key:t.key,label:t.label,gold:t.copper/10000,ceremonial:t.ceremonial})),note:'The mail reference is a lookup aid, never proof that extra gold was received.'});
+      return apiJson({discordId:a.target.id,mailReference:reference,recipient:ROYAL_WRIT_POLICY.recipient,seasonStartsAt:a.config.seasonStartsAt,seasonEndsAt:a.config.seasonStartsAt+TREASURY_WINDOW_SECONDS,tiers:TREASURY_TIERS.map(t=>({key:t.key,label:t.label,gold:t.copper/10000,ceremonial:t.ceremonial})),note:'The mail reference is a lookup aid, never proof that extra gold was received.'});
     }
     if (sub === 'record') return await record(env, request, user, body, ctx, e);
     if (sub === 'preview') {
