@@ -6,8 +6,8 @@
   "appointmentsIssued": false,
   "book": {
     "path": "/static/governance/reconciled-book.md",
-    "bytes": 273545,
-    "sha256": "d3e8f0f4968976914e80f081fe557032ee24fd3786127569a9481a9b85a8a228"
+    "bytes": 273549,
+    "sha256": "b159f28edc74892fe37732200e05ef118162b7db8cfd6b19721e5ce3889709cd"
   },
   "councilComposition": {
     "status": "owner_directed_current228",

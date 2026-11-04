@@ -88,6 +88,41 @@
       ],
       "before": "## O8 The Department of Heraldry\n\nThe Minister of Heraldry keeps Olympus understandable to its members: clear notices, a reliable calendar, recruitment information, an accessible welcome and a recognizable public voice. Heraldry distinguishes confirmed announcements, future plans and historical records. It obtains the relevant consent for names, pictures, streams and personal stories, and does not publish case evidence or private financial details as community news.",
       "after": "## O8 The Department of Heraldry\n\n**Historical context.** The paragraphs below preserve the original department practices. Under [the current Cabinet register](/static/governance/council-portfolios228.md), the Herald coordinates official communications, community events, media and Academy support. The Seneschal directs court protocol and Crown estates. The Chancery coordinates intake and reports directly to the High Council. Event organizers, appointed officeholders and authorized publishers retain their own responsibilities.\n\nThe Minister of Heraldry keeps Olympus understandable to its members: clear notices, a reliable calendar, recruitment information, an accessible welcome and a recognizable public voice. Heraldry distinguishes confirmed announcements, future plans and historical records. It obtains the relevant consent for names, pictures, streams and personal stories, and does not publish case evidence or private financial details as community news."
+    },
+    {
+      "key": "mail-cosmetic-operational",
+      "scope": [
+        "book"
+      ],
+      "before": "Cosmetic Tithe Roles recognize **additional, voluntary in-game gold**, separately from ordinary weekly dues and hardship decisions. No real money, tokens, purchases outside the game or automatic debit is part of this system. Members mail the additional gold to Fernmelder with a TITHE reference. The admitted Treasurer or an independently authorized reviewer verifies the actual receipt and records its purpose in the existing contribution process. A player's mail reference or claim alone is not payment proof. Ordinary dues, a waived obligation and an unclassified historical receipt do not become cosmetic credit automatically.",
+      "after": "Cosmetic Tithe Roles recognize **additional, voluntary in-game gold**, separately from ordinary weekly dues and hardship decisions. No real money, tokens, purchases outside the game or automatic debit is part of this system. Members mail the additional gold to Fern Melder with a TITHE reference. The admitted Treasurer or an independently authorized reviewer verifies the actual receipt and records its purpose in the existing contribution process. A player's mail reference or claim alone is not payment proof. Ordinary dues, a waived obligation and an unclassified historical receipt do not become cosmetic credit automatically."
+    },
+    {
+      "key": "mail-stockades",
+      "scope": [
+        "book",
+        "titles"
+      ],
+      "before": "(a) The **Writ of Royal Clemency (Standard Unban Bail)** is **100g** of World of Warcraft: Forever in-game gold. **High Bail of the Privy Court** is **250g–500g** for an individually reasoned eligible repeat or escalated infraction. Before payment, the reviewer records the amount, eligibility, proposed remedy, cancellation or unresolved-case handling and why the range applies. The appellant may pay in-game, or a consenting active guild member may act as Bondsman; the Case ID belongs in the in-game mail subject to **Fernmelder**. An actual mail or trade receipt is verified privately by the competent Treasurer, independently from the merits decision. Typed references and screenshots alone do not prove arrival, and gold never converts a non-bailable offense into a bailable one.",
+      "after": "(a) The **Writ of Royal Clemency (Standard Unban Bail)** is **100g** of World of Warcraft: Forever in-game gold. **High Bail of the Privy Court** is **250g–500g** for an individually reasoned eligible repeat or escalated infraction. Before payment, the reviewer records the amount, eligibility, proposed remedy, cancellation or unresolved-case handling and why the range applies. The appellant may pay in-game, or a consenting active guild member may act as Bondsman; the Case ID belongs in the in-game mail subject to **Fern Melder**. An actual mail or trade receipt is verified privately by the competent Treasurer, independently from the merits decision. Typed references and screenshots alone do not prove arrival, and gold never converts a non-bailable offense into a bailable one."
+    },
+    {
+      "key": "mail-cosmetic-title",
+      "scope": [
+        "book",
+        "titles"
+      ],
+      "before": "(a) Cosmetic Tithe Roles recognise additional, voluntary in-game gold within each published ninety-day season: **Tithe Payer — 25 gold**, **Patron of the Treasury — 100 gold**, **Benefactor of Olympus — 500 gold**, **Arch-Financier of Olympus — 1,000 gold**, and **Hand of the Imperial Treasury — 2,500 gold**, the capped Patron tier. At most the highest currently qualified tier is displayed. Contributions are mailed to Fernmelder with a TITHE reference and verified against the actual receipt by the admitted Treasurer or an independently authorized reviewer. The reference alone is not payment proof.",
+      "after": "(a) Cosmetic Tithe Roles recognise additional, voluntary in-game gold within each published ninety-day season: **Tithe Payer — 25 gold**, **Patron of the Treasury — 100 gold**, **Benefactor of Olympus — 500 gold**, **Arch-Financier of Olympus — 1,000 gold**, and **Hand of the Imperial Treasury — 2,500 gold**, the capped Patron tier. At most the highest currently qualified tier is displayed. Contributions are mailed to Fern Melder with a TITHE reference and verified against the actual receipt by the admitted Treasurer or an independently authorized reviewer. The reference alone is not payment proof."
+    },
+    {
+      "key": "mail-royal-writ-policy",
+      "scope": [
+        "book",
+        "titles"
+      ],
+      "before": "(a) Every Royal Writ, Charter, Pardon and cosmetic recognition in this code is **100% World of Warcraft: Forever in-game gold only**, paid by actual in-game mail or trade to the designated Treasurer recipient **Fernmelder**. There is **zero real-world money: no USD, Twitch subscriptions or crypto**, and no sale, exchange or promised conversion into them. **All addons remain free, with zero paid addon gating**: no fee unlocks an addon function, distribution, update, cryptographic proof, accessibility aid or essential privacy control. Gold-only terms are not a guarantee of compliance or zero risk; operators check the current platform rules and refuse a prohibited transaction or purpose. Discord Trust & Safety rules and the game's rules remain controlling.",
+      "after": "(a) Every Royal Writ, Charter, Pardon and cosmetic recognition in this code is **100% World of Warcraft: Forever in-game gold only**, paid by actual in-game mail or trade to the designated Treasurer recipient **Fern Melder**. There is **zero real-world money: no USD, Twitch subscriptions or crypto**, and no sale, exchange or promised conversion into them. **All addons remain free, with zero paid addon gating**: no fee unlocks an addon function, distribution, update, cryptographic proof, accessibility aid or essential privacy control. Gold-only terms are not a guarantee of compliance or zero risk; operators check the current platform rules and refuse a prohibited transaction or purpose. Discord Trust & Safety rules and the game's rules remain controlling."
     }
   ]
 }

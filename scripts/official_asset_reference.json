@@ -15,7 +15,7 @@
       "path": "worker/public/static/app.js",
       "mode": "100644",
       "bytes": 757049,
-      "sha256": "e97d25075cf2cd22181e9d7a9fc67e0d22c8c3f620d44f989b312db48732a310"
+      "sha256": "04c6e6a245886d6397810dca075e2809cb966e889282cbd7c76288c8b4257327"
     },
     {
       "path": "worker/public/static/olympus-icon.png",
@@ -3831,7 +3831,7 @@
       "path": "worker/public/static/app.js",
       "mode": "100644",
       "bytes": 757049,
-      "sha256": "e97d25075cf2cd22181e9d7a9fc67e0d22c8c3f620d44f989b312db48732a310"
+      "sha256": "04c6e6a245886d6397810dca075e2809cb966e889282cbd7c76288c8b4257327"
     },
     {
       "path": "worker/public/static/rank-planner/app.js",
@@ -4035,13 +4035,13 @@
       "path": "worker/public/static/governance/organization.json",
       "mode": "100644",
       "bytes": 454367,
-      "sha256": "8ec162944b486d4dfc07968d9f6b2f5e7005bdbc781682222e8ebacfff4de146"
+      "sha256": "31ffc7642a567d252245b53556570c38a4648aef92f0e310d49b4a9e36148a09"
     },
     {
       "path": "worker/public/static/governance/reconciled-book.md",
       "mode": "100644",
-      "bytes": 273545,
-      "sha256": "d3e8f0f4968976914e80f081fe557032ee24fd3786127569a9481a9b85a8a228"
+      "bytes": 273549,
+      "sha256": "b159f28edc74892fe37732200e05ef118162b7db8cfd6b19721e5ce3889709cd"
     },
     {
       "path": "worker/public/static/guides218.css",

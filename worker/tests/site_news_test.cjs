@@ -1448,7 +1448,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
     "purpose": "Direct owner199 rank/office/Rosetta/application bridge; exact file, source line, bytes and digest count only."
   },
   {
-    "file": ownerHistory,
+    "file": "docs/owner-instruction-history.md",
     "startMarker": "**Build .199 owner override (25 Oct 2026):**",
     "singleLine": true,
     "paragraphSha256": "8bf5bb8b7fde55c9722d56605d400491f89664fa27fabcbe41bdbe31d075519f",
