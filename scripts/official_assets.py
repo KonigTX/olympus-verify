@@ -6,7 +6,7 @@ import os
 import re
 from publication_audit import private_path, validate_path
 
-REFERENCE_SHA256='484e503aa4af206a6d07c2e9297f4308506371bd4eb4a9780e412b98065a3144'
+REFERENCE_SHA256='4832acc8aef96d351ef450df7258b8275df05468dac225997e4145e5fc48e602'
 HASH=re.compile(r'[0-9a-f]{64}')
 COMMIT=re.compile(r'[0-9a-f]{40}')
 BRAND_EXCEPTION={'path': 'worker/public/static/olympus-icon.png', 'mode': '100644', 'bytes': 53204, 'sha256': '6363b15aff31a623aef0a6d7e52104fc44066f64852a328da788c84c325874eb'}
@@ -53,7 +53,7 @@ def runtime_path(path: str) -> bool:
 
 def resource_rows(value, failure: str) -> dict[str,dict]:
     # Reviewed documents, data and protocol code are required bytes, never an image/font exception.
-    result=pin_rows(value,None,failure,maximum=61)
+    result=pin_rows(value,None,failure,maximum=62)
     if not result or any(not p.startswith('worker/public/static/') or (private_path(p) and not p.endswith('.zip'))
         or not (p.endswith(('.pdf','.zip','.json','.md','.txt','.html','.js','.mjs')) or p in {'worker/public/static/army-live/army.css','worker/public/static/treasury-plan207.css','worker/public/static/guides218.css'}) for p in result):
         raise ValueError(failure)
