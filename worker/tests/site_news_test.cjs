@@ -1038,9 +1038,10 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   // withheld term at 58abea31 or names one now, so they need no allowance. The third review round (Codex, 3 Oct 2026
   // 16:48 UTC, finding A) adds roster-effects.ts, a new file, guarded with the other files .115 adds.
   const changedSources = ["community-contributions.ts", "community-directory.ts", "env.ts", "guide.ts", "index.ts", "ingest.ts", "interactions.ts", "names.ts", "restore.ts", "roster.ts", "scheduled-budget.ts", "schema.ts", "site-admin.ts", "site-api.ts", "site-leadership.ts"].map((f) => `worker/src/${f}`);
+  const ownerHistory = "docs/owner-instruction-history.md";
   const guarded = [
     ...["worker/src/site-news.ts", "worker/src/guild-seats.ts", "worker/src/roster-effects.ts", "worker/src/site-data.ts", "worker/public/static/app.js", "worker/public/static/rank-planner/app.js", "policies/privacy.html", "policies/terms.html", ...changedSources].map((f) => [f, fs.readFileSync(path.join(repo, f), "utf8")]),
-    ...["README.md", "CLAUDE.md", "docs/launch-runbook.md"].map((f) => [f, fs.readFileSync(path.join(repo, f), "utf8")]), // review of 3 Oct 2026: the whole files
+    ...["README.md", "CLAUDE.md", "docs/launch-runbook.md", ownerHistory].map((f) => [f, fs.readFileSync(path.join(repo, f), "utf8")]), // Include the whole archive after the .199 move.
     ...["docs/design.md", "docs/deploy-checklist.md", "docs/beta-test-plan.md"].map((f) => [`${f} (.115 sections)`, section115(path.join(repo, f))]),
   ];
   // Direct owner ruling of 23 Oct 2026 qualifies the two original exact current-ladder paragraphs.
@@ -1447,7 +1448,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
     "purpose": "Direct owner199 rank/office/Rosetta/application bridge; exact file, source line, bytes and digest count only."
   },
   {
-    "file": "CLAUDE.md",
+    "file": ownerHistory,
     "startMarker": "**Build .199 owner override (25 Oct 2026):**",
     "singleLine": true,
     "paragraphSha256": "8bf5bb8b7fde55c9722d56605d400491f89664fa27fabcbe41bdbe31d075519f",
@@ -1928,7 +1929,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   const vocabularyOverages = (file, text) => overOriginalVocabularyAllowance(file, guardedCounts(text), currentContextQualification(file, text));
   const over = [];
   for (const [file, text] of guarded) over.push(...vocabularyOverages(file, text));
-  check("vocabulary guard: no file .115 changes names a withheld term beyond what was already there (every changed worker/src file among them)", over.length === 0 && GUARD.size === 28 && guarded.length === 29 && changedSources.length === 15 && guarded.every(([, t]) => t.length > 0), over.join("; "));
+  check("vocabulary guard: no file .115 changes names a withheld term beyond what was already there (every changed worker/src file among them)", over.length === 0 && GUARD.size === 28 && guarded.length === 30 && changedSources.length === 15 && guarded.every(([, t]) => t.length > 0), over.join("; "));
   const planted = new Set([sha("quartz lantern"), sha("ember")]);
   const found = grams("An old Quartz-Lantern, an EMBER; quartz lanterns").filter((g) => planted.has(sha(g)));
   check("  the guard's machinery finds a planted one- and two-word n-gram by digest, case and punctuation aside", found.join() === "quartz lantern,ember" && [...GUARD].every((d) => /^[0-9a-f]{64}$/.test(d)), found);
@@ -2000,14 +2001,15 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   check(".198 exact Title II link bytes in another file receive no context credit", !!titleIIContext && Object.keys(currentContextQualification("README.md", titleIIContext).credits).length === 0 && vocabularyOverages("README.md", titleIIContext).some(s => s.includes(currentDigest.slice(0, 12))));
 
   const ownerContexts199 = CURRENT_CONTEXTS.filter(spec => spec.ownerRelease === 199 || spec.predecessorRelease === 199);
-  check(".199 retains its12-context lineage in four files, including two explicit Master218 successors, with all28 original digests intact", ownerContexts199.length + 0 === 12 && GUARD.size === 28 && ownerContexts199.every(spec => spec.digest === currentDigest) && JSON.stringify([...new Set(ownerContexts199.map(spec => spec.file))].sort()) === JSON.stringify(["CLAUDE.md", "worker/public/static/app.js", "worker/src/site-api.ts", "worker/src/site-data.ts"].sort()));
+  check(".199 retains its12-context lineage in four files, including the archived override and two explicit Master218 successors, with all28 original digests intact", ownerContexts199.length + 0 === 12 && GUARD.size === 28 && ownerContexts199.every(spec => spec.digest === currentDigest) && JSON.stringify([...new Set(ownerContexts199.map(spec => spec.file))].sort()) === JSON.stringify([ownerHistory, "worker/public/static/app.js", "worker/src/site-api.ts", "worker/src/site-data.ts"].sort()));
   for (const spec of ownerContexts199) {
     const text = guarded.find(([file]) => file === spec.file)[1], qualified = currentContextQualification(spec.file, text);
     const paragraph = qualified.paragraphs.find(value => value.startsWith(spec.startMarker)) || "";
     const changed = paragraph ? `${paragraph.slice(0, -1)}!` : "";
     check(".199 exact context qualifies only its pinned source bytes: " + spec.file + " / " + spec.paragraphSha256.slice(0, 12), qualified.errors.length === 0 && Buffer.byteLength(paragraph, "utf8") === spec.paragraphBytes && sha(paragraph) === spec.paragraphSha256 && (guardedCounts(paragraph)[currentDigest] || 0) === spec.count);
     check(".199 context byte edit or duplicate cannot borrow its credit: " + spec.paragraphSha256.slice(0, 12), !!paragraph && currentContextQualification(spec.file, text.replace(paragraph, changed)).errors.length > 0 && vocabularyOverages(spec.file, text.replace(paragraph, changed)).length > 0 && currentContextQualification(spec.file, `${text}\n\n${paragraph}`).errors.length > 0 && vocabularyOverages(spec.file, `${text}\n\n${paragraph}`).length > 0);
-    check(".199 exact context in another guarded file receives no credit: " + spec.paragraphSha256.slice(0, 12), !!paragraph && Object.keys(currentContextQualification("README.md", paragraph).credits).length === 0 && vocabularyOverages("README.md", paragraph).some(value => value.includes(currentDigest.slice(0, 12))));
+    const wrongFile = spec.file === ownerHistory ? "CLAUDE.md" : "README.md";
+    check(".199 exact context in another guarded file receives no credit: " + spec.paragraphSha256.slice(0, 12), !!paragraph && Object.keys(currentContextQualification(wrongFile, paragraph).credits).length === 0 && vocabularyOverages(wrongFile, paragraph).some(value => value.includes(currentDigest.slice(0, 12))));
   }
   for (const file of [...new Set(ownerContexts199.map(spec => spec.file))]) {
     const text = guarded.find(([name]) => name === file)[1], qualified = currentContextQualification(file, text);
