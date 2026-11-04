@@ -172,6 +172,7 @@ const recordTool169 = (page, namespace, calls) => {
   await fixtureRun("UPDATE site_users SET denied=0 WHERE discord_id=?", OTHER);
   const storedAppointment = one("SELECT value,updated_at,updated_by FROM site_settings WHERE key='appointed'");
   const storedAutoQueue = one("SELECT value,updated_at,updated_by FROM site_settings WHERE key='autoQueue'");
+  const storedNotice = one("SELECT value,updated_at,updated_by FROM site_settings WHERE key='notice'");
   const existingAppointment = JSON.stringify({co_gm: '<@' + OTHER + '>'});
   const seedSetting = (key, row) => !row
     ? fixtureRun("DELETE FROM site_settings WHERE key=?", key)
@@ -181,8 +182,14 @@ const recordTool169 = (page, namespace, calls) => {
     await seedSetting("appointed", {value:existingAppointment,updated_at:fixtureTime,updated_by:null});
     await seedSetting("autoQueue", {value:"1",updated_at:fixtureTime,updated_by:null});
     const queuePage = await openPage(STAFF);
+    const queueWrites = [];
+    queuePage.before((path, init) => {
+      if (path === '/api/admin/settings' && init.method === 'PUT') queueWrites.push(JSON.parse(init.body));
+      return false;
+    });
     await queuePage.go("#/admin/settings");
     await waitFor(() => !!queuePage.app.querySelector('#appointed-characters-ok'), "unrelated queue settings");
+    await seedSetting("notice", {value:"Notice saved by another admin",updated_at:fixtureTime,updated_by:null});
     const queueLabel = Array.from(queuePage.app.querySelectorAll('label')).find(label => label.textContent.includes('automatically queue approved reserved names'));
     const queue = queueLabel.querySelector('input');
     const saveQueue = byText(queuePage.app, "button", "Save settings");
@@ -193,9 +200,13 @@ const recordTool169 = (page, namespace, calls) => {
       one("SELECT value FROM site_settings WHERE key='autoQueue'")?.value === '0'
       && one("SELECT value FROM site_settings WHERE key='appointed'")?.value === existingAppointment
       && !queuePage.app.querySelector('#appointed-characters-ok').checked);
+    check("the queue edit sends only its changed field and preserves a notice saved after the page loaded",
+      JSON.stringify(queueWrites) === JSON.stringify([{autoQueue:false}])
+      && one("SELECT value FROM site_settings WHERE key='notice'")?.value === "Notice saved by another admin");
   } finally {
     await seedSetting("appointed", storedAppointment);
     await seedSetting("autoQueue", storedAutoQueue);
+    await seedSetting("notice", storedNotice);
   }
   const lookup175 = await openPage(STAFF);
   await lookup175.go("#/admin/lookup/" + absent175);

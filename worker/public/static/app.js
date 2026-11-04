@@ -4044,23 +4044,31 @@
     const quiet = M().ballots.map((b) => [b, h("input", { type: "checkbox", checked: quietWas.has(b.key), "aria-label": `${b.label}: no public vote` })]);
     const quietGrid = (group) => h("div", { class: "appointed-grid" }, quiet.filter(([b]) => b.group === group).map(([b, input]) =>
       h("label", { class: "check field quiet-row" }, input, h("span", { class: "small" }, posIcon(b.key, "s"), " ", b.label))));
+    const settingsValues = () => ({
+      namesOpenAt: fromLocalInput(namesAt.value), launchAt: fromLocalInput(launchAt.value), namesTimeConfirmed: confirmed.checked,
+      namesOpen: namesOpen.checked, autoQueue: autoQueue.checked, applicationsOpen: appsOpen.checked, votingOpen: votingOpen.checked,
+      newsOn: newsBox.checked, loginAnimation: loginAnimation.checked === true, royalWritsOn: royalWrits.checked === true,
+      notice: notice.value, noVote: quiet.filter(([, input]) => input.checked).map(([bb]) => bb.key),
+    });
     const appointmentValues = () => Object.fromEntries(appointed.map(([office, input]) => [office.key, input.value.trim()]).filter(([, who]) => who));
+    let savedSettings = settingsValues();
     let savedAppointments = JSON.stringify(appointmentValues());
     const save = h("button", { class: "btn", type: "button", text: "Save settings" });
     save.addEventListener("click", async () => {
       if (!settingsLive()) return;
-      const a = fromLocalInput(namesAt.value), b = fromLocalInput(launchAt.value);
-      if (!a || !b) return toast("Both times are needed.", "bad");
+      const nextSettings = settingsValues();
+      if (!nextSettings.namesOpenAt || !nextSettings.launchAt) return toast("Both times are needed.", "bad");
+      const changes = Object.fromEntries(Object.entries(nextSettings).filter(([key, value]) => JSON.stringify(value) !== JSON.stringify(savedSettings[key])));
       const nextAppointments = appointmentValues();
       const appointmentSnapshot = JSON.stringify(nextAppointments);
       const updateAppointments = appointmentSnapshot !== savedAppointments || characterPublication.checked;
       save.disabled = true;
       try {
-        const out = await api("PUT", "/api/admin/settings", { namesOpenAt: a, launchAt: b, namesTimeConfirmed: confirmed.checked, namesOpen: namesOpen.checked, autoQueue: autoQueue.checked, applicationsOpen: appsOpen.checked, votingOpen: votingOpen.checked, newsOn: newsBox.checked, loginAnimation: loginAnimation.checked === true, royalWritsOn: royalWrits.checked === true, notice: notice.value,
-          ...(updateAppointments ? { appointed: nextAppointments, namesConfirmed: namesOk.checked, appointedCharactersConfirmed: characterPublication.checked } : {}),
-          noVote: quiet.filter(([, input]) => input.checked).map(([bb]) => bb.key) }, { live: settingsLive });
+        const out = await api("PUT", "/api/admin/settings", { ...changes,
+          ...(updateAppointments ? { appointed: nextAppointments, namesConfirmed: namesOk.checked, appointedCharactersConfirmed: characterPublication.checked } : {}) }, { live: settingsLive });
         if (!settingsLive()) return;
         S.settings = out.settings;
+        savedSettings = nextSettings;
         if (updateAppointments) savedAppointments = appointmentSnapshot;
         namesOk.checked = false;
         characterPublication.checked = false;
