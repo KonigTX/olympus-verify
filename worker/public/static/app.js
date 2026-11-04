@@ -2211,7 +2211,8 @@
     };
     const mountPlan = renderTreasuryPlan207 => {
       if (!current()) return;
-      const dispose = renderTreasuryPlan207(main, { h, add, clear, posIcon, parts, scrollToSection, isCurrent: current });
+      const dispose = renderTreasuryPlan207(main, { h, add, clear, posIcon, parts, scrollToSection, isCurrent: current,
+        officeLabel: key => offices199().find(office => office.key === key)?.label });
       disposePlan = typeof dispose === "function" ? dispose : null;
       mounted = true;
       arm();
@@ -3102,7 +3103,7 @@
       const classPick = selectOf(displayClasses, primary ? cls.value : stored.class || "", {placeholder:"Choose class…"}); classPick.disabled = primary;
       const at30 = h("textarea", {rows:"2",maxlength:"768",value:stored.build30 || "",spellcheck:"false",autocomplete:"off"});
       const at60 = h("textarea", {rows:"2",maxlength:"768",value:stored.build60 || "",spellcheck:"false",autocomplete:"off"});
-      const row = {name,classPick,at30,at60,primary};
+      const row = {id,name,classPick,at30,at60,primary};
       const remove = h("button", {type:"button",class:"btn small",text:primary ? "Clear main builds" : "Remove declared alt"});
       row.node = h("fieldset", {class:"card talent-application-character"}, h("legend", {text:primary ? "Main application character" : "Declared alt (self-reported)"}),
         fieldBox("talent-name-"+id,"Character name",name),fieldBox("talent-class-"+id,"Class",classPick),
@@ -3115,10 +3116,11 @@
     addTalentRow(savedTalentCharacters[0],true);for(const saved of savedTalentCharacters.slice(1)) addTalentRow(saved);
     talentAdd.addEventListener("click", () => {addTalentRow();touch();});
     const syncPrimaryBuild = () => {talentRows[0].name.value=character.value;talentRows[0].classPick.value=cls.value;};
-    character.addEventListener("input",syncPrimaryBuild);cls.addEventListener("change",syncPrimaryBuild);
+    character.addEventListener("input",syncPrimaryBuild);
+    const parkedBuildNotice = h("p", {class:"notice", role:"status", hidden:true});
     const talentBuildBox = h("section", {class:"field", "data-field":"talentBuilds"},h("h3",{text:"Character talent builds (optional)"}),
       h("p",{class:"muted small",text:"Attach level 30 and level 60 builds from the current talent calculator for your main and up to two declared alts. These names are self-reported application details, not roster verification. Builds remain with the leadership unless you make the separate board-sharing choice below."}),
-      h("a",{href:"#/talents",target:"_blank",rel:"noopener",text:"Open the talent calculator"}),talentList,talentAdd,
+      h("a",{href:"#/talents",target:"_blank",rel:"noopener",text:"Open the talent calculator"}),parkedBuildNotice,talentList,talentAdd,
       h("div",{class:"field", "data-field":"boardTalentBuilds"},h("label",{class:"check"},talentSharing,h("span",{text:"Also share these declared character names, classes and builds on my voting-board application (optional)."})),h("span",{class:"err",hidden:true})),h("span",{class:"err",hidden:true}));
     const updateTalentSharing = () => {talentSharing.disabled=!isVoted() || !boardOk.checked;};
     boardOk.addEventListener("change",updateTalentSharing);for(const control of [...backupSels,classLeadSel]) control.addEventListener("change",updateTalentSharing);
@@ -3221,6 +3223,36 @@
       if (def.long) el.value = ans[key] || "";
       return fieldBox(key, def.label, el, Object.assign({ hint: def.hint, required: def.required, counter: def.long ? withCounter(el, def.max) : null }, opts));
     };
+    const legacyBuildField = textFor("talentBuild", { hintBelow: true });
+    const legacyBuildInput = legacyBuildField.querySelector("input");
+    const mainBuildInputs = [talentRows[0].at30, talentRows[0].at60, legacyBuildInput];
+    const parkedBuilds = new Map(); // This mounted editor owns these values.
+    let buildClass = cls.value;
+    cls.addEventListener("change", () => {
+      syncPrimaryBuild();
+      if (buildClass === cls.value) return;
+      const restored = parkedBuilds.get(cls.value);
+      if ((buildClass && buildClass !== "undecided") || restored) {
+        const old = mainBuildInputs.map(input => input.value);
+        if (old.some(Boolean)) parkedBuilds.set(buildClass, old);
+        mainBuildInputs.forEach((input, index) => { input.value = restored?.[index] || ""; });
+        parkedBuilds.delete(cls.value);
+      }
+      buildClass = cls.value;
+      const labels = [...parkedBuilds.keys()].map(key => byKey(displayClasses, key)?.label || (key === "undecided" ? "Undecided" : "Choose…"));
+      parkedBuildNotice.hidden = !labels.length;
+      parkedBuildNotice.textContent = labels.length ? `Builds for ${labels.join(", ")} are kept in this editor. Switch back to restore them before leaving.` : "";
+    });
+    const buildLinkPrefix = new URL(location.href).origin + "/#/talents/";
+    const wrongBuildClass = (value, selectedClass) => {
+      if (value.length > 512 || !byKey(displayClasses, selectedClass)) return false;
+      const raw = value.trim();
+      const link = raw.startsWith(buildLinkPrefix) ? /^([a-z]+)\/([^/]+)$/.exec(raw.slice(buildLinkPrefix.length)) : null;
+      const code = link ? link[2] : raw;
+      const match = code.length <= 256 && /^ot1\.[a-f0-9]{12}\.([a-z]+)\.(?:[1-5][0-9]|60)\.[0-5]+$/.exec(code);
+      // Recognize the class spelling only. The Worker validates the actual build.
+      return match && byKey(displayClasses, match[1]) && (!link || link[1] === match[1]) && match[1] !== selectedClass;
+    };
     const hours = selectOf(meta.hours, ans.hours || "");
     const voice = selectOf(meta.voice, ans.voice || "");
     const refs = (ans.references || []).slice();
@@ -3284,7 +3316,7 @@
       h("div", { class: "rule" }),
       h("div", { class: "section-title" }, icon("icon-pvp"), h("h3", { text: "Extras" })),
       h("div", { class: "grid two" }, textFor("logs", { hintBelow: true }), fieldBox("voice", "Can you use voice chat in raids?", voice, { required: true })),
-      textFor("talentBuild", { hintBelow: true }),
+      legacyBuildField,
       talentBuildBox,
       h("div", { class: "field", "data-field": "references" },
         h("span", { class: "lab", text: "References (optional)" }),
@@ -3307,6 +3339,13 @@
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!ack.checked) return showFieldError(form, "ack", "Tick the box to confirm you read the warning.");
+      const mismatch = "This build names another class. Use a build for the selected class.";
+      if (wrongBuildClass(legacyBuildInput.value, cls.value)) return showFieldError(form, "talentBuild", mismatch);
+      for (const row of talentRows) {
+        const selectedClass = row.primary ? cls.value : row.classPick.value;
+        if (wrongBuildClass(row.at30.value, selectedClass)) return showFieldError(form, `talent-30-${row.id}`, mismatch);
+        if (wrongBuildClass(row.at60.value, selectedClass)) return showFieldError(form, `talent-60-${row.id}`, mismatch);
+      }
       const answers = {};
       for (const def of meta.questions) {
         const box = form.querySelector(`[data-field="${def.key}"]`);

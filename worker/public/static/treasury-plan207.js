@@ -107,7 +107,15 @@ export function renderTreasuryPlan207(main, ui) {
   const links = h("div", { class: "tp207-chapter-links" });
   const body = h("div", { class: "tp207-chapters" });
   function renderSection207(section) {
-    return h("section", { class: "tp207-chapter-section" }, section.heading ? h("h3", { text: section.heading }) : null,
+    const heading = section.officeKeys
+      ? h("h3", null, section.officeKeys.flatMap((key, index) => {
+        const label = ui.officeLabel?.(key);
+        const reference = label ? h("a", { href: "#/roles/" + encodeURIComponent(key), text: label })
+          : h("span", { text: "Office reference unavailable" });
+        return index ? [" and ", reference] : [reference];
+      }))
+      : section.heading ? h("h3", { text: section.heading }) : null;
+    return h("section", { class: "tp207-chapter-section" }, heading,
       (section.paragraphs || []).map(text => h("p", { text })),
       section.bullets?.length ? h("ul", null, section.bullets.map(text => h("li", { text }))) : null,
       section.table ? table207(section.table.headers, section.table.rows, section.table.caption || section.heading || "Programme reference") : null,

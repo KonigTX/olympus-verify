@@ -75,7 +75,7 @@ async function timedTreasury218({ grant = true, channel = true } = {}) {
     const page=await openPage(MEMBER,{}, {clockNow:clock,bootTransform:b=>{b.user.canReadTreasuryPlan=grant;}});
     const rendered={count:0,disposed:0};
     page.window.__treasuryModuleFixture218=async()=>({renderTreasuryPlan207(main,ui){
-      rendered.count++; ui.clear(main);
+      rendered.count++; rendered.herald=ui.officeLabel?.('office_102'); ui.clear(main);
       const marker=new Element("p");marker.setAttribute("data-treasury-plan-fixture","true");marker.textContent="Treasury plan fixture";main.appendChild(marker);
       return()=>{rendered.disposed++;};
     }});
@@ -365,6 +365,8 @@ const visibility218=(p,hidden=false)=>{
   await bounded160.page.go("#/treasury-plan");await waitFor(()=>plan218(bounded160.page),"fresh boot Treasury plan");
   bounded160.page.clock(bounded160.clock+ttl160-1);visibility218(bounded160.page);
   check("CC160 fresh boot presentation remains usable inside its original bound without a read",plan218(bounded160.page)&&read160===0&&bounded160.rendered.count===1);
+  check("CC081 the authorized Treasury mount receives the canonical office label from real metadata",
+    bounded160.rendered.herald==="Lord High Herald · Minister of Propaganda"&&read160===0);
   bounded160.page.clock(bounded160.clock+ttl160);
   const expiry160=[...bounded160.scheduled].at(-1);
   expiry160?.fire();
