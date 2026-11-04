@@ -817,10 +817,16 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   await waitFor(() => picks().length === 2 && saves().length === 2, "two rows with roster controls");
   check("fixture: two rows with roster controls", rows() === 2);
   (await fixtureRun("UPDATE community_event_signups SET decision_revision = decision_revision + 1 WHERE event_id = ?", EVENT)); // both commands below are definite refusals (stale)
-  const holds = [400, 50]; o2.hold((p) => p.startsWith("/api/community/event?id=") ? (holds.shift() ?? 0) : 0);
-  picks()[0].value = "accepted"; saves()[0].click(); picks()[1].value = "bench"; saves()[1].click();
-  await new Promise((resolve) => setTimeout(resolve, 900));
-  check("F4b: two overlapping row commands with reversed readbacks: the late readback is discarded, the list holds each row once and the latest readback's state", rows() === 2 && picks().length === 2 && JSON.stringify(picks().map((p) => p.value).sort()) === JSON.stringify(db.prepare("SELECT COALESCE(decision, '') AS d FROM community_event_signups WHERE event_id = ? ORDER BY d").all(EVENT).map((r) => r.d)) && (seen().match(/Not decided\./g) || []).length === 1 && holds.length === 0, JSON.stringify([rows(), picks().map((p) => p.value), (seen().match(/Not decided\./g) || []).length, holds]));
+  let releaseFirstReadback, readbacks = 0;
+  const firstReadback = new Promise(resolve => { releaseFirstReadback = resolve; });
+  o2.hold((p) => p.startsWith("/api/community/event?id=") && ++readbacks === 1 ? firstReadback : undefined);
+  picks()[0].value = "accepted"; saves()[0].click();
+  const firstReadbackHeld = await waitFor(() => readbacks === 1, "the first completed roster readback waits at the gate", 8000);
+  picks()[1].value = "bench"; saves()[1].click();
+  const newerReadbackPainted = await waitFor(() => readbacks === 2 && seen().includes("Not decided."), "the newer roster readback paints first", 8000);
+  releaseFirstReadback();
+  await settle(); await settle();
+  check("F4b: two overlapping row commands with reversed readbacks: the late readback is discarded, the list holds each row once and the latest readback's state", firstReadbackHeld && newerReadbackPainted && rows() === 2 && picks().length === 2 && JSON.stringify(picks().map((p) => p.value).sort()) === JSON.stringify(db.prepare("SELECT COALESCE(decision, '') AS d FROM community_event_signups WHERE event_id = ? ORDER BY d").all(EVENT).map((r) => r.d)) && (seen().match(/Not decided\./g) || []).length === 1, JSON.stringify([rows(), picks().map((p) => p.value), (seen().match(/Not decided\./g) || []).length, readbacks]));
   o2.hold(null);
   // a failed readback says so, never that the list was re-read
   (await fixtureRun("UPDATE community_event_signups SET decision_revision = decision_revision + 1 WHERE event_id = ?", EVENT));
@@ -855,18 +861,18 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     return olderReplyGate;
   });
   picks()[0].value = "declined"; saves()[0].click();
-  await waitFor(() => olderReplyHeld, "the Worker reply waiting at the explicit gate");
-  check("fixture: row 0's command is committed by the Worker while its reply is held", olderReplyHeld && dbDecisions().includes("declined"));
+  const commandReplyHeld = await waitFor(() => olderReplyHeld, "the Worker reply waiting at the explicit gate", 8000);
+  check("fixture: row 0's command is committed by the Worker while its reply is held", commandReplyHeld && dbDecisions().includes("declined"));
   (await fixtureRun("UPDATE community_event_signups SET decision_revision = decision_revision + 1 WHERE event_id = ? AND decision IS NULL", EVENT)); // row 1's next command is stale
   picks()[1].value = "bench"; saves()[1].click();
-  await waitFor(() => seen().includes("Not decided."), "row 1's refusal and the readback that replaces the rows");
+  await waitFor(() => seen().includes("Not decided."), "row 1's refusal and the readback that replaces the rows", 8000);
   const fresh0 = picks().findIndex((p) => p.value === "declined");
   check("fixture: the readback replaced the rows and shows row 0's committed decision", picks().length === 2 && fresh0 >= 0);
   picks()[fresh0].value = "bench"; saves()[fresh0].click();
-  await waitFor(() => dbDecisions().filter((d) => d === "bench").length === 1 && seen().includes("Roster: on the bench."), "the replacement row's newer acknowledgement");
+  const newerReplyPainted = await waitFor(() => dbDecisions().filter((d) => d === "bench").length === 1 && seen().includes("Roster: on the bench."), "the replacement row's newer acknowledgement", 8000);
   releaseOlderReply();
   await settle(); await settle();
-  check("F4b.2: the older command's reply, arriving after the rows were replaced and the replacement row acknowledged, says nothing and changes nothing (no 'declined' toast, the newest decision shown, the counts current)", !seen().includes("Roster: declined.") && picks()[fresh0].value === "bench" && !dbDecisions().includes("declined") && counts2().includes(`${acceptedCount()} accepted`));
+  check("F4b.2: the older command's reply, arriving after the rows were replaced and the replacement row acknowledged, says nothing and changes nothing (no 'declined' toast, the newest decision shown, the counts current)", newerReplyPainted && !seen().includes("Roster: declined.") && picks()[fresh0].value === "bench" && !dbDecisions().includes("declined") && counts2().includes(`${acceptedCount()} accepted`));
   o2.hold(null);
   // F4b.2 (b): a pagination response held across a readback that replaced the table is discarded; the cursor stays the readback's
   const extra = Array.from({ length: 100 }, (_, i) => "31000000000000" + String(100 + i));
