@@ -219,13 +219,14 @@ async function call(method, pathname, { who, body, host = "guild.example", heade
   const decision = method==='POST' && pathname.match(/^\/api\/admin\/(users|applications)\/(\d+)\/(deny|undeny|delete|status)$/);
   if(decision) {
     const action=decision[3]==='delete'?'partial_delete':'business_only';
-    if(!h.has('X-Olympus-Decision-Action'))h.set('X-Olympus-Decision-Action',action);
+    const explicitAction=h.has('X-Olympus-Decision-Action');
+    if(!explicitAction)h.set('X-Olympus-Decision-Action',action);
     if(who===VIKTOR && !h.has('X-Olympus-Decision-Target') && h.get('Origin')===`https://${host}` && h.get('X-Olympus')==='2') {
       const prep=await call('GET',`/api/admin/users/${decision[2]}/decision-target?route=${decision[3]}&decisionAction=${action}`,{who,host});
       if(prep.status!==200)return prep;
       const prepared=await prep.json();
-      if(typeof prepared.targetToken!=='string')throw Error('actual decision target preparation held');
-      h.set('X-Olympus-Decision-Target',prepared.targetToken);
+      if(typeof prepared.targetToken==='string')h.set('X-Olympus-Decision-Target',prepared.targetToken);
+      if(!explicitAction)h.set('X-Olympus-Decision-Action',prepared.decisionAction);
     }
   }
   const res = await index.fetch(new Request(`https://${host}${pathname}`, { method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) }), rawEnv(), ctx);
@@ -1335,6 +1336,7 @@ async function legacySchemaHeld(old) {
     .every((x) => { const [want, st, qs] = x.split(":"); return siteApi.shownReserved(st, qs || null) === want; }));
 
   console.log("\n== deny, undeny, delete ==");
+  await qdb("INSERT INTO site_applications(discord_id,position,fallback,answers,status,created_at,updated_at) VALUES(?,'member',0,'{}','submitted',?,?) ON CONFLICT(discord_id) DO NOTHING", "300000000000000006", T, T);
   res = await call("POST", "/api/admin/users/300000000000000006/deny", { who: VIKTOR, body: { reason: "joke application" } });
   check("deny works", res.status === 200 && db.prepare("SELECT denied FROM site_users WHERE discord_id = '300000000000000006'").get().denied === 1);
   res = await call("GET", "/api/me", { who: "300000000000000006" });
