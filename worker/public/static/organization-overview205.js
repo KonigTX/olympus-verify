@@ -140,7 +140,7 @@ export function renderAllianceOverview205(data, ui, onSelectNode) {
     return row;
   }
   const councilRoster = h("section", { class: "org-alliance-current-council", "aria-label": "Current High Council composition" }, h("h4", { text: "The current Council seats and portfolios" }),
-    h("p", { text: "The Guild Master chairs the Council. The Co-GM, Treasurer, Head of Trading & Markets, main Raid Lead, main PvP Lead and head of Justice sit alongside the other alliance portfolio heads below. These are alliance-wide responsibilities; regional and branch activity leaders have separate remits." }),
+    h("p", { text: data.councilComposition.summary }),
     h("ul", { class: "org-alliance-council-seats" }, model.councilSeats.map(seat => seatReference(seat, true))),
     h("p", { class: "small muted", text: "Council composition identifies the remit, not a named holder. Leadership seats remain reserved appointments. Regional Raid Leaders and PvP Leads do not acquire a Council seat through an event assignment." }),
     h("a", { href: data.councilComposition.sourcePath, text: "Read the current Council portfolios & reporting lines" }));
@@ -193,7 +193,7 @@ export function renderAllianceOverview205(data, ui, onSelectNode) {
     h("section", { class: "org-alliance-council" }, h("h3", { text: model.groups.find(row => row.key === "council").title }), councilRoster,
       h("p", { text: "Every High Council role family is collected here, including its departmental heads. Expand a guide for the full mandate and expectations. Council appointments do not add native rank slots." }), groupCards("council")),
     h("div", { class: "org-alliance-support" }, h("section", { class: "org-alliance-independent" }, h("h3", { text: "Justice & independent review" }),
-      h("p", { text: "The head of Justice is a High Council portfolio holder. Judicial case panels and the Bank Auditor retain unconflicted, independent review; they are not subordinate to the officer or Treasury custodian whose work is under review." }), councilReferences("justice"), groupCards("independent"))),
+      h("p", { text: "The Lord High Justiciar holds the individual High Council portfolio. Judicial case panels and the Bank Auditor conduct unconflicted reviews independently of the officer or Treasury custodian whose work is under review." }), councilReferences("justice"), groupCards("independent"))),
     groupSection("institutions", "org-alliance-institutions", "These are institutions and collective mandates, not extra Council seats or individual jobs. Their members, hearing panels and delegated powers require their own accepted appointments."),
     departments,
     h("section", { class: "org-alliance-branches" }, branchTitle, branchDescription,

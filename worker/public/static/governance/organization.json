@@ -6,8 +6,8 @@
   "appointmentsIssued": false,
   "book": {
     "path": "/static/governance/reconciled-book.md",
-    "bytes": 272231,
-    "sha256": "1483cdebf9dc4e175dc5d1eac5156f29e3c121bd48a28af3a49d324fc3c108fb"
+    "bytes": 273545,
+    "sha256": "d3e8f0f4968976914e80f081fe557032ee24fd3786127569a9481a9b85a8a228"
   },
   "councilComposition": {
     "status": "owner_directed_current228",
@@ -29,7 +29,7 @@
       "Lord High Factor · Minister of Trading & Markets",
       "Systems & Heraldry"
     ],
-    "summary": "The Guild Master chairs the High Council. The Co-Guild Master serves alongside twelve numbered portfolios, all associated with native High Council rank.",
+    "summary": "The Guild Master chairs the High Council. The Co-Guild Master serves alongside 12 numbered portfolios, all associated with native High Council rank.",
     "formalStatus": "Council appointments, voting eligibility and actual access are separately recorded. Listing a portfolio appoints no holder.",
     "recommendationRecorded": false,
     "founderRatificationRecorded": false,
@@ -166,7 +166,7 @@
         ],
         "scope": "alliance",
         "codexTitle": "V",
-        "description": "Leads recruitment campaigns, guild storytelling, promotional art and broadcaster-safe messaging. Agrees creative direction with the Council, verifies claims with the responsible office and hands official records to Heraldry. The office grants no moderation, Council vote or publishing access by itself."
+        "description": "Leads official communications, recruitment campaigns, guild storytelling, promotional art and consenting broadcaster coverage. Verifies claims with the responsible office and maintains approved publication and correction records. Coordinates event and Academy communications with their responsible teams. The office grants no moderation, Council vote or publishing access by itself."
       },
       {
         "id": "heraldry",
@@ -1910,7 +1910,7 @@
       "applicationTrack": "high_council",
       "applicationEligible": true,
       "statusOverlay": false,
-      "acquisition": "Case-designated judicial institution; chaired by the Lord High Chancellor, with accepted unconflicted members.",
+      "acquisition": "Case-designated judicial institution. The Lord High Justiciar directs procedure. Panel members must be designated and unconflicted.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "applicationAliases": [
         "Head of Justice",
@@ -4447,11 +4447,12 @@
       "statusOverlay": false,
       "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
-      "applicationAliases": [
-        "Lord High Chancellor / Head of Justice"
-      ],
+      "applicationAliases": [],
       "applicationLabel": "Lord High Justiciar · Minister of Justice & The Privy Court",
-      "applicationRoleKeys": []
+      "applicationRoleKeys": [],
+      "historicalOfficeLabels": [
+        "Head of Justice, formerly styled Lord High Chancellor"
+      ]
     },
     {
       "ordinal": 102,
@@ -6011,7 +6012,7 @@
         "office_26"
       ],
       "statusOverlay": false,
-      "acquisition": "Case-designated judicial institution; chaired by the Lord High Chancellor, with accepted unconflicted members.",
+      "acquisition": "Case-designated judicial institution. The Lord High Justiciar directs procedure. Panel members must be designated and unconflicted.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "head-justice",
       "ministry": "Council of Justice",
@@ -8510,9 +8511,7 @@
       "applicationTrack": "high_council",
       "applicationEligible": false,
       "applicationLabel": "Lord High Justiciar · Minister of Justice & The Privy Court",
-      "applicationAliases": [
-        "Lord High Chancellor / Head of Justice"
-      ],
+      "applicationAliases": [],
       "applicationRoleKeys": [],
       "statusOverlay": false,
       "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",

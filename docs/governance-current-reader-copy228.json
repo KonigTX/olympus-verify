@@ -1,0 +1,93 @@
+{
+  "schema": "olympus-governance-current-reader-copy228-v1",
+  "changes": [
+    {
+      "key": "cabinet-and-adoption-context",
+      "scope": [
+        "book",
+        "titles"
+      ],
+      "before": "**The Crown bears the charge of service before it bears the seal of command.** These five Titles are the owner's Build .199 successor to the 25 October 2026 expansion of the current R7 reader. The preserved .198 source remains a dated edition; the exact ten-rank mapping and gold schedules below are the current owner direction. They give the guild's existing constitutional settlement a fuller statutory and roleplay expression. R7's original adoption remains 13 October 2026; this publication records no new Council vote, Founder signature, individual warrant or game permission. If a provision conflicts with the joint Charters, the Guild Statute, the published privacy policy or a platform rule, the controlling provision prevails and the registrar publishes the discrepancy for correction. More protective notice, confidentiality and independent-review requirements continue to apply.",
+      "after": "**The Crown bears the charge of service before it bears the seal of command.** These five Titles are the owner's Build .199 successor to the 25 October 2026 expansion of the current R7 reader. The preserved .198 source remains a dated edition; the exact ten-rank mapping and gold schedules below are the current owner direction. They give the guild's existing constitutional settlement a fuller statutory and roleplay expression. R7's original adoption remains 13 October 2026; this publication records no new Council vote, Founder signature, individual warrant or game permission. If a provision conflicts with the joint Charters, the Guild Statute, the published privacy policy or a platform rule, the controlling provision prevails and the registrar publishes the discrepancy for correction. More protective notice, confidentiality and independent-review requirements continue to apply. Section II.8.1 gives the current Cabinet remit. D17 records the dated Build .199 direction."
+    },
+    {
+      "key": "publisher-adoption-date",
+      "scope": [
+        "book",
+        "titles"
+      ],
+      "before": "(b) Governance signing, the existing authority-paste workflow and Olympus Link's Ed25519 peer verification have different purposes and trust boundaries. A key or successful check from one is not silently accepted for another. Link remains OFF until its complete configuration and separate qualification are approved. Named upstream modules and Draft PR #72 remain publisher-adoption dependencies where applicable. No statement in this Title certifies adoption in the official CurseForge addon or universal interoperability.",
+      "after": "(b) Governance signing, the existing authority-paste workflow and Olympus Link's Ed25519 peer verification have different purposes and trust boundaries. A key or successful check from one is not silently accepted for another. Link remains OFF until its complete configuration and separate qualification are approved. The publisher merged [PR #72](https://github.com/dnl-gentile/olympus-addon/pull/72) on 26 October 2026 for the optional own-guild census exporter. The publisher lists [Olympus Guild 1.3.3](https://www.curseforge.com/wow/addons/olympus-guild/files/9338970) as released that day. Named upstream modules identify source files and intended areas of work. Website availability and real-client qualification are separate. No statement in this Title certifies adoption in the official CurseForge addon or universal interoperability."
+    },
+    {
+      "key": "chancery-and-herald-cross-reference",
+      "scope": [
+        "book",
+        "titles"
+      ],
+      "before": "(b) The Hand convenes the Cabinet, resolves dependencies and arranges named cover. The Chancellor owns the Chancery, intake standards, imperial census and trial handovers, reporting directly to the Council. The Justiciar directs independent Court procedure; the Inquisitor coordinates internal security without deciding a contested case. The two Marshals work with their regional Raid Leaders and PvP Captains; neither replaces a branch Guild Master. The Legate maintains the Olympus I–X Concordat, and the Artificer coordinates the Workshop. The Factor directs market operations within separately approved risk limits while the Treasurer retains custody, budgets and reconciliation. The Herald owns propaganda, truthful official communications, corrections and consenting broadcaster coverage. The Seneschal owns court protocol, precedence, the court calendar and Crown facilities stewardship, with no property, bank or moderation grant. Earlier Heraldry names remain aliases of their original office keys; they create no second Herald or Seneschal appointment. Historical reporting text elsewhere in the adopted source does not override this current division of duties. Under this current supplement, the Chancery reports directly to the High Council; ORD 02's earlier reporting line under Heraldry is superseded, while Heraldry remains a coordinating communications partner. This current reporting line also supersedes the earlier intake placement in Charter section 1.5, the Minister of Heraldry office entry and Operational Charter O8; O8 remains preserved as historical source text, not a current grant of intake supervision.",
+      "after": "(b) The Hand convenes the Cabinet, resolves dependencies and arranges named cover. The Chancellor owns the Chancery, intake standards, imperial census and trial handovers, reporting directly to the Council. The Justiciar directs independent Court procedure; the Inquisitor coordinates internal security without deciding a contested case. The two Marshals work with their regional Raid Leaders and PvP Captains; neither replaces a branch Guild Master. The Legate maintains the Olympus I–X Concordat, and the Artificer coordinates the Workshop. The Factor directs market operations within separately approved risk limits while the Treasurer retains custody, budgets and reconciliation. The Herald owns propaganda, truthful official communications, corrections and consenting broadcaster coverage. The Seneschal owns court protocol, precedence, the court calendar and Crown facilities stewardship, with no property, bank or moderation grant. Earlier Heraldry names remain aliases of their original office keys; they create no second Herald or Seneschal appointment. Historical reporting text elsewhere in the adopted source does not override this current division of duties. Under this current supplement, the Chancery reports directly to the High Council; ORD 02's earlier reporting line under Heraldry is superseded, while the Herald remains a coordinating communications partner. This current reporting line also supersedes the earlier intake placement in Charter section 1.5, the Minister of Heraldry office entry and Operational Charter O8; O8 remains preserved as historical source text, not a current grant of intake supervision."
+    },
+    {
+      "key": "current-justice-and-herald-remits",
+      "scope": [
+        "book",
+        "titles"
+      ],
+      "before": "(a) Justice and Internal Security are separate offices. The Inquisitor coordinates prevention, triage and separately authorized enforcement; the Chancellor assigns an unconflicted hearing panel and appeal route. Panel service gives no blanket Council vote, case access or enforcement power; each participant still needs case designation, relevant access and conflict review. Treasury controls approved budgets and custody. Trading is devoted solely to market research, Auction House execution and direct trades within written capital and loss limits. Independent Audit may challenge the custodian or trader and remains outside both delivery chains. Artisanry stewards voluntary recipes and supply; Heraldry stewards approved communications and creator consent; Systems stewards reviewed tools and recovery. No portfolio may purchase another’s powers through a service fee.",
+      "after": "(a) Justice and Internal Security are separate offices. The Inquisitor coordinates prevention, triage and separately authorized enforcement; the Lord High Justiciar assigns an unconflicted hearing panel and appeal route. Panel service gives no blanket Council vote, case access or enforcement power; each participant still needs case designation, relevant access and conflict review. Treasury controls approved budgets and custody. Trading is devoted solely to market research, Auction House execution and direct trades within written capital and loss limits. Independent Audit may challenge the custodian or trader and remains outside both delivery chains. Artisanry stewards voluntary recipes and supply. The Herald stewards approved communications and creator consent. Systems & Heraldry sets technical stewardship and heraldic standards. No portfolio may purchase another’s powers through a service fee."
+    },
+    {
+      "key": "current-seven-office-records",
+      "scope": [
+        "book",
+        "titles"
+      ],
+      "before": "(b) Every office, native association and retained alias is linked in the current Role & Rank Rosetta Stone and organization register to its ministry, responsible Council portfolio and statutory Title. The first ninety-six identities and their records remain intact. Separate individual records now distinguish the PvE Marshal, PvP Marshal, Inquisitor, Concordat Director and Chancellor. A prior War Head template, Council of Justice panel or display name is not copied into those records as an appointment. The shared War Head reference remains a historical Department of War institution under cabinet coordination, not a substitute for either current Marshal. Academy and Leveling remain under Heraldry for onboarding coordination, with technical input from War and Artisanry. New grants still need the competent issuer, accepted remit, review date and independently applied platform permissions.",
+      "after": "(b) Every office, native association and retained alias is linked in the current Role & Rank Rosetta Stone and organization register to its ministry, responsible Council portfolio and statutory Title. The first ninety-six identities and their records remain intact. The seven subsequent records, office_97 through office_103, identify the Lord High Marshal of PvE, Lord High Marshal of PvP, Lord High Inquisitor, Lord High Legate, Lord High Justiciar, Lord High Herald and Systems & Heraldry. A prior War Head template, Council of Justice panel or display name is not copied into those records as an appointment. The shared War Head reference remains a historical Department of War institution under cabinet coordination, not a substitute for either current Marshal. Academy and Leveling coordinate onboarding through the Herald, with input from the relevant War and Artisanry offices. New grants still need the competent issuer, accepted remit, review date and independently applied platform permissions."
+    },
+    {
+      "key": "rc10-current-register",
+      "scope": [
+        "book"
+      ],
+      "before": "For this edition, the registrar records the owner's 23 October public direction and preserves R7's original adoption history. Review the ten displayed ranks in order, the complete ninety-five-title index, core Council composition, officeholder associations, the cosmetic schedule and every public/private data boundary. Confirm that historical beta observations and older drafts remain explicitly historical. Publish the current operative text and an understandable change record; do not substitute a re-dated old PDF.",
+      "after": "For this edition, the registrar records the owner's 23 October public direction and preserves R7's original adoption history. Review the ten displayed ranks in order, the complete 103-office / 139-key register in the [Role & Rank Rosetta Stone](#/roles/rosetta-stone), the current Cabinet composition, officeholder associations, the cosmetic schedule and every public/private data boundary. Confirm that historical beta observations and older drafts remain explicitly historical. Publish the current operative text and an understandable change record; do not substitute a re-dated old PDF."
+    },
+    {
+      "key": "original-four-department-context",
+      "scope": [
+        "book"
+      ],
+      "before": "Four core portfolios coordinate work across Olympus: Department of War, Federal Treasury, Association of Artisanry, and Department of Heraldry. War may have separate PvP and raiding heads. Ministers set agreed standards, offer support, and coordinate through the corresponding emissaries. They do not command Guild Masters merely because their boxes sit higher on a diagram.",
+      "after": "**Original R7 department layer.** Section II.8.1 identifies the current Cabinet. Four core portfolios coordinate work across Olympus: Department of War, Federal Treasury, Association of Artisanry, and Department of Heraldry. War may have separate PvP and raiding heads. Ministers set agreed standards, offer support, and coordinate through the corresponding emissaries. They do not command Guild Masters merely because their boxes sit higher on a diagram."
+    },
+    {
+      "key": "charter-executive-core-and-cabinet",
+      "scope": [
+        "book",
+        "charter"
+      ],
+      "before": "Build .199 owner direction supersedes the 23 October ladder: Leader (Guild Master), High Council, Officer, Officer Alt, Raid Leader, Veteran, Raider, Member, Alt and Initiate, at zero-based Slots 0–9. High Council is Slot 1 and Officer Slot 2. Guild Master, Co-Guild Master and Treasurer remain the core Council offices; Co-Guild Master and Treasurer are appointments within the Leader / High Council tier rather than extra native ranks. Officer Corps service at Officer, Officer Alt and Raid Leader remains distinct from Council membership. Office acceptance, votes, live native ranks and platform permissions remain separate; this document executes none. Use the Roles Rosetta Stone for all office and application cross-references.",
+      "after": "Build .199 owner direction supersedes the 23 October ladder: Leader (Guild Master), High Council, Officer, Officer Alt, Raid Leader, Veteran, Raider, Member, Alt and Initiate, at zero-based Slots 0–9. High Council is Slot 1 and Officer Slot 2. Guild Master, Co-Guild Master and Treasurer remain the core Council offices for executive coordination. The Guild Master chairs the High Council, and the Co-Guild Master serves alongside twelve numbered portfolios in the [current Cabinet register](/static/governance/council-portfolios228.md). Co-Guild Master and Treasurer are appointments within the Leader / High Council tier rather than extra native ranks. Officer Corps service at Officer, Officer Alt and Raid Leader remains distinct from Council membership. Office acceptance, votes, live native ranks and platform permissions remain separate; this document executes none. Use the Roles Rosetta Stone for all office and application cross-references."
+    },
+    {
+      "key": "charter-current-office-remits",
+      "scope": [
+        "book",
+        "charter"
+      ],
+      "before": "The retained chart distinguishes PvP and Raiding portfolios; the current War Head guide centers organized PvE progression, with PvP an optional activity remit. Neither appointments nor warrants are changed. The Federal Treasurer carries the finance portfolio. The Ministers of Artisanry and Heraldry carry the crafting and community portfolios. Accepted High Councillors without another portfolio ordinarily serve the Council of Justice, subject to case designation and conflict review. The Ministry of Propaganda directs guild campaigns and truthful recruitment storytelling alongside Heraldry’s official publication standards. The Systems & Heraldry portfolio sets technical stewardship and heraldic standards. The Systems and Addons Division continues to provide technical support under separately accepted appointments. Specialist service heads may advise the Council without becoming voting Council members unless separately appointed.",
+      "after": "The retained chart distinguishes PvP and Raiding portfolios. The historical War Head guide centers organized PvE progression, with PvP an optional activity remit. The current PvE and PvP Marshals hold separate remits. Neither appointments nor warrants are changed. The Treasurer leads financial stewardship and the Artificer leads Artisanry. The Herald leads campaigns and official communications. The Seneschal directs court protocol and Crown estates. Court panel service requires case designation and conflict review. The Systems & Heraldry portfolio sets technical stewardship and heraldic standards. The Systems and Addons Division continues to provide technical support under separately accepted appointments. Specialist service heads may advise the Council without becoming voting Council members unless separately appointed."
+    },
+    {
+      "key": "charter-o8-history-label",
+      "scope": [
+        "book",
+        "charter"
+      ],
+      "before": "## O8 The Department of Heraldry\n\nThe Minister of Heraldry keeps Olympus understandable to its members: clear notices, a reliable calendar, recruitment information, an accessible welcome and a recognizable public voice. Heraldry distinguishes confirmed announcements, future plans and historical records. It obtains the relevant consent for names, pictures, streams and personal stories, and does not publish case evidence or private financial details as community news.",
+      "after": "## O8 The Department of Heraldry\n\n**Historical context.** The paragraphs below preserve the original department practices. Under [the current Cabinet register](/static/governance/council-portfolios228.md), the Herald coordinates official communications, community events, media and Academy support. The Seneschal directs court protocol and Crown estates. The Chancery coordinates intake and reports directly to the High Council. Event organizers, appointed officeholders and authorized publishers retain their own responsibilities.\n\nThe Minister of Heraldry keeps Olympus understandable to its members: clear notices, a reliable calendar, recruitment information, an accessible welcome and a recognizable public voice. Heraldry distinguishes confirmed announcements, future plans and historical records. It obtains the relevant consent for names, pictures, streams and personal stories, and does not publish case evidence or private financial details as community news."
+    }
+  ]
+}

@@ -15,7 +15,7 @@ const historicalScope218='Historical application and ballot compatibility only; 
 function originalTerms218(terms) {
  terms=require('../../scripts/governance-cabinet224-inverse.cjs').restoreCabinet224(terms,'terms');
  terms=require('../../scripts/governance-role-inverse222.cjs').originalTerms222(terms);
- const specs={office_26:{ordinal:26,label:'Council of Justice',applicationLabel:'Council of Justice',acquisition:'Case-designated judicial institution; chaired by the Lord High Chancellor, with accepted unconflicted members.'},office_94:{ordinal:94,label:'War Head',applicationLabel:'War Directorate (historical shared template)',acquisition:'Historical shared War Head reference; current PvE and PvP portfolios have their own separate appointments.'}};
+ const specs={office_26:{ordinal:26,label:'Council of Justice',applicationLabel:'Council of Justice',acquisition:'Case-designated judicial institution. The Lord High Justiciar directs procedure. Panel members must be designated and unconflicted.'},office_94:{ordinal:94,label:'War Head',applicationLabel:'War Directorate (historical shared template)',acquisition:'Historical shared War Head reference; current PvE and PvP portfolios have their own separate appointments.'}};
  const keys=['label','applicationLabel','applicationAliases','applicationEligible','applicationRoleKeys','acquisition'];
  return terms.map(current=>{
   const term=JSON.parse(JSON.stringify(current)),spec=specs[term.officeKey];

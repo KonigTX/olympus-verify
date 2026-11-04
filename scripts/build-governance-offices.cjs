@@ -7,6 +7,22 @@ const aliases = JSON.parse(fs.readFileSync(path.join(root, 'docs/governance-offi
 if (organization.terms.length !== 103 || organization.nativeRanks.length !== 10 || organization.terms.some((t, i) => t.ordinal !== i + 1)) throw Error('governance_inventory');
 const officeKeys = JSON.parse(fs.readFileSync(path.join(root, 'docs/governance-office-keys.json'), 'utf8'));
 require('./governance-office-keys.cjs').assertOfficeKeys(organization.terms, officeKeys);
+const currentLabels = new Map();
+for (const term of organization.terms) {
+  for (const label of [term.label, term.label.split(' · ')[0]]) currentLabels.set(label.toLowerCase(), term.officeKey);
+}
+for (const term of organization.terms) {
+  if (term.applicationMetadataScope) continue; // These aliases are already explicitly historical.
+  for (const alias of term.applicationAliases.flatMap(label => label.split(' / '))) {
+    const currentKey = currentLabels.get(alias.toLowerCase());
+    if (currentKey && currentKey !== term.officeKey) throw Error('current_office_alias_collision: ' + alias);
+  }
+}
+const portfolioCount = organization.councilComposition.currentSeats.filter(seat => seat.id !== 'gm-chair' && seat.id !== 'co-gm').length;
+const councilComposition = {
+  ...organization.councilComposition,
+  summary: `The Guild Master chairs the High Council. The Co-Guild Master serves alongside ${portfolioCount} numbered portfolios, all associated with native High Council rank.`,
+};
 const fields = ['nativeRankOrdinal', 'nativeSlot', 'nativeRankName', 'tier', 'tierLabel', 'codexTitles', 'department', 'applicationTrack', 'applicationEligible', 'applicationLabel', 'applicationAliases', 'applicationRoleKeys', 'statusOverlay', 'acquisition', 'discordPortal', 'cabinetSeatId', 'ministry', 'councilSeat'];
 const metadata = term => ({...Object.fromEntries(fields.map(key => [key, term[key] ?? ({cabinetSeatId:organization.cabinet218.offices[term.officeKey].seatId,ministry:organization.cabinet218.offices[term.officeKey].ministry,councilSeat:organization.cabinet218.offices[term.officeKey].seatLabel})[key]])),...(term.applicationMetadataScope === undefined ? {} : {applicationMetadataScope:term.applicationMetadataScope})});
 const offices = organization.terms.map(t => ({ key: t.officeKey, label: t.label, group: 'office', termOrdinal: t.ordinal, ...metadata(t), cabinetSeatId: organization.cabinet218.offices[t.officeKey].seatId, ministry: organization.cabinet218.offices[t.officeKey].ministry, councilSeat: organization.cabinet218.offices[t.officeKey].seatLabel, recommendedNativeSlots: t.recommendedNativeSlots, nativeMappingNote: t.nativeMappingNote, mappingApplies: false }));
@@ -61,7 +77,7 @@ for(const row of offices){Object.freeze(row.codexTitles);Object.freeze(row.appli
 return Object.freeze({schema:'olympus-role-rank-199/v1',ranks:Object.freeze(ranks),tracks:Object.freeze(tracks),offices:Object.freeze(offices)});
 });
 `;
-const outputOrganization = {...organization, roleRank199:{...organization.roleRank199, officeCount:organization.terms.length, assignableKeyCount:offices.length}, appointments:offices, applicationTracks:tracks};
+const outputOrganization = {...organization, councilComposition, roleRank199:{...organization.roleRank199, officeCount:organization.terms.length, assignableKeyCount:offices.length}, appointments:offices, applicationTracks:tracks};
 const outputs = [[path.join(root,'worker/src/governance-offices.ts'),source],[path.join(root,'worker/public/static/role-rank199.js'),browser],[jsonPath,JSON.stringify(outputOrganization,null,2)+'\n']];
 if (process.argv[2] === '--check') {
   for (const [target, contents] of outputs) if (fs.readFileSync(target,'utf8') !== contents) throw Error('governance_office_projection_drift');

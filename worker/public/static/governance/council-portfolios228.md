@@ -40,7 +40,7 @@ Stable office: `office_58`. Alliance profession policy, voluntary craft coordina
 
 ## 9. Lord High Herald · Minister of Propaganda
 
-Stable office: `office_102`. Leads recruitment campaigns, guild storytelling, promotional art and broadcaster-safe messaging. Agrees creative direction with the Council, verifies claims with the responsible office and hands official records to Heraldry. The office grants no moderation, Council vote or publishing access by itself.
+Stable office: `office_102`. Leads official communications, recruitment campaigns, guild storytelling, promotional art and consenting broadcaster coverage. Verifies claims with the responsible office and maintains approved publication and correction records. Coordinates event and Academy communications with their responsible teams. The office grants no moderation, Council vote or publishing access by itself.
 
 ## 10. Lord High Seneschal · Minister of Court Protocol & Crown Estates
 

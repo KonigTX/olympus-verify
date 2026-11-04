@@ -871,7 +871,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
       "office_26"
     ],
     "statusOverlay": false,
-    "acquisition": "Case-designated judicial institution; chaired by the Lord High Chancellor, with accepted unconflicted members.",
+    "acquisition": "Case-designated judicial institution. The Lord High Justiciar directs procedure. Panel members must be designated and unconflicted.",
     "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
     "cabinetSeatId": "head-justice",
     "ministry": "Council of Justice",
@@ -3370,9 +3370,7 @@ export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object
     "applicationTrack": "high_council",
     "applicationEligible": false,
     "applicationLabel": "Lord High Justiciar · Minister of Justice & The Privy Court",
-    "applicationAliases": [
-      "Lord High Chancellor / Head of Justice"
-    ],
+    "applicationAliases": [],
     "applicationRoleKeys": [],
     "statusOverlay": false,
     "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
