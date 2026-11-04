@@ -251,17 +251,18 @@
 
     function raidStructure() {
       const groups = [
-        ["10-player teams", "Groups 1–2, 3–4, 5–6 and 7–8 each form a team."],
-        ["20-player teams", "Groups 1–4 form one team and Groups 5–8 form the other."],
-        ["40-player raid", "Groups 1–8 raid together."],
+        ["Barrow Deeps · 10 players", "Groups 1–2, 3–4, 5–6 and 7–8 each form a team."],
+        ["Hyjal Summit · 20 players", "Groups 1–4 form one team and Groups 5–8 form the other."],
+        ["Onyxia’s Lair · 40 players", "Groups 1–8 raid together."],
       ];
       return [
         section("One roster, three raid sizes",
           el("p", { text: "Adapted from Fox (akaFoxSlayer)’s raid leadership guidelines for Olympus. Use this as a planning framework and adjust it to the encounter, roster and availability." }),
           el("p", { text: "Start with eight groups of five. Keep the smaller groups familiar with one another and give each team comparable leadership, preparation and support." }),
+          el("p", null, "Blizzard announced December 9 for the first three Forever raids. See the ", link("https://worldofwarcraft.blizzard.com/en-us/news/24303009", "raid sizes and attunements"), "."),
           el("table", { class: "guides218-table" },
             el("caption", { text: "How the eight groups combine" }),
-            el("thead", null, el("tr", null, ["Raid size", "Group assignments"].map(text => el("th", { scope: "col", text })))),
+            el("thead", null, el("tr", null, ["Forever raid", "Group assignments"].map(text => el("th", { scope: "col", text })))),
             el("tbody", null, groups.map(([size, assignment]) => el("tr", null,
               el("th", { scope: "row", text: size }), el("td", { text: assignment })))))),
         section("Lead, deputy and one caller",

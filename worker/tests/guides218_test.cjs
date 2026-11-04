@@ -200,6 +200,9 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   check('Fox’s guide credits the author and groups one roster into four 10s, two 20s and one 40',
     text(m.box.tags('h1')[0]) === 'Raid team structure & leadership' && text(m.box).includes('akaFoxSlayer')
     && assignments?.join('|') === '1–2,3–4,5–6,7–8|1–4,5–8|1–8');
+  check('the raid grouping table names the first Forever raids with their announced capacities',
+    m.box.tags('tbody')[0]?.tags('th').map(text).join('|') === 'Barrow Deeps · 10 players|Hyjal Summit · 20 players|Onyxia’s Lair · 40 players'
+    && text(m.box).includes('December 9') && links(m.box).includes('https://worldofwarcraft.blizzard.com/en-us/news/24303009'));
   check('farm rotation advice links directly to the governing article', links(m.box).includes('#/governance/the-guild-statute-of-olympus/article-s11')
     && text(m.box).includes('affected participants’ consent'));
   m = await mounted({ view: 'tool', tool: 'nope', talentRevision: talents.revision });
