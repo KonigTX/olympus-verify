@@ -38,7 +38,7 @@ const directoryCoverage203 = page => {
   await staff.go("#/community/directory");
   // .196: the owner-approved default is the Olympus Discord directory. The
   // original .176 member-profile reader remains behind this explicit button.
-  byText(staff.app, "button", "Show opt-in guild profiles and crafting offers").click();
+  byText(staff.app, "button", "Show Member profiles and crafting offers").click();
   await waitFor(() => staff.app.textContent.includes("Site administrator") && requests.some(r => r.pathname.startsWith("/api/community/directory")), ".176 explicit optional profile reader");
   check(".176 actual site admin reads the directory without being marked roster-confirmed", staff.boot.user.isAdmin === true && staff.boot.community.capabilities.confirmedGuildData === false && staff.boot.community.capabilities.communityRead === true && staff.app.textContent.includes("Site administrator") && !staff.app.textContent.includes("not yet confirmed") && requests.some(r => r.pathname.startsWith("/api/community/directory")));
   await staff.go("#/community/profile");

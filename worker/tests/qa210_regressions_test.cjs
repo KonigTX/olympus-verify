@@ -55,7 +55,7 @@ check('.210 the top bar is not pinned on narrow or short screens, and scroll off
 // Every admin tab has its own document title (Directory preferences read "Admin · Overview").
 const staffTitles = /const staff = \{([^}]*)\}/.exec(app)?.[1] || '';
 const adminTabs = [...app.matchAll(/\["#\/admin\/([a-z-]+)", "[^"]+", sub === "\1"\]/g)].map(m => m[1]);
-check('.210 every admin tab key has a page title', adminTabs.length >= 4 && adminTabs.every(key => new RegExp('(^|[ ,{])"?' + key + '"?:').test(staffTitles)) && /"directory-visibility": "Directory preferences"/.test(staffTitles));
+check('.210 every admin tab key has a page title', adminTabs.length >= 4 && adminTabs.every(key => new RegExp('(^|[ ,{])"?' + key + '"?:').test(staffTitles)) && /"directory-visibility": "Discord member list preferences"/.test(staffTitles));
 
 // Date-only values (trial due dates, dues weeks, case review/expiry) are stored as 00:00 UTC and must print as that UTC day.
 const utcFormatters = /const fmtDayUtc = [^\n]*timeZone: "UTC"/.test(app) && /const fmtShortUtc = [^\n]*timeZone: "UTC"/.test(app);

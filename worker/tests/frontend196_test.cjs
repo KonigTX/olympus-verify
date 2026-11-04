@@ -34,7 +34,7 @@ const body196=String.raw`
   profile198=(await request198('PUT','/api/community/profile',{revision:profile198.revision,listed:false,main:'Mia One',professions:[{name:'alchemy',skill:275}],crafts:[{profession:'alchemy',recipe:'Fictional Forever Elixir'}]})).profile;
   const workshop198=await openPage(MEMBER);await workshop198.go('#/community/workshop');
   await waitFor(()=>workshop198.app.textContent.includes('No offer matches.'),'unlisted Workshop draft');
-  check('.198 Workshop hides saved drafts and explains voluntary listing',!workshop198.app.textContent.includes('Fictional Forever Elixir')&&workshop198.app.textContent.includes('Untick the listing box'));
+  check('.198 Workshop hides saved drafts and explains voluntary listing',!workshop198.app.textContent.includes('Fictional Forever Elixir')&&workshop198.app.textContent.includes('hides your detailed profile and Workshop offers')&&workshop198.app.textContent.includes('Discord member list has a separate visibility control'));
   profile198=(await request198('PUT','/api/community/profile',{revision:profile198.revision,listed:true})).profile;
   fire(workshop198.app.querySelector('form'),'submit');
   await waitFor(()=>!!workshop198.app.querySelector('.craft'),'listed Workshop recipe');
@@ -42,7 +42,21 @@ const body196=String.raw`
   const mode198=workshop198.app.querySelector('[data-field="craft-mode"] select');mode198.value='professions';fire(mode198,'change');
   await waitFor(()=>workshop198.app.querySelector('.craft')&&!workshop198.app.textContent.includes('Fictional Forever Elixir'),'Workshop profession mode');
   check('.198 profession-only mode disables recipe search and retains the listed artisan',workshop198.app.querySelector('[data-field="craft-q"] input').disabled&&workshop198.app.textContent.includes('Alchemy')&&workshop198.app.textContent.includes('Member-supplied profession listing.'));
-  await request198('PUT','/api/community/profile',{revision:profile198.revision,listed:false});fire(workshop198.app.querySelector('form'),'submit');
+  const ownProfile196=await openPage(MEMBER);await ownProfile196.go('#/community/profile');
+  await waitFor(()=>!!byText(ownProfile196.app,'button','Save'),'own profile listing control');
+  const ownForm196=byText(ownProfile196.app,'button','Save').closest('form');
+  const discordVisibility196=byText(ownForm196,'a','Manage my Discord member list visibility');
+  check('My profile names Member profiles in its listing control and gives a separate route to Discord row visibility',!!byText(ownForm196,'label','Show my detailed profile in Member profiles')&&!!byText(ownProfile196.app,'span','Shown in Member profiles')&&discordVisibility196?.getAttribute('href')==='#/community/directory');
+  const visibilityBefore196=await request198('GET','/api/community/discord-directory/visibility');
+  const profileWrites196=[];
+  ownProfile196.before((path,init)=>{if(init.method==='PUT')profileWrites196.push(path);return false;});
+  const ownListing196=ownForm196.querySelector('input[type="checkbox"]');
+  ownListing196.checked=false;fire(ownListing196,'change');fire(ownForm196,'submit');
+  await waitFor(()=>one('SELECT listed FROM community_profiles WHERE discord_id=?',MEMBER).listed===0,'real profile opt-out');
+  const visibilityAfter196=await request198('GET','/api/community/discord-directory/visibility');
+  const privateProfile196=(await request198('GET','/api/community/profile')).profile;
+  check('unlisting the detailed profile changes only its endpoint and keeps its saved details and the default Discord visibility',profileWrites196.length===1&&profileWrites196[0]==='/api/community/profile'&&privateProfile196.listed===false&&privateProfile196.main.name==='Mia One'&&privateProfile196.crafts[0].recipe==='Fictional Forever Elixir'&&visibilityBefore196.listed===true&&JSON.stringify(visibilityAfter196)===JSON.stringify(visibilityBefore196));
+  fire(workshop198.app.querySelector('form'),'submit');
   await waitFor(()=>workshop198.app.textContent.includes('No profession listing matches.'),'Workshop opt-out');
   check('.198 real profile opt-out removes both profession and recipe cards',!workshop198.app.querySelector('.craft')&&!workshop198.app.querySelector('.workshop-commission'));
   await staff.go('#/admin/settings');
@@ -63,6 +77,8 @@ const body196=String.raw`
   check('a valid build for another selected class is refused',wrong196.field==='talentBuild');
   const hostile196=api196.validateApplication({...application196,answers:{...application196.answers,talentBuild:'https://untrusted.example/#/talents/warrior/'+code196}},MEMBER,{},[],'guild.example');
   check('application validation rejects a foreign URL without fetching it',hostile196.field==='talentBuild');
+  const privacy196=(await policyHTML('/legal/privacy')).text.replace(/\s+/g,' ');
+  check('served privacy copy names both lists and scopes opt-out, default roles and verified characters',privacy196.includes('<strong>Member profiles and crafting offers.</strong>')&&privacy196.includes('<strong>Discord member list.</strong>')&&privacy196.includes('Unlisting hides these details and your Workshop offers from readers.')&&privacy196.includes('Use the Discord member list’s separate visibility control to hide your whole row there.')&&privacy196.includes('configured Olympus membership or rank role')&&privacy196.includes('eligible currently verified character names from existing retained Olympus records only for members with website accounts'));
   const directory=await openPage(MEMBER), avatar='https://cdn.discordapp.com/embed/avatars/3.png';
   let reads196=0;
   directory.answer(pathname=>{
@@ -79,10 +95,12 @@ const body196=String.raw`
   check('directory makes traversal and changing membership explicit',reads196===1 && directory.app.textContent.includes('not an atomic roster snapshot'));
   await waitFor(()=>!!directory.app.querySelector('#discord-directory-listed'),'own visibility control');
   const listed196=directory.app.querySelector('#discord-directory-listed');
-  check('own directory visibility defaults listed with a separate explicit opt-out',listed196.checked===true && directory.app.textContent.includes('additional profile details remain a separate opt-in'));
+  check('own directory visibility defaults listed with a separate explicit opt-out',listed196.checked===true && !!byText(directory.app,'h2','Discord member list') && directory.document.title==='Community · Discord member list — Olympus' && directory.app.textContent.includes('Member profiles use a separate opt-in.'));
   listed196.checked=false; byText(directory.app,'button','Save my listing preference').click();
   await waitFor(()=>directory.app.textContent.includes('Earlier reader copies cannot be recalled.'),'explicit opt-out save');
-  check('explicit directory opt-out commits through the real own-only Worker path',listed196.checked===false && directory.app.textContent.includes('Your whole directory row is hidden.'));
+  check('explicit directory opt-out commits through the real own-only Worker path',listed196.checked===false && directory.app.textContent.includes('Your whole row is hidden from the Discord member list.'));
+  const stillUnlisted196=(await request198('GET','/api/community/profile')).profile;
+  check('hiding the Discord row independently leaves the detailed profile and its stored draft intact',stillUnlisted196.listed===false&&stillUnlisted196.main.name==='Mia One'&&stillUnlisted196.crafts[0].recipe==='Fictional Forever Elixir');
   directory.document.hidden=true; directory.document.dispatchEvent(new Event('visibilitychange'));
   check('hiding the directory clears member cards immediately',directory.app.querySelectorAll('.card.member').length===0);
   const malformed196=await openPage(MEMBER);
@@ -126,10 +144,10 @@ const body196=String.raw`
   const attendedTarget196=attended196.app.querySelector('#attended-directory-id'),attendedSave196=byText(attended196.app,'button','Save requested listing preference');
   check('attended preference page sends no command on entry and requires an exact-ID read',attendedRequests196.length===0&&attendedSave196.disabled);
   attendedTarget196.value=attendedId196;attendedTarget196.dispatchEvent(new Event('input'));byText(attended196.app,'button','Read this member’s preference').click();
-  await waitFor(()=>attended196.app.textContent.includes('The eligible Olympus row can be listed.'),'attended exact-ID status');
+  await waitFor(()=>attended196.app.textContent.includes('The eligible row can appear in the Discord member list.'),'attended exact-ID status');
   check('an attended status read alone cannot enable a listing write',attendedSave196.disabled&&attendedRequests196.length===1&&attendedRequests196[0].path.endsWith('/status'));
   attended196.app.querySelector('#attended-directory-listed').checked=false;const requestConsent196=attended196.app.querySelector('#attended-directory-confirmed');requestConsent196.checked=true;requestConsent196.dispatchEvent(new Event('change'));attendedSave196.click();
-  await waitFor(()=>attended196.app.textContent.includes('no website account was created.'),'explicit attended preference save');
+  await waitFor(()=>attended196.app.textContent.includes('The member’s whole row is hidden from the Discord member list.'),'explicit attended preference save');
   check('attended save carries exact target, requested preference and explicit confirmation once',attendedRequests196.length===2&&attendedRequests196[1].method==='POST'&&JSON.stringify(attendedRequests196[1].body)===JSON.stringify({discordId:attendedId196,listed:false,requestConfirmed:true})&&attendedSave196.disabled&&!requestConsent196.checked);
   await attended196.go('#/roles');
   const attendedLate196=await openPage(STAFF),lateRequests196=[];
@@ -144,8 +162,8 @@ const body196=String.raw`
   // The held response starts its180ms wait only after the real Worker completes.
   // Observe the actual original handler's release before judging a stale reply or starting another read.
   if(!await waitFor(()=>!lateTarget196.disabled&&lateListed196.disabled&&lateConfirmed196.disabled&&!byText(attendedLate196.app,'button','Read this member’s preference').disabled,'stale attended read releases target/read only; unqualified preference controls remain disabled'))throw Error('Original stale attended read did not finish');
-  check('late A read cannot revive an A-to-B-to-A target or overwrite its desired preference',lateRequests196.length===1&&lateSave196.disabled&&lateListed196.checked===false&&!lateConfirmed196.checked&&!attendedLate196.app.textContent.includes('The eligible Olympus row can be listed.'));
-  attendedLate196.hold(null);byText(attendedLate196.app,'button','Read this member’s preference').click();if(!await waitFor(()=>attendedLate196.app.textContent.includes('The eligible Olympus row can be listed.'),'fresh attended read after stale generation'))throw Error('Fresh exact attended read did not return');
+  check('late A read cannot revive an A-to-B-to-A target or overwrite its desired preference',lateRequests196.length===1&&lateSave196.disabled&&lateListed196.checked===false&&!lateConfirmed196.checked&&!attendedLate196.app.textContent.includes('The eligible row can appear in the Discord member list.'));
+  attendedLate196.hold(null);byText(attendedLate196.app,'button','Read this member’s preference').click();if(!await waitFor(()=>attendedLate196.app.textContent.includes('The eligible row can appear in the Discord member list.'),'fresh attended read after stale generation'))throw Error('Fresh exact attended read did not return');
   lateConfirmed196.checked=true;lateConfirmed196.dispatchEvent(new Event('change'));check('fresh confirmation is bound to the exact returned target and preference',!lateSave196.disabled&&lateTarget196.value===attendedId196&&lateListed196.checked===true&&lateConfirmed196.checked&&lateRequests196.length===2&&lateRequests196.every(request=>request.path==='/api/admin/discord-directory/status'&&request.method==='POST'&&JSON.stringify(request.body)===JSON.stringify({discordId:attendedId196})));
   lateListed196.checked=false;lateListed196.dispatchEvent(new Event('change'));check('changing requested preference invalidates the earlier confirmation',lateSave196.disabled&&!lateConfirmed196.checked&&lateRequests196.length===2);
   await attendedLate196.go('#/roles');

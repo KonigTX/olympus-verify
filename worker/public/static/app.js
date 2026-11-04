@@ -1410,7 +1410,7 @@
       if (can("applicantWrite") && (anyCommunity() || can("armyRead"))) {
         const sections = [["#/community", "Community overview"]];
         if (can("armyRead")) sections.push(["#/community/army", "Army"]);
-        if (feat("directory")) sections.push(["#/community/directory", "Member directory"], ["#/community/profile", "My profile"]);
+        if (feat("directory")) sections.push(["#/community/directory", "Discord member list"], ["#/community/profile", "My profile"]);
         if (feat("crafting")) sections.push(["#/community/workshop", "Crafters & Artisans"]);
         if (feat("events")) sections.push(["#/community/calendar", "Calendar"]);
         if (feat("trials")) sections.push(["#/community/trial", "My trial"]);
@@ -1506,8 +1506,8 @@
   // Titles identify the section, never a private account, event or case from an address.
   function routeTitle(route) {
     const [head, sub, detail, action] = route.split("/");
-    const community = { "": "Overview", directory: "Member directory", profile: "My profile", workshop: "Crafters & Artisans", calendar: "Calendar", census: "Census preview", trial: "My trial", dues: "My dues", news: "Guild news", army: "Army", leadership: "Leadership" };
-    const staff = { "": "Overview", applications: detail ? "Application details" : "Applications", votes: "Votes", names: "Reserved names", friends: "Friends", lookup: "Lookup", settings: "Settings", ranks: "Rank planner", treasury: "Treasury", "approved-guilds": "Signed guild list", renames: "Renames", news: "News", audit: "Audit log", "ruleset-publication": "Ruleset publication", "directory-visibility": "Directory preferences", community: "Community" };
+    const community = { "": "Overview", directory: "Discord member list", profile: "My profile", workshop: "Crafters & Artisans", calendar: "Calendar", census: "Census preview", trial: "My trial", dues: "My dues", news: "Guild news", army: "Army", leadership: "Leadership" };
+    const staff = { "": "Overview", applications: detail ? "Application details" : "Applications", votes: "Votes", names: "Reserved names", friends: "Friends", lookup: "Lookup", settings: "Settings", ranks: "Rank planner", treasury: "Treasury", "approved-guilds": "Signed guild list", renames: "Renames", news: "News", audit: "Audit log", "ruleset-publication": "Ruleset publication", "directory-visibility": "Discord member list preferences", community: "Community" };
     const staffCommunity = { trials: "Trials", departures: "Departures", cases: "Restriction cases", ledger: "Contribution ledger", inbox: "Private requests", claims: "Character claims" };
     if (head === "admin") return `Admin · ${sub === "community" && own(staffCommunity, detail) ? staffCommunity[detail] : own(staff, sub || "") ? staff[sub || ""] : "Overview"}`;
     if (head === "community") {
@@ -4000,7 +4000,7 @@
 
   function adminTabs(sub) {
     const groups = [
-      ["Applications & Roster", [["", "Overview"], ["applications", "Applications"], ["votes", "Votes"], ["names", "Reserved names"], ["friends", "Friends"], ["lookup", "Lookup"], ["renames", "Renames"], ["directory-visibility", "Directory preferences"]]],
+      ["Applications & Roster", [["", "Overview"], ["applications", "Applications"], ["votes", "Votes"], ["names", "Reserved names"], ["friends", "Friends"], ["lookup", "Lookup"], ["renames", "Renames"], ["directory-visibility", "Discord member list preferences"]]],
       ["Governance, Ranks & Appointments", [["ranks", "Rank planner"], ["approved-guilds", "Signed guild list"]]],
       ["Imperial Treasury & Stockades", [["treasury", "Treasury"]]],
       ["News, Calendar & Operations", [["news", "News"], ...(anyCommunity() ? [["community", "Community"]] : [])]],
@@ -4915,7 +4915,7 @@
       const id = target.value.trim(); if (!live() || busy || !/^[1-9][0-9]{16,19}$/.test(id)) return;
       const requestedGeneration = ++generation, current = () => live() && generation === requestedGeneration && target.value.trim() === id;
       busy = true; selectedTarget = ""; invalidateConfirmation(); sync();
-      try { const d = await api("POST", "/api/admin/discord-directory/status", {discordId:id}, {live:current}); if (!current()) return; if (d?.discordId !== id || typeof d.listed !== "boolean") throw Error("Unreadable directory preference"); invalidateConfirmation(); selectedTarget = id; listed.checked = d.listed; restoreAllowed = d.restoreAllowed === true; notice.textContent = (d.listed ? "The eligible Olympus row can be listed. " : "The entire directory row is hidden. ") + "Preference origin: " + String(d.visibilityOrigin || "unconfirmed") + ". " + (restoreAllowed ? "" : "Only this member can change their self-service preference. ") + (d.erasureNotice || ""); }
+      try { const d = await api("POST", "/api/admin/discord-directory/status", {discordId:id}, {live:current}); if (!current()) return; if (d?.discordId !== id || typeof d.listed !== "boolean") throw Error("Unreadable directory preference"); invalidateConfirmation(); selectedTarget = id; listed.checked = d.listed; restoreAllowed = d.restoreAllowed === true; notice.textContent = (d.listed ? "The eligible row can appear in the Discord member list. " : "The whole row is hidden from the Discord member list. ") + "Preference origin: " + String(d.visibilityOrigin || "unconfirmed") + ". " + (restoreAllowed ? "" : "Only this member can change their self-service preference. ") + (d.erasureNotice || ""); }
       catch (error) { if (current()) notice.textContent = explain(error,"The preference could not be confirmed; no change was sent."); }
       finally { busy = false; if (live()) sync(); }
     });
@@ -4923,14 +4923,14 @@
       const id = selectedTarget, requested = listed.checked; if (!live() || save.disabled || id !== target.value.trim() || confirmedPreference !== preferenceKey()) return;
       const requestedGeneration = ++generation, current = () => live() && generation === requestedGeneration && target.value.trim() === id;
       busy = true; sync();
-      try { const d = await api("POST", "/api/admin/discord-directory/visibility", {discordId:id,listed:requested,requestConfirmed:true}, {live:current}); if (!current()) return; if (d?.discordId !== id || d.listed !== requested) throw Error("Preference outcome unconfirmed"); notice.textContent = d.listed ? "Default eligibility restored at this member’s request." : "The member’s whole directory row is hidden; no website account was created."; }
+      try { const d = await api("POST", "/api/admin/discord-directory/visibility", {discordId:id,listed:requested,requestConfirmed:true}, {live:current}); if (!current()) return; if (d?.discordId !== id || d.listed !== requested) throw Error("Preference outcome unconfirmed"); notice.textContent = d.listed ? "Default eligibility restored at this member’s request." : "The member’s whole row is hidden from the Discord member list."; }
       catch (error) { if (current()) notice.textContent = explain(error,"Outcome unconfirmed. Read the same member’s preference before any further change."); }
       finally { busy = false; selectedTarget = ""; invalidateConfirmation(); if (live()) sync(); }
     });
-    clear(body); add(body, panel); add(panel, frame("Attended directory preference", null,
-      h("p", {text:"Use only for a person’s explicit listing request, including Olympus role holders who never registered on this website. This hides or restores an attended preference for the whole directory row; it cannot override a member’s self-service choice and changes no Discord role, account or optional profile."}),
+    clear(body); add(body, panel); add(panel, frame("Attended Discord member list preference", null,
+      h("p", {text:"Use only for a person’s explicit listing request, including Olympus role holders who never registered on this website. This control hides or restores the entire Discord member list row at the person’s request. Members retain control of their self-service preferences."}),
       fieldBox("attended-directory-id", "Exact Discord account ID supplied by the requester", target), read,
-      h("label", null, listed, " List the eligible Olympus row"), h("label", null, confirmed, " I verified this exact account holder requested this preference"), save, notice));
+      h("label", null, listed, " Show the eligible row in the Discord member list"), h("label", null, confirmed, " I verified this exact account holder requested this preference"), save, notice));
   }
 
   // Explicit publication: request-driven steps, durable original operations, no future selector or automatic sends.
@@ -5856,7 +5856,7 @@
     conflict: "Someone else saved this first, or the page is out of date. Reload and try again.",
     cursor_stale: "The list changed while you were reading it; it starts again from the top.",
     directory_too_large: "The directory is too large to show safely right now. Tell an officer.",
-    directory_full: "The directory is full: everything was saved, but your profile stays unlisted until a place frees up.",
+    directory_full: "There is no room in Member profiles. Your details were saved and your profile stays hidden.",
     name_conflict: "One of these names belongs to another account's verified character, or clashes with one. Nothing was saved; check the names.",
     slow_down: "Too many requests in one minute. Wait a moment, then try again.",
     invalid_q: "Type at least two characters of a recipe name.",
@@ -6042,7 +6042,7 @@
     if (sub === "workshop" && feat("crafting")) {
       add(body, [frame("Crafters & Artisans Workshop", h("a", { class: "btn small", href: "#/community/profile", text: "List my recipes" }),
         h("p", { text: "Find members offering rare recipes, consumables and specialist crafts. Search by recipe or profession, then arrange materials and payment directly with the crafter." }),
-        h("p", { class: "muted small", text: "Opt in through My profile: list your profile, professions and any recipes you wish to offer. Untick the listing box to withdraw from both directories, or remove individual offers there. Recipe ownership, rarity and skill are self-reported; confirm them before trading." })), writsPanel199("community/workshop"), craftingPanel(true)]); return;
+        h("p", { class: "muted small", text: "Use My profile to list your professions and any recipes you wish to offer. Unticking the box hides your detailed profile and Workshop offers. The Discord member list has a separate visibility control. You can remove individual offers in My profile. Recipe ownership, rarity and skill are self-reported; confirm them before trading." })), writsPanel199("community/workshop"), craftingPanel(true)]); return;
     }
     if (sub === "profile" && feat("directory")) { if (!can("confirmedGuildData")) { add(body, memberActionNotice()); return; } return communityProfile(body); }
     if (sub === "calendar" && feat("events")) {
@@ -6060,8 +6060,8 @@
     if (can("armyRead")) cards.push(h("a", { class: "card", href: "#/community/army" }, h("div", { class: "card-head" }, icon("icon-friends"), h("h3", { text: "Army" })), h("p", { class: "muted small", text: "Read guild snapshots shared for signed-in Olympus members by authorized reporters. These unverified figures count characters, not people." })));
     if (feat("census") && can("confirmedGuildData")) cards.push(h("a", { class: "card", href: "#/community/census" }, h("div", { class: "card-head" }, icon("icon-friends"), h("h3", { text: "Census preview" })), h("p", { class: "muted small", text: "Paste an optional addon export to inspect unsigned guild observations. Private preview only; nothing is saved." })));
     if (feat("directory")) {
-      cards.push(h("a", { class: "card", href: "#/community/directory" }, h("div", { class: "card-head" }, icon("icon-friends"), h("h3", { text: "Member directory" })), h("p", { class: "muted small", text: "Current Discord members, their portraits and permitted public roles, with verified characters only for eligible website accounts." })));
-      cards.push(h("a", { class: "card", href: "#/community/profile" }, h("div", { class: "card-head" }, icon("pos-member"), h("h3", { text: "My profile" })), h("p", { class: "muted small", text: "Opt in to a detailed profile and crafting offers. Those extra details stay unlisted until you tick the box. Your separate default Discord directory row has its own visibility control." })));
+      cards.push(h("a", { class: "card", href: "#/community/directory" }, h("div", { class: "card-head" }, icon("icon-friends"), h("h3", { text: "Discord member list" })), h("p", { class: "muted small", text: "Current holders of an Olympus membership or rank role in Discord. Shows names, portraits and permitted public roles, plus verified characters for eligible website accounts." })));
+      cards.push(h("a", { class: "card", href: "#/community/profile" }, h("div", { class: "card-head" }, icon("pos-member"), h("h3", { text: "My profile" })), h("p", { class: "muted small", text: "Choose whether to show your detailed profile in Member profiles and share any Workshop offers you add. The Discord member list has its own visibility control." })));
     }
     if (feat("crafting")) cards.push(h("a", { class: "card", href: "#/community/workshop" }, h("div", { class: "card-head" }, icon("pos-professions"), h("h3", { text: "Crafters & Artisans" })), h("p", { class: "muted small", text: "Search members' rare-recipe and profession offers, and list your own crafts through My profile." })));
     if (feat("events")) cards.push(h("a", { class: "card", href: "#/community/calendar" }, h("div", { class: "card-head" }, icon("icon-clock"), h("h3", { text: "Calendar" })), h("p", { class: "muted small", text: `Guild events, your answers${feat("attendance") ? " and what the organizers recorded afterwards" : ""}. For guild members and site administrators.` })));
@@ -6493,11 +6493,11 @@
     more.addEventListener("click", () => { stopScan(); load(false); }); refresh.addEventListener("click", () => load(true));
     scanAll.addEventListener("click", () => { if (!live()) return; if (continuous) stopScan(); else if (cursor) { continuous = true; scanAll.textContent = "Pause loading remaining members"; load(false); } });
     const profiles = h("div", { class: "stack" });
-    const showProfiles = h("button", { class: "btn small", type: "button", text: "Show opt-in guild profiles and crafting offers" });
+    const showProfiles = h("button", { class: "btn small", type: "button", text: "Show Member profiles and crafting offers" });
     const ownVisibility = h("div", {class:"stack", "data-directory-visibility":"own"});
     showProfiles.addEventListener("click", async () => { if (!live()) return; showProfiles.disabled = true; try { await communityProfileDirectory(profiles); } finally { if (live()) showProfiles.hidden = true; } });
-    add(body, frame("Discord member directory", h("a", { class: "btn small", href: "#/community/profile", text: "My profile" }),
-      h("p", { class: "muted small", text: "Current holders of an Olympus membership or rank role, read a page at a time. Other members of the Asmongold Discord server are not listed. Your whole row is listed by default unless you opt out below; additional profile details remain a separate opt-in. Roles do not prove character membership. Verified characters are shown only for existing website accounts that pass current verification and privacy checks." }),
+    add(body, frame("Discord member list", h("a", { class: "btn small", href: "#/community/profile", text: "My profile" }),
+      h("p", { class: "muted small", text: "Current holders of an Olympus membership or rank role, read a page at a time. Other members of the Asmongold Discord server are not listed. Eligible members are listed by default. Use the control below to hide your whole row. Member profiles use a separate opt-in. Roles do not prove character membership. Verified characters are shown only for existing website accounts that pass current verification and privacy checks." }),
       ownVisibility, status, list, h("div", { class: "btn-row" }, refresh, more, scanAll), showProfiles, profiles));
     const loadOwnVisibility = async () => {
       try {
@@ -6506,20 +6506,20 @@
         clear(ownVisibility);
         const listed = h("input", {type:"checkbox", checked:state.listed, id:"discord-directory-listed"});
         const save = h("button", {type:"button", class:"btn small", text:"Save my listing preference"});
-        const note = h("p", {class:"muted small", role:"status", text:state.listed ? "Your eligible Olympus row can be listed." : "Your whole directory row is hidden."});
+        const note = h("p", {class:"muted small", role:"status", text:state.listed ? "Your row can appear in the Discord member list while you are eligible." : "Your whole row is hidden from the Discord member list."});
         const erasureNote = h("p",{class:"muted small",text:state.erasureNotice || "Account erasure deletes this preference. An eligible Discord account may then appear in the directory; a fresh attended opt-out can hide it again."});
         save.addEventListener("click", async () => {
           if (!live() || save.disabled) return; save.disabled = true;
           try {
             const out = await api("PUT", "/api/community/discord-directory/visibility", {listed:listed.checked}); if (!live()) return;
             if (!out || typeof out.listed !== "boolean") throw Error("The preference outcome is unconfirmed. Reopen the directory before acting again.");
-            listed.checked = out.listed; note.textContent = out.listed ? "Your eligible Olympus row can be listed." : "Your whole directory row is hidden. Earlier reader copies cannot be recalled.";
+            listed.checked = out.listed; note.textContent = out.listed ? "Your row can appear in the Discord member list while you are eligible." : "Your whole row is hidden from the Discord member list. Earlier reader copies cannot be recalled.";
             await load(true);
           } catch (error) { if (live()) note.textContent = explain(error,"The preference outcome is unconfirmed. Reopen the directory to read it before acting again."); }
           finally { if (live()) save.disabled = false; }
         });
-        add(ownVisibility, [h("label", {class:"check"}, listed, " List my Discord profile when I have an Olympus membership or rank role"), note, erasureNote, save]);
-      } catch (error) { if (live()) { clear(ownVisibility); add(ownVisibility, h("p", {class:"muted small", text:explain(error,"Your own directory preference is unavailable.")})); } }
+        add(ownVisibility, [h("label", {class:"check"}, listed, " Show my whole row in the Discord member list when I hold an Olympus membership or rank role"), note, erasureNote, save]);
+      } catch (error) { if (live()) { clear(ownVisibility); add(ownVisibility, h("p", {class:"muted small", text:explain(error,"Your Discord member list preference is unavailable.")})); } }
     };
     loadOwnVisibility();
     await load(true);
@@ -6537,18 +6537,18 @@
         for (const m of data.members) list.appendChild(memberCard(m));
         cursor = data.nextCursor;
         more.hidden = !cursor;
-        status.textContent = data.counts.listed ? `${plural(data.counts.listed, "listed member")}${list.firstChild ? "" : "; none to show"}` : can("confirmedGuildData") ? "Nobody is listed yet. Be the first: open My profile and tick the box." : "Nobody is listed yet.";
+        status.textContent = data.counts.listed ? `${plural(data.counts.listed, "listed profile")}${list.firstChild ? "" : "; none to show"}` : can("confirmedGuildData") ? "No profiles are listed yet. To list yours, open My profile and tick the box." : "No profiles are listed yet.";
       } catch (e) {
         if (codeOf(e) === "cursor_stale") { toast(COMMUNITY_ERRORS.cursor_stale); return load(true); }
-        status.textContent = explain(e, "The directory could not be read.");
+        status.textContent = explain(e, "Member profiles could not be read.");
         if (e && (e.status === 403 || e.status === 503)) refreshCommunity();
       } finally { more.disabled = false; }
     };
     more.addEventListener("click", () => load(false));
     add(body, [
-      frame("Member directory", h("a", { class: "btn small", href: "#/community/profile", text: "My profile" }),
+      frame("Member profiles", h("a", { class: "btn small", href: "#/community/profile", text: "My profile" }),
         sourceStrip("Member opt-in profiles", "Profile and roster verification times are not supplied here; this is not a live roster"),
-        h("p", { class: "muted small", text: "Members who chose to be listed, shown to guild members and site administrators by display name. A name marked confirmed is one the officers' roster export has confirmed on that account; the rest are labels members gave themselves." }),
+        h("p", { class: "muted small", text: "Detailed profiles published by members who opted in. Qualified Community readers see their display names. A name marked confirmed is one the officers' roster export has confirmed on that account; the rest are labels members gave themselves." }),
         status, list, h("div", { class: "btn-row" }, more)),
       feat("crafting") ? craftingPanel() : null,
     ]);
@@ -6652,8 +6652,12 @@
     const dirtyMark = h("span", { class: "badge warn", text: "unsaved", hidden: true });
     function markDirty() { setDirty("community-profile", true, dirtyMark); }
     const form = h("form", { class: "stack", novalidate: true },
-      noticeBox("info", "icon-friends", h("p", null, h("strong", { text: "Who sees this: " }), "signed-in guild members and site administrators, by your display name and a random reference, never your Discord ID; only while you keep the box ticked and stay roster-confirmed. Officers may confirm or reject a claimed alt. This optional detailed profile is separate from the default Discord directory row; use that directory's own visibility control to hide the whole row. Your recruitment application is separate: its stated board fields appear only if you agree to the voting board, and a board picture needs its separate optional choice.")),
-      h("label", { class: "check" }, listed, " List me in the member directory"),
+      noticeBox("info", "icon-friends",
+        h("p", null, h("strong", { text: "Who sees this?" }), " Qualified Community readers, including guild members and site administrators, see your display name and a random reference. Your Discord ID stays private. Officers may confirm or reject a claimed alt."),
+        h("p", null, `Your detailed profile${crafts ? " and Workshop offers" : ""} appear while the box is ticked and you stay roster-confirmed. Unticking it keeps your saved details in My profile.`),
+        h("p", null, "Your whole row in the Discord member list has a separate control. ", h("a", { href: "#/community/directory", text: "Manage my Discord member list visibility" })),
+        h("p", { text: "Your recruitment application has its own voting-board choices, including a separate choice for your picture." })),
+      h("label", { class: "check" }, listed, " Show my detailed profile in Member profiles"),
       fieldBox("main", "Main character", main, { hint: `${limits.nameMin}–${limits.nameMax} letters, as "First Last". It is marked confirmed when it matches a character verified on your account; a name verified on another account is refused.` }),
       p.main ? h("p", { class: "small" }, "Saved main: ", h("b", { text: p.main.name }), " ", proofBadge(p.main.source)) : null,
       fieldBox("raid-role", "Raid role", raidRole),
@@ -6685,7 +6689,7 @@
         const code = codeOf(ex);
         if (code === "directory_full" && ex.data && ex.data.saved && ex.data.profile) {
           setDirty("community-profile", false, dirtyMark);
-          toast("Saved, but not listed.", "");
+          toast("Saved. Your detailed profile stays hidden from Member profiles.", "");
           redraw({ profile: ex.data.profile, limits }, limits, redraw);
           return;
         }
@@ -6695,7 +6699,7 @@
           try {
             const fresh = await api("GET", "/api/community/profile");
             p.revision = fresh.profile.revision;
-            notice.appendChild(noticeBox("warn", "icon-warning", h("p", null, h("strong", { text: "The answer was lost. " }), "Your profile was re-read: the current version is ", h("b", { text: fresh.profile.main ? fresh.profile.main.name : "no main" }), `, ${fresh.profile.listed ? "listed" : "not listed"}. Your draft is kept in this form; if the current version already shows it, nothing more is needed; otherwise Save again applies it.`)));
+            notice.appendChild(noticeBox("warn", "icon-warning", h("p", null, h("strong", { text: "The answer was lost. " }), "Your profile was re-read: the current version is ", h("b", { text: fresh.profile.main ? fresh.profile.main.name : "no main" }), `, ${fresh.profile.listed ? "shown in Member profiles" : "hidden from Member profiles"}. Your draft is kept in this form; if the current version already shows it, nothing more is needed; otherwise Save again applies it.`)));
           } catch { notice.appendChild(noticeBox("warn", "icon-warning", h("p", { text: "The answer was lost and the profile could not be re-read. Your draft is kept in this form; reload the page to see the current version." }))); }
           save.disabled = false;
           return;
@@ -6706,7 +6710,7 @@
           p.revision = fresh.revision;
           clear(notice);
           notice.appendChild(noticeBox("warn", "icon-warning",
-            h("p", null, h("strong", { text: "Your profile changed elsewhere " }), "(another tab, or an officer's review) since this page loaded. Nothing was saved. Your draft is kept in this form; the current version is: ", h("b", { text: fresh.main ? fresh.main.name : "no main" }), `, ${fresh.listed ? "listed" : "not listed"}, ${plural((fresh.alts || []).length, "alt")}, ${plural((fresh.professions || []).length, "profession")}. `, "Save again to apply your draft over it, or discard the draft and see the current version."),
+            h("p", null, h("strong", { text: "Your profile changed elsewhere " }), "(another tab, or an officer's review) since this page loaded. Nothing was saved. Your draft is kept in this form; the current version is: ", h("b", { text: fresh.main ? fresh.main.name : "no main" }), `, ${fresh.listed ? "shown in Member profiles" : "hidden from Member profiles"}, ${plural((fresh.alts || []).length, "alt")}, ${plural((fresh.professions || []).length, "profession")}. `, "Save again to apply your draft over it, or discard the draft and see the current version."),
             h("div", { class: "btn-row" }, h("button", { class: "btn small", type: "button", text: "Reload and discard my draft", onclick: () => { setDirty("community-profile", false, dirtyMark); redraw({ profile: fresh, limits }, limits, redraw); } }))));
           save.disabled = false;
           return;
@@ -6722,7 +6726,7 @@
         if (ex && (ex.status === 403 || ex.status === 503)) refreshCommunity();
       }
     });
-    return frame("My profile", h("span", { class: "badge " + (p.listed ? "green" : "muted"), text: p.listed ? "listed" : "not listed" }), form);
+    return frame("My profile", h("span", { class: "badge " + (p.listed ? "green" : "muted"), text: p.listed ? "Shown in Member profiles" : "Hidden from Member profiles" }), form);
   }
 
   // ---------------------------------------------------------------- community (.96): the calendar with answers and own attendance, the own trial, the own dues
