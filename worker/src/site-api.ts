@@ -586,7 +586,13 @@ async function saveApplication(env: Env, user: SiteUser, body: Record<string, un
   // A page opened before a role was put to the vote hid the board box: the list it lacked comes back with the refusal,
   // so the page can show the box and the applicant tick it, without losing what they typed.
   if ("error" in a) return a.field === "board" ? apiJson({ ...a, noVote: s.noVote }, 400) : bad(a);
-  const answers = JSON.parse(a.answers) as { applicationTrack?: string; targetOffice?: string | null; references?: Pick[]; professions?: string[] };
+  const answers = JSON.parse(a.answers) as {
+    applicationTrack?: string;
+    targetOffice?: string | null;
+    references?: Pick[];
+    professions?: string[];
+    [APPLICATION_OPENING_ANSWER_KEY]?: string;
+  };
   if (retainingReserved) {
     if (typeof previousAnswers.applicationTrack === 'string') answers.applicationTrack = previousAnswers.applicationTrack;
     answers.targetOffice = typeof previousAnswers.targetOffice === 'string' ? previousAnswers.targetOffice : null;
