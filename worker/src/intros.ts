@@ -75,6 +75,9 @@ export const LINK_HOSTS = [
   "www.wowhead.com", "www.icy-veins.com", "www.warcrafttavern.com",
 ];
 
+const LEGACY_GUIDE_INVITE = "You can request a guild invite this way before joining.";
+const IN_GAME_GUIDE_INVITE = "Ask an Olympus officer for an in-game invite first. The website invite queue is paused.";
+
 export const INTROS: Intro[] = [
   {
     key: "olympus-info",
@@ -88,8 +91,7 @@ export const INTROS: Intro[] = [
           "",
           "**Get into the guild channels**",
           "1. Read the server rules in {#server-rules}; they apply here too.",
-          // .52 (Codex's content candidate, 1 Oct 00:37 UTC): the supported flow queues an invite; nobody has to be in the guild first.
-          "2. Follow the pinned guide in {#join-olympus}: get a code and send the shown line from your character in game. You can request a guild invite this way before joining. The member channels open after the bot confirms your character on the officer-exported guild roster and the access checks pass.",
+          `2. Follow the pinned guide in {#join-olympus}: get a code and send the shown line from your character in game. ${LEGACY_GUIDE_INVITE} The member channels open after the bot confirms your character on the officer-exported guild roster and the access checks pass.`,
           "3. In Olympus 2 or a later Olympus guild? Chat in {#olympus-visitors}; only the main guild is verified here.",
           "",
           "**Good to know**",
@@ -407,8 +409,13 @@ export function resolveRuleset(text: string, snapshot: RulesetSnapshot): string 
     return k === "label" ? rulesetLabel(snapshot.profile) : k === "ruleset" ? snapshot.profile.ruleset : k === "faction" ? snapshot.profile.faction : rulesetDecidedText(snapshot);
   });
 }
-export function renderEmbeds(intro: Intro, channels: Record<string, string>, snapshot: RulesetSnapshot): Embed[] {
-  return JSON.parse(JSON.stringify(intro.embeds), (_k, v) => (typeof v === "string" ? resolveRuleset(resolveText(v, channels), snapshot) : v)) as Embed[];
+export function renderEmbeds(intro: Intro, channels: Record<string, string>, snapshot: RulesetSnapshot, legacyInviteQueue = true): Embed[] {
+  const inGameInvites = intro.key === "olympus-info" && !legacyInviteQueue;
+  return JSON.parse(JSON.stringify(intro.embeds), (_k, value) => {
+    if (typeof value !== "string") return value;
+    const copy = inGameInvites ? value.replace(LEGACY_GUIDE_INVITE, IN_GAME_GUIDE_INVITE) : value;
+    return resolveRuleset(resolveText(copy, channels), snapshot);
+  }) as Embed[];
 }
 
 /** What the bot last posted is compared by this, so a refresh edits only what changed. A forum post's title counts. */

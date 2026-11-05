@@ -187,6 +187,8 @@ async function fixture(generation=null,over={}){
  check('real fixed-clock retention strips actors, keeps shared known pointer and no-repeat custody',f.db.prepare('SELECT COUNT(*)n FROM ruleset_publications WHERE actor IS NOT NULL').get().n===0&&f.db.prepare("SELECT message_id FROM ruleset_publications WHERE target_key='guide'").get().message_id&&f.db.prepare('SELECT COUNT(*)n FROM ruleset_publications').get().n===4);
  const family=load('privacy-access-family-history').privacyFamilyHistoryDefinition('community.ruleset_publication.operations');check('new own-history key is closed and curated',typeof family.statements==='function');
  check('actual new table is classified with real registered hooks',await load('privacy-business-catalog').servingPrivacyCatalogCurrent(f.env));
+ const infoDescription=env=>JSON.parse(env.db.prepare("SELECT frozen_payload FROM ruleset_publications WHERE target_key='olympus-info'").get()?.frozen_payload??'null')?.embeds?.[0]?.description??'';
+ const legacyInfo=infoDescription(f);
  const guideKeys=await crypto.subtle.generateKey({name:'Ed25519'},true,['sign','verify']);
  const guidePublicKey=Buffer.from(await crypto.subtle.exportKey('raw',guideKeys.publicKey)).toString('hex');
  const strictGuide=await fixture(g,{DISCORD_PUBLIC_KEY:guidePublicKey,ROLE_OFFICER:OTHER,REQUEST_CODES:'on',VERIFY_MEMBERSHIP_ONLY:'true',
@@ -199,6 +201,11 @@ async function fixture(generation=null,over={}){
  };
  const strictSelection=await strictGuide.select();
  const frozenGuide=JSON.parse(strictGuide.db.prepare("SELECT frozen_payload FROM ruleset_publications WHERE target_key='guide'").get()?.frozen_payload??'null');
+ const strictInfo=infoDescription(strictGuide);
+ check('managed intro changes only the invite instruction in strict mode, preserving legacy and the code flow',
+  legacyInfo.includes('You can request a guild invite this way before joining.')
+  &&strictInfo===legacyInfo.replace('You can request a guild invite this way before joining.','Ask an Olympus officer for an in-game invite first. The website invite queue is paused.')
+  &&strictInfo.includes('get a code and send the shown line from your character in game')&&strictGuide.effects===0,strictInfo);
  check('strict managed guide freezes in-game invite and real verification instructions before any effect',
   strictSelection.status===200&&strictCopy(frozenGuide)&&strictGuide.effects===0,frozenGuide?.embeds?.[0]?.description);
  const guideChannel=CH['olympus-info'];
