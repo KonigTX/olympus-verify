@@ -1708,14 +1708,16 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   },
   {
     "file": "worker/public/static/app.js",
-    "startMarker": "        const row = office199(family.primaryKey), reserved = [\"leader\",\"high_council\",\"officer_corps\"].includes(family.tier) || family.sourceKeys.some(reservedKey201);",
+    "startMarker": "    const reserved = [\"leader\",\"high_council\",\"officer_corps\"].includes(family.tier) || family.sourceKeys.some(reservedKey201);",
     "singleLine": true,
-    "paragraphSha256": "437d986083c837391fc4653333712ddc8a21a8d22086bd54a505a7d6e228a6a4",
-    "paragraphBytes": 167,
+    "paragraphSha256": "ad29a26d3faf6b8883b9497ba779a77f38cea22e8f21a2ad671701fb0565700d",
+    "paragraphBytes": 127,
     "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
     "count": 1,
     "ownerRelease": 203,
-    "purpose": "Owner203 canonical-family presentation and current reserved-seat classification; exact unique source line only, no new authority or general vocabulary allowance."
+    "purpose": "Owner203 reserved-seat rule moved to the shared .228 application choice helper. Credit applies to the exact current source line.",
+    "predecessorSHA256": "437d986083c837391fc4653333712ddc8a21a8d22086bd54a505a7d6e228a6a4",
+    "historicalParagraph": "        const row = office199(family.primaryKey), reserved = [\"leader\",\"high_council\",\"officer_corps\"].includes(family.tier) || family.sourceKeys.some(reservedKey201);"
   },
   {
     "file": "worker/src/index.ts",
@@ -2040,6 +2042,12 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   const ownerContexts203 = CURRENT_CONTEXTS.filter(spec => spec.ownerRelease === 203);
   const ownerLineage203=[...ownerContexts203,...retainedApp228.filter(spec=>spec.ownerRelease===203)];
   check('.203 preserves all four exact family contexts, with two retired by .228',ownerContexts203.length===2 && ownerLineage203.length===4 && ownerLineage203.every(spec=>spec.file===iconFile&&spec.singleLine===true&&spec.digest===currentDigest)&&ownerLineage203.reduce((sum,spec)=>sum+spec.count,0)===5&&GUARD.size===28);
+  const priorEligibility203 = ownerContexts203.find(spec => spec.predecessorSHA256 === "437d986083c837391fc4653333712ddc8a21a8d22086bd54a505a7d6e228a6a4");
+  const retiredEligibility203 = priorEligibility203?.historicalParagraph || "";
+  check(".228 moved eligibility guard preserves the original line as history without granting it credit",
+    sha(retiredEligibility203) === priorEligibility203?.predecessorSHA256
+    && !iconText.includes(retiredEligibility203)
+    && vocabularyOverages(iconFile, iconText + "\n" + retiredEligibility203).includes(iconFile + ": digest " + currentDigest.slice(0, 12) + " x1"));
   for (const spec of ownerContexts203) {
     const qualified = currentContextQualification(iconFile,iconText), paragraph = qualified.paragraphs.find(value => value.startsWith(spec.startMarker)) || '', changed = paragraph ? paragraph.slice(0,-1)+'!' : '';
     check('.203 family context qualifies only its exact source bytes: '+spec.paragraphSha256.slice(0,12),qualified.errors.length === 0 && Buffer.byteLength(paragraph,'utf8') === spec.paragraphBytes && sha(paragraph) === spec.paragraphSha256 && (guardedCounts(paragraph)[currentDigest] || 0) === spec.count);
