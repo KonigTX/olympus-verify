@@ -98,6 +98,38 @@ async function launchTransition228(){
   const budget=load('./scheduled-budget'),line=budget.SCHEDULED_BUDGET.find(r=>r.job==='autoQueueReserved');
   check('  the scheduled budget line for autoQueueReserved is unchanged (the hold spends no statement)',!!line&&line.worst===1+1+budget.SCHEDULED_CAPS.autoQueueRounds*(1+5)+1&&line.worst===9,line);
  });
+ await guard('partial commit before a pause',async()=>{
+  const t=Math.floor(Date.now()/1000),partial=directEnv();
+  const auditBefore=one("SELECT COALESCE(MAX(id),0) AS id FROM audit").id;
+  const names=Array.from({length:251},(_,i)=>'Tlqpart'+String.fromCharCode(97+Math.floor(i/26),97+i%26));
+  let committedChunks=0;
+  try{
+   await fixtureRows("INSERT INTO site_reserved (owner_id,name,name_key,status,created_at,approved_by,approved_at) VALUES (?,?,?,'approved',?,?,?)",
+    names.map((name,i)=>[MEMBER,name,name.toLowerCase(),t-600,STAFF,t-500+i]));
+   HOOKS.afterBatch=(_n,statements)=>{
+    if(!statements.some(sql=>sql.includes("SELECT name_key, name, owner_id, NULL, 'queued'")))return;
+    committedChunks++;
+    Object.assign(partial,MEMBERS_ONLY);
+   };
+   const out=await siteQueue.queueReserved(partial,STAFF);
+   const rows=db.prepare("SELECT r.status,r.queued_at,q.status AS invite_status,q.priority,q.approved_by FROM site_reserved r LEFT JOIN invite_queue q ON q.id=r.queue_id WHERE r.name_key GLOB 'tlqpart*' ORDER BY r.approved_at,r.id").all();
+   const invites=one("SELECT COUNT(*) AS c FROM invite_queue WHERE name_key GLOB 'tlqpart*'").c;
+   const auditRows=db.prepare("SELECT actor,details FROM audit WHERE id>? AND action='site.reserved_queued'").all(auditBefore);
+   const expected={queued:250,bumped:0,inGuild:0,blocked:0,contested:0,more:false,held:true};
+   const matches=result=>Object.entries(expected).every(([key,value])=>result[key]===value);
+   const last=rows.at(-1);
+   check('a pause after one committed queue round retains its 250 results and exact audit, leaving the final name untouched',
+    committedChunks===1&&matches(out)&&rows.length===251&&invites===250
+     &&rows.slice(0,-1).every(r=>r.status==='queued'&&r.queued_at!==null&&r.invite_status==='queued'&&r.priority===1&&r.approved_by==='site')
+     &&last?.status==='approved'&&last.queued_at===null&&last.invite_status===null
+     &&auditRows.length===1&&auditRows[0].actor===STAFF&&matches(JSON.parse(auditRows[0].details)),
+    out,{committedChunks,invites,last,auditRows:auditRows.length});
+  }finally{
+   HOOKS.afterBatch=null;
+   await fixtureRun("DELETE FROM invite_queue WHERE name_key GLOB 'tlqpart*'");
+   await fixtureRun("DELETE FROM site_reserved WHERE name_key GLOB 'tlqpart*'");
+  }
+ });
  if(priorLaunch)await fixtureRun("UPDATE site_settings SET value=? WHERE key='launchAt'",priorLaunch.value);else await fixtureRun("DELETE FROM site_settings WHERE key='launchAt'");
  await resetNames();
 
