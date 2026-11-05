@@ -2,6 +2,16 @@ import type { AppRow } from './site-core';
 import { sha256 } from './account-generation-contracts';
 
 export const ORDINARY_DECLINE_ANSWER_KEY = '_olympusOrdinaryDeclineV1';
+export const APPLICATION_OPENING_ANSWER_KEY = '_olympusApplicationOpeningV1';
+
+export function storedApplicationOpening(answers: string): string | null {
+  try {
+    const value: unknown = JSON.parse(answers)?.[APPLICATION_OPENING_ANSWER_KEY];
+    return typeof value === 'string' && /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Keep the applicant's exact content and edit clock. Staff labels for the
  * open application are equivalent here. RT16 compares its own full row.

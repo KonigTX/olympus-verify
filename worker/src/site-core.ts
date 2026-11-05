@@ -9,7 +9,7 @@ import { now } from "./db";
 import { privacyGenerationLiteralFenceSql } from "./privacy-serving-authority";
 import { DiscordError, rest } from "./discord";
 import { currentPosition, LIMITS, raidFit, roleKeyOf } from "./site-data";
-import { ORDINARY_DECLINE_ANSWER_KEY } from "./application-edit219";
+import { APPLICATION_OPENING_ANSWER_KEY, ORDINARY_DECLINE_ANSWER_KEY } from "./application-edit219";
 
 export const siteHost = (env: Env) => (env.SITE_HOST ?? "").trim().toLowerCase();
 /** Build .49: hosts the site used to live on (the hostname swap keeps them as 301s to SITE_HOST). */
@@ -220,6 +220,7 @@ export const parseAnswers = (raw: string | null | undefined): Record<string, unk
     if (!v || typeof v !== "object" || Array.isArray(v)) return {};
     const answers = v as Record<string, unknown>;
     delete answers[ORDINARY_DECLINE_ANSWER_KEY];
+    delete answers[APPLICATION_OPENING_ANSWER_KEY];
     return answers;
   } catch {
     return {}; // an unreadable row shows empty answers rather than failing the page

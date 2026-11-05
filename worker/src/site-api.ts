@@ -12,7 +12,7 @@ import { requestServingErasure, erasureRequestStatus, privacyBoundSiteEnv,readEr
  * caller's own, and no count of votes of any kind.
  */
 import { errorRef } from "./log";
-import { APPLICATION_EDIT_FIELDS_219, applicationEditToken219, applicationEditValues219, matchesApplicationEditToken219, openApplication219 } from './application-edit219';
+import { APPLICATION_EDIT_FIELDS_219, APPLICATION_OPENING_ANSWER_KEY, applicationEditToken219, applicationEditValues219, matchesApplicationEditToken219, openApplication219, storedApplicationOpening } from './application-edit219';
 import type { Env } from "./env";
 import type { RulesetSnapshot } from "./ruleset-profile";
 import { audit, now } from "./db";
@@ -615,6 +615,14 @@ async function saveApplication(env: Env, user: SiteUser, body: Record<string, un
   if (Array.isArray(kept) && kept.length) {
     answers.professions = PROFESSIONS.filter((p) => kept.includes(p.key)).map((p) => p.key);
     changed = true;
+  }
+  if (existing) {
+    // A reopened application is a new edit lifetime, even with identical answers in the same second.
+    const opening = existing.status === 'withdrawn' ? crypto.randomUUID() : storedApplicationOpening(existing.answers);
+    if (opening) {
+      answers[APPLICATION_OPENING_ANSWER_KEY] = opening;
+      changed = true;
+    }
   }
   if (changed) a.answers = JSON.stringify(answers);
   const t = now();

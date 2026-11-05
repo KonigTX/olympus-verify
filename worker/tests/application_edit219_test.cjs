@@ -276,6 +276,31 @@ async function applicationEdit219(){
    check('Worker refuses '+label+' without changing the application',invalid.status===400&&invalid.body.field==='talentBuilds'&&one('SELECT answers FROM site_applications WHERE discord_id=?',BUILD_OWNER).answers===undecidedRow.answers);
   }
  }
+ const REOPEN_OWNER='300000000000002020',openingKey='_olympusApplicationOpeningV1';
+ const reopenBody={...body,character:'Reopen Main',answers:{...body.answers,extra:'Exact same-second application'}};
+ const reopenRow=()=>one('SELECT * FROM site_applications WHERE discord_id=?',REOPEN_OWNER);
+ const realNow=Date.now;
+ try {
+  const fixedTime=Math.floor(realNow()/1000)*1000;
+  Date.now=()=>fixedTime;
+  await siteUser(REOPEN_OWNER);
+  const reopenProof=(await request('GET','/api/me',undefined,REOPEN_OWNER)).body.applicationEditorProof;
+  const reopenHeaders={...browserHeaders,[editorHeader]:reopenProof};
+  const firstOpen=await request('PUT','/api/application',reopenBody,REOPEN_OWNER,reopenHeaders);
+  if(firstOpen.status!==200)throw Error('first opening fixture: '+JSON.stringify(firstOpen));
+  const firstRow=reopenRow(),firstToken=firstOpen.body.application.editToken;
+  const withdrawn=await request('DELETE','/api/application',{editToken:firstToken},REOPEN_OWNER,reopenHeaders);
+  if(withdrawn.status!==200)throw Error('withdrawn opening fixture: '+JSON.stringify(withdrawn));
+  const reopened=await request('PUT','/api/application',{...reopenBody,editToken:withdrawn.body.application.editToken},REOPEN_OWNER,reopenHeaders);
+  if(reopened.status!==200)throw Error('reopened application fixture: '+JSON.stringify(reopened));
+  const reopenedRow=reopenRow(),reopenedToken=reopened.body.application.editToken,opening=JSON.parse(reopenedRow.answers)[openingKey];
+  const staleModal=await request('DELETE','/api/application',{editToken:firstToken},REOPEN_OWNER,reopenHeaders);
+  check('an identical same-second reopening refuses the old modal and preserves original wall times',firstOpen.status===200&&withdrawn.status===200&&reopened.status===200&&firstToken!==reopenedToken&&staleModal.status===409&&staleModal.body.error==='application_changed'&&reopenRow().status==='submitted'&&reopenedRow.created_at===firstRow.created_at&&reopenedRow.updated_at===firstRow.updated_at&&typeof opening==='string');
+  const changed=await request('PUT','/api/application',{...reopenBody,editToken:reopenedToken,answers:{...reopenBody.answers,extra:'An ordinary edit after reopening',[openingKey]:'applicant-supplied'}},REOPEN_OWNER,reopenHeaders);
+  const ownCopy=await request('GET','/api/me/export',undefined,REOPEN_OWNER);
+  const staffCopy=await request('GET','/api/admin/export/applications',undefined,STAFF);
+  check('subsequent edits retain the server opening and its internal key stays out of own and staff copies',changed.status===200&&typeof opening==='string'&&JSON.parse(reopenRow().answers)[openingKey]===opening&&ownCopy.status===200&&staffCopy.status===200&&JSON.stringify(staffCopy.body).includes('An ordinary edit after reopening')&&[changed.body,ownCopy.body,staffCopy.body].every(value=>!JSON.stringify(value).includes(openingKey)&&!JSON.stringify(value).includes(opening)));
+ } finally { Date.now=realNow; }
  check('application editing uses the exact existing schema',JSON.stringify(db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").all())===schemaBefore);
  console.log('\n'+ok+'/'+n+' passed');process.exit(ok===n?0:1);
 }

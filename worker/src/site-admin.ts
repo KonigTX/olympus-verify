@@ -49,7 +49,7 @@ import { handleRulesetPublication } from './ruleset-publication';
 import { handleMembershipRetirement } from './membership-retirement-route';
 import {prepareMembershipDecision,membershipDecisionTargetToken,membershipDecisionDetailKey,applyMembershipDecision,membershipDecisionPartialGuard,membershipDecisionAuthRequest,membershipDecisionBodyRequest,assertMembershipDecisionOrigin,type MembershipDecisionOrigin} from './privacy-rejection-decision';
 import { handleBetaRoleReset } from './beta-reset-route';
-import { ORDINARY_DECLINE_ANSWER_KEY } from './application-edit219';
+import { APPLICATION_OPENING_ANSWER_KEY, ORDINARY_DECLINE_ANSWER_KEY } from './application-edit219';
 import { appointmentPublicationConfirmation, containsInternalAppointmentProof, prepareAppointmentPublication, appointmentPublicationTargetsCurrentSql, appointmentPublicationTargetFailure, type AppointmentPublicationFailure } from './site-appointed-identities';
 
 const PAGE = 50;
@@ -1106,10 +1106,11 @@ async function lookup(env: Env, q: URLSearchParams): Promise<Response> {
  * allows 10. Pages are small enough to stay well under that; applications carry their answers, so theirs are smaller.
  */
 const DECLINE_ANSWER_PATH = '$.' + ORDINARY_DECLINE_ANSWER_KEY;
+const OPENING_ANSWER_PATH = '$.' + APPLICATION_OPENING_ANSWER_KEY;
 const APPLICATION_EXPORT_REDACT = `CASE WHEN json_valid(a.answers)
-  THEN json_type(a.answers,'${DECLINE_ANSWER_PATH}') IS NOT NULL ELSE 0 END`;
+  THEN json_type(a.answers,'${DECLINE_ANSWER_PATH}') IS NOT NULL OR json_type(a.answers,'${OPENING_ANSWER_PATH}') IS NOT NULL ELSE 0 END`;
 
-/** SQLite has already validated this object and found the exact private key. Scan each
+/** SQLite has already validated this object and found an exact internal key. Scan each
  * member once so duplicate keys cannot force repeated full-JSON rewrites. Keep the original
  * slices of retained members, including numeric lexemes and escaped or nested values. */
 function redactApplicationExportAnswers(value: unknown): string {
@@ -1125,7 +1126,8 @@ function redactApplicationExportAnswers(value: unknown): string {
     const member = value.slice(start, end);
     const key = /^\s*("(?:[^"\\]|\\.)*")\s*:/.exec(member)?.[1];
     if (!key) throw new Error('application_export_answers_invalid');
-    if (JSON.parse(key) !== ORDINARY_DECLINE_ANSWER_KEY) members.push(member);
+    const name = JSON.parse(key);
+    if (name !== ORDINARY_DECLINE_ANSWER_KEY && name !== APPLICATION_OPENING_ANSWER_KEY) members.push(member);
     start = end + 1;
   };
 
