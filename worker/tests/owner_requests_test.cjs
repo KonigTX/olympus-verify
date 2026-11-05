@@ -195,28 +195,30 @@ const status = async (id, over = {}) => (await J(await interactions.handleIntera
   out = await J(res);
   check("ten entries, Olympus I to Olympus X, all empty to begin with", res.status === 200 && out.guilds.length === 10 && out.guilds[0].name === "Olympus I" && out.guilds[9].name === "Olympus X" && out.guilds.every((g) => g.gm === "" && g.officers.length === 0));
   const ten = (fill = {}) => Array.from({ length: 10 }, (_, i) => fill[i] ?? { gm: "", officers: [] });
+  const directoryHolder = "Lumen Accord";
   res = await http("PUT", "/api/admin/leadership", { who: ADMIN, body: { guilds: ten().slice(0, 9) } });
   check("a directory without exactly ten entries is refused", res.status === 400);
   res = await http("PUT", "/api/admin/leadership", { who: ADMIN, body: { guilds: ten({ 1: { gm: "x", officers: Array.from({ length: 13 }, (_, i) => "Officer " + i) } }) } });
   check("  so are more than twelve officers", res.status === 400);
   res = await http("PUT", "/api/admin/leadership", { who: PLAIN, body: { guilds: ten() } });
   check("  and a member who is not a site admin (403)", res.status === 403);
-  res = await http("PUT", "/api/admin/leadership", { who: ADMIN, body: { guilds: ten({ 0: { gm: "  Fern   Melder ", officers: ["Ana", "", "Ana", "Bo"] } }), namesConfirmed: true } }); // .115: names added need the tick
+  res = await http("PUT", "/api/admin/leadership", { who: ADMIN, body: { guilds: ten({ 0: { gm: "  Lumen   Accord ", officers: ["Ana", "", "Ana", "Bo"] } }), namesConfirmed: true } }); // .115: names added need the tick
   out = await J(res);
-  check("the admin saves it: names cleaned, blanks and repeats dropped", res.status === 200 && out.guilds[0].gm === "Fern Melder" && out.guilds[0].officers.join(",") === "Ana,Bo");
-  check("  audited with a count, never the names (the dated log outlives an erasure)", JSON.parse(audits("site.leadership").at(-1).details).names === 3 && !audits("site.leadership").at(-1).details.includes("Fern"));
+  check("the admin saves it: names cleaned, blanks and repeats dropped", res.status === 200 && out.guilds[0].gm === directoryHolder && out.guilds[0].officers.join(",") === "Ana,Bo");
+  check("  audited with a count, never the names (the dated log outlives an erasure)", JSON.parse(audits("site.leadership").at(-1).details).names === 3 && !audits("site.leadership").at(-1).details.includes("Lumen"));
   res = await http("GET", "/api/leadership", { who: PLAIN });
   check(".176 a non-admin without roster or configured Guild Member role proof cannot read leadership (403 community_unconfirmed)", res.status === 403 && (await J(res)).error === "community_unconfirmed");
   res = await http("GET", "/api/leadership");
   check("  nor can a stranger (401)", res.status === 401);
   res = await http("GET", "/api/leadership", { who: MEMBER });
   out = await J(res);
-  check("a confirmed member reads the directory and the Council's Discord link", res.status === 200 && out.guilds[0].gm === "Fern Melder" && out.councilUrl === "https://discord.com/channels/236932545793490944/1555636857621188669");
+  check("a confirmed member reads the directory and the Council's Discord link", res.status === 200 && out.guilds[0].gm === directoryHolder && out.councilUrl === "https://discord.com/channels/236932545793490944/1555636857621188669");
   out = await J(await http("GET", "/api/public", { who: MEMBER }));
-  check("the member's settings carry neither the directory nor the Battle.net switch", !JSON.stringify(out).includes("Fern Melder") && !("leadership" in out.settings) && !("bnetLogin" in out.settings));
+  check("public Writ metadata retains the game recipient while member settings keep the directory and Battle.net switch private",
+    out.meta.royalWritPolicy.recipient === "Fern Melder" && !JSON.stringify(out).includes(directoryHolder) && !("leadership" in out.settings) && !("bnetLogin" in out.settings));
   const anonymousPublic = await http("GET", "/api/public"), anonymousSettings = await J(anonymousPublic);
   const anonymousPage = await http("GET", "/"), anonymousHtml = await anonymousPage.text();
-  check("anonymous entry sends only sign-in, with no settings or application bootstrap", anonymousPublic.status === 401 && anonymousSettings.error === "signed_out" && !("settings" in anonymousSettings) && anonymousPage.status === 200 && anonymousHtml.includes('href="/auth/login"') && !anonymousHtml.includes('id="boot"') && !anonymousHtml.includes('/static/app.js') && !anonymousHtml.includes("Fern Melder"));
+  check("anonymous entry sends only sign-in, with no settings or application bootstrap", anonymousPublic.status === 401 && anonymousSettings.error === "signed_out" && !("settings" in anonymousSettings) && anonymousPage.status === 200 && anonymousHtml.includes('href="/auth/login"') && !anonymousHtml.includes('id="boot"') && !anonymousHtml.includes('/static/app.js') && !anonymousHtml.includes(directoryHolder) && !anonymousHtml.includes("Fern Melder"));
   const leadershipApi197=fs.readFileSync(path.join(root,"src","site-api.ts"),"utf8");
   check("a listing grants nothing: the API delegates to the qualified directory reader instead of reading its row", fs.readdirSync(path.join(root, "src")).filter((f) => f.endsWith(".ts") && f!=="site-leadership.ts").every((f) => !fs.readFileSync(path.join(root, "src", f), "utf8").includes("LEADERSHIP_KEY")) && !leadershipApi197.includes("LEADERSHIP_KEY") && leadershipApi197.includes('import { qualifiedLeadershipPage } from "./site-leadership";') && leadershipApi197.includes('if (m === "GET" && path === "/api/leadership") return qualifiedLeadershipPage(request, env);'));
   const stampUsers = fs.readdirSync(path.join(root, "src")).filter((f) => f.endsWith(".ts") && fs.readFileSync(path.join(root, "src", f), "utf8").includes("leadershipStampStatement")).sort();
