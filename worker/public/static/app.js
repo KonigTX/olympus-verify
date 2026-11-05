@@ -998,10 +998,11 @@
     const style = document.documentElement.style;
     if (!style?.setProperty || typeof getComputedStyle !== "function") return;
     disposeFocusInsets?.();
-    const bar = app.querySelector(".topbar"), savebars = [...app.querySelectorAll("main.shell .savebar")];
+    const bar = app.querySelector(".topbar"), main = app.querySelector("main.shell");
+    let savebars = new Set(main?.querySelectorAll(".savebar"));
     const update = () => {
       const top = pinnedBarHeight();
-      const bottom = Math.max(0, ...savebars.map(node => {
+      const bottom = Math.max(0, ...Array.from(savebars, node => {
         const rules = getComputedStyle(node), height = node.getBoundingClientRect().height;
         return height && (rules.position === "sticky" || rules.position === "fixed") ? height + (parseFloat(rules.bottom) || 0) : 0;
       }));
@@ -1011,8 +1012,17 @@
     const observer = typeof ResizeObserver === "function" ? new ResizeObserver(update) : null;
     if (bar) observer?.observe(bar);
     for (const savebar of savebars) observer?.observe(savebar);
+    const changes = main && typeof MutationObserver === "function" ? new MutationObserver(() => {
+      const next = new Set(main.querySelectorAll(".savebar"));
+      if (next.size === savebars.size && [...next].every(savebar => savebars.has(savebar))) return;
+      for (const savebar of savebars) if (!next.has(savebar)) observer?.unobserve(savebar);
+      for (const savebar of next) if (!savebars.has(savebar)) observer?.observe(savebar);
+      savebars = next;
+      update();
+    }) : null;
+    changes?.observe(main, { childList: true, subtree: true });
     window.addEventListener("resize", update);
-    disposeFocusInsets = () => { observer?.disconnect(); window.removeEventListener("resize", update); };
+    disposeFocusInsets = () => { changes?.disconnect(); observer?.disconnect(); window.removeEventListener("resize", update); };
     update();
   }
   /** .109: the reload notice and the receipt bar both sit over the page under the top bar; when both show they stack (in document order) instead of covering each other. */
