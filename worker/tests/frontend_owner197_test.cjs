@@ -127,19 +127,22 @@ async function frontendOwner197() {
   check('actual consented board renders six calculator links with names, classes and exact levels', sharedLinks.length === 6 && sharedLinks.every(link => /^#\/talents\/(warrior|mage|druid)\/ot1\./.test(link.getAttribute('href'))) && card.textContent.includes('Mia Two') && card.textContent.includes('Mage') && card.textContent.includes('Druid') && card.textContent.includes('level 30') && card.textContent.includes('level 60') && !card.textContent.includes('[object Object]'));
   check('minimal board remains explicit self-report and does not render other private answers', card.textContent.includes('Self-reported character names; shared separately') && !card.textContent.includes(privateSentinel) && !card.textContent.includes('roster verified'));
 
-  // Fixed error DTO substitutions exercise the existing UI error boundary only.
-  // The actual Worker runs first; these are not admission or write-proof fixtures.
+  // These fixed validation refusals exercise the UI error boundary before any write.
+  // Replacing a committed response would hide the new edit token from the editor.
+  const beforeRefusals197 = JSON.stringify(one('SELECT * FROM site_applications WHERE discord_id=?', MEMBER));
+  const beforeRefusalSends197 = sent.length;
   let errorField = null;
-  page.answer((url, init) => url === '/api/application' && init.method === 'PUT' && errorField ? new Response(JSON.stringify({ error: 'invalid', field: errorField, message: 'Exact ' + errorField + ' refusal' }), { status: 400, headers: { 'Content-Type': 'application/json' } }) : null);
+  page.intercept((url, init) => url === '/api/application' && init.method === 'PUT' && errorField ? new Response(JSON.stringify({ error: 'invalid', field: errorField, message: 'Exact ' + errorField + ' refusal' }), { status: 400, headers: { 'Content-Type': 'application/json' } }) : null);
   for (const field of ['board', 'boardPortrait', 'boardTalentBuilds', 'talentBuilds']) {
     form = page.app.querySelector('form'); errorField = field; form.querySelector('[data-field="ack"] input').checked = true; fire(form, 'submit');
     const fieldBox = form.querySelector('[data-field="' + field + '"]');
     await must(() => fieldBox.classList.contains('invalid') && ownError(fieldBox)?.textContent === 'Exact ' + field + ' refusal' && !page.app.querySelector('button[type="submit"]').disabled, 'terminal nested ' + field + ' refusal');
     check('nested ' + field + ' error belongs to its own field and clears previous sibling/parent errors', form.querySelectorAll('.invalid').length === 1 && !ownError(fieldBox).hidden && ['board', 'boardPortrait', 'boardTalentBuilds', 'talentBuilds'].filter(key => key !== field).every(key => { const other = form.querySelector('[data-field="' + key + '"]'); return !other.classList.contains('invalid') && ownError(other)?.hidden && ownError(other)?.textContent === ''; }));
+    check('nested ' + field + ' refusal preserves the stored application and editor token', JSON.stringify(one('SELECT * FROM site_applications WHERE discord_id=?', MEMBER)) === beforeRefusals197 && sent.length === beforeRefusalSends197);
   }
-  errorField = null; form.querySelector('[data-field="ack"] input').checked = true; fire(form, 'submit');
+  errorField = null; page.intercept(null); form.querySelector('[data-field="ack"] input').checked = true; fire(form, 'submit');
   await must(() => page.app.querySelectorAll('.invalid').length === 0 && page.app.querySelector('#board-talent-builds-opt-in')?.checked === false && !page.app.querySelector('button[type="submit"]').disabled, 'original successful application readback clears errors');
-  check('successful real readback clears every nested error without granting portrait consent', page.app.querySelectorAll('.invalid').length === 0 && !page.app.querySelector('#board-portrait-opt-in').checked);
+  check('successful real readback clears every nested error without granting portrait consent', page.app.querySelectorAll('.invalid').length === 0 && !page.app.querySelector('#board-portrait-opt-in').checked && sent.length === beforeRefusalSends197 + 1 && stored()?.boardTalentBuildsOptIn === false);
 
   const staff = await openPage(STAFF), attendedCalls = [], targetId = '730000000000000197'; let origin = 'unconfirmed';
   staff.before((url, init) => { if (url.startsWith('/api/admin/discord-directory/')) attendedCalls.push({ url, method: init.method, body: JSON.parse(init.body) }); return false; });
@@ -722,7 +725,7 @@ async function frontendOwner197() {
     const revisionSource199=revisionSources199[0][0];
     const overviewSource199=cut199('  async function adminOverview(body) {','  async function drawHeat(box) {');
     const professionGroupsSource199=cut199('  const gatheringProfessionKeys = ','  function professionSelect(');
-    const displaySortSource199=cut199('  const byDisplayLabel = ','\n');
+    const displaySortSource199=cut199('  const byDisplayLabel = ','  const classColor = ');
     const orgOriginal199=cut199('  ROUTES.organization = async (main, parts) => {','  // ---------------------------------------------------------------- home');
     const moduleExpression199='import("/static/organization-view.js")';
     const overviewModuleExpression205='import("/static/organization-overview205.js")';
