@@ -182,7 +182,7 @@ async function launchTransition228(){
     byText(page.app,'button','Queue selected now').click();await settle();
     const nextAnyway=page.document.querySelector('dialog')&&byText(page.document.querySelector('dialog'),'button','Queue anyway');if(nextAnyway){nextAnyway.click();await settle();}
     await waitFor(()=>page.document.body.textContent.includes('Queued 1'),'the partial queue answer toast');
-    check('  the partial queue reply reports work already completed before the hold',page.document.body.textContent.includes('Queued 1, moved to the front 0, already in the guild 0. Queueing is paused'));
+    check('  the partial queue reply reports work already completed before the hold',page.document.body.textContent.includes('Queued 1, moved to the front 0, already in the guild 0. The website queue is paused. Officers invite in game.'));
     page.answer(null);
    }else check('  membership-only admin copy: officers invite in game during launch verification, and Queue is paused',copy.includes('Officers invite in game. The website queue is paused.')&&!copy.includes('Approved names go to the top of the invite queue')&&byText(page.app,'button','Queue selected now').disabled===true&&byText(page.app,'button','Queue every approved name now').disabled===true,copy.slice(0,600));
   }
@@ -201,7 +201,7 @@ async function launchTransition228(){
   const utilities=load('./guild-utilities219'),botEnv=directEnv(BOT_ENV),launch=ms=>atClock(ms,()=>utilities.referenceLookup219(botEnv,null,'launch'));
   const before=await launch(PRE),after=await launch(POST),later=await launch(LATER);
   check('/launch before the launch keeps the countdown',before.title==='World of Warcraft: Forever · November 4'&&before.description.includes('<t:1793833200:F>')&&before.description.includes('remaining'),before);
-  check('/launch after the scheduled time gives the official date and first raids without asserting service availability',after.title==='World of Warcraft: Forever · Launch date'&&after.description.includes('<t:1793833200:F> has passed')&&after.description.includes('Check Blizzard for current availability')&&after.description.includes('The first raids are scheduled for 9 December 2026. Blizzard has not announced the hour.')&&!after.description.includes('remaining'),after);
+  check('/launch after the scheduled time gives the official date and opening-time reference without asserting service availability',after.title==='World of Warcraft: Forever · Launch date'&&after.description.includes('<t:1793833200:F> has passed')&&after.description.includes('Check Blizzard for current availability')&&after.description.includes('The first raids are scheduled for 9 December 2026. Check Blizzard for the opening time.')&&after.fields.some(field=>field.value==='https://news.blizzard.com/en-us/article/24315820/world-of-warcraft-forever-now-live')&&!after.description.includes('remaining'),after);
   check('  after 9 December (PST) the raid line retires and the launch date stays',later.title===after.title&&!later.description.includes('first raids')&&later.description.includes('<t:1793833200:F>'),later);
   check('the /olympus branches card renders that same /launch answer',source('olympus-hub224').includes("[await referenceLookup219(env,a,'branches'),await referenceLookup219(env,a,'launch')]"));
  });
@@ -210,7 +210,7 @@ async function launchTransition228(){
  await guard('copy',async()=>{
   const utilities=load('./guild-utilities219'),preset=JSON.parse(fs.readFileSync(path.join(root,'public','static','guides218.json'),'utf8')).presets[0].code;
   const talent=await utilities.guideLookup219(directEnv(BOT_ENV),null,'talent',{build:preset});
-  check('the talent preview names its beta snapshot without reading as pre-launch',talent.description.includes('the released game can differ')&&!talent.description.startsWith('Pinned beta snapshot;'),talent.description);
+  check('the talent preview dates its beta snapshot and points to current in-game talents and Blizzard notes',talent.description.includes('16 October beta talent snapshot')&&talent.description.includes('Check the talents on your character in game')&&talent.fields.some(field=>field.name==='Blizzard’s 2 November notes'&&field.value==='https://us.forums.blizzard.com/en/wow/t/2360696/9'),talent.description);
   const util=source('guild-utilities219'),hub=source('olympus-hub224');
   check('  the guide replies’ evidence footer is tense-neutral',!util.includes('Launch may change beta details')&&util.includes('Pinned data comes from the beta; the released game can differ.'));
   check('  the /olympus guides section is tense-neutral',!hub.includes('launch behavior is not inferred')&&hub.includes('the released game can differ'));

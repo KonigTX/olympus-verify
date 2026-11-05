@@ -52,6 +52,19 @@ async function checks224(){
  const seen=one('SELECT COUNT(*) n FROM seen_interactions').n;r=await send({guild:WRONG});check('other guilds are ignored before replay or account effects',r.status===204&&r.initial===null&&one('SELECT COUNT(*) n FROM seen_interactions').n===seen);
  T+=181;nativeT=T;r=await send({type:3,custom:menu,values:['status']});check('controls never extend their original three-minute window',!(r.initial.type===4?r.initial.data:r.answer).embeds?.length&&/expired/.test((r.initial.type===4?r.initial.data:r.answer).content));
  check('hub tests create no event, signup, public message or provider role effect',one('SELECT COUNT(*) n FROM community_events').n===0&&one('SELECT COUNT(*) n FROM community_event_signups').n===0&&publicEffects219().length===0);
+ T=1793833210;nativeT=T;
+ const launch=await send219('launch',null,{},MEMBER);
+ const launchHub=await send();
+ const launchMenu=ctl(launchHub.answer,'Open another Olympus section');
+ const launchBranch=await send({type:3,custom:launchMenu,values:['branches']});
+ const launchEmbed=launch.answer?.embeds?.[0];
+ check('signed /launch and the hub share the official raid date and opening-time guidance',
+  launch.initial?.type===5&&launch.initial.data.flags===64&&launchBranch.initial?.type===5&&launchBranch.initial.data.flags===64
+  &&launch.answer.allowed_mentions.parse.length===0&&launchBranch.answer.allowed_mentions.parse.length===0
+  &&launchEmbed?.description.includes('The announced launch time <t:1793833200:F> has passed. Check Blizzard for current availability.')
+  &&launchEmbed.description.includes('The first raids are scheduled for 9 December 2026. Check Blizzard for the opening time.')
+  &&launchEmbed.fields?.some(field=>field.value==='https://news.blizzard.com/en-us/article/24315820/world-of-warcraft-forever-now-live')
+  &&JSON.stringify(launchBranch.answer.embeds?.[1])===JSON.stringify(launchEmbed)&&publicEffects219().length===0,launchEmbed?.description);
  console.log('\n'+passed+'/'+total+' signed build224 checks passed');process.exit(passed===total?0:1);
 }
 const inherited224=parent224.slice(pre224,end224).replace('async function guildCommands219(){','async function run224(){'),module224=new Module(__filename,module);module224.filename=__filename;module224.paths=Module._nodeModulePaths(__dirname);module224._compile(fixture224.slice(0,cut224[0].index)+'\n'+inherited224+'\nawait ('+checks224.toString()+')();\n}\nrun224().catch(e=>{console.error(e.stack);process.exit(1)});',__filename);
