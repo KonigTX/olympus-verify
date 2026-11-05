@@ -76,6 +76,126 @@ async function legacyDenialWaitsForStaffReview(){
    &&f.raw('SELECT last_attempt_at FROM privacy_serving_jobs WHERE operation_id=?',OP).last_attempt_at===job.last_attempt_at);
  }finally{f.close();}
 }
+async function identifyNativeErasure(f){
+ const formCookie=response=>Object.entries(cookies(response)).map(([k,v])=>k+'='+v).join('; ');
+ const page=await f.call('GET','/privacy/signin'),csrf=/name="csrf" value="([^"]+)"/.exec(await page.text())[1];
+ const start=await f.call('POST','/privacy/signin',{cookie:formCookie(page),form:{csrf}});
+ const oauth=new URL(start.headers.get('Location'));
+ const callback=await f.call('GET','/privacy/callback?code=code-'+ID+'&state='+encodeURIComponent(oauth.searchParams.get('state'))+'&iss=https%3A%2F%2Fdiscord.com',{cookie:formCookie(start)});
+ assert.equal(callback.status,303);
+ const accessCookie=formCookie(callback),access=await f.call('GET','/privacy/access',{cookie:accessCookie});
+ const section=/<form method="post" action="\/privacy\/access\/erasure">([\s\S]*?)<\/form>/.exec(await access.text())[1];
+ const operation=/name="grant" value="([^"]+)"/.exec(section)[1],roleBefore=f.http.length;
+ const reply=await f.call('POST','/privacy/access/erasure',{cookie:accessCookie,form:{grant:operation,csrf:/name="csrf" value="([^"]+)"/.exec(section)[1],confirm:'yes'}});
+ return {operation,roleBefore,reply};
+}
+async function broaderLegacyDenialReview(){
+ const YEAR=31536000,scope='pure_member_including_fallback0',eventId='e'.repeat(32);
+ const outcomes=[];
+ for(const [kind,identify] of [['dangling',false],['unmatched',true],['other-generation',false],['wrong-expired-key',true],['prior-marker-only',false],['application-mirror-only',true],['qualified-expired',false],['preflight-read-error',false]]){
+  const f=fixture();
+  try{
+   const cookie=await f.signIn(ID);
+   await seedPersonal(f,{roles:1});
+   const key=await authority.privacySubjectKey(f.env,ID),birth=f.raw('SELECT account_incarnation FROM site_users WHERE discord_id=?',ID).account_incarnation;
+   const wrongKey='A'.repeat(43);
+   assert.notEqual(key,wrongKey);
+   await f.write("UPDATE site_users SET denied=1,denied_at=?,denied_reason='Older denial for exact fixture' WHERE discord_id=?",clock-60,ID);
+   if(kind==='dangling'||kind==='other-generation'){
+    await f.write('UPDATE site_users SET rejection_event_id=?,rejection_subject_key=?,rejection_scope=? WHERE discord_id=?',eventId,key,scope,ID);
+   }
+   if(kind==='unmatched'||kind==='other-generation'){
+    await f.write("INSERT INTO privacy_rejection_decisions VALUES(?,?,?,?, 'original-guild-membership-rejection-v1','explicit_membership_deny',?,?,?)",eventId,key,birth,'1'.repeat(32),scope,clock-60,clock-60+YEAR);
+   }
+   if(kind==='wrong-expired-key'||kind==='qualified-expired'){
+    await f.write('UPDATE site_users SET rejection_subject_key=?,rejection_scope=?,rejection_window_expired=1 WHERE discord_id=?',kind==='qualified-expired'?key:wrongKey,scope,ID);
+   }
+   if(kind==='prior-marker-only'){
+    await f.write("INSERT INTO privacy_denial_markers VALUES(?,?,?,'rejected_guild_application_or_membership')",key,clock-3600,clock-3600+YEAR);
+   }
+   if(kind==='application-mirror-only'){
+    await f.write('UPDATE site_applications SET rejection_event_id=?,rejection_subject_key=?,rejection_scope=? WHERE discord_id=?',eventId,key,scope,ID);
+   }
+   const appointed=()=>f.raw("SELECT value FROM site_settings WHERE key='appointed'").value;
+   const original=appointed(),beforeMarkers=JSON.stringify(f.rows('SELECT * FROM privacy_denial_markers'));
+   let operation=OP,reply,roleBefore=f.http.length;
+   if(identify){
+    ({operation,roleBefore,reply}=await identifyNativeErasure(f));
+   }else{
+    if(kind==='preflight-read-error')f.failSql=sql=>sql.includes('AS disposition');
+    reply=(await request(f,cookie)).response;
+    f.failSql=null;
+   }
+   const job=f.raw('SELECT state,hold_reason,last_attempt_at FROM privacy_serving_jobs WHERE operation_id=?',operation);
+   assert.equal(reply.status,202);
+   assert.ok(job,'genuine job admitted for '+kind);
+   const provider=f.http.length-roleBefore,roleDeletes=f.http.slice(roleBefore).filter(call=>call.method==='DELETE').length;
+   if(kind==='qualified-expired'){
+    const done=await finish(f,operation);
+    outcomes.push({kind,done:done.state,markersUnchanged:beforeMarkers===JSON.stringify(f.rows('SELECT * FROM privacy_denial_markers'))});
+    continue;
+   }
+   const sameAppointment=original===appointed(),markersUnchanged=beforeMarkers===JSON.stringify(f.rows('SELECT * FROM privacy_denial_markers'));
+   const replay=!!f.raw('SELECT 1 FROM privacy_restore_replay');
+   let nextAttempt=null;
+   if(job.hold_reason==='staff_review_required'){clock+=121;nextAttempt=(await f.job('same-held-denial')).attempted;}
+   outcomes.push({kind,state:job.state,reason:job.hold_reason,provider,roleDeletes,sameAppointment,markersUnchanged,replay,nextAttempt});
+  }finally{f.close();}
+ }
+ console.log('C09_REVIEW_MATRIX '+JSON.stringify(outcomes));
+ check('contradictory original denial evidence holds before cleanup, with distinct storage error and qualified expiry',outcomes.every(row=>
+  row.kind==='qualified-expired'?row.done==='complete'&&row.markersUnchanged:
+  row.state==='held'&&row.reason===(row.kind==='preflight-read-error'?'native_attempt_pending':'staff_review_required')
+  &&row.provider===0&&row.roleDeletes===0&&row.sameAppointment&&row.markersUnchanged&&!row.replay
+  &&(row.kind==='preflight-read-error'||row.nextAttempt===0)));
+}
+async function firstGenerationDenialUsesOriginalIdentifyBridge(){
+ const f=fixture();
+ try{
+  await f.signIn(ID);
+  const admin=await f.signIn(OTHER);
+  await seedPersonal(f,{roles:0});
+  await f.write('DELETE FROM privacy_subjects WHERE subject_id=?',ID);
+  const denialClock=clock,deny=await decisionTarget(f,admin,'deny');
+  const denied=await decisionPost(f,admin,'deny',deny,{reason:'Original first-generation fixture'});
+  const event=f.raw('SELECT target_generation,rejected_at FROM privacy_rejection_decisions');
+  check('an original denial before the target had a privacy generation remains source-owned',
+   denied.status===200&&event?.target_generation===null&&event.rejected_at===denialClock);
+  const {operation,reply}=await identifyNativeErasure(f);
+  const job=await finish(f,operation),marker=f.raw('SELECT denied_at,retain_until FROM privacy_denial_markers');
+  check('the consumed original identify grant bridges a genuine null-generation decision through Native erasure',
+   [200,202].includes(reply.status)&&job?.state==='complete'&&marker?.denied_at===denialClock&&marker.retain_until===denialClock+31536000);
+ }finally{f.close();}
+}
+async function currentDenialKeepsOriginalProviderAndMarkerGuards(){
+ const f=fixture();
+ try{
+  const generation='a'.repeat(32);
+  await f.write("INSERT INTO privacy_subjects(subject_id,generation,state,revision,created_at,updated_at) VALUES(?,?,'active',0,?,?)",ID,generation,clock,clock);
+  await f.signIn(ID);
+  const admin=await f.signIn(OTHER);
+  await seedPersonal(f,{roles:0});
+  const target=await decisionTarget(f,admin,'deny'),decisionClock=clock;
+  const denied=await decisionPost(f,admin,'deny',target,{reason:'Current decision fixture'});
+  const decision=f.raw('SELECT target_generation,target_account_incarnation,rejected_at FROM privacy_rejection_decisions');
+  const birth=f.raw('SELECT account_incarnation FROM site_users WHERE discord_id=?',ID).account_incarnation;
+  check('a current same-birth denial carries the exact original generation and clock',denied.status===200&&decision?.target_generation===generation
+   &&decision.target_account_incarnation===birth&&decision.rejected_at===decisionClock);
+  const cookie=await f.signIn(ID),providerBefore=f.http.length;
+  f.inventoryUnavailable=true;
+  const erasure=await request(f,cookie),heldJob=f.raw('SELECT state,hold_reason FROM privacy_serving_jobs WHERE operation_id=?',OP);
+  f.inventoryUnavailable=false;
+  check('a verified denial with synthetic provider failure retains provider handling rather than a staff classification',
+   erasure.response.status===202&&heldJob?.state==='held'&&heldJob.hold_reason!=='staff_review_required'
+   &&f.http.length>providerBefore&&!f.raw('SELECT 1 FROM privacy_denial_markers')&&!f.terminalCommitted);
+  const done=await finish(f),marker=f.raw('SELECT denied_at,retain_until FROM privacy_denial_markers');
+  clock+=121;
+  await f.job('verified-original-denial-already-complete');
+  check('valid repeated continuations retain one original marker and never renew its clock',
+   done?.state==='complete'&&marker?.denied_at===decisionClock&&marker.retain_until===decisionClock+31536000
+   &&JSON.stringify(f.rows('SELECT denied_at,retain_until FROM privacy_denial_markers'))===JSON.stringify([marker]));
+ }finally{f.close();}
+}
 async function permanentDenialPolicy(){
  const f=fixture();
  try{
@@ -286,5 +406,8 @@ async function olderDenialHeldGuidance(){
  await legacyDenialWaitsForStaffReview();
  await permanentDenialPolicy();
  await olderDenialHeldGuidance();
+ await currentDenialKeepsOriginalProviderAndMarkerGuards();
+ await firstGenerationDenialUsesOriginalIdentifyBridge();
+ await broaderLegacyDenialReview();
  console.log(`${checks}/${checks} C09 Native erasure checks passed`);
 }).catch(error=>{console.error(error);process.exitCode=1;});

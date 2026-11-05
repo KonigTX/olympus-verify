@@ -12,7 +12,7 @@ import {globalServingMode,dispatchOriginalAccountErasureTerminalBatch} from './p
 import {captureOriginalAccountErasureJobRead,originalAccountErasureCompanionGuardStatement,originalErasureJobReadFacts} from './privacy-erasure-terminal-job-read';
 import {captureAccountErasureTerminalGroup} from './privacy-account-erasure-terminal-group';
 import {erasureAttemptFenceMode,enterOriginalErasureAttempt,originalErasureAttemptFacts,type OriginalErasureAttempt} from './privacy-erasure-attempt-identity';
-import {rejectionErasureMarkerStatements} from './privacy-rejection-decision';
+import {readNativeErasureRejectionPreflight,rejectionErasureMarkerStatements} from './privacy-rejection-decision';
 import {staffAccessDetails,type StaffAccessDetails} from './privacy-erasure-staff-custody';
 import {originalPrivacyStatementGroupProjection} from './privacy-serving-authority';
 import './community-routes';
@@ -102,23 +102,12 @@ export async function continueServingErasure(env:Env,proof:AccountErasureProof,a
  // consuming absence receipt. Historical unknown effects are retained, not rewritten
  // into successful original acknowledgements or used to stop unrelated public traffic.
  if(nativeErasureMode(env)){
-  // Classify a bare older denial under the same original job and birth read, before any cleanup.
-  // Current or expired decision mirrors and unmatched keyed evidence retain their original terminal checks.
+  // Read original decision evidence under the same current job and birth, before any cleanup.
   const subjectKey=proof.accountIncarnation===null?null:await privacySubjectKey(env,proof.subject);
-  const start=await env.DB.prepare(`SELECT CASE
-   WHEN NOT (${CURRENT_ERASURE_SQL} AND EXISTS(SELECT 1 FROM privacy_serving_jobs j WHERE j.operation_id=?1 AND ${originalErasureJobBirthSql(proof)})) THEN 'stale'
-   WHEN EXISTS(SELECT 1 FROM privacy_serving_jobs WHERE operation_id=?1 AND hold_reason='${STAFF_REVIEW_REQUIRED}') THEN 'staff_review'
-   WHEN ?5 IS NOT NULL AND EXISTS(SELECT 1 FROM site_users u WHERE u.discord_id=?2 AND u.denied IS 1
-    AND u.rejection_event_id IS NULL AND u.rejection_subject_key IS NULL AND u.rejection_scope IS NULL AND u.rejection_window_expired IS 0)
-    AND NOT EXISTS(SELECT 1 FROM site_applications a WHERE a.discord_id=?2 AND (a.rejection_event_id IS NOT NULL
-     OR a.rejection_subject_key IS NOT NULL OR a.rejection_scope IS NOT NULL OR a.rejection_window_expired IS NOT 0))
-    AND NOT EXISTS(SELECT 1 FROM privacy_rejection_decisions WHERE subject_key=?5)
-    AND NOT EXISTS(SELECT 1 FROM privacy_denial_markers WHERE subject_key=?5) THEN 'staff_review'
-   ELSE 'ready' END AS disposition`).bind(proof.operationId,proof.subject,proof.subjectGeneration,proof.requestDigest,subjectKey).first<{disposition:string}>();
-  const disposition=start&&Object.getOwnPropertyDescriptor(start,'disposition');
-  const value=disposition&&Object.hasOwn(disposition,'value')?disposition.value:undefined;
-  if(value==='staff_review')return held(STAFF_REVIEW_REQUIRED);
-  if(value!=='ready')return held('request_not_current');
+  const disposition=await readNativeErasureRejectionPreflight(env,proof,subjectKey,STAFF_REVIEW_REQUIRED);
+  if(disposition==='staff_review')return held(STAFF_REVIEW_REQUIRED);
+  if(disposition==='unknown')return held('native_rejection_preflight_unconfirmed','unknown');
+  if(disposition!=='ready')return held('request_not_current');
   const references=await cleanupNativePersonalReferences(env,proof);
   if(references.state!=='cleaned')return held('native_reference_cleanup_unconfirmed','unknown');
   // These registered, exact own-setting projections must precede the strict
