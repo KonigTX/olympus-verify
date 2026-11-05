@@ -94,6 +94,13 @@ const reply = text => new Response(text, { headers: { 'Content-Type': 'text/html
       let selected=privacy.slice(privacy.indexOf(start),privacy.indexOf(end));
       if(start==='<h2>Getting rid of it</h2>'){
         const explicitSafetyPurpose="Its purpose is to recognize the same account if it tries to evade that original guild-application or membership rejection after erasure. It is a keyed, pseudonymous safety record, not anonymous data or a guarantee of complete account unlinking. ";
+        const previousRetention="For your own rejected guild application or membership, erasure retains a keyed, minimized account marker with the fixed reason and original decision date for up to 365 days from that decision. ";
+        const currentRetention="When a verified original guild rejection qualifies for retention, erasure can retain a keyed, minimized account marker with the fixed reason and original decision date for up to 365 days from that decision. ";
+        const staffReview="Ordinary application declines are handled separately. An older denial flag without trustworthy proof of the original decision requires private staff review before erasure proceeds. ";
+        assert.equal(sha(selected),'425bf6e5908dc859341ed8d2fe59dd51f43fd26b8683b53b287df4c371053bac');
+        assert.equal(selected.split(currentRetention).length,2);
+        assert.equal(selected.split(staffReview).length,2);
+        selected=selected.replace(currentRetention,previousRetention).replace(staffReview,'');
         assert.equal(sha(selected),'dd77ba14c9db0883863a3c3d5d9e0052807d9b449ba39ad7f5a47dd1a5fca7c6');
         assert.equal(selected.split(explicitSafetyPurpose).length,2);
         selected=selected.replace(explicitSafetyPurpose,'');
