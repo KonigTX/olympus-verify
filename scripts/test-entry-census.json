@@ -103,8 +103,8 @@
       "kind": "helper",
       "owner": "Codex Root / owner",
       "reason": "Fixed sequential child of the normal build224_test.cjs entry. The parent waits for completion and propagates every nonzero exit. The source scanner recognizes require edges, so this spawn-based child has an explicit hash-bound disposition.",
-      "evidence": "build224_test.cjs runs this child, which retains the historical registration checks and exercises the .228 raid successor. A source disposition alone supplies no runtime acceptance.",
-      "sha256": "667a349e6eca5c39225f4ee0a801f2c0d84a54b61ed6a7d4f7cef0cf15ca0c32"
+      "evidence": "build224_test.cjs runs this child, which retains the historical registration checks and exercises the .228 raid and separate class-choice plans. A source disposition alone supplies no runtime acceptance.",
+      "sha256": "d7cf615ed91e0c2cb63a52f936c88f833b23aefbd4eb1a1c96a09d4a5999f861"
     }
   ]
 }

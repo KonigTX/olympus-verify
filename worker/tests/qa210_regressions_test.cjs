@@ -47,15 +47,20 @@ check('.210 the base button keeps its single-line layout above the narrow breakp
 
 // On a phone the wrapped top bar (140-228px) scrolls away; offsets below it count it only while it is pinned.
 const app = fs.readFileSync(path.resolve(__dirname, '../public/static/app.js'), 'utf8');
+const pinnedMeasure = /function pinnedBarHeight\(\) \{([\s\S]*?)\n  \}/.exec(app)?.[1] || '';
 check('.210 the top bar is not pinned on narrow or short screens, and scroll offsets use it only while pinned',
   /@media \(max-width: 480px\), \(max-height: 500px\) \{ \.topbar \{ position: static; \} \}/.test(css)
-  && /function pinnedBarHeight\(\) \{[\s\S]{0,400}position === "sticky" \|\| position === "fixed"/.test(app)
-  && (app.match(/querySelector\("\.topbar"\)/g) || []).length === 2 && /window\.scrollY - pinnedBarHeight\(\) - 12/.test(app) && /let y = pinnedBarHeight\(\) \+ 8;/.test(app));
+  && /document\.querySelector\("\.topbar"\)/.test(pinnedMeasure)
+  && /return position === "sticky" \|\| position === "fixed" \? bar\.getBoundingClientRect\(\)\.height : 0;/.test(pinnedMeasure)
+  && /window\.scrollY - pinnedBarHeight\(\) - 12/.test(app) && /let y = pinnedBarHeight\(\) \+ 8;/.test(app));
 
 // Every admin tab has its own document title (Directory preferences read "Admin · Overview").
 const staffTitles = /const staff = \{([^}]*)\}/.exec(app)?.[1] || '';
-const adminTabs = [...app.matchAll(/\["#\/admin\/([a-z-]+)", "[^"]+", sub === "\1"\]/g)].map(m => m[1]);
-check('.210 every admin tab key has a page title', adminTabs.length >= 4 && adminTabs.every(key => new RegExp('(^|[ ,{])"?' + key + '"?:').test(staffTitles)) && /"directory-visibility": "Discord member list preferences"/.test(staffTitles));
+const groupedTabs = /function adminTabs\(sub\) \{\s*const groups = \[([\s\S]*?)\n    \];/.exec(app)?.[1] || '';
+const adminTabs = [...groupedTabs.matchAll(/\["([a-z-]*)", "[^"]+"\]/g)].map(m => m[1]);
+check('.210 every grouped admin tab key has a page title', adminTabs.length === 16 && new Set(adminTabs).size === 16
+  && adminTabs.every(key => new RegExp('(^|[ ,{])"?' + key + '"?:').test(staffTitles))
+  && /"directory-visibility": "Discord member list preferences"/.test(staffTitles));
 
 // Date-only values (trial due dates, dues weeks, case review/expiry) are stored as 00:00 UTC and must print as that UTC day.
 const utcFormatters = /const fmtDayUtc = [^\n]*timeZone: "UTC"/.test(app) && /const fmtShortUtc = [^\n]*timeZone: "UTC"/.test(app);

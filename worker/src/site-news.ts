@@ -83,7 +83,7 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
       "The guide library includes updated Forever class advice and a raid-team planning reference.",
       "The Discord command update prepares /raid hub and direct scheduling and roster commands alongside /event.",
       "Site controls reflow at higher zoom on narrow screens. Login artwork credits identify the stills and the optional portal render.",
-      "Declined membership applications can complete ordinary account erasure. The permanent-denial process remains separate.",
+      "Ordinary application declines remain eligible for account erasure. Erasure requests tied to an older denial without verified decision evidence go to private staff review.",
     ],
   },
   {
