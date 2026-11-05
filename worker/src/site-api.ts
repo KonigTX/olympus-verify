@@ -18,7 +18,7 @@ import type { RulesetSnapshot } from "./ruleset-profile";
 import { audit, now } from "./db";
 import { DiscordError, rest } from "./discord";
 import { guildSeats, memberSeats } from "./guild-seats";
-import { apiJson, appOut, avatarUrl, BOARD_COUNTS, boardCountCache, choicesOf, currentUser, readSession, forgetBoardCounts, isSiteAdmin, labelOf, ON_BOARD, PAGE_VERSION, parseAnswers, rateLimited, readJson, ROLE_OF_FIRST, sameOrigin, searchMembers, shownName, UNDER_ROLE, type AppRow, type Found, type SiteUser } from "./site-core";
+import { apiJson, appOut, avatarUrl, BOARD_COUNTS, boardCountCache, choicesOf, currentUser, readSession, forgetBoardCounts, isSiteAdmin, labelOf, ON_BOARD, PAGE_VERSION, parseAnswers, rateLimited, readJson, ROLE_OF_FIRST, sameOrigin, searchMembers, shownName, sign, UNDER_ROLE, verify, type AppRow, type Found, type SiteUser } from "./site-core";
 import {
   AVAIL_HEX,
   availBits,
@@ -75,6 +75,9 @@ import { validateApplicationIntent199, applicationIntentDto199, applicationRoleK
 export const DENIED_TEXT =
   "Your registration with Olympus has been permanently denied. Joke and abusive applications are not reconsidered.";
 const MEMBER_RECHECK = 3600;
+const APPLICATION_EDITOR_PURPOSE = 'application-editor/v1';
+const applicationEditorValue = (user: SiteUser) =>
+  JSON.stringify([user.discord_id, user.account_incarnation, user.session_version, user.privacyGeneration ?? null]);
 const generalAppointmentLabel = (value: string | undefined) => !value || appointmentAccountId(value) ? 'Appointed member' : value;
 
 /** General settings disclose closed offices, not member-only account associations.
@@ -184,6 +187,15 @@ export async function handleApi(request: Request, env: Env, path: string, waitUn
   if (request.headers.get("X-Olympus") !== PAGE_VERSION) {
     return apiJson({ error: "reload", message: "The site has been updated since this page was opened. Reload the page, then try again." }, 409);
   }
+  const applicationWrite = path === '/api/application' && (m === 'PUT' || m === 'DELETE');
+  const editorProof = applicationWrite ? request.headers.get('X-Olympus-Application-Editor') : null;
+  // Require the original view proof on browser writes, including older open tabs.
+  // Callers without fetch metadata can still use the session-authenticated API directly.
+  if (applicationWrite && (editorProof !== null || request.headers.has('Sec-Fetch-Site')) &&
+    (!editorProof || !/^[A-Za-z0-9_-]{43}$/.test(editorProof) ||
+      !await verify(env.COOKIE_SECRET, APPLICATION_EDITOR_PURPOSE, applicationEditorValue(user), editorProof))) {
+    return apiJson({ error: 'application_editor_changed', message: 'This form belongs to a different sign-in. Open the application again under the account you want to use.' }, 409);
+  }
   // Board votes come one click at a time, so they get a roomier limit of their own.
   const vote = m === "PUT" && path === "/api/board/vote";
   if (rateLimited(`${vote ? "b" : "w"}:${user.discord_id}`, vote ? 120 : 30, 60)) {
@@ -199,7 +211,7 @@ export async function handleApi(request: Request, env: Env, path: string, waitUn
   }
   if(m==='POST'&&['/api/news/editor/webhook/publish','/api/news/editor/webhook/revoke','/api/news/editor/webhook/reconcile'].includes(path))return handleTownCrierWebhook(request,env,[path.slice('/api/news/editor/webhook/'.length)],user,body);
   if (m === "PUT" && path === "/api/application") return saveApplication(env, user, body);
-  if (m === "DELETE" && path === "/api/application") return withdrawApplication(env, user);
+  if (m === "DELETE" && path === "/api/application") return withdrawApplication(env, user, editorProof === null ? undefined : body.editToken ?? null);
   if (m === "PUT" && path === "/api/votes") return saveVotes(env, user, body);
   if (vote) return saveBoardVote(env, user, body);
   if (m === "PUT" && path === "/api/friends") return saveFriends(env, user, body);
@@ -299,6 +311,7 @@ export async function meData(env: Env, user: SiteUser, settings?: SiteSettings, 
     deniedText: user.denied ? DENIED_TEXT : undefined,
     settings: generalSettingsDto(s),
     meta: meta(state.ruleset),
+    applicationEditorProof: user.denied ? undefined : await sign(env.COOKIE_SECRET, APPLICATION_EDITOR_PURPOSE, applicationEditorValue(user)),
     application: app ? await ownApplicationOut219(app) : null,
     votes: votes.results,
     boardVotes,
@@ -321,6 +334,14 @@ async function ownApplicationOut219(a: AppRow) {
 type Fail = { error: string; field: string; message: string };
 const fail = (field: string, message: string): Fail => ({ error: "invalid", field, message });
 const bad = (f: Fail) => apiJson(f, 400);
+function applicationEditWhere219(firstParam: number, prefix = ''): string {
+  return APPLICATION_EDIT_FIELDS_219.map((key, index) => {
+    const column = prefix + key;
+    // Staff status transitions between the two open states are independent of applicant edits.
+    const value = key === 'status' ? `CASE WHEN ${column} = 'reviewing' THEN 'submitted' ELSE ${column} END` : column;
+    return `${value} IS ?${firstParam + index}`;
+  }).join(' AND ');
+}
 
 export interface ValidApp {
   position: string;
@@ -597,14 +618,8 @@ async function saveApplication(env: Env, user: SiteUser, body: Record<string, un
   }
   if (changed) a.answers = JSON.stringify(answers);
   const t = now();
-  const expected = (prefix = '') => APPLICATION_EDIT_FIELDS_219.map((key, index) => {
-    const column = prefix + key;
-    // Match the applicant token's open class while leaving the stored status to staff.
-    const value = key === 'status' ? `CASE WHEN ${column} = 'reviewing' THEN 'submitted' ELSE ${column} END` : column;
-    return `${value} IS ?${21 + index}`;
-  }).join(' AND ');
   const expectedValues = existing ? applicationEditValues219(existing) : APPLICATION_EDIT_FIELDS_219.map(() => null);
-  const original = `((?40=1 AND EXISTS(SELECT 1 FROM site_applications WHERE discord_id=?1 AND ${expected()})) OR (?40=0 AND NOT EXISTS(SELECT 1 FROM site_applications WHERE discord_id=?1)))`;
+  const original = `((?40=1 AND EXISTS(SELECT 1 FROM site_applications WHERE discord_id=?1 AND ${applicationEditWhere219(21)})) OR (?40=0 AND NOT EXISTS(SELECT 1 FROM site_applications WHERE discord_id=?1)))`;
   // Master QA, 28 Oct 2026: a settings pause can commit during the awaited
   // reference lookup. Admit both inserts and edits against the live switches
   // in this statement, preserving the settings parser's exact boolean rules.
@@ -618,7 +633,7 @@ async function saveApplication(env: Env, user: SiteUser, body: Record<string, un
        class = ?9, role = ?10, region = ?11, avail = ?12, avail_tz = ?13, fit_na = ?14, fit_eu = ?15,
        board_at = CASE WHEN ?16 = 1 THEN COALESCE(site_applications.board_at, ?18) END, answers = ?17, updated_at = ?18,
        status = CASE WHEN site_applications.status = 'withdrawn' THEN 'submitted' ELSE site_applications.status END
-     WHERE site_applications.status NOT IN ('accepted','declined') AND ${existing ? expected('site_applications.') : '0'}`,
+     WHERE site_applications.status NOT IN ('accepted','declined') AND ${existing ? applicationEditWhere219(21, 'site_applications.') : '0'}`,
   )
     .bind(user.discord_id, a.position, a.class_lead, a.backup1, a.backup2, a.fallback, a.character, a.char_key, a.class, a.role, a.region, a.avail, a.avail_tz, a.fit_na, a.fit_eu, a.board ? 1 : 0, a.answers, t, answers.applicationTrack ?? '', retainingPatron ? 1 : 0, ...expectedValues, existing ? 1 : 0)
     .run();
@@ -696,13 +711,21 @@ async function withdrawApplicationBoardConsent(env: Env, user: SiteUser, body: R
   return apiJson({ ok: true, application: row ? await ownApplicationOut219(row) : null });
 }
 
-async function withdrawApplication(env: Env, user: SiteUser): Promise<Response> {
+async function withdrawApplication(env: Env, user: SiteUser, editToken?: unknown): Promise<Response> {
+  let expected: ReturnType<typeof applicationEditValues219> | null = null;
+  const changed = () => apiJson({ error: 'application_changed', message: 'Your saved application changed. Reopen it before choosing to withdraw.' }, 409);
+  if (editToken !== undefined) {
+    const current = await env.DB.prepare("SELECT * FROM site_applications WHERE discord_id = ?1").bind(user.discord_id).first<AppRow>();
+    if (!current || !openApplication219(current) || !await matchesApplicationEditToken219(current, editToken)) return changed();
+    expected = applicationEditValues219(current);
+  }
   const r = await env.DB.prepare(
-    "UPDATE site_applications SET status = 'withdrawn', updated_at = ?2 WHERE discord_id = ?1 AND status IN ('submitted','reviewing')",
+    "UPDATE site_applications SET status = 'withdrawn', updated_at = ?2 WHERE discord_id = ?1 AND status IN ('submitted','reviewing')" +
+      (expected ? ' AND ' + applicationEditWhere219(3) : ''),
   )
-    .bind(user.discord_id, now())
+    .bind(user.discord_id, now(), ...(expected ?? []))
     .run();
-  if (!r.meta.changes) return apiJson({ error: "nothing", message: "There is no open application to withdraw." }, 409);
+  if (!r.meta.changes) return expected ? changed() : apiJson({ error: "nothing", message: "There is no open application to withdraw." }, 409);
   forgetBoardCounts();
   await audit(env, user.discord_id, "site.application_withdrawn");
   const row = await env.DB.prepare("SELECT * FROM site_applications WHERE discord_id = ?1").bind(user.discord_id).first<AppRow>();

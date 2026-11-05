@@ -15,7 +15,13 @@ async function applicationEdit219(){
  const saved=()=>one('SELECT * FROM site_applications WHERE discord_id=?',MEMBER);
  const body={position:'member',backups:[],class:'warrior',role:'tank',region:'eu',character:'Editor One',fallback:true,ack:true,board:false,avail:'f'.repeat(42),availTz:'Europe/Stockholm',applicationTrack:'member',targetOffice:null,editToken:null,
   answers:{experience:'I have played with groups and will follow the agreed plan.',why:'I want to help the guild and learn with other members.',leadership:'I help organize a fictional group.',scenario:'Hear both accounts and follow the agreed rules.',hours:'10to20',voice:'yes',extra:'Original private note.'}};
- let r=await request('PUT','/api/application',body);
+ const editorHeader='X-Olympus-Application-Editor',browserHeaders={'Sec-Fetch-Site':'same-origin'};
+ const editorProof=(await request('GET','/api/me')).body.applicationEditorProof;
+ const otherProof=(await request('GET','/api/me',undefined,OTHER)).body.applicationEditorProof;
+ const missingProof=await request('PUT','/api/application',body,MEMBER,browserHeaders);
+ const changedActor=await request('PUT','/api/application',body,OTHER,{...browserHeaders,[editorHeader]:editorProof});
+ check('a browser must prove the original editor account before its first save',missingProof.status===409&&changedActor.status===409&&missingProof.body.error==='application_editor_changed'&&changedActor.body.error==='application_editor_changed'&&/^[A-Za-z0-9_-]{43}$/.test(editorProof)&&editorProof!==otherProof&&!saved()&&!one('SELECT 1 FROM site_applications WHERE discord_id=?',OTHER));
+ let r=await request('PUT','/api/application',body,MEMBER,{...browserHeaders,[editorHeader]:editorProof});
  check('new ordinary application is saved with a private content token',r.status===200&&r.body?.application?.editToken?.length===64,r);
  const initialTime=saved().created_at,initialToken=r.body.application.editToken;
  await fixtureRun("UPDATE site_applications SET status='reviewing',reviewed_at=?,reviewed_by=?,admin_note='' WHERE discord_id=?",now-10,STAFF,MEMBER);
@@ -42,6 +48,9 @@ async function applicationEdit219(){
  check('a specialization from another class is rejected without changing the application',wrongSpec.status===400&&wrongSpec.body.field==='specialization'&&JSON.stringify(saved())===storedAfter);
  const stale=await request('PUT','/api/application',{...updated,answers:{...updated.answers,extra:'Stale overwrite'}});
  check('old editor cannot overwrite a newer same-second application',stale.status===409&&stale.body.error==='stale_application'&&JSON.stringify(saved())===storedAfter);
+ const staleWithdraw=await request('DELETE','/api/application',{editToken:initialToken},MEMBER,{...browserHeaders,[editorHeader]:editorProof});
+ const foreignWithdraw=await request('DELETE','/api/application',{editToken:r.body.application.editToken},MEMBER,{...browserHeaders,[editorHeader]:otherProof});
+ check('a stale withdrawal or a withdrawal from a different editor cannot change the saved row',staleWithdraw.status===409&&staleWithdraw.body.error==='application_changed'&&foreignWithdraw.status===409&&foreignWithdraw.body.error==='application_editor_changed'&&JSON.stringify(saved())===storedAfter);
  byText(staff.app,'button','Save note').click();
  await waitFor(()=>staff.app.textContent.includes('The decision result could not be confirmed.'),'RT16 stale content refusal',8000);
  check('RT16 digest refuses the stale empty-note view after applicant content changes',staffPosts===1&&saved().admin_note===''&&saved().status==='reviewing');

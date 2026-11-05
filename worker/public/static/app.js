@@ -2927,6 +2927,13 @@
       h("optgroup", { label: "Membership" }, meta.positions.filter((p) => p.group === "membership" && p.key !== "member" && !reservedKey201(p.key)).map((p) => opt(p.key, p.label))));
   }
 
+  function applicationWriteOptions(proof, live) {
+    if (typeof proof !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(proof)) {
+      throw new ApiError(409, { message: "Open the application again to confirm your current sign-in." });
+    }
+    return { live, headers: { "X-Olympus-Application-Editor": proof } };
+  }
+
   // Readonly applications retain an independent, remove-only privacy action.
   function applicationBoardPrivacy210(application) {
     if (!application) return null;
@@ -2937,7 +2944,7 @@
       ["boardApplicationIntent", "boardApplicationIntentOptIn", "Remove my application track and chosen office from the voting board"],
     ].filter(([, key]) => answers[key] === true);
     if (!fields.length) return null;
-    const owner = S.user;
+    const owner = S.user, editorProof = S.applicationEditorProof;
     let busy = false;
     const controls = fields.map(([flag, key, label]) => ({ flag, key, label, input: h("input", { type: "checkbox" }) }));
     const save = h("button", { class: "btn small", type: "button", text: "Apply privacy changes", disabled: true });
@@ -2965,7 +2972,7 @@
       selected.forEach(({ flag }) => { body[flag] = false; });
       busy = true; sync(); status.textContent = "Saving privacy changes…";
       try {
-        const out = await api("PUT", "/api/application", body, { live: () => S.user === owner && panel.isConnected });
+        const out = await api("PUT", "/api/application", body, applicationWriteOptions(editorProof, () => S.user === owner && panel.isConnected));
         if (!out?.application || selected.some(({ key }) => out.application.answers?.[key] !== false)) throw Error("privacy_unconfirmed");
         if (S.user !== owner) return;
         if (S.application === application) S.application = out.application;
@@ -3000,6 +3007,10 @@
   ROUTES.apply = function apply(main) {
     const meta = M();
     const a = S.application;
+    const editorOwner = S.user, editorProof = S.applicationEditorProof, editorHash = location.hash;
+    const liveApplication = () => main.isConnected && !endingSiteSession && S.signedIn && !S.denied &&
+      S.user === editorOwner && S.applicationEditorProof === editorProof && location.hash === editorHash;
+    let editToken = a?.editToken ?? null;
     const s = S.settings || {};
     const locked = a && (a.status === "accepted" || a.status === "declined");
     const editingOpen219 = !!a && ["submitted","reviewing"].includes(a.status);
@@ -3044,10 +3055,7 @@
       return;
     }
     const form = h("form", { novalidate: true });
-    const editorOwner = S.user?.id, editorHash = location.hash;
-    const liveEditor = () => form.isConnected && !endingSiteSession && S.signedIn && !S.denied &&
-      S.user?.id === editorOwner && location.hash === editorHash;
-    let editToken = a?.editToken ?? null;
+    const liveEditor = () => form.isConnected && liveApplication();
     // Only this branch creates an editable form; every earlier refusal keeps neutral copy. A retired notice has none.
     applicationNotice218?.querySelector(".launch-application-copy218").replaceWith(launchApplicationCopy218(true));
     const unsaved = h("span", { class: "dirty", hidden: true, text: "Unsaved changes" });
@@ -3386,7 +3394,7 @@
         try {
           const data = await api("GET", "/api/me", undefined, { live: liveEditor });
           if (!liveEditor()) return;
-          if (data?.user?.id !== editorOwner || data.denied) {
+          if (data?.user?.id !== editorOwner?.id || data.denied || !editorProof || data.applicationEditorProof !== editorProof) {
             message.textContent = "The original account could not be confirmed. The draft is still here.";
             return;
           }
@@ -3526,7 +3534,7 @@
       const body = { editToken, ...(intent199 ? {applicationTrack:intent199.applicationTrack,targetOffice:intent199.targetOffice,boardApplicationIntent:isVoted() && boardOk.checked && boardIntentOk199.checked} : {}), position, classLead: position === "class_lead" ? classLeadSel.value : null, backups, character: character.value, class: cls.value, role: role.value, region: region.value, avail: hexFromBits(bitsFromBlocks(blocks, zone)), availTz: zone, fallback: fallback.checked, board: isVoted() && boardOk.checked, boardPortrait: isVoted() && boardOk.checked && boardPortraitOk.checked, boardTalentBuilds:isVoted() && boardOk.checked && talentSharing.checked, answers, ack: true };
       submit.disabled = true;
       try {
-        const out = await api("PUT", "/api/application", body, { live: liveEditor });
+        const out = await api("PUT", "/api/application", body, applicationWriteOptions(editorProof, liveEditor));
         if (!liveEditor()) return;
         if (!out?.application) throw new ApiError(200, { error: "unreadable_answer" });
         S.application = out.application;
@@ -3548,13 +3556,15 @@
       }
     });
     async function withdraw() {
-      if (!(await confirmBox("Withdraw your application?", `It stays on record as withdrawn${a && a.boardAt ? " and comes off the voting board" : ""}. You can apply again later while applications are open.`, "Withdraw"))) return;
+      if (!liveApplication() || !(await confirmBox("Withdraw your application?", `It stays on record as withdrawn${a && a.boardAt ? " and comes off the voting board" : ""}. You can apply again later while applications are open.`, "Withdraw")) || !liveApplication()) return;
       try {
-        const out = await api("DELETE", "/api/application");
+        const out = await api("DELETE", "/api/application", { editToken }, applicationWriteOptions(editorProof, liveApplication));
+        if (!liveApplication()) return;
+        if (out?.application?.status !== "withdrawn") throw new ApiError(200, { message: "The withdrawal could not be confirmed. Check your saved application before trying again." });
         S.application = out.application;
         toast("Application withdrawn.");
         render();
-      } catch (err) { toast(err.message, "bad"); }
+      } catch (err) { if (liveApplication()) toast(err.message, "bad"); }
     }
     const lost = a && !editingOpen219 ? choicesOf(a).filter(appointedTo) : [];
     const lostNote = lost.length
