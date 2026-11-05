@@ -34,6 +34,7 @@ import { apiJson, appOut, avatarUrl, BOARD_COUNTS, choicesOf, forgetBoardCounts,
 import { AVAIL_HOURS, availBits, BALLOTS, ballotOf, cleanAppointed, cleanNoVote, cleanText, fitFromBits, loadSettings, parseTime, POSITION_KEYS, professionOf, raidFit, roleLabel, settingsFrom, type SiteSettings } from "./site-data";
 import { queueReserved, releaseReserved, releaseReservedStatements } from "./site-queue";
 import { guildSeats } from "./guild-seats";
+import { handleLaunchOperations229 } from './site-launch229';
 import { accountInfo, ownerOfCharacter } from "./lookup";
 import { communityEraseStatements, communityContext, fenceSql } from "./community-context";
 import { handleCommunityAdmin } from "./community-routes";
@@ -80,6 +81,7 @@ export async function handleAdmin(request: Request, env: Env, path: string, admi
   if (parts[0] === 'discord-directory' && parts.length === 2) return discordDirectoryAttendedVisibility(request, env, await communityContext(env, request), parts[1]!, body);
 
   if (parts[0] === "community") return handleCommunityAdmin(request, env, path, admin, body); // .57
+  if (parts[0] === 'launch-operations' && parts.length === 1) return handleLaunchOperations229(request, env);
   if (m === "GET" && parts[0] === "overview") return apiJson(await overview(env));
   if (m === "PUT" && parts[0] === "settings") {
     // Original authenticated administrator already captured by site-api.ts.

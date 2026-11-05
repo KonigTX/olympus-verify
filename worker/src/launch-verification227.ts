@@ -4,14 +4,14 @@ import type { Env } from './env';
 import { linksNotBefore } from './db';
 import { createPrivacyAdmissionAlias,isPrivacyWriteAdmissionDatabase } from './privacy-write-admission';
 import { normalizeCharacter,normalizeCodeInput } from './codes';
+import { isApprovedNativeGuildName } from './guild-affiliation229';
 export class LaunchVerificationHeld extends Error { constructor() { super('launch_verification_source_held'); } }
 export type LaunchNativeScope=Readonly<{version:1;guild:string;realm:string;provenance:`addon-native-v1:${string}`} >;
-const APPROVED_NATIVE_GUILDS=['Olympus','Olympus I','Olympus II','Olympus III','Olympus IV','Olympus V','Olympus VI','Olympus VII','Olympus VIII','Olympus IX','Olympus X'] as const;
 export function parseLaunchNativeScope(raw:unknown):LaunchNativeScope|null {
   if(typeof raw!=='string'||raw.length>512)return null;
   try{
     const v=JSON.parse(raw);if(!v||typeof v!=='object'||Array.isArray(v)||Object.keys(v).sort().join(',')!=='guild,realm,version'||v.version!==1)return null;
-    if(typeof v.guild!=='string'||!APPROVED_NATIVE_GUILDS.some(g=>g.toLowerCase()===v.guild.toLowerCase())||typeof v.realm!=='string'||!v.realm||v.realm.length>96||new TextEncoder().encode(v.realm).byteLength>128||v.realm.trim()!==v.realm||/[\x00-\x1f\x7f<>]/.test(v.realm)||/\bbeta\b|^unknown$|^pending$|^unconfirmed$/i.test(v.realm))return null;
+    if(!isApprovedNativeGuildName(v.guild)||typeof v.realm!=='string'||!v.realm||v.realm.length>96||new TextEncoder().encode(v.realm).byteLength>128||v.realm.trim()!==v.realm||/[\x00-\x1f\x7f<>]/.test(v.realm)||/\bbeta\b|^unknown$|^pending$|^unconfirmed$/i.test(v.realm))return null;
     const canonical=JSON.stringify({version:1,guild:v.guild,realm:v.realm});
     // Operator configuration is canonical, preventing duplicate-key or ambiguous projections.
     if(canonical!==raw)return null;

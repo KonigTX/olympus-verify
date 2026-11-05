@@ -75,6 +75,7 @@ CHANNEL_MOD_ALERTS = "1554266499039105075"          # the same private review ch
 CHANNEL_SERVER_LOG = "1554266647378919505"          # the private server log in Asmongold's server (leave "" to disable log lines)
 ADMISSION_MODE = "auto"                 # review | auto  (auto since 18 Sep: a confirmed code queues the invite; the Linked Role + code are the check, the key press stays)
 VERIFY_MEMBERSHIP_ONLY = "true"        # .227: no new link/role/invite without fresh native roster and matching GUID
+VERIFY_NATIVE_SCOPE = '{"version":1,"guild":"OLYMPUS PRIME","realm":"CAMWOW US2 Realm 3 PvE"}' # .229: observed own-addon raw scope; aliases never rewrite proof bytes
 SET_NICKNAME = "false"                  # no nickname capability was requested or granted in Asmongold's server
 SET_GUILD_NOTE = "false"                # public note "D:<discord id>" — SetNote is forbidden for addons on the Forever beta; keep false
 OFFICER_CHARACTERS = "Fern Melder"     # shown in /verify instructions; the characters running the addon (two-part Forever name)

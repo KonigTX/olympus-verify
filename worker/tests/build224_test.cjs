@@ -46,7 +46,7 @@ async function checks224(){
   r.answer.embeds?.[0]?.fields.find(f=>f.name==='Current Council portfolios')?.value.split('\n').length===13&&r.answer.allowed_mentions.parse.length===0);
  r=await send({type:3,custom:menu,values:['branches']});check('branch hub includes current launch evidence and unknown-capacity guardrails',r.answer.embeds?.length===2&&JSON.stringify(r.answer).includes('unknown'));
  check('CC-018 branch hub shares the compact unpublished-capacity disclosure and preserves the launch embed',
-  r.answer.embeds?.length===2&&r.answer.embeds[0].description.includes('No published capacity snapshot for Olympus I–X yet.')&&!r.answer.embeds[0].fields?.length);
+  r.answer.embeds?.length===2&&r.answer.embeds[0].description.includes('No published capacity snapshot for OLYMPUS PRIME / Olympus II–X yet.')&&!r.answer.embeds[0].fields?.length);
  r=await send({type:3,custom:menu,values:['treasury']});check('Treasury stays paused and ordinary appeals remain free with excluded safety offenses',JSON.stringify(r.answer).includes('OFF')&&JSON.stringify(r.answer).includes('Ordinary appeals are free')&&JSON.stringify(r.answer).includes('100g')&&JSON.stringify(r.answer).includes('Doxxing'));
  r=await send({type:3,custom:menu.replace(MEMBER,ORG),values:['status']});check('a component for another actor cannot disclose status',!(r.initial.type===4?r.initial.data:r.answer).embeds?.length&&/expired/.test((r.initial.type===4?r.initial.data:r.answer).content));
  const seen=one('SELECT COUNT(*) n FROM seen_interactions').n;r=await send({guild:WRONG});check('other guilds are ignored before replay or account effects',r.status===204&&r.initial===null&&one('SELECT COUNT(*) n FROM seen_interactions').n===seen);

@@ -47,6 +47,7 @@ import savedvars  # noqa: E402
 from custody_recovery import StateLease  # noqa: E402
 from treasury_receipts227 import TreasuryJournal, normalize_name as treasury_name, parse_note as treasury_note  # noqa: E402
 from native_membership227 import parse_membership_note, validate_membership  # noqa: E402
+import launch_operations229  # noqa: E402
 
 # The sender is a character name, never a channel tag or a UI escape. Since patch 12.1 code shipped to this client,
 # Blizzard's Discord bridge can relay a Discord user's text into guild chat, and a Discord display name is free text:
@@ -103,7 +104,7 @@ LINE_TS_RE = re.compile(r"^(?P<mo>\d{1,2})/(?P<d>\d{1,2})\s+(?P<h>\d{1,2}):(?P<m
 CLIENT_IN = "Active Player Created"
 CLIENT_OUT = ("Client Object Manager Destroyed", "Client Destroy")
 
-WATCHER_VERSION = "0.6.13"
+WATCHER_VERSION = "0.6.15"
 STRICT_DISPLAY_PROTOCOL = "launch-roster-display-v1"
 STRICT_DISPLAY_PATH = "/queue/unverified?keyVersion=" + STRICT_DISPLAY_PROTOCOL
 STRICT_DISPLAY_MAX_BYTES = 512 * 1024
@@ -271,6 +272,7 @@ class Worker:
         if not isinstance(path, str) or not path.startswith("/") or path.startswith("//") or "://" in path or any(ord(c) <= 32 or ord(c) == 127 for c in path):
             log(f"worker {method}: refused a request path that is not local to the origin")
             return False, "invalid_path"
+        log_path = path.split("?", 1)[0]  # Opaque launch cursors must never enter logs.
         data = None if body is None else json.dumps(body).encode("utf-8")
         wire_path = path
         if getattr(self, 'membership_only', False) and ((method == 'GET' and path.split('?', 1)[0] == '/queue') or (method == 'POST' and path in ('/ingest/verify', '/ingest/roster', '/ingest/events'))):
@@ -287,18 +289,19 @@ class Worker:
             try:
                 with self.opener.open(req, timeout=20) as res:
                     try:
-                        payload = res.read(STRICT_DISPLAY_MAX_BYTES + 1) if path == STRICT_DISPLAY_PATH else res.read()
-                        if path == STRICT_DISPLAY_PATH and len(payload) > STRICT_DISPLAY_MAX_BYTES:
+                        limit = STRICT_DISPLAY_MAX_BYTES if path == STRICT_DISPLAY_PATH else launch_operations229.MAX_BYTES if log_path == "/queue/launch-operations" else None
+                        payload = res.read(limit + 1) if limit is not None else res.read()
+                        if limit is not None and len(payload) > limit:
                             return False, "invalid_response"
                         raw = payload.decode("utf-8")
                         result = json.loads(raw) if raw.strip() else None
                     except (UnicodeDecodeError, ValueError, RecursionError):
-                        log(f"worker {method} {path} -> a response that is not JSON; not treated as delivered")
+                        log(f"worker {method} {log_path} -> a response that is not JSON; not treated as delivered")
                         return False, "invalid_response"
                     if not isinstance(result, dict):
                         # 0.6.6: the Worker acknowledges with a JSON object; an empty or other 2xx is not a delivery
                         # (Codex 03:07: an empty 2xx was True/None and post() dropped the event as delivered)
-                        log(f"worker {method} {path} -> {getattr(res, 'status', '2xx')} without a JSON acknowledgment; not treated as delivered")
+                        log(f"worker {method} {log_path} -> {getattr(res, 'status', '2xx')} without a JSON acknowledgment; not treated as delivered")
                         return False, "invalid_response"
                     pause = self._pause_data()
                     if pause.get("worker_retry_status") is not None:
@@ -308,11 +311,11 @@ class Worker:
             except urllib.error.HTTPError as e:
                 code = e.code
                 if 300 <= code < 400:
-                    self._pause_for(code, self.PAUSE_REDIRECT, f"worker {method} {path} -> {code} redirect refused; worker_url must be the Worker's own HTTPS origin; all requests paused for 15 minutes")
+                    self._pause_for(code, self.PAUSE_REDIRECT, f"worker {method} {log_path} -> {code} redirect refused; worker_url must be the Worker's own HTTPS origin; all requests paused for 15 minutes")
                     return False, {"httpStatus": code, "retryAfterSeconds": self.PAUSE_REDIRECT, "configurationError": True}
                 if code in (401, 403, 429):
                     seconds = max(self.PAUSE_AUTH if code in (401, 403) else self.PAUSE_RATE, self._retry_after(e.headers)) + random.uniform(0, 1)
-                    self._pause_for(code, seconds, f"worker {method} {path} -> {code} " + ("(check watcher_token); all requests paused for at least 15 minutes" if code in (401, 403) else "rate limited; all requests paused until the Worker's deadline"))
+                    self._pause_for(code, seconds, f"worker {method} {log_path} -> {code} " + ("(check watcher_token); all requests paused for at least 15 minutes" if code in (401, 403) else "rate limited; all requests paused until the Worker's deadline"))
                     return False, {"httpStatus": code, "retryAfterSeconds": math.ceil(float(self._pause_data()["worker_retry_at"]) - time.time())}
                 if code == 409 and method == "POST" and path == "/ingest/verify":
                     # .227: a known closed-request refusal is not an unknown
@@ -329,13 +332,13 @@ class Worker:
                         pass  # Any other/unknown refusal retains the original.
                 if 400 <= code < 500:
                     # the Worker understood and rejected it; retrying will not change the answer. Its body is not logged.
-                    log(f"worker {method} {path} -> {code}")
+                    log(f"worker {method} {log_path} -> {code}")
                     self.last_refusal = code
                     return True, None
-                log(f"worker {method} {path} -> {code}, retry {attempt + 1}/{retries}")
+                log(f"worker {method} {log_path} -> {code}, retry {attempt + 1}/{retries}")
             except (urllib.error.URLError, TimeoutError, OSError, http.client.HTTPException) as e:
                 # the exception's class only: its text can carry response bytes (0.6.6, Codex 03:07)
-                log(f"worker {method} {path} unreachable ({type(e).__name__}), retry {attempt + 1}/{retries}")
+                log(f"worker {method} {log_path} unreachable ({type(e).__name__}), retry {attempt + 1}/{retries}")
             time.sleep(delay)
             delay *= 2
         return False, "unreachable"
@@ -456,6 +459,7 @@ class Watcher:
         self.sv_file = wow / "WTF" / "Account" / cfg["account"] / "SavedVariables" / "OlympusVerify.lua"
         self.queue_file = wow / "Interface" / "AddOns" / "OlympusVerify" / "OlympusQueue.lua"
         self.strict_display_file = self.queue_file.with_name("OlympusVerifyLists.lua")
+        self.launch_operations_file = self.queue_file.with_name("OlympusLaunchQueue.lua")
         self.worker = Worker(cfg["worker_url"], cfg["watcher_token"])
         self.secret = cfg["verify_secret"]
         self.officer = cfg.get("officer_character", "")
@@ -485,6 +489,9 @@ class Watcher:
         self.unverified_poll = _seconds(cfg, "unverified_poll_seconds", 1800)
         self._last_unverified_pull = 0.0
         self._next_strict_display_pull = 0.0
+        self.launch_scan = launch_operations229.Scan(lambda: time.time())
+        self._launch_roster_candidate = None
+        self._launch_accepted_roster = None  # same-process positive receipt only; never inferred after restart
         self._unverified: dict[str, Any] | None = None
         self.max_outbox = int(cfg.get("max_outbox", 500))
         self._custody_halted = False
@@ -590,6 +597,7 @@ class Watcher:
             item["acknowledged"] = True
             result = (settle or self._settle_original)(item)
             if result is Delivery.DELIVERED:
+                self.note_launch_roster_receipt(item, res)
                 log(f"  -> delivered{Worker.summarize(res)}")
             return result
         if ok and res is None and type(self.worker.last_refusal) is int and 400 <= self.worker.last_refusal < 500:
@@ -1276,7 +1284,14 @@ class Watcher:
                     self.record_treasury_receipt(receipt, "savedvariables")
         self.note_saved_relay(db, mtime)
         self.forward_events(db.get("events") or [])
-        self.forward_roster(db.get("roster") or {})
+        control = self.valid_launch_control(db)
+        new_scan = (control is not None and control['action'] == 'scan'
+                    and not self.state.was_seen("launch-control:" + control['guid'] + ":" + control['id']))
+        if new_scan:
+            self.forward_roster(db.get("roster") or {}, begin_launch_scan=True)
+        else:
+            self.forward_roster(db.get("roster") or {})
+        self.read_launch_control(db)
         self.state.d["sv_mtime"] = mtime
         self.state.save()
 
@@ -1369,7 +1384,25 @@ class Watcher:
             self._stale_reported = True
             log(f"SavedVariables: {stale} join/departure event(s) older than {SV_EVENT_MAX_AGE // 3600} h not relayed (the roster export has settled them)")
 
-    def forward_roster(self, roster: dict[str, Any]) -> None:
+    def forward_roster(self, roster: dict[str, Any], *, begin_launch_scan: bool = False) -> None:
+        digest = launch_operations229.complete_roster_digest(roster)
+        accepted = self._launch_accepted_roster
+        first = self.launch_scan.pages.get(0)
+        at = time.time()
+        if (not begin_launch_scan and self.membership_only and digest is not None and accepted is not None and first is not None
+                and self.launch_scan.stopped is None and at < first['scan']['expiresAt']
+                and first['snapshotId'] == accepted['snapshot'] and first['snapshotAt'] == accepted['exportedAt']
+                and first['snapshotAt'] == self.state.d['roster_sent'] and digest == accepted['digest']
+                and roster['exportedAt'] >= accepted['exportedAt'] and roster['exportedAt'] <= at + 5
+                and first['guild'] == roster['nativeGuild'] and first['realm'] == roster['nativeRealm']):
+            # Mandatory PLAYER_LOGOUT exports may change only the timestamp. Keep the accepted
+            # original's exact source cutoff; no new source/scan freshness is asserted.
+            return
+        if first is not None and self.launch_scan.stopped is None:
+            self.launch_scan._stop('native-roster-changed-or-expired')
+            self.write_launch_operations()
+        self._launch_accepted_roster = None
+        self._launch_roster_candidate = None
         exported = int(roster.get("exportedAt") or 0)
         members = roster.get("members") or []
         native_scope = {}
@@ -1407,6 +1440,8 @@ class Watcher:
         # from its configuration or a character claim. The Worker pins it before
         # admitting a launch roster. Older addons remain unscoped, not guessed.
         payload.update(native_scope)
+        if digest is not None:
+            self._launch_roster_candidate = {'body': json.loads(json.dumps(payload)), 'digest': digest, 'exportedAt': exported}
         log(f"roster ({len(payload['members'])} members, exported {exported})")
         previous_watermark = self.state.d["roster_sent"]
         self.state.d["roster_sent"] = exported  # committed atomically with custody, before any dispatch
@@ -1421,6 +1456,15 @@ class Watcher:
             raise NoCustody("roster source paused until original custody is available")
         if outcome is Delivery.DELIVERED:
             self._last_unverified_pull = 0.0  # the list is derived from the roster: refresh it on the next queue pull
+
+    def note_launch_roster_receipt(self, item: dict[str, Any], receipt: dict[str, Any]) -> None:
+        candidate = self._launch_roster_candidate
+        if (item.get('path') == '/ingest/roster' and candidate is not None and item.get('body') == candidate['body']
+                and receipt.get('trusted') is True and type(receipt.get('snapshot')) is int and receipt['snapshot'] > 0
+                and type(receipt.get('members')) is int and receipt['members'] == len(candidate['body']['members'])
+                and 'refused' not in receipt and 'skipped' not in receipt):
+            self._launch_accepted_roster = {'digest': candidate['digest'], 'exportedAt': candidate['exportedAt'], 'snapshot': receipt['snapshot']}
+        self._launch_roster_candidate = None
 
     # ---------- 3. invite queue ----------
     def pull_unverified(self) -> None:
@@ -1513,6 +1557,67 @@ class Watcher:
         log(f"queue file written: {len(entries)} entries ({len(queued)} new) — the addon reads it at the next /reload (the panel's Sync & reload)")
         if queued:
             self.retry_queue_written()
+
+    def valid_launch_control(self, db: dict[str, Any]) -> dict[str, Any] | None:
+        if not self.membership_only or self._custody_halted:
+            return None
+        roster = db.get("roster")
+        control = db.get("launchControl")
+        at = int(time.time())
+        if not isinstance(roster, dict):
+            return None
+        own = saved_character(db)
+        if (not own or codes.normalize_character(own) != codes.normalize_character(self.officer)
+                or not isinstance(roster.get("exportedAt"), (int, float)) or not 0 <= at-roster["exportedAt"] <= 600
+                or not launch_operations229.validate_control(self.secret, control, at, db.get("lastCharacterGuid"), roster.get("nativeGuild"), roster.get("nativeRealm"))):
+            return None
+        return control
+
+    def read_launch_control(self, db: dict[str, Any]) -> None:
+        control = self.valid_launch_control(db)
+        if control is None:
+            return
+        key = "launch-control:" + control["guid"] + ":" + control["id"]
+        if self.state.was_seen(key):
+            return
+        # Spend the explicit local request before its first read. Restart never resumes a role scan.
+        self.state.seen(key)
+        self.state.save()
+        if control['action'] == 'scan':
+            roster = db['roster']
+            accepted = self._launch_accepted_roster
+            if (accepted is None or accepted['exportedAt'] != roster.get('exportedAt')
+                    or accepted['exportedAt'] != self.state.d['roster_sent']
+                    or accepted['digest'] != launch_operations229.complete_roster_digest(roster)):
+                self.launch_scan._stop('native-roster-receipt-required')
+                self.launch_scan.control_id = control['id']
+                self.write_launch_operations()
+                return
+        if self.launch_scan.request(control, time.time()):
+            if control['action'] == 'scan':
+                self.launch_scan.expected_snapshot = (accepted['snapshot'],accepted['exportedAt'])
+            self.write_launch_operations()
+
+    def write_launch_operations(self) -> None:
+        body = launch_operations229.render_pages(self.launch_scan.result(), int(time.time()))
+        if body is None:
+            log("launch projection validation held; previous page dates remain unchanged")
+            return
+        path = self.launch_operations_file
+        if not path.parent.is_dir() or path.is_symlink() or path.with_suffix(".tmp").is_symlink():
+            log("launch operation projection path unavailable; no queue file written")
+            return
+        atomic_local_text(path, body)
+        result = self.launch_scan.result()
+        fresh = sum(int(time.time()) < page['expiresAt'] and int(time.time()) < page['scan']['expiresAt'] for page in result['pages'])
+        log(f"launch projection: {result['discoveredPages']}/50 pages; discovery {'complete' if result['scanComplete'] else 'incomplete'}; {fresh} action-fresh page(s); {result['stoppedReason'] or self.launch_scan.phase}; reload to load")
+
+    def pull_launch_operations(self) -> None:
+        if not self.membership_only or self._custody_halted:
+            return
+        # One explicit scan page per >=5 seconds, between the ordinary ingestion passes.
+        if self.launch_scan.step(self.worker.call, time.time()):
+            self.write_launch_operations()
 
     def pull_strict_display(self) -> None:
         if not self.membership_only or self._custody_halted:
@@ -1760,6 +1865,7 @@ class Watcher:
                 self.tail_chat_log()
                 self.check_savedvars()
                 self.pull_queue()
+                self.pull_launch_operations()
                 self.scan_diag_logs()
                 if time.time() - self._last_lag_report > 1800 and self.state.d.get("lag"):
                     self._last_lag_report = time.time()

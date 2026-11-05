@@ -154,6 +154,7 @@
     return typeof value === "string" && value.length <= 40 && !/[\u0000-\u001f\u007f<>]/.test(value) && !/^[0-9]{17,20}$/.test(value.trim()) ? value : "Name withheld";
   }
   const nativeRankDisplayName = (slot, name) => slot === 0 ? "Leader (Guild Master)" : name;
+  const guildDisplayName229 = name => typeof name === 'string' && /^Olympus(?: I| PRIME)?$/i.test(name) ? 'OLYMPUS PRIME' : name;
   function officeBadge199(row) {
     return row?.nativeRankOrdinal ? h("span", { class: "badge rank-office199", text: `${row.tierLabel} · Rank ${row.nativeRankOrdinal} ${nativeRankDisplayName(row.nativeSlot, row.nativeRankName)} (Slot ${row.nativeSlot}) · Title ${(row.codexTitles || []).join(" / ")}` }) : null;
   }
@@ -1565,7 +1566,7 @@
   // Titles identify the section, never a private account, event or case from an address.
   function routeTitle(route) {
     const [head, sub, detail, action] = route.split("/");
-    const staff = { "": "Overview", applications: detail ? "Application details" : "Applications", votes: "Votes", names: "Reserved names", friends: "Friends", lookup: "Lookup", settings: "Settings", ranks: "Rank planner", treasury: "Treasury", "approved-guilds": "Signed guild list", renames: "Renames", news: "News", audit: "Audit log", "ruleset-publication": "Ruleset publication", "directory-visibility": "Discord member list preferences", community: "Community" };
+    const staff = { "": "Overview", applications: detail ? "Application details" : "Applications", votes: "Votes", names: "Reserved names", "launch-operations": "Launch operations & MOTD", friends: "Friends", lookup: "Lookup", settings: "Settings", ranks: "Rank planner", treasury: "Treasury", "approved-guilds": "Signed guild list", renames: "Renames", news: "News", audit: "Audit log", "ruleset-publication": "Ruleset publication", "directory-visibility": "Discord member list preferences", community: "Community" };
     const staffCommunity = { trials: "Trials", departures: "Departures", cases: "Restriction cases", ledger: "Contribution ledger", inbox: "Private requests", claims: "Character claims" };
     if (head === "admin") return `Admin · ${sub === "community" && own(staffCommunity, detail) ? staffCommunity[detail] : own(staff, sub || "") ? staff[sub || ""] : "Overview"}`;
     if (head === "community") {
@@ -2559,7 +2560,7 @@
             h("p", { class: "muted small", text: `${fmtDateTime(s.launchAt)} (${fmtPacific(s.launchAt)}). ${atLaunch ? "Olympus set its own invite schedule to the global launch time." : "This is Olympus’s own invite schedule, separate from Blizzard’s global launch."} It guarantees neither service availability, an invite nor a free seat.` }))))));
   }
   const warningBox = () => noticeBox("warn", "icon-warning", h("p", null, h("strong", { text: "Joke, troll or abusive applications are permanently denied." }), " That covers the account's votes, nominations and reserved names too, and it is not reconsidered."));
-  // .115 (Viktor's item B, 2 Oct 2026): whether Olympus I has room, as the Worker judges it (guild-seats.ts memberSeats: the latest
+  // .115 (Viktor's item B, 2 Oct 2026): whether OLYMPUS PRIME has room, as the Worker judges it (guild-seats.ts memberSeats: the latest
   // complete and trusted roster export, or an invite just refused for space; the time rounded down to the hour). Shown only while
   // the guild is full, and only to someone it concerns: an account with characters waiting in the invite queue (its own places,
   // never anyone else's) or one without a roster-confirmed character. It promises nothing the bot does not do, and changes nothing.
@@ -2573,7 +2574,7 @@
   function seatsNotice(main) {
     // Seat reports are informational, not admission or Army observations. Never keep a boot-time full banner alive.
     const user = S.user, route = currentRoute(), view = main.dataset.viewRequest;
-    const box = h("div", { class: "mt seats-notice", "aria-live": "polite" }, h("p", { class: "muted small", role: "status", text: "Checking the latest Olympus I officer report…" }));
+    const box = h("div", { class: "mt seats-notice", "aria-live": "polite" }, h("p", { class: "muted small", role: "status", text: "Checking the latest OLYMPUS PRIME officer report…" }));
     let disposed = false, generation = 0, expiryTimer = null, clockTimer = null;
     const live = () => !disposed && main.parentNode === app && main.dataset.viewRequest === view && currentRoute() === route && S.signedIn && !S.denied && S.user === user && !document.hidden;
     const forget = () => { S.seats = null; S.myQueue = []; };
@@ -2596,7 +2597,7 @@
       if (!live()) return;
       const requestGeneration = ++generation, requestLive = () => live() && generation === requestGeneration;
       stopTimers(); forget(); clear(box); box.hidden = false;
-      add(box, h("p", { class: "muted small", role: "status", text: "Checking the latest Olympus I officer report…" }));
+      add(box, h("p", { class: "muted small", role: "status", text: "Checking the latest OLYMPUS PRIME officer report…" }));
       api("GET", "/api/me?view=seats", undefined, { live: requestLive }).then(data => {
         if (!requestLive()) return;
         if (!data || data.signedIn !== true || data.denied !== false || !data.user || data.user.id !== user.id || !Number.isSafeInteger(data.now)) throw new Error("seat reader refused");
@@ -2611,11 +2612,11 @@
         S.seats = s; S.myQueue = queue;
         const when = `about ${fmtDateTime(s.asOf)}`;
         const report = s.source === "roster"
-          ? `Latest officer report: the Olympus I roster export of ${when} counts ${s.members} of ${s.cap} members.`
-          : `Latest invite report: an Olympus I invite was refused for lack of space (${when}).`;
+          ? `Latest officer report: the OLYMPUS PRIME roster export of ${when} counts ${s.members} of ${s.cap} members.`
+          : `Latest invite report: an OLYMPUS PRIME invite was refused for lack of space (${when}).`;
         const body = [h("p", null, h("strong", { text: report })),
           ...queue.map(q => h("p", { text: `${q.name} is #${q.position} in line for a seat.` })),
-          h("p", { text: queue.length ? "Verified applicants wait in queue order (reserved names from the site go first). A full guild never costs you an invite attempt; the bot removes nobody, and officers may remove inactive characters to free seats." : "Verifying in Discord still works and puts you in the invite queue. This dated report does not promise the current number of free seats." })];
+          h("p", { text: queue.length ? "A recorded queue position is not admission approval or a promised seat. Officers check current verification rules and space before an invite. A full guild costs no invite attempt; the bot removes nobody to make room." : "Use #olympus-verify for the current verification requirements. Verification does not promise an invite. This dated report does not promise the current number of free seats." })];
         clear(box); add(box, noticeBox("warn", "icon-clock", body, visitorsLine(s)));
         const expire = () => { if (!requestLive()) return; forget(); clear(box); box.hidden = true; stopTimers(); };
         expiryTimer = setTimeout(expire, remaining * 1000);
@@ -4179,7 +4180,7 @@
 
   function adminTabs(sub) {
     const groups = [
-      ["Applications & Roster", [["", "Overview"], ["applications", "Applications"], ["votes", "Votes"], ["names", "Reserved names"], ["friends", "Friends"], ["lookup", "Lookup"], ["renames", "Renames"], ["directory-visibility", "Discord member list preferences"]]],
+      ["Applications & Roster", [["", "Overview"], ["applications", "Applications"], ["votes", "Votes"], ["names", "Reserved names"], ["launch-operations", "Launch operations & MOTD"], ["friends", "Friends"], ["lookup", "Lookup"], ["renames", "Renames"], ["directory-visibility", "Discord member list preferences"]]],
       ["Governance, Ranks & Appointments", [["ranks", "Rank planner"], ["approved-guilds", "Signed guild list"]]],
       ["Imperial Treasury & Stockades", [["treasury", "Treasury"]]],
       ["News, Calendar & Operations", [["news", "News"], ...(anyCommunity() ? [["community", "Community"]] : [])]],
@@ -4210,6 +4211,7 @@
       applications: parts[1] ? (b) => adminApplication(b, parts[1]) : adminApplications,
       votes: parts[1] ? (b) => adminRole(b, dec(parts[1])) : adminVotes,
       names: adminNames,
+      'launch-operations': adminLaunchOperations229,
       friends: adminFriends,
       lookup: (b) => adminLookup(b, dec(parts[1] || "")),
       settings: adminSettings,
@@ -4289,12 +4291,102 @@
   };
   function seatsStaffText(s, waiting) {
     let line;
-    if (!s) line = `Olympus I room: unknown (${SEAT_REASONS.error})`;
-    else if (s.full && s.source === "roster") line = `Olympus I: full, ${s.members} of ${s.cap} on the latest roster export of ${fmtDateTime(s.rosterAt)}`;
-    else if (s.full) line = `Olympus I: full (an invite was refused for space ${fmtDateTime(s.refusedAt)})`;
-    else if (s.state === "open") line = `${plural(s.free, "seat")} free on Olympus I (${s.members} of ${s.cap}, latest roster export of ${fmtDateTime(s.rosterAt)})`;
-    else line = `Olympus I room: unknown (${SEAT_REASONS[s.reason] || SEAT_REASONS.error})`;
+    if (!s) line = `OLYMPUS PRIME room: unknown (${SEAT_REASONS.error})`;
+    else if (s.full && s.source === "roster") line = `OLYMPUS PRIME: full, ${s.members} of ${s.cap} on the latest roster export of ${fmtDateTime(s.rosterAt)}`;
+    else if (s.full) line = `OLYMPUS PRIME: full (an invite was refused for space ${fmtDateTime(s.refusedAt)})`;
+    else if (s.state === "open") line = `${plural(s.free, "seat")} free on OLYMPUS PRIME (${s.members} of ${s.cap}, latest roster export of ${fmtDateTime(s.rosterAt)})`;
+    else line = `OLYMPUS PRIME room: unknown (${SEAT_REASONS[s.reason] || SEAT_REASONS.error})`;
     return `${line} · ${waiting} waiting in the invite queue.`;
+  }
+  async function adminLaunchOperations229(body) {
+    const owner = S.user, route = currentRoute(), pages = new Map();
+    let busy = false, scanning = false, sequence = 0, model = null, expiryTimer = null, retryAt = 0, nextCursor = null, lastOffset = -1;
+    const live = () => S.user === owner && S.signedIn && !S.denied && S.user?.isAdmin && currentRoute() === route && app.contains(body);
+    const monotonic = () => typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+    const status = h('p', {role:'status', 'aria-live':'polite', text:'Reading current launch evidence…'}), output = h('div', {class:'stack mt'});
+    const refresh = h('button', {type:'button', class:'btn', text:'Refresh first page', onclick:() => {scanning=false; load(null);}});
+    const scan = h('button', {type:'button',class:'btn',text:'Scan entire roster',onclick:() => {scanning=true; load(null);}});
+    const stop = h('button', {type:'button',class:'btn',text:'Stop scan',disabled:true,onclick:() => {scanning=false;stop.disabled=true;status.textContent=busy?'Stopping after the current bounded page; no further page will be read.':'Scan stopped. Unscanned and stale evidence stays held.';}});
+    const more = h('button', {type:'button', class:'btn', text:'Load next 20 role checks', hidden:true, onclick:() => nextCursor && load(nextCursor)});
+    const dispose = () => {if(expiryTimer)clearTimeout(expiryTimer);expiryTimer=null;sequence++;scanning=false;model=null;pages.clear();clear(output);if(disposeTool===dispose)disposeTool=null;};
+    disposeTool = dispose;
+    clear(body); add(body, [h('h1', {text:'Launch operations & MOTD'}),
+      h('p', {text:'Read-only discovery for up to 1,000 roster members. Scan follows at most 50 bounded pages when you ask. Each page has its own short role-evidence window: discovery complete does not mean every recommendation is still actionable. The addon rechecks GUID, guild, realm, rank and permission before each hardware action.'}),
+      h('div', {class:'btn-row'}, refresh, scan, stop, more), status, output]);
+    const identity = d => JSON.stringify([d.snapshotId,d.snapshotAt,d.guild,d.canonicalGuild,d.realm,d.scopeHash,d.scan?.id,d.scan?.startedAt,d.scan?.expiresAt]);
+    function copyControl(text, label, area, id) {
+      return h('button', {id,type:'button',class:'btn small',text:label,onclick:async() => {
+        if(!live()||!output.contains(area))return;
+        try {const clipboard=window.navigator?.clipboard||navigator.clipboard;if(!clipboard||typeof clipboard.writeText!=='function')throw Error('clipboard_unavailable');await clipboard.writeText(text);if(live()&&output.contains(area))status.textContent=label==='Copy MOTD'?'MOTD copied.':'Expanded bulletin copied.';}
+        catch {if(live()&&output.contains(area)){area.focus();if(typeof area.select==='function')area.select();status.textContent='Copy is unavailable here. Select the read-only text and copy it manually.';}}
+      }});
+    }
+    function draw(d) {
+      const focused=output.contains(document.activeElement)?document.activeElement.id:null, clock=monotonic(), scanExpired=!!d.scan?.expiresAt&&nowSec()>=d.scan.expiresAt;
+      clear(output);if(expiryTimer)clearTimeout(expiryTimer);expiryTimer=null;
+      const short=h('textarea',{id:'launch-motd229',rows:'2',value:d.motd.short}),bulletin=h('textarea',{id:'launch-bulletin229',rows:'8',value:d.motd.bulletin});
+      short.readOnly=true;bulletin.readOnly=true;short.setAttribute('readonly','');bulletin.setAttribute('readonly','');
+      add(output,frame('Guild message of the day',h('span',{class:'badge',text:d.motd.bytes+'/128 bytes'}),
+        h('label',{for:'launch-motd229',text:'MOTD · at most 128 ASCII characters and bytes'}),short,copyControl(d.motd.short,'Copy MOTD',short,'launch-copy-motd229'),
+        h('label',{for:'launch-bulletin229',text:'Expanded officer bulletin'}),bulletin,copyControl(d.motd.bulletin,'Copy expanded bulletin',bulletin,'launch-copy-bulletin229')));
+      const examined=[...pages.values()].reduce((sum,p)=>sum+p.dto.entitlements.scanned,0),total=d.entitlements.total,complete=pages.size>0&&examined===total&&!nextCursor;
+      let fresh=0,stale=0;for(const p of pages.values()){if(p.deadline>clock&&!scanExpired)fresh+=p.dto.promotions.length;else stale+=p.dto.promotions.length;}
+      add(output,frame('Discovery and current eligibility',null,
+        h('p',{text:d.guild?d.canonicalGuild+' · native “'+d.guild+'” · '+d.realm+' · snapshot '+d.snapshotId+' at '+fmtDateTime(d.snapshotAt):'Native flagship scope is not confirmed.'}),
+        h('p',{role:'status','data-launch-progress229':'',text:(complete?'Discovery complete':'Discovery partial')+': '+examined+' of '+total+' role-evidence rows examined; '+Math.max(0,total-examined)+' unscanned. '+fresh+' currently eligible recommendations; '+stale+' stale advisory recommendations. Unknown reads stay held.'}),
+        h('p',{class:'muted small',text:scanExpired?'The original scan/native snapshot window expired. Start a new scan.':d.scan?.expiresAt?'Scan witness expires '+fmtDateTime(d.scan.expiresAt)+'. Recheck an examined page to refresh only its role evidence.':'No confirmed native scan.'}),
+        h('p',{class:'muted small',text:(d.heldReasons||[]).join(' · ')})));
+      const table=(head,rows)=>h('div',{class:'table-wrap'},h('table',null,h('thead',null,h('tr',null,head.map(text=>h('th',{scope:'col',text})))),h('tbody',null,rows)));
+      for(const [offset,p] of [...pages].sort((a,b)=>a[0]-b[0])){
+        const eligible=p.deadline>clock&&!scanExpired,recheck=h('button',{id:'launch-recheck229-'+offset,type:'button',class:'btn small',text:'Recheck this page',disabled:busy||scanExpired||!p.dto.pageCursor,onclick:()=>{scanning=false;load(p.dto.pageCursor);}});
+        const rows=p.dto.promotions.map(r=>h('tr',{[eligible?'data-launch-promotion229':'data-launch-advisory229']:r.guid},h('td',{text:r.name}),h('td',{text:r.currentSlot+' to '+r.targetSlot}),h('td',{text:r.reason}),h('td',{text:eligible?'Role evidence current':'Stale advisory · recheck required'})));
+        add(output,frame('Examined page '+(offset/20+1),h('span',{class:'badge',text:eligible?'Role evidence current':'Stale advisory'}),
+          h('p',{text:'Role evidence expires '+fmtDateTime(p.dto.expiresAt)+'. Fixed targets: Knights below Veteran to slot 5; other verified Initiates to Member slot 7. No web action is offered.'}),recheck,
+          table(['Character','Native slots','Reason','Evidence'],rows)));
+      }
+      const risks=[...pages.values()].flatMap(p=>p.dto.riskBuffer),held=[...pages.values()].flatMap(p=>p.dto.held);
+      add(output,frame('Initiate space buffer · review only',h('span',{class:'badge',text:String(risks.length)}),
+        h('p',{text:'Lowest measured level, then longest measured offline first. Unknown values stay unknown. This is dated native-snapshot advice. No automatic purge or removal is requested.'}),
+        table(['Character','Level','Last online'],risks.sort((a,b)=>(a.level??Infinity)-(b.level??Infinity)||(b.lastOnlineDays??-1)-(a.lastOnlineDays??-1)||a.name.localeCompare(b.name)).map(r=>h('tr',null,h('td',{text:r.name}),h('td',{text:r.level??'Unknown'}),h('td',{text:r.lastOnlineDays===null?'Unknown':Math.round(r.lastOnlineDays*10)/10+' days'}))))));
+      if(held.length)add(output,frame('Held evidence',null,table(['Character','Reason'],held.map(r=>h('tr',null,h('td',{text:r.name}),h('td',{text:r.reason}))))));
+      const remaining=[...pages.values()].map(p=>p.deadline-clock).filter(n=>n>0);if(d.scan?.expiresAt&&!scanExpired)remaining.push((d.scan.expiresAt-nowSec())*1000);
+      if(remaining.length)expiryTimer=setTimeout(()=>{if(live()&&model){draw(model);status.textContent='A role-evidence window expired. Stale advisory rows require an explicit page recheck; no read or action was retried.';}},Math.max(1,Math.min(...remaining)));
+      if(focused){const field=document.getElementById(focused);if(field)field.focus({preventScroll:true});}
+    }
+    async function load(cursor) {
+      if(!live()||busy)return;
+      if(nowSec()<retryAt){scanning=false;status.textContent='Discord asked for a pause. Retry after '+fmtDateTime(retryAt)+'. No read was sent.';return;}
+      busy=true;refresh.disabled=true;scan.disabled=true;more.disabled=true;stop.disabled=!scanning;
+      const serial=++sequence,started=monotonic(),focused=output.contains(document.activeElement)?document.activeElement.id:null,current=()=>live()&&serial===sequence;
+      if(!cursor){model=null;pages.clear();nextCursor=null;lastOffset=-1;clear(output);if(expiryTimer)clearTimeout(expiryTimer);}
+      status.textContent='Reading at most 20 current Discord role records…';
+      try {
+        const d=await api('GET','/api/admin/launch-operations'+(cursor?'?cursor='+encodeURIComponent(cursor):''),undefined,{live:current});
+        if(!current())return;
+        if(!d||d.protocol!=='launch-operations-v1'||!['ready','partial','held'].includes(d.status)||!d.motd||typeof d.motd.short!=='string'||d.motd.short.length>128||!/^[\x20-\x7e]+$/.test(d.motd.short)
+          ||!Array.isArray(d.promotions)||!Array.isArray(d.riskBuffer)||!Array.isArray(d.held)||d.promotions.length>1000||d.riskBuffer.length>1000||d.held.length>1000
+          ||d.status==='held'&&(d.promotions.length||d.riskBuffer.length)||!Number.isSafeInteger(d.fetchedAt)||!Number.isSafeInteger(d.expiresAt)
+          ||d.actions?.automatic!==false||d.actions?.roleGrants!==false||d.actions?.removals!==false||cursor&&model&&identity(model)!==identity(d))throw Error('launch_response_unconfirmed');
+        if(d.status==='held'){pages.clear();nextCursor=null;scanning=false;}
+        else {
+          const e=d.entitlements;
+          if(!d.scan||!/^[a-f0-9]{32}$/.test(d.scan.id)||!Number.isSafeInteger(d.scan.startedAt)||!Number.isSafeInteger(d.scan.expiresAt)||d.scan.expiresAt>d.scan.startedAt+600||d.scan.expiresAt>d.snapshotAt+600
+            ||!e||!Number.isInteger(e.offset)||e.offset<0||e.offset>=1000||e.offset%20!==0||!Number.isInteger(e.scanned)||e.scanned<0||e.scanned>20||!Number.isInteger(e.total)||e.total<0||e.total>1000||typeof d.pageCursor!=='string'||d.pageCursor.length>2048)throw Error('launch_page_unconfirmed');
+          for(const r of d.promotions)if(![5,7].includes(r.targetSlot)||!Number.isInteger(r.currentSlot)||r.currentSlot<=r.targetSlot)throw Error('launch_target_unconfirmed');
+          const others=new Set([...pages].filter(([offset])=>offset!==e.offset).flatMap(([,p])=>[...p.dto.promotions,...p.dto.riskBuffer,...p.dto.held].map(r=>r.guid))),seen=new Set();
+          for(const r of [...d.promotions,...d.riskBuffer,...d.held]){if(others.has(r.guid)||seen.has(r.guid))throw Error('launch_duplicate_identity');seen.add(r.guid);}
+          const remaining=Math.max(0,Math.min(60000,(d.expiresAt-d.fetchedAt)*1000)-(monotonic()-started)-1000);
+          pages.set(e.offset,{dto:d,deadline:monotonic()+remaining});
+          if(e.offset>=lastOffset){nextCursor=d.nextCursor;lastOffset=e.offset;}
+        }
+        model=d;retryAt=d.entitlements.retryAfterSeconds?nowSec()+d.entitlements.retryAfterSeconds:0;if(retryAt)scanning=false;
+        draw(d);more.hidden=!nextCursor||!!retryAt;status.textContent=d.status==='held'?'Recommendations held; copy-only guidance remains available.':scanning?'Scan progressing through bounded pages; Stop prevents the next page.':'Read complete. Discovery and current action eligibility are shown separately.';
+      } catch(error){if(current()){model=null;scanning=false;pages.clear();nextCursor=null;clear(output);more.hidden=true;status.textContent='Current launch evidence could not be confirmed. Refresh deliberately; no replacement or action was sent.';}}
+      finally{if(current()){busy=false;refresh.disabled=false;scan.disabled=false;more.disabled=false;stop.disabled=!scanning;for(const button of output.querySelectorAll('button[id]'))if(button.id.startsWith('launch-recheck229-'))button.disabled=!!model?.scan?.expiresAt&&nowSec()>=model.scan.expiresAt;const field=focused&&document.getElementById(focused);if(field&&!field.disabled)field.focus({preventScroll:true});}}
+      if(current()&&scanning&&nextCursor&&pages.size<50)await load(nextCursor);
+      else if(current()){scanning=false;stop.disabled=true;}
+    }
+    await load(null);
   }
   async function adminOverview(body) {
     const owner = S.user, route = currentRoute();
@@ -4675,13 +4767,13 @@
     const current = () => settingsCurrent() && S.user === owner && S.signedIn && !S.denied && !!S.user?.isAdmin && currentRoute() === route;
     let data;
     try { data = await api("GET", "/api/admin/leadership", undefined, { live: current }); }
-    catch (e) { return current() ? frame("Olympus I–X leadership", null, h("p", { class: "err small", text: explain(e, "The directory could not be read.") })) : null; }
+    catch (e) { return current() ? frame("OLYMPUS PRIME / Olympus II–X leadership", null, h("p", { class: "err small", text: explain(e, "The directory could not be read.") })) : null; }
     if (!current()) return null;
-    if (!data || !Array.isArray(data.guilds) || data.guilds.length !== 10 || data.guilds.some(g => !g || typeof g.name !== "string" || typeof g.gm !== "string" || !Array.isArray(g.officers) || g.officers.length > 12 || g.officers.some(name => typeof name !== "string"))) return frame("Olympus I–X leadership", null, h("p", { class: "err small", text: "The directory answer could not be read. No names were changed." }));
+    if (!data || !Array.isArray(data.guilds) || data.guilds.length !== 10 || data.guilds.some(g => !g || typeof g.name !== "string" || typeof g.gm !== "string" || !Array.isArray(g.officers) || g.officers.length > 12 || g.officers.some(name => typeof name !== "string"))) return frame("OLYMPUS PRIME / Olympus II–X leadership", null, h("p", { class: "err small", text: "The directory answer could not be read. No names were changed." }));
     const rows = data.guilds.map((g, i) => ({
       g,
-      gm: h("input", { type: "text", maxlength: "40", value: g.gm, placeholder: "Not listed", autocomplete: "off", id: `lead-gm-${i}`, "aria-label": `${g.name}: Guild Master` }),
-      officers: h("textarea", { rows: "3", maxlength: "600", value: g.officers.join("\n"), id: `lead-off-${i}`, "aria-label": `${g.name}: officers, one per line` }),
+      gm: h("input", { type: "text", maxlength: "40", value: g.gm, placeholder: "Not listed", autocomplete: "off", id: `lead-gm-${i}`, "aria-label": `${guildDisplayName229(g.name)}: Guild Master` }),
+      officers: h("textarea", { rows: "3", maxlength: "600", value: g.officers.join("\n"), id: `lead-off-${i}`, "aria-label": `${guildDisplayName229(g.name)}: officers, one per line` }),
     }));
     // .197: exact account pointers use separate publication consent and a session-bound row revision; typed labels remain unverified.
     const namesOk = h("input", { type: "checkbox", id: "lead-names-ok" });
@@ -4695,7 +4787,7 @@
       if (!person || person.kind !== "discord" || typeof person.key !== "string" || !/^[1-9][0-9]{16,19}$/.test(person.key)) return null;
       return `<@${person.key}>`;
     };
-    const chooseName = (row, officer) => picker({ label: `${row.g.name}: ${officer ? "associate officer account" : "associate Guild Master account"}`, placeholder: "Find a Discord display name…", allowTyped: false, allowSelf: true, appointmentOnly: true, isCurrent: () => live() && !busy,
+    const chooseName = (row, officer) => picker({ label: `${guildDisplayName229(row.g.name)}: ${officer ? "associate officer account" : "associate Guild Master account"}`, placeholder: "Find a Discord display name…", allowTyped: false, allowSelf: true, appointmentOnly: true, isCurrent: () => live() && !busy,
       onPick: person => {
         if (!live() || busy) return;
         const name = selectedName(person);
@@ -4722,11 +4814,11 @@
       } catch (err) { if (live()) toast(explain(err), "bad"); }
       finally { busy = false; if (live()) sync(); }
     });
-    panel = frame("Olympus I–X leadership", null,
-      h("p", { class: "muted small", text: "The Guild Master and officers of each Olympus guild, as guild members and site administrators see them under Community → Leadership. Separate from the Olympus I staff channels and from the appointed roles above. A listing is a record only: it gives no powers in the bot, on this site or in Discord (the Council roles in Discord are given by hand). Up to twelve officers per guild, one per line." }),
+    panel = frame("OLYMPUS PRIME / Olympus II–X leadership", null,
+      h("p", { class: "muted small", text: "The Guild Master and officers of each Olympus guild, as guild members and site administrators see them under Community → Leadership. Separate from the OLYMPUS PRIME staff channels and from the appointed roles above. A listing is a record only: it gives no powers in the bot, on this site or in Discord (the Council roles in Discord are given by hand). Up to twelve officers per guild, one per line." }),
       h("p", { class: "muted small", text: "Discord search associates an eligible account with this exact guild and seat. Saving and later display recheck its current account and standing. A typed name remains a staff-entered, unverified label. Neither form proves a game character or grants any permission." }),
       h("div", { class: "grid two" }, rows.map(r => h("div", { class: "card" },
-        h("h3", { text: r.g.name }),
+        h("h3", { text: guildDisplayName229(r.g.name) }),
         h("label", { class: "field" }, h("span", { class: "lab", text: "Guild Master" }), r.gm), chooseName(r, false),
         h("label", { class: "field" }, h("span", { class: "lab", text: "Officers" }), r.officers), chooseName(r, true)))),
       h("label", { class: "check field", for: "lead-names-ok" }, namesOk, h("span", { text: "Each person listed here agreed to be listed. Guild members and site administrators can read the directory." })),
@@ -6202,7 +6294,7 @@
     { key: "leadership", label: "Leadership", href: "#/community/leadership", visible: anyCommunity, icon: "pos-guild_master",
       description: "The Guild Master and officers of each Olympus guild, I to X. For guild members and site administrators." },
     { key: "news", label: "Town Crier", href: "#/news", visible: newsOn, icon: "icon-launch",
-      description: "Notices from the site's administrators, whether Olympus I has room, the guild in figures and what is coming up. For guild members and site administrators." },
+      description: "Notices from the site's administrators, whether OLYMPUS PRIME has room, the guild in figures and what is coming up. For guild members and site administrators." },
     { key: "army", label: "Army", href: "#/community/army", visible: () => can("armyRead"), icon: "icon-friends",
       description: "Read guild snapshots shared for signed-in Olympus members by authorized reporters. These unverified figures count characters, not people." },
     { key: "census", label: "Census preview", href: "#/community/census", visible: () => feat("census") && can("confirmedGuildData"), icon: "icon-friends",
@@ -6341,17 +6433,17 @@
     const draw = () => {
       clear(box); box.hidden = false;
       const rows = labels.map((name, index) => {
-        const row = h("article", { class: "card", "data-army-capacity-guild": name }, h("h3", { text: "Olympus " + name }));
+        const row = h("article", { class: "card", "data-army-capacity-guild": name }, h("h3", { text: guildDisplayName229("Olympus " + name) }));
         if (!index) first = row;
         else add(row, [unknown("Capacity unavailable"), h("p", { class: "muted small", text: "No trusted capacity feed is connected for this branch. Its size, available places and admission state are unknown." })]);
         return row;
       });
-      add(box, [h("div", { class: "plaque" }, h("h2", { text: "Olympus I–X capacity" }), refreshButton), announcement,
+      add(box, [h("div", { class: "plaque" }, h("h2", { text: "OLYMPUS PRIME / Olympus II–X capacity" }), refreshButton), announcement,
         h("p", { class: "muted small", text: "Dated officer evidence is informational. It is separate from the unverified community snapshots below and never guarantees an invite or a place now." }),
         h("div", { class: "grid two army-capacity-grid" }, rows),
         h("p", { class: "small" }, "Alt placement: ask the current ", h("a", { href: "#/community/leadership", text: "guild officers and leadership" }), ". There is no automatic Alt routing or dedicated Alt guild established by this panel.")]);
     };
-    const unavailable = text => { announcement.textContent = text || "Current capacity unavailable"; if (!first) return; clear(first); add(first, [h("h3", { text: "Olympus I" }), unknown(text || "Current capacity unavailable"), h("p", { class: "muted small", text: "A fresh checked officer roster or recent refused-invite report is needed. No count or free-place estimate is inferred." })]); };
+    const unavailable = text => { announcement.textContent = text || "Current capacity unavailable"; if (!first) return; clear(first); add(first, [h("h3", { text: "OLYMPUS PRIME" }), unknown(text || "Current capacity unavailable"), h("p", { class: "muted small", text: "A fresh checked officer roster or recent refused-invite report is needed. No count or free-place estimate is inferred." })]); };
     function refresh() {
       if (!live()) return;
       const refocus = document.activeElement === refreshButton;
@@ -6372,14 +6464,14 @@
         // that hour plus the original48h roster /6h refusal window, not receipt time.
         const expiresAt = seat.asOf + (roster ? 48 : 6) * 3600, remaining = expiresAt - Math.max(data.now, nowSec());
         if (remaining <= 0) { unavailable("Officer evidence is out of date"); return; }
-        clear(first); add(first, [h("h3", { text: "Olympus I" }),
+        clear(first); add(first, [h("h3", { text: "OLYMPUS PRIME" }),
           h("time", { class: "small", "data-army-capacity-evidence": "current", datetime: new Date(seat.asOf * 1000).toISOString(), text: "Evidence time: about " + fmtDateTime(seat.asOf) })]);
         if (roster) add(first, [
           h("p", { text: "Checked officer roster: " + seat.members + " of " + seat.cap + " members." }),
-          h("meter", { class: "army-capacity-meter", min: "0", max: String(seat.cap), value: String(Math.min(seat.members, seat.cap)), "aria-label": "Olympus I recorded roster occupancy", text: seat.members + " of " + seat.cap }),
+          h("meter", { class: "army-capacity-meter", min: "0", max: String(seat.cap), value: String(Math.min(seat.members, seat.cap)), "aria-label": "OLYMPUS PRIME recorded roster occupancy", text: seat.members + " of " + seat.cap }),
           h("p", { class: "muted small", text: seat.state === "full" ? "Full in this roster report. This dated evidence is not a promise of the present guild state." : "Below the configured limit in this roster report. This does not reserve or promise a place." })]);
-        else add(first, [h("p", { text: "A recent Olympus I invite was refused for lack of space." }), h("p", { class: "muted small", text: "This refusal supplies no roster count or capacity meter. It does not establish the current number of available places." })]);
-        announcement.textContent = roster ? "Olympus I checked roster: " + seat.members + " of " + seat.cap + " members. Dated evidence, not a present capacity guarantee." : "A recent Olympus I invite was refused for lack of space; no roster count is available.";
+        else add(first, [h("p", { text: "A recent OLYMPUS PRIME invite was refused for lack of space." }), h("p", { class: "muted small", text: "This refusal supplies no roster count or capacity meter. It does not establish the current number of available places." })]);
+        announcement.textContent = roster ? "OLYMPUS PRIME checked roster: " + seat.members + " of " + seat.cap + " members. Dated evidence, not a present capacity guarantee." : "A recent OLYMPUS PRIME invite was refused for lack of space; no roster count is available.";
         const expire = () => { if (!requestLive()) return; stop(); unavailable("Officer evidence is out of date"); };
         expiryTimer = setTimeout(expire, remaining * 1000);
         clockTimer = setInterval(() => { if (nowSec() >= expiresAt) expire(); }, 1000);
@@ -6417,7 +6509,7 @@
     const reader = h("div", { class: "army-reader" }, h("p", { role: "status", class: "muted", text: "Opening Army snapshots…" }));
     add(body, [capacity.element, betaEpochArchiveCard(), h("section", { class: "stack", "data-army-qr-review": "public-reader" },
       frame("Army", sourceStrip("Unverified community observations", "Reported characters, not unique people"),
-        h("a", { class: "btn small", href: "#/organization/alliance-overview", text: "Explore Olympus I–X roles & organization" }),
+        h("a", { class: "btn small", href: "#/organization/alliance-overview", text: "Explore OLYMPUS PRIME / Olympus II–X roles & organization" }),
         h("p", { text: "The Army page shows aggregate guild snapshots that authorized reporters deliberately reviewed and published for signed-in Olympus members." }),
         h("p", { class: "small" }, h("a", { href: "https://www.curseforge.com/wow/addons/olympus-guild", target: "_blank", rel: "noopener noreferrer", text: "Olympus Guild on CurseForge" }), " · Olympus Guild 1.3.3 is published. Website reporting is available only when enabled by site administrators."),
         S.user && S.user.isAdmin ? h("a", { class: "btn small", href: "#/army/report", text: "Report a guild snapshot" }) : null,
@@ -6567,7 +6659,7 @@
       const label=(value,key)=>h("span",null,value || "Not listed",value ? h("span",{class:"badge muted",text:qualified.has(key)?"current account association":"staff-entered / unverified"}):null);
       add(body,frame("Leadership of the Olympus guilds",null,
         h("p",{class:"muted small",text:"Current account associations are checked for this exact guild and seat. Legacy typed labels remain explicitly unverified. A directory listing grants no powers on the website, bot, Discord or in game."}),
-        h("div",{class:"grid two"},guilds.map((g,i)=>h("div",{class:"card leadership-card"},h("div",{class:"card-head"},icon("pos-guild_master"),h("h3",{text:g.name})),
+        h("div",{class:"grid two"},guilds.map((g,i)=>h("div",{class:"card leadership-card"},h("div",{class:"card-head"},icon("pos-guild_master"),h("h3",{text:guildDisplayName229(g.name)})),
           h("dl",{class:"kv"},h("dt",{text:"Guild Master"}),h("dd",null,label(g.gm,(i+1)+":gm")),h("dt",{text:"Officers"}),h("dd",null,g.officers.length?g.officers.map((name,j)=>h("div",null,label(name,(i+1)+":"+j))):"None listed"))))),
         data.councilUrl ? h("p",{class:"muted small"},"Council access is given separately in Discord. ",h("a",{href:data.councilUrl,rel:"noopener",target:"_blank",text:"Olympus I–X Council"})):null));
     } catch(e){if(!live())return;if(e?.status===403)refreshCommunity();add(body,noticeBox("warn","icon-warning",h("p",{text:explain(e,"The leadership directory could not be read.")})));}
@@ -6583,10 +6675,10 @@
   /** The seat state as members read it (guild-seats.ts memberSeats: the hour of the deciding evidence, never a reason or an exact time). */
   function memberSeatsText(s) {
     const when = s && s.asOf ? `about ${fmtDateTime(s.asOf)}` : "";
-    if (s && s.state === "full" && s.source === "roster") return `Olympus I is full: the officers' roster export of ${when} counts ${s.members} of ${s.cap} members.`;
-    if (s && s.state === "full") return `Olympus I is full: the last invite was refused for lack of space (${when}).`;
-    if (s && s.state === "open") return `Olympus I has ${plural(s.free, "free seat")}: the officers' roster export of ${when} counts ${s.members} of ${s.cap} members.`;
-    return "Whether Olympus I has room is not known right now: the officers' latest roster export does not give a current, checked count.";
+    if (s && s.state === "full" && s.source === "roster") return `OLYMPUS PRIME is full: the officers' roster export of ${when} counts ${s.members} of ${s.cap} members.`;
+    if (s && s.state === "full") return `OLYMPUS PRIME is full: the last invite was refused for lack of space (${when}).`;
+    if (s && s.state === "open") return `OLYMPUS PRIME has ${plural(s.free, "free seat")}: the officers' roster export of ${when} counts ${s.members} of ${s.cap} members.`;
+    return "Whether OLYMPUS PRIME has room is not known right now: the officers' latest roster export does not give a current, checked count.";
   }
   async function communityNews(body) {
     let d;
@@ -6643,7 +6735,7 @@
         h("div", { class: "filters" }, fieldBox("news-search", "Search notices", query), fieldBox("news-window", "Posted", windowSel), reset),
         h("p", { class: "muted small", text: "Search title and text in current notices. Time filters use the original posting time; older notices may already have expired." }),
         resultCount, results),
-      frame("Olympus I", null, sourceStrip("Officer roster / invite evidence", d.seats && d.seats.asOf ? `Evidence time: about ${fmtDateTime(d.seats.asOf)}` : "No current checked evidence"), h("p", { text: memberSeatsText(d.seats) })),
+      frame("OLYMPUS PRIME", null, sourceStrip("Officer roster / invite evidence", d.seats && d.seats.asOf ? `Evidence time: about ${fmtDateTime(d.seats.asOf)}` : "No current checked evidence"), h("p", { text: memberSeatsText(d.seats) })),
       frame("The guild in figures", null, sourceStrip("Checked roster exports and site records", f ? `Counted ${fmtDateTime(f.asOf)}; refreshed every few hours while News is on` : "No figures snapshot available"), figures),
       frame("The Herald's desk", null,
         h("p", { text: "Guild dispatches, game news and practical references, with sources kept visible." }),

@@ -26,6 +26,7 @@ import { captureLaunchVerification,launchVerificationEnv } from './launch-verifi
 import type { Env } from "./env";
 import {nativeErasureMode,nativeServingEnvironment} from './privacy-native-mode';
 import { STRICT_ROSTER_DISPLAY_PROTOCOL, strictRosterDisplay, unverifiedReport } from "./unverified";
+import { handleLaunchOperations229 } from './site-launch229';
 import { handleInteraction, USER_MENU_LOOKUP } from "./interactions";
 import { DiscordError, INTERACTION_FAILED, json, readInteractionBody, reply, verifyInteraction, type Interaction } from "./discord";
 import { errorRef, idNamespace, logPath } from "./log";
@@ -595,6 +596,7 @@ async function route(request: Request, env: Env, path: string, schemaReady = tru
     }
     if (query.has("keyVersion") || (body !== null && typeof body === "object" && "keyVersion" in body)) {
       const versions=query.getAll('keyVersion');
+      if(request.method==='GET'&&path==='/queue/launch-operations'&&versions.length===1&&versions[0]==='launch-operations-v1')return handleLaunchOperations229(request,env,true);
       if (versions.length === 1 && versions[0] === STRICT_ROSTER_DISPLAY_PROTOCOL && request.method === "GET" && path === "/queue/unverified" && query.size === 1) {
         const report = await strictRosterDisplay(env, captureLaunchVerification(env));
         return new Response(JSON.stringify(report ?? { error: "strict_roster_display_unavailable" }), {
@@ -685,7 +687,7 @@ async function freshRegistrationRefused(env: Env, trigger: string): Promise<void
 }
 
 /** Bumped with every change that needs a redeploy, so GET /health shows which build is live. */
-const BUILD = "2026-11-04.228 Evergreen guild site and raid tools";
+const BUILD = "2026-11-05.229 Prime launch operations";
 
 /**
  * Presence of each secret (never the value) and a D1 round trip — enough to tell a missing `wrangler secret put` from a

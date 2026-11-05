@@ -8,7 +8,7 @@ deployed and what is open, read the tail of the task log (below) and `docs/deplo
 
 ## Current Evergreen audit (4 November 2026)
 
-Production Verify is .227 at commit `36c3dfdbe354de9d3b91d686c5ac8de7674e4d23`, tree `53630f45048ce14fc4852c85f417509936e33822`. The canonical site is `olympus.roachcouncil.com`. The announced launch time is 4 November at 23:00 UTC. The owner-authorized production queue switch is off. Check the append-only shared log for subsequent live readbacks and launch decisions.
+Production Verify .228 shipped at commit `68548e8cff218bdb06b5db9d1f8524235e160363`, tree `291e2e788e5b0a387ba69667b2929b285715074b`. The .229 launch operations successor is prepared under the owner's 5 November instruction; this source paragraph does not assert its deployment. The canonical site is `olympus.roachcouncil.com`. The announced launch time was 4 November at 23:00 UTC. The owner-authorized production queue switch is off. Check the append-only shared log for subsequent live readbacks and launch decisions. The .229 operator guide is `docs/launch229-operator.md`.
 
 Claude Code and ChatGPT Codex each audit independently, challenge the other agent’s findings and reconcile them on an isolated candidate. Verify every change with before and after evidence. Both agents independently qualify the final commit and tree and record a primary signature plus a counter-signature of the other agent. Include the exact QA inventory and report hashes. Any shipping byte change requires new signatures. A solo signature requires an explicit owner statement in chat that one agent is out of usage credits.
 

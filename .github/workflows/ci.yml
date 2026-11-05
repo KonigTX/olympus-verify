@@ -129,6 +129,7 @@ jobs:
           python3 tests/test_restart197.py
           python3 tests/test_treasury227.py
           python3 tests/test_native_membership227.py
+          python3 tests/test_launch_operations229.py
         working-directory: watcher
       - name: Operator tools (each test is a standalone script with a fake Worker on 127.0.0.1)
         run: |

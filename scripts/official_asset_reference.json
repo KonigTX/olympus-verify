@@ -14,8 +14,8 @@
     {
       "path": "worker/public/static/app.js",
       "mode": "100644",
-      "bytes": 774423,
-      "sha256": "597f19e5b744cf5d09553aee1d4717b24c2c2514c734a780ff0ca033714c4290"
+      "bytes": 787403,
+      "sha256": "25f0327a76b176b4ad02f3a40c7e363fbc227a40b9cd4d3bdabf155d5afa23f4"
     },
     {
       "path": "worker/public/static/olympus-icon.png",
@@ -3830,8 +3830,8 @@
     {
       "path": "worker/public/static/app.js",
       "mode": "100644",
-      "bytes": 774423,
-      "sha256": "597f19e5b744cf5d09553aee1d4717b24c2c2514c734a780ff0ca033714c4290"
+      "bytes": 787403,
+      "sha256": "25f0327a76b176b4ad02f3a40c7e363fbc227a40b9cd4d3bdabf155d5afa23f4"
     },
     {
       "path": "worker/public/static/rank-planner/app.js",
@@ -3908,8 +3908,8 @@
     {
       "path": "worker/public/static/army-live/army.js",
       "mode": "100644",
-      "bytes": 20401,
-      "sha256": "cf6ad74ffa5451d054f1e8a5fe766068ca9d4a8dd4ebbeb6969265ea3f2f3688"
+      "bytes": 20667,
+      "sha256": "de06cb199183f10cbc7bea6a864398ed36f5bb7903f87a9d689bc5fed815f345"
     },
     {
       "path": "worker/public/static/army-live/decoder.js",
@@ -3932,14 +3932,14 @@
     {
       "path": "worker/public/static/army-live/report.js",
       "mode": "100644",
-      "bytes": 19260,
-      "sha256": "21dcf9b831a06db44b3b17e45d5974339ee6d4e71cd2d27d6ac46bda11a2eb79"
+      "bytes": 19310,
+      "sha256": "29f3c00ba721aa1b3ddd0a5666a89ae94116337a1712b0d37613d8c66c920268"
     },
     {
       "path": "worker/public/static/army-live/sanitized-export.js",
       "mode": "100644",
-      "bytes": 6676,
-      "sha256": "c2ec728af166bfdb0a563c1991d05d40686e1840ab2cb6a5a0aff47de6e58194"
+      "bytes": 6793,
+      "sha256": "af783355c1cefa198734817f4cdd6cf1ea4fd2e576c47dcb0ae257ba328ad580"
     },
     {
       "path": "worker/public/static/army-live/savedvariables-import.js",
@@ -4076,14 +4076,14 @@
     {
       "path": "worker/public/static/organization-overview205.js",
       "mode": "100644",
-      "bytes": 22323,
-      "sha256": "041eaa5d95bbb337075392ce900eb54ace1f810e963a857267f08cbd0f8e79aa"
+      "bytes": 22547,
+      "sha256": "fabeefdbfbc2c50ffeb7c4ea169980a3fc0301ffee49502ef1f3db1521322b04"
     },
     {
       "path": "worker/public/static/organization-view.js",
       "mode": "100644",
-      "bytes": 40134,
-      "sha256": "f33d0ae9aed807d5710f8bf00ea2994aba06192a77e4d5187c99652476ff5b64"
+      "bytes": 40302,
+      "sha256": "9c0b35bca65bbc6b3a7038d2d836b07d0c3129b15a5a18c840e7e7254b758cf4"
     },
     {
       "path": "worker/public/static/qr-beta-window-data.html",
