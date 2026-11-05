@@ -1,7 +1,7 @@
 /** Exact pre-seal/current-profile cutover for Build230. Dormant: no mounted route.
  * Original ACK capabilities stay in one owner process. Source-owned plans alone grant no
  * provider custody; the qualified operator must bracket UUID A/B and preserve unknowns. */
-import {ADMISSION_COOKIE_PRE_SEAL_SOURCES_JSON} from './privacy-write-admission-catalogue';
+import {ADMISSION_COOKIE_PRE_SEAL_SOURCES_JSON,ADMISSION_COOKIE_MIGRATION_SOURCES_JSON} from './privacy-write-admission-catalogue';
 import {PROVIDER_METADATA_CURRENT_SQL,PROVIDER_METADATA_APPLICATION_OBJECT_FILTER_SQL} from './privacy-provider-metadata';
 import {SUCCESSOR_NATIVE_SEAMS as N} from './privacy-cookie-profile-migration';
 import {parseSharedMemberClosure230,sharedMember230SHA256,SHARED_MEMBER230_SEAL_PREFIX,SHARED_MEMBER230_GUILD,SHARED_MEMBER230_ROLE,type SharedMemberClosure230} from './shared-membership-cutover230';
@@ -11,6 +11,8 @@ export type SharedMember230PlanId='precheck'|'fence-and-seal'|'closed-read'|'ope
 export const SHARED_MEMBER230_LAYOUT='recorded-live-pre-seal-20261017';
 const PROFILE=JSON.parse(ADMISSION_COOKIE_PRE_SEAL_SOURCES_JSON).recordedLive as {objects:(string|null)[][]};
 const APP_OBJECTS=JSON.stringify(PROFILE.objects);
+/** Exact historical provider companion only; its values are never read or mutated. */
+export const SHARED_MEMBER230_OPTIONAL_CF_KV_JSON=JSON.stringify((JSON.parse(ADMISSION_COOKIE_MIGRATION_SOURCES_JSON)['public-predecessor'].recordedLive.objects as (string|null)[][]).filter(o=>o[1]==='_cf_KV'||o[2]==='_cf_KV'));
 const NOW="CAST(strftime('%s','now') AS INTEGER)",TUPLE='json_array(singleton,protocol,epoch,mode,active,nonce,purpose,entry_changes,logical_changes)';
 function held(s:string):never{throw Error(s);}
 // FIRST cutover accepts only source-original legacy successful PUT receipts. The
@@ -36,13 +38,15 @@ function tuple(raw:unknown,epoch:string,mode:'serving'|'closed'):unknown[]{
  if(!Array.isArray(a)||a.length!==9||JSON.stringify(a)!==raw||a[0]!==1||a[1]!==N.VERSION||a[2]!==epoch||a[3]!==mode||a[4]!==0||a[5]!==''||a[6]!==''
   ||![a[7],a[8]].every(v=>typeof v==='number'&&Number.isSafeInteger(v)&&v>=0))return held('member230_tuple');return a;
 }
-/** Exact443/442 companion rules are inherited as data: metadata absent or exact provider object.
- * No aliasing to later dispatch-seal DDL, DDL fallback, schema learning or metadata value read. */
+/** Exact442 application objects, plus only the source-owned optional _cf_KV (live443).
+ * The independent exact _cf_METADATA companion remains outside that catalogue.
+ * No later-layout alias, DDL fallback, schema learning or provider-value read. */
 export function sharedMember230CurrentProfileProof(mode:'serving'|'closed',bound:boolean):string{
  if(mode!=='serving'&&mode!=='closed'||typeof bound!=='boolean')return held('member230_profile_input');
  return `WITH actual AS MATERIALIZED(SELECT type,name,tbl_name,sql FROM main.sqlite_master WHERE ${PROVIDER_METADATA_APPLICATION_OBJECT_FILTER_SQL}),
- expected AS MATERIALIZED(SELECT json_extract(value,'$[0]') type,json_extract(value,'$[1]') name,json_extract(value,'$[2]') tbl_name,json_extract(value,'$[3]') sql FROM json_each(?1))
- SELECT CASE WHEN ${PROVIDER_METADATA_CURRENT_SQL} AND (SELECT COUNT(*) FROM actual)=json_array_length(?1)
+ expected AS MATERIALIZED(SELECT json_extract(value,'$[0]') type,json_extract(value,'$[1]') name,json_extract(value,'$[2]') tbl_name,json_extract(value,'$[3]') sql FROM json_each(?1)
+ UNION ALL SELECT json_extract(value,'$[0]'),json_extract(value,'$[1]'),json_extract(value,'$[2]'),json_extract(value,'$[3]') FROM json_each(?6) WHERE EXISTS(SELECT 1 FROM actual WHERE name='_cf_KV'))
+ SELECT CASE WHEN ${PROVIDER_METADATA_CURRENT_SQL} AND (SELECT COUNT(*) FROM actual)=(SELECT COUNT(*) FROM expected)
  AND NOT EXISTS(SELECT type,name,tbl_name,sql FROM actual EXCEPT SELECT type,name,tbl_name,sql FROM expected)
  AND NOT EXISTS(SELECT type,name,tbl_name,sql FROM expected EXCEPT SELECT type,name,tbl_name,sql FROM actual)
  AND (SELECT foreign_keys FROM pragma_foreign_keys)=1 AND NOT EXISTS(SELECT 1 FROM pragma_foreign_key_check) AND NOT EXISTS(SELECT 1 FROM temp.sqlite_master)
@@ -52,7 +56,7 @@ export function sharedMember230CurrentProfileProof(mode:'serving'|'closed',bound
  (SELECT ${TUPLE} FROM privacy_write_admission WHERE singleton=1) AS original_tuple,${NOW} AS observed_at`;
 }
 function step(sql:string,values:readonly (string|number)[]):Step230{N.bounded(sql,values);return Object.freeze({sql,values:Object.freeze([...values])});}
-function profile(c:SharedMemberClosure230,mode:'serving'|'closed',bound:string|null,old=false):Step230{return step(sharedMember230CurrentProfileProof(mode,bound!==null),[APP_OBJECTS,bound??'',old?c.priorEpoch:c.writeEpoch,String(c.expiresAt),String(c.createdAt)]);}
+function profile(c:SharedMemberClosure230,mode:'serving'|'closed',bound:string|null,old=false):Step230{return step(sharedMember230CurrentProfileProof(mode,bound!==null),[APP_OBJECTS,bound??'',old?c.priorEpoch:c.writeEpoch,String(c.expiresAt),String(c.createdAt),SHARED_MEMBER230_OPTIONAL_CF_KV_JSON]);}
 const key=(c:SharedMemberClosure230)=>SHARED_MEMBER230_SEAL_PREFIX+c.operationId;
 function clear(c:SharedMemberClosure230,json:string,sealed:boolean):Step230{return step(`SELECT CASE WHEN ${SHARED_MEMBER230_OLD_CUSTODY_CLEAR_SQL} AND ${sealed?'EXISTS':'NOT EXISTS'}(SELECT 1 FROM site_settings WHERE key=?1${sealed?' AND value=?2':''}) THEN 1 ELSE json_extract('member230_old_custody_or_seal_held','$') END AS cleared`,sealed?[key(c),json]:[key(c)]);}
 /** Immutable plan indexes for the qualified preview RPC. No SQL is accepted on the wire.

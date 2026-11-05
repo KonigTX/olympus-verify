@@ -10,7 +10,8 @@ const rows=f=>JSON.stringify(f.db.prepare('SELECT * FROM role_settlements ORDER 
 async function recover(f,p){const ack=await R.executeSharedMember230RecoveryFence(await R.captureSharedMember230RecoveryFence(f.raw,p.json,p.hash));return R.executeSharedMember230RecoveryOpen(await R.captureSharedMember230RecoveryOpen(ack));}
 async function main(){
  for(const [epoch,mode,label]of[['a'.repeat(32),'serving','lost S2 old serving'],['b'.repeat(32),'closed','lost S2 new closed'],['b'.repeat(32),'serving','lost S4 new serving']]){
-  J.fixtureAdvance(T);const f=F.fixture();F.legacy(f,{state:'unknown',reason:'provider_outcome_unknown'});f.db.prepare('UPDATE privacy_write_admission SET epoch=?,mode=?').run(epoch,mode);const original=rows(f),p=plan(f),out=await recover(f,p),facts=R.sharedMember230RecoveryOpenFacts(out);
+  J.fixtureAdvance(T);const f=F.fixture({cfkv:true});F.legacy(f,{state:'unknown',reason:'provider_outcome_unknown'});f.db.prepare('UPDATE privacy_write_admission SET epoch=?,mode=?').run(epoch,mode);const original=rows(f),p=plan(f),out=await recover(f,p),facts=R.sharedMember230RecoveryOpenFacts(out);
+  eq(label+' actual primary443 companion retained',f.db.prepare('SELECT COUNT(*) n FROM sqlite_master').get().n,443);
   eq(label+' opens only fresh epoch OFF',[f.control().epoch,f.control().mode,facts.mode,facts.roleReuseQualified],['c'.repeat(32),'serving','off',false]);eq(label+' preserves ALL old role debt bytes',rows(f),original);eq(label+' preserves original counters',[f.control().entry_changes,f.control().logical_changes],[7,9]);
   eq(label+' late original SQL cannot reopen old epoch',f.db.prepare("UPDATE privacy_write_admission SET mode='serving' WHERE epoch=?").run(epoch).changes,0);
  }

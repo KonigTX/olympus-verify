@@ -11,6 +11,7 @@ function fixture(options={}){
  db.function('strftime',(format,input)=>{assert.equal(format,'%s');assert.equal(input,'now');return String(J.fixtureOriginalClock());});for(const t of p.tables)db.exec(t.sql);db.exec(p.slotSQL);for(const i of p.indexes)db.exec(i.sql);
  for(const o of source.objects)if(o[0]==='table'&&o[1]==='_cf_KV')db.exec(o[3]);
  if(options.metadata)db.exec(L('privacy-provider-metadata').PROVIDER_METADATA_DDL);
+ if(options.cfkv){const kv=JSON.parse(cat.ADMISSION_COOKIE_MIGRATION_SOURCES_JSON)['public-predecessor'].recordedLive.objects.find(o=>o[1]==='_cf_KV');db.exec(kv[3]);}
  db.prepare("INSERT INTO privacy_write_admission(singleton,protocol,epoch,mode,active,nonce,purpose,entry_changes,logical_changes) VALUES(1,'olympus-write-admission-epoch-2',?,'serving',0,'','',7,9)").run(OLD);
  db.prepare("INSERT INTO site_settings(key,value,updated_at)VALUES('auditTypedNames','115',?)").run(T);
  for(const t of p.triggers)db.exec(t.sql);
@@ -24,8 +25,9 @@ function fixture(options={}){
 }
 function legacy(f,changes={}){const r={id:'1'.repeat(32),subject:'123456789012345678',purpose:'beta_guard_grant',guild_id:G,role_id:R,desired:1,state:'settled',reason:'legacy_put_acknowledged',claim_nonce:'2'.repeat(32),attempts:1,created_at:1792688300,expires_at:1792688600,checked_at:1792688310,...changes};const keys=Object.keys(r);f.db.prepare("UPDATE privacy_write_admission SET active=1,nonce=?,purpose='writer'").run('e'.repeat(32));try{f.db.prepare(`INSERT INTO role_settlements(${keys.join(',')})VALUES(${keys.map(()=>'?').join(',')})`).run(...keys.map(k=>r[k]));}finally{f.db.prepare("UPDATE privacy_write_admission SET active=0,nonce='',purpose=''").run();}}
 async function main(){
- for(const metadata of[false,true]){
-  J.fixtureAdvance(T);const f=fixture({metadata});legacy(f);const objects=f.db.prepare('SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name').all();
+ for(const metadata of[false,true])for(const cfkv of[false,true]){
+  J.fixtureAdvance(T);const f=fixture({metadata,cfkv});legacy(f);const objects=f.db.prepare('SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name').all();
+  eq('portable/live companion object count '+metadata+'/'+cfkv,objects.length,442+Number(metadata)+Number(cfkv));
   const cap=await N.captureSharedMember230Fence(f.raw,f.json,f.digest);eq('precheck read-only '+metadata,f.control(),{epoch:OLD,mode:'serving',active:0,entry_changes:7,logical_changes:9});
   const ack=await N.executeSharedMember230Fence(cap);eq('S2 same atomic fence retains counters '+metadata,f.control(),{epoch:NEXT,mode:'closed',active:0,entry_changes:7,logical_changes:9});
   eq('seal matches original exact bytes '+metadata,f.db.prepare('SELECT value FROM site_settings WHERE key=?').get(V.SHARED_MEMBER230_SEAL_PREFIX+OP).value,f.json);
@@ -45,6 +47,7 @@ async function main(){
  {const f=fixture();f.db.exec('CREATE TABLE unqualified230(x)');await refusal('exact whole profile rejects added object',()=>N.captureSharedMember230Fence(f.raw,f.json,f.digest));}
  {const f=fixture();f.db.exec('PRAGMA foreign_keys=OFF');await refusal('FK disabled held',()=>N.captureSharedMember230Fence(f.raw,f.json,f.digest));}
  {const f=fixture();f.db.exec('CREATE TEMP TABLE foreign230(x)');await refusal('TEMP schema held',()=>N.captureSharedMember230Fence(f.raw,f.json,f.digest));}
+ for(const ddl of['CREATE TABLE _cf_KV(key TEXT PRIMARY KEY,value TEXT) WITHOUT ROWID','CREATE VIEW _cf_KV AS SELECT 1 x','CREATE TABLE _cf_KV_extra(x)']){const f=fixture();f.db.exec(ddl);await refusal('only exact known CFKV companion allowed '+ddl,()=>N.captureSharedMember230Fence(f.raw,f.json,f.digest));}
  {const f=fixture();await refusal('wrong closure hash refuses before Native read',()=>N.captureSharedMember230Fence(f.raw,f.json,'0'.repeat(64)));eq('bad hash does not reach Native',f.calls(),0);}
  {const f=fixture(),json=JSON.stringify({...f.c,debtPredicateSHA256:'0'.repeat(64)});await refusal('different custody policy cannot mint fence',()=>N.captureSharedMember230Fence(f.raw,json,h(json)));eq('bad policy has no Native group',f.calls(),0);}
  {const f=fixture();assert.throws(()=>V.parseSharedMemberClosure230(JSON.stringify({...f.c,sourceCommit:['d'.repeat(40)]})) );checks++;console.log('PASS non-string canonical field cannot coerce');}

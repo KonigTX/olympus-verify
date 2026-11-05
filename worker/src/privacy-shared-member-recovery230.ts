@@ -2,7 +2,7 @@
  * acknowledgement; it never reconstructs a lost S2/S4 ACK, clears role debt or enables grants. */
 import {ADMISSION_COOKIE_PRE_SEAL_SOURCES_JSON} from './privacy-write-admission-catalogue';
 import {SUCCESSOR_NATIVE_SEAMS as N} from './privacy-cookie-profile-migration';
-import {sharedMember230CurrentProfileProof} from './privacy-shared-member-cutover230';
+import {sharedMember230CurrentProfileProof,SHARED_MEMBER230_OPTIONAL_CF_KV_JSON} from './privacy-shared-member-cutover230';
 import {sharedMember230SHA256} from './shared-membership-cutover230';
 
 export const SHARED_MEMBER230_RECOVERY_CONTRACT='olympus-shared-member-230-off-recovery-v1';
@@ -27,7 +27,7 @@ type Step=Readonly<{sql:string;values:readonly (string|number)[]}>;
 export type SharedMember230RecoveryPlanId='recovery-precheck'|'recovery-fence'|'recovery-closed-read'|'recovery-open-off';
 const OBJECTS=JSON.stringify(JSON.parse(ADMISSION_COOKIE_PRE_SEAL_SOURCES_JSON).recordedLive.objects),TUPLE='json_array(singleton,protocol,epoch,mode,active,nonce,purpose,entry_changes,logical_changes)',NOW="CAST(strftime('%s','now') AS INTEGER)";
 function step(sql:string,values:readonly(string|number)[]):Step{N.bounded(sql,values);return Object.freeze({sql,values:Object.freeze([...values])});}
-function profile(p:SharedMember230RecoveryPlan,epoch:string,mode:'serving'|'closed',bound:string|null):Step{return step(sharedMember230CurrentProfileProof(mode,bound!==null),[OBJECTS,bound??'',epoch,String(p.expiresAt),String(p.createdAt)]);}
+function profile(p:SharedMember230RecoveryPlan,epoch:string,mode:'serving'|'closed',bound:string|null):Step{return step(sharedMember230CurrentProfileProof(mode,bound!==null),[OBJECTS,bound??'',epoch,String(p.expiresAt),String(p.createdAt),SHARED_MEMBER230_OPTIONAL_CF_KV_JSON]);}
 function closed(raw:unknown,p:SharedMember230RecoveryPlan):unknown[]{if(typeof raw!=='string')return recoveryHeld('member230_recovery_closed_tuple');let t:unknown;try{t=JSON.parse(raw);}catch{return recoveryHeld('member230_recovery_closed_tuple');}
  if(!Array.isArray(t)||t.length!==9||JSON.stringify(t)!==raw||t[0]!==1||t[1]!==N.VERSION||t[2]!==p.writeEpoch||t[3]!=='closed'||t[4]!==0||t[5]!==''||t[6]!==''||![t[7],t[8]].every(v=>typeof v==='number'&&Number.isSafeInteger(v)&&v>=0))return recoveryHeld('member230_recovery_closed_tuple');return t;}
 /** No role SQL, business writes, seal changes or debt predicate: this can OPEN only OFF. */
