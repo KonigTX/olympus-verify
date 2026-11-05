@@ -1,0 +1,38 @@
+// Real local Workerd/D1 compatibility, independent of the alternating cron phase.
+// Adapted from the independently attributed provider diagnostic. No clock override,
+// scheduled-controller substitution, provider call, or claim of future365-day expiry.
+import {betaResetReceiptRetentionStatements} from '../src/beta-reset-retention.ts';
+import {createPrivacyWriteAdmissionDatabase} from '../src/privacy-write-admission.ts';
+import * as catalogue from '../src/privacy-write-admission-catalogue.ts';
+const EPOCH='a'.repeat(32),GUILD='236932545793490944',ROLE='1552077551839617104',SUBJECT='123456789012345678';
+let spent=false;
+function originalMethod(o,k){for(let p=o;p;p=Object.getPrototypeOf(p)){const d=Object.getOwnPropertyDescriptor(p,k);if(d){if(!Object.hasOwn(d,'value')||typeof d.value!=='function')throw Error('fixture_original_method');return d.value;}}throw Error('fixture_missing_method');}
+export default {async fetch(request,env){
+ if(new URL(request.url).pathname!=='/run'||request.method!=='POST'||spent)return new Response(null,{status:404});spent=true;
+ const db=env.DB,wires=[];let recording=false;
+ const fetcher=Object.getOwnPropertyDescriptor(db,'fetcher')?.value,fetchMethod=originalMethod(fetcher,'fetch');
+ Object.defineProperty(fetcher,'fetch',{configurable:true,writable:false,value:async function(input,init){
+  if(this!==fetcher)throw Error('fixture_fetcher_changed');const row=recording?{requestBody:init?.body,responseBody:null,status:null}:null;if(row)wires.push(row);
+  const response=await Reflect.apply(fetchMethod,fetcher,[input,init]);if(row){row.status=response.status;row.responseBody=await response.clone().text();}return response;
+ }});
+ const cat=JSON.parse(catalogue.ADMISSION_EXPECTED_JSON),seed=[];
+ const flush=async()=>{while(seed.length)await db.batch(seed.splice(0,50));};
+ for(const r of [...cat.tables,...cat.indexes])seed.push(db.prepare(r.sql));seed.push(db.prepare(catalogue.ADMISSION_CONTROL_DDL));await flush();
+ const T=(await db.prepare("SELECT CAST(strftime('%s','now') AS INTEGER) AS t").first()).t;
+ seed.push(db.prepare("INSERT INTO privacy_write_admission VALUES(1,?,0,'','',0,0,?,'serving')").bind(catalogue.ADMISSION_PROTOCOL,EPOCH));
+ const row=(id,changes={})=>({id:id.repeat(32),subject:SUBJECT,purpose:'launch_membership230',guild_id:GUILD,role_id:ROLE,desired:1,state:'settled',reason:'launch230_put_acknowledged_and_confirmed',attempts:1,claim_nonce:(Number(id)+1).toString(16).repeat(32),subject_generation:null,request_digest:'f'.repeat(64),roster_id:1,native_guid:'Player-fixture-only',native_profile:'prime-native-230',created_at:T-10,expires_at:T+80,checked_at:T-9,...changes});
+ const parent=row('5',{state:'held',reason:'launch230_compensated'}),records=[row('1'),row('3',{state:'unknown',reason:'launch230_provider_outcome_unknown'}),parent,row('7',{purpose:'launch_membership_compensation230',desired:0,request_digest:parent.id,native_profile:null,roster_id:null,native_guid:null,reason:'launch230_delete_acknowledged_and_confirmed',created_at:T-8,expires_at:T+292,checked_at:T-7})];
+ for(const r of records){const keys=Object.keys(r);seed.push(db.prepare(`INSERT INTO role_settlements(${keys.join(',')})VALUES(${keys.map(()=>'?').join(',')})`).bind(...keys.map(k=>r[k])));}await flush();
+ for(const r of cat.triggers)seed.push(db.prepare(r.sql));await flush();
+ const rows=async()=>(await db.prepare('SELECT * FROM role_settlements ORDER BY id').all()).results;
+ const schema=async()=>(await db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").all()).results;
+ const before=await rows(),schemaBefore=await schema(),captured=[];
+ betaResetReceiptRetentionStatements({DB:{prepare(sql){captured.push(sql);return {sql};}}});
+ const cases=[];recording=true;
+ for(let i=0;i<captured.length;i++){const start=wires.length;try{const r=await db.prepare(captured[i]).run();cases.push({name:'raw-'+i,success:true,changes:r.meta?.changes,wireStart:start,wireEnd:wires.length});}catch(error){cases.push({name:'raw-'+i,success:false,error:String(error?.message||error),wireStart:start,wireEnd:wires.length});}}
+ const admitted=createPrivacyWriteAdmissionDatabase(db,'writer','canonical',EPOCH);
+ {const start=wires.length;try{const out=await admitted.batch(betaResetReceiptRetentionStatements({DB:admitted}));cases.push({name:'admitted-pair',success:true,changes:out.map(x=>x.meta?.changes),wireStart:start,wireEnd:wires.length});}catch(error){cases.push({name:'admitted-pair',success:false,error:String(error?.message||error),wireStart:start,wireEnd:wires.length});}}
+ recording=false;
+ const after=await rows(),schemaAfter=await schema(),control=await db.prepare('SELECT epoch,mode,active,nonce,purpose FROM privacy_write_admission WHERE singleton=1').first();
+ return Response.json({schema:'launch230-retention-local-workerd-v1',at:new Date().toISOString(),nativeNow:T,actualLocalWorkerdD1:true,scheduledCallback:false,clockOverride:false,sourceHandlerOverride:false,providerCalls:0,sourceSQL:captured,cases,wires,before,after,schemaUnchanged:JSON.stringify(schemaBefore)===JSON.stringify(schemaAfter),control});
+}};

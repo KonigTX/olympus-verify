@@ -31,11 +31,11 @@ const legacy=`r.purpose='beta_guard_grant' AND r.desired=1 AND r.created_at<${BE
 // The current shared-role family has its own closed receipt shapes. It does not
 // borrow the beta source's fixed five-minute expiry or old purpose/reason rules.
 const launchToken=(v:string,n:number)=>`${hex(v,n)} AND length(CAST(${v} AS BLOB))=${n}`;
-const launchScope=(a:string)=>`${a}.guild_id='${BETA_RESET_GUILD_ID}' AND ${a}.role_id='${BETA_RESET_ROLE_IDS[0]}'
+const launchScope=(a:string)=>`(${a}.guild_id='${BETA_RESET_GUILD_ID}' AND ${a}.role_id='${BETA_RESET_ROLE_IDS[0]}'
  AND ${launchToken(a+'.id',32)} AND typeof(${a}.subject)='text' AND length(${a}.subject) BETWEEN 17 AND 20
  AND length(CAST(${a}.subject AS BLOB))=length(${a}.subject) AND instr(${a}.subject,char(0))=0 AND ${a}.subject GLOB '[1-9]*' AND ${a}.subject NOT GLOB '*[^0-9]*'
  AND ${integer(a+'.created_at')} AND ${a}.created_at>=${BETA_RESET_CUTOFF} AND typeof(${a}.expires_at)='integer' AND ${a}.expires_at>${a}.created_at AND ${a}.expires_at<=${a}.created_at+300
- AND (${a}.subject_generation IS NULL OR (${launchToken(a+'.subject_generation',32)})) AND ${a}.proof_id IS NULL AND ${a}.native_rank IS NULL AND ${a}.native_rank_name IS NULL`;
+ AND (${a}.subject_generation IS NULL OR (${launchToken(a+'.subject_generation',32)})) AND ${a}.proof_id IS NULL AND ${a}.native_rank IS NULL AND ${a}.native_rank_name IS NULL)`;
 const launchChecked=(a:string)=>`${integer(a+'.checked_at')} AND ${a}.checked_at>=${a}.created_at`;
 const launchAged=(a:string)=>`max(${a}.created_at,coalesce(${a}.checked_at,${a}.created_at))<=${T}-${YEAR}`;
 const launchSource=(a:string)=>`(${a}.purpose='launch_membership230' AND ${a}.desired=1 AND ${a}.native_profile='prime-native-230'
