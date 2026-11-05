@@ -3,7 +3,36 @@
 // Native E2 SQLite/OAuth fixtures; only Discord HTTP is synthetic.
 'use strict';
 const fs201=require('node:fs'),path201=require('node:path'),crypto201=require('node:crypto'),{Module}=require('node:module');
-function prefix201(file,pattern,pin){const source=fs201.readFileSync(path201.join(__dirname,file),'utf8'),cuts=[...source.matchAll(pattern)];if(cuts.length!==1)throw Error('reserved201_original_fixture_boundary');const prefix=source.slice(0,cuts[0].index);if(crypto201.createHash('sha256').update(file==='privacy_native_erasure_mode_test.cjs'?require('./frontend_fixture_prefix217.cjs').historicalBoardNativePrefix217(prefix):prefix).digest('hex')!==pin)throw Error('reserved201_original_fixture_drift');return prefix;}
+const fixtureHash201=source=>crypto201.createHash('sha256').update(source).digest('hex');
+
+// c9bab11 changed the shared staff decision transport. Reverse only that exact
+// fixture hunk for the historical seal, and compile the actual current prefix.
+function historicalSitePrefix201(current) {
+  const beforePrepare="    if(!h.has('X-Olympus-Decision-Action'))h.set('X-Olympus-Decision-Action',action);\n";
+  const currentPrepare="    const explicitAction=h.has('X-Olympus-Decision-Action');\n"
+    +"    if(!explicitAction)h.set('X-Olympus-Decision-Action',action);\n";
+  const beforeResponse="      if(typeof prepared.targetToken!=='string')throw Error('actual decision target preparation held');\n"
+    +"      h.set('X-Olympus-Decision-Target',prepared.targetToken);\n";
+  const currentResponse="      if(typeof prepared.targetToken==='string')h.set('X-Olympus-Decision-Target',prepared.targetToken);\n"
+    +"      if(!explicitAction)h.set('X-Olympus-Decision-Action',prepared.decisionAction);\n";
+  if(Buffer.byteLength(current)!==15656 || fixtureHash201(current)!=='b8ee01e190642c195e1a19b825c04ccc637246dace1dcd225109099b6f98ed43')
+    throw Error('reserved201_current_site_fixture_drift');
+  if(current.split(currentPrepare).length!==2 || current.split(currentResponse).length!==2)
+    throw Error('reserved201_site_fixture_context');
+  return current.replace(currentPrepare,beforePrepare).replace(currentResponse,beforeResponse);
+}
+
+function prefix201(file,pattern,pin) {
+  const source=fs201.readFileSync(path201.join(__dirname,file),'utf8');
+  const cuts=[...source.matchAll(pattern)];
+  if(cuts.length!==1)throw Error('reserved201_original_fixture_boundary');
+  const prefix=source.slice(0,cuts[0].index);
+  const historical=file==='privacy_native_erasure_mode_test.cjs'
+    ? require('./frontend_fixture_prefix217.cjs').historicalBoardNativePrefix217(prefix)
+    : historicalSitePrefix201(prefix);
+  if(fixtureHash201(historical)!==pin)throw Error('reserved201_original_fixture_drift');
+  return prefix;
+}
 
 async function worker201(){
  call=require("./application_editor219_fixture.cjs").currentApplicationCall219(call);
