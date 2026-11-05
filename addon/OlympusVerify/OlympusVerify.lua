@@ -35,8 +35,9 @@ local SECRET = cfg.secret
 -- 0.6.12: the example's placeholder is public, so a Config.lua copied without replacing it must not accept codes made from it.
 if type(SECRET) ~= "string" or SECRET == "" or string.find(SECRET, "^REPLACE_WITH_") then SECRET = nil end
 local secretWarned = false  -- 0.6.12: say once per session, not on every whisper, that codes cannot be checked
+local SOURCE_VERSION = "0.6.17" -- Keep this source fallback and OlympusVerify.toc aligned.
 local VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version"))
-  or (GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version")) or "?"
+  or (GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version")) or SOURCE_VERSION
 local SET_NOTES = cfg.setNotes == true  -- SetNote is forbidden for addons on the Forever beta; leave false there
 local notesForbidden = false            -- flipped by ADDON_ACTION_FORBIDDEN during a SetNote call
 local flushingNotes = false
@@ -3395,6 +3396,49 @@ function Diag.Print()
   Print("/olv diag discord  ·  /olv diag clog  ·  /olv logtest (does the chat-log flush work?)")
 end
 
+-- .229: native facts without /run or enabling custom scripts. No secret/configuration values,
+-- messages, roster writes or protected actions are inspected or invoked by this command.
+function Diag.Launch(scopeOnly)
+  local function readable(value)
+    if type(issecretvalue) == "function" then
+      local ok, secret = pcall(issecretvalue, value)
+      if not ok or secret then return "<unreadable>" end
+    end
+    if type(value) ~= "string" and type(value) ~= "number" then return "<unavailable>" end
+    local text = tostring(value)
+    if #text > 128 or text:find("[%c|]") then return "<unreadable>" end
+    return text
+  end
+  local function read(fn, ...)
+    if type(fn) ~= "function" then return nil end
+    local ok, value = pcall(fn, ...)
+    return ok and value or nil
+  end
+  local guild, rankName, slot
+  if type(GetGuildInfo) == "function" then
+    local ok, a, b, c = pcall(GetGuildInfo, "player")
+    if ok then guild, rankName, slot = a, b, c end
+  end
+  local build = type(GetBuildInfo) == "function" and { pcall(GetBuildInfo) } or {}
+  local cg = type(C_GuildInfo) == "table" and C_GuildInfo or {}
+  local facts = { guild = readable(guild), realm = readable(read(GetRealmName)), rankName = readable(rankName),
+    rankSlot = readable(slot), guid = readable(read(UnitGUID, "player")), addon = readable(SOURCE_VERSION),
+    version = readable(build[1] and build[2]), build = readable(build[1] and build[3]), interface = readable(build[1] and build[5]),
+    api = { SetGuildRankOrder = type(cg.SetGuildRankOrder), IsGuildRankAssignmentAllowed = type(cg.IsGuildRankAssignmentAllowed),
+      Invite = type(cg.Invite), Promote = type(cg.Promote), SetMOTD = type(cg.SetMOTD),
+      GuildInvite = type(GuildInvite), GuildPromote = type(GuildPromote), GuildSetMOTD = type(GuildSetMOTD) } }
+  facts.metadataVersion = readable(read(C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata, ADDON, "Version"))
+  if not scopeOnly then
+    Print(string.format("client version=%q build=%q interface=%q", facts.version, facts.build, facts.interface))
+    for _, name in ipairs({ "SetGuildRankOrder", "IsGuildRankAssignmentAllowed", "Invite", "Promote", "SetMOTD", "GuildInvite", "GuildPromote", "GuildSetMOTD" }) do
+      Print("API " .. name .. "=" .. facts.api[name])
+    end
+  end
+  Print("native diagnostics (read only): addon source " .. facts.addon .. "; metadata=" .. facts.metadataVersion .. "; membershipOnly=" .. tostring(cfg.membershipOnly == true))
+  Print(string.format("guild=%q realm=%q rank=%q slot0=%s GUID=%q", facts.guild, facts.realm, facts.rankName, facts.rankSlot, facts.guid))
+  return facts
+end
+
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_LOGIN")
 frame:RegisterEvent("CHAT_MSG_WHISPER")
@@ -3554,7 +3598,17 @@ SLASH_OLYMPUSVERIFY1 = "/olv"
 SlashCmdList.OLYMPUSVERIFY = function(msg)
   local cmd = string.lower(string.match(msg or "", "^%s*(%S*)") or "")
   local db = OlympusVerifyDB
-  if cmd == "ranks" then
+  if cmd == "diagnostics" then
+    Diag.Launch((msg or ""):match("^%s*%S+%s+(.-)%s*$") == "scope")
+  elseif cmd == "launch" or cmd == "promote" or cmd == "buffer" or cmd == "motd" then
+    local launch = OlympusLaunch229
+    local argument = string.match(msg or "", "^%s*%S+%s+(.-)%s*$") or ""
+    if not launch then Print("launch module is not loaded; restart after updating the addon.")
+    elseif cmd == "launch" then launch.Show()
+    elseif cmd == "promote" then launch.HardwarePromote(argument)
+    elseif cmd == "buffer" then launch.RiskBuffer()
+    else launch.Motd(argument) end
+  elseif cmd == "ranks" then
     if OlympusVerifyRanks and OlympusVerifyRanks.Print then OlympusVerifyRanks.Print(Print)
     else Print("rank guide not loaded — restart the game once after updating the addon.") end
   elseif cmd == "flush" or cmd == "invite" then

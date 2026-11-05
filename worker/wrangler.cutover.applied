@@ -58,3 +58,7 @@ activated_at = "2026-10-27T00:07:44Z"
 # Original CI marker failure retained; no --activate invocation, provider change or optional feature activation is asserted.
 activation_profile_sha256 = "360d4f610f6baee724db9e8f0dbd539d91b1b6e07d40cfc417ac3b2a36f72f46"
 activated_at = "2026-11-03T19:53:01Z"
+# Owner-authorized .229 SOURCE-ONLY native flagship scope, observed from the own-addon roster on 5 November.
+# Membership-only stays true; no Link, relay, Treasury, removal or reserved-name invitation activation.
+activation_profile_sha256 = "cd8df35f62c75fa68fa654dd48134b35581338aeebc4c6134364cd48d5313c8b"
+activated_at = "2026-11-05T14:48:58Z"

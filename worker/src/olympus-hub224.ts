@@ -68,7 +68,7 @@ export async function olympusHub224(env:Env,a:GuildActor219,i:Interaction):Promi
  }else if(p==='crafters')embeds=[await workshopLookup219(env,a,field(i,'query',60),1)];
  else if(p==='branches'){
   embeds=[await referenceLookup219(env,a,'branches'),await referenceLookup219(env,a,'launch')];
-  components.push(row(link('Olympus / Olympus I–X capacity',open('army')),link('Launch & admission',base+'/#/')));
+  components.push(row(link('OLYMPUS PRIME / Olympus II–X capacity',open('army')),link('Launch & admission',base+'/#/')));
  }else if(p==='council'){
   embeds=[await referenceLookup219(env,a,'council')];
   components.push(row(link('Ranks & duties',open('roles')),link('Organization chart',open('organization')),link('Open applications',open('apply')),link('Application board',open('vote'))));

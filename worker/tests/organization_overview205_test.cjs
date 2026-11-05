@@ -202,7 +202,8 @@ const branchField = page.document.getElementById('org-alliance-guild205');
 check('branch selector retains precisely the ten unappointed Olympus I–X directory scopes', branchField.children.filter(node => node.tagName === 'OPTION' && node.value !== '').map(node => node.value).join('|') === model.guildPlaceholders.map(branch => branch.name).join('|') && model.guildPlaceholders.every(branch => branch.state === 'Unappointed placeholder'));
 for (const branch of [model.guildPlaceholders[0], model.guildPlaceholders[9]]) {
   page.input('org-alliance-guild205', branch.name, 'change');
-  check(branch.name + ' changes affiliation context without inventing holders or duplicating jobs', page.section.all(node => node.classList.contains('org-alliance-branches')).some(node => node.textContent.includes(branch.name) && /placeholder|unappointed/i.test(node.textContent)) && page.visible().length === 72 && page.families().length === 72);
+  const displayName = branch.name === 'Olympus I' ? 'OLYMPUS PRIME' : branch.name;
+  check(branch.name + ' changes affiliation context without inventing holders or duplicating jobs', page.section.all(node => node.classList.contains('org-alliance-branches')).some(node => node.textContent.includes(displayName) && /placeholder|unappointed/i.test(node.textContent)) && page.visible().length === 72 && page.families().length === 72);
 }
 reset.click();
 check('reset returns branch context to the all-branch view', branchField.value === '' && page.visible().length === 72);

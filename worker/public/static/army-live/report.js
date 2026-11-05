@@ -15,7 +15,7 @@
     function canonicalGuild(name) {
       // Fold ASCII letters only; whitespace, Unicode lookalikes and unknown guilds stay outside the fixed scope.
       const asciiName = name.replace(/[a-z]/g, letter => letter.toUpperCase());
-      return GUILD_NAMES.find(guild => guild.toUpperCase() === asciiName);
+      return asciiName === 'OLYMPUS PRIME' ? 'OLYMPUS PRIME' : GUILD_NAMES.find(guild => guild.toUpperCase() === asciiName);
     }
     const ui = Object.fromEntries(['report-status', 'report-preview', 'report-clear', 'report-preview-results', 'report-consent-area', 'report-consent', 'report-publish', 'report-outcome'].map(id => [id, root.querySelector('#' + id)]));
     if (Object.values(ui).some(value => !value)) throw Error('The authored reporter fragment is incomplete.');

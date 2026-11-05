@@ -1910,7 +1910,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     // the I-X leadership directory
     await p114.go("#/community/leadership");
     await waitFor(() => !!byText(p114.app, "h2", "Leadership of the Olympus guilds"), "the leadership page");
-    check("(.114/.197) Community → Leadership for a confirmed member: ten guilds, all seats empty, and the Council's link", texts(p114.app, ".leadership-card h3").length === 10 && texts(p114.app, ".leadership-card h3")[0] === "Olympus I" && texts(p114.app, ".leadership-card h3")[9] === "Olympus X" && p114.app.querySelectorAll(".leadership-card").every(card=>card.querySelectorAll("dd")[0].textContent==="Not listed"&&card.querySelectorAll("dd")[1].textContent==="None listed") && !!p114.app.querySelector('a[href="https://discord.com/channels/236932545793490944/1555636857621188669"]'));
+    check("(.114/.197) Community → Leadership for a confirmed member: ten guilds, all seats empty, and the Council's link", texts(p114.app, ".leadership-card h3").length === 10 && texts(p114.app, ".leadership-card h3")[0] === "OLYMPUS PRIME" && texts(p114.app, ".leadership-card h3")[9] === "Olympus X" && p114.app.querySelectorAll(".leadership-card").every(card=>card.querySelectorAll("dd")[0].textContent==="Not listed"&&card.querySelectorAll("dd")[1].textContent==="None listed") && !!p114.app.querySelector('a[href="https://discord.com/channels/236932545793490944/1555636857621188669"]'));
     check("  the Community tabs offer it, and legacy labels are unverified while a listing grants nothing", texts(p114.app, 'nav[aria-label="Community sections"] a').includes("Leadership") && p114.app.textContent.includes("Legacy typed labels remain explicitly unverified") && p114.app.textContent.includes("A directory listing grants no powers on the website, bot, Discord or in game."));
     const unconf114 = await openPage(STAFF, { SITE_ADMINS: "" });
     await unconf114.go("#/community/leadership");
@@ -1991,7 +1991,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     (await fixtureRun("UPDATE characters SET status = 'member', guid = 'Player-1-0002' WHERE discord_id = ? AND name = 'Oz Three'",OTHER)); // the later checks need OTHER confirmed again
   }
 
-  console.log("\n== .115: Olympus I's seats, News and the role copy (Viktor's items A, B and D, 2 Oct 2026) ==");
+  console.log("\n== .115: OLYMPUS PRIME's seats, News and the role copy (Viktor's items A, B and D, 2 Oct 2026) ==");
   {
     const NEWBIE = "300000000000000115", READER = "300000000000000116";
     await siteUser(NEWBIE, { global_name: "Nia" }); // signed in, no roster-confirmed character
@@ -1999,22 +1999,22 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     const VISITORS = { CHANNEL_VISITOR_CHAT: "1554265065509756989" };
     const nowS = () => Math.floor(Date.now() / 1000);
     const frameOf = (pg, title) => { const t = byText(pg.app, "h2", title); return t ? t.closest("section") : null; };
-    const seatBox = (pg) => pg.app.querySelectorAll(".notice-box").find((b) => b.textContent.includes("Latest officer report: the Olympus I roster export") || b.textContent.includes("Latest invite report: an Olympus I invite was refused")) || null;
-    const home = async (who, over) => { const pg = await openPage(who, over); await pg.go("#/"); await waitFor(() => !!pg.app.querySelector("h1") && !pg.app.textContent.includes("Checking the latest Olympus I officer report"), "the home page and refreshed seat information"); return pg; };
+    const seatBox = (pg) => pg.app.querySelectorAll(".notice-box").find((b) => b.textContent.includes("Latest officer report: the OLYMPUS PRIME roster export") || b.textContent.includes("Latest invite report: an OLYMPUS PRIME invite was refused")) || null;
+    const home = async (who, over) => { const pg = await openPage(who, over); await pg.go("#/"); await waitFor(() => !!pg.app.querySelector("h1") && !pg.app.textContent.includes("Checking the latest OLYMPUS PRIME officer report"), "the home page and refreshed seat information"); return pg; };
 
     // ---- B: the seat state (a complete, trusted export of 1000 an hour ago; MEMBER's second character waits in the queue)
     const snap = Number((await fixtureRun("INSERT INTO roster_snapshots (exported_at, received_at, source, member_count, content_hash, trusted, complete, first_received_at) VALUES (?, ?, 'addon', 1000, 'fe115', 1, 1, ?)",now - 3600, now - 3600, now - 3600)).lastInsertRowid);
     const queueRow = Number((await fixtureRun("INSERT INTO invite_queue (name_key, name, discord_id, status, created_at) VALUES ('mia alt', 'Mia Alt', ?, 'queued', ?)",MEMBER, now - 7200)).lastInsertRowid);
     const queued = await home(MEMBER, VISITORS);
     const qb = seatBox(queued);
-    check("(.115) a confirmed member with a character in the invite queue: Home says Olympus I is full, gives their own place and links the visitors channel", !!qb && qb.textContent.includes("Mia Alt is #1 in line for a seat.") && qb.textContent.includes("officers may remove inactive characters") && qb.textContent.includes("reserved names from the site go first") && qb.textContent.includes("never costs you an invite attempt") && !!qb.querySelector('a[href="https://discord.com/channels/1549537348516188200/1554265065509756989"]') && !!qb.querySelector('img[src="/static/wow/icon-clock.png"]'), qb && qb.textContent);
+    check("(.115) a confirmed member with a character in the invite queue: Home says OLYMPUS PRIME is full, gives their own place and links the visitors channel", !!qb && qb.textContent.includes("Mia Alt is #1 in line for a seat.") && qb.textContent.includes("A recorded queue position is not admission approval or a promised seat") && qb.textContent.includes("Officers check current verification rules and space before an invite") && qb.textContent.includes("A full guild costs no invite attempt; the bot removes nobody") && !!qb.querySelector('a[href="https://discord.com/channels/1549537348516188200/1554265065509756989"]') && !!qb.querySelector('img[src="/static/wow/icon-clock.png"]'), qb && qb.textContent);
     check("  the boot carries the member's own places and the member view of the seats (the hour only, no reason or exact time)", JSON.stringify(queued.boot.myQueue) === JSON.stringify([{ name: "Mia Alt", position: 1 }]) && queued.boot.seats.asOf % 3600 === 0 && !("reason" in queued.boot.seats) && !("rosterAt" in queued.boot.seats));
     const newbie = await home(NEWBIE);
     const nb = seatBox(newbie);
-    check("  an account without a confirmed character and no queue rows: the export's hour and count, verifying still works; without the channel id the channel name is plain text", !!nb && nb.textContent.includes("Latest officer report: the Olympus I roster export of about") && nb.textContent.includes("counts 1000 of 1000 members") && nb.textContent.includes("Verifying in Discord still works") && nb.textContent.includes("#olympus-visitors in Asmongold's Discord") && !nb.querySelector("a"), nb && nb.textContent);
+    check("  an account without a confirmed character and no queue rows: the export's hour and count, verifying still works; without the channel id the channel name is plain text", !!nb && nb.textContent.includes("Latest officer report: the OLYMPUS PRIME roster export of about") && nb.textContent.includes("counts 1000 of 1000 members") && nb.textContent.includes("Use #olympus-verify for the current verification requirements") && !nb.textContent.includes("puts you in the invite queue") && nb.textContent.includes("#olympus-visitors in Asmongold's Discord") && !nb.querySelector("a"), nb && nb.textContent);
     await newbie.go("#/apply");
     await waitFor(() => !!newbie.app.querySelector("h2") && !!seatBox(newbie), "the Apply page and refreshed seat information");
-    check("  the Apply page shows the same notice above everything else", !!seatBox(newbie) && seatBox(newbie).textContent.includes("counts 1000 of 1000 members") && newbie.app.querySelector("main").firstChild.textContent.includes("Latest officer report: the Olympus I roster export"));
+    check("  the Apply page shows the same notice above everything else", !!seatBox(newbie) && seatBox(newbie).textContent.includes("counts 1000 of 1000 members") && newbie.app.querySelector("main").firstChild.textContent.includes("Latest officer report: the OLYMPUS PRIME roster export"));
     check("  a confirmed member without queue rows sees no seat notice", !seatBox(await home(OTHER)));
     const adm5 = await openPage(STAFF);
     const overviewLine = async () => {
@@ -2024,24 +2024,24 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
       return adm5.app.querySelector("#overview-seats").textContent;
     };
     let line = await overviewLine();
-    check("  Admin overview: one staff line above the tiles, full by the roster export, with the count and the queue", line.startsWith("Olympus I: full, 1000 of 1000 on the latest roster export of ") && line.endsWith(" · 1 waiting in the invite queue.") && adm5.app.querySelector("#overview-seats").className === "muted small", line);
+    check("  Admin overview: one staff line above the tiles, full by the roster export, with the count and the queue", line.startsWith("OLYMPUS PRIME: full, 1000 of 1000 on the latest roster export of ") && line.endsWith(" · 1 waiting in the invite queue.") && adm5.app.querySelector("#overview-seats").className === "muted small", line);
     (await fixtureRun("UPDATE roster_snapshots SET member_count = 995 WHERE id = ?",snap));
     line = await overviewLine();
-    check("  open: the free seats", line.startsWith("5 seats free on Olympus I (995 of 1000, latest roster export of "), line);
+    check("  open: the free seats", line.startsWith("5 seats free on OLYMPUS PRIME (995 of 1000, latest roster export of "), line);
     check("  while there is room nobody sees the notice", !seatBox(await home(NEWBIE)));
     (await fixtureRun("UPDATE roster_snapshots SET exported_at = ?, received_at = ? WHERE id = ?",now - 7200, now - 7200, snap));
     const refusal = Number((await fixtureRun("INSERT INTO audit (ts, actor, action, subject, details) VALUES (?, 'watcher', 'guild.full', 'Nia Six', '{}')",now - 600)).lastInsertRowid);
     line = await overviewLine();
-    check("  full by an invite refused for space after that export", line.startsWith("Olympus I: full (an invite was refused for space "), line);
+    check("  full by an invite refused for space after that export", line.startsWith("OLYMPUS PRIME: full (an invite was refused for space "), line);
     const rb = seatBox(await home(NEWBIE));
-    check("  the member's notice gives the refusal and no count", !!rb && rb.textContent.includes("Latest invite report: an Olympus I invite was refused for lack of space (about ") && !rb.textContent.includes("of 1000"), rb && rb.textContent);
+    check("  the member's notice gives the refusal and no count", !!rb && rb.textContent.includes("Latest invite report: an OLYMPUS PRIME invite was refused for lack of space (about ") && !rb.textContent.includes("of 1000"), rb && rb.textContent);
     (await fixtureRun("UPDATE roster_snapshots SET trusted = 0 WHERE id = ?",snap));
     (await fixtureRun("DELETE FROM audit WHERE id = ?",refusal));
     line = await overviewLine();
-    check("  unknown: the reason in words", line.startsWith("Olympus I room: unknown (the latest export is not trusted: run /olympus-admin sync if the guild really shrank)"), line);
+    check("  unknown: the reason in words", line.startsWith("OLYMPUS PRIME room: unknown (the latest export is not trusted: run /olympus-admin sync if the guild really shrank)"), line);
     (await fixtureRun("UPDATE roster_snapshots SET trusted = NULL, complete = 0, first_received_at = ? WHERE id = ?",now - 3600, snap));
     line = await overviewLine();
-    check("  left unfinished (still complete 0 an hour after it arrived; review of 3 Oct 2026): the reason in words", line.startsWith("Olympus I room: unknown (the latest export was left unfinished; the addon's next export writes it again)"), line);
+    check("  left unfinished (still complete 0 an hour after it arrived; review of 3 Oct 2026): the reason in words", line.startsWith("OLYMPUS PRIME room: unknown (the latest export was left unfinished; the addon's next export writes it again)"), line);
     (await fixtureRun("UPDATE roster_snapshots SET complete = 1 WHERE id = ?",snap));
     (await fixtureRun("UPDATE roster_snapshots SET trusted = 1, member_count = 1000, exported_at = ?, received_at = ? WHERE id = ?",now - 3600, now - 3600, snap)); // full again for News
 
@@ -2098,7 +2098,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     check("  switched on: the News tab and the overview card with the official launch icon", texts(news.app, 'nav[aria-label="Community sections"] a').includes("Town Crier") && card.getAttribute("href") === "#/news" && !!card.querySelector('img[src="/static/wow/icon-launch.png"]'));
     await news.go("#/community/news");
     await waitFor(() => !!byText(news.app, "h2", "Notices"), "the News page");
-    check("  the News page: no notices yet; Olympus I full by the export of about the hour; no figures yet; the directory link; the later announced beta shutdown plan and the launch", frameOf(news, "Notices").textContent.includes("No notices right now.") && frameOf(news, "Olympus I").textContent.includes("Olympus I is full: the officers' roster export of about") && frameOf(news, "Olympus I").textContent.includes("counts 1000 of 1000 members") && frameOf(news, "The guild in figures").textContent.includes("No figures yet") && !!frameOf(news, "Leadership directory").querySelector('a[href="#/community/leadership"]') && /October/.test(frameOf(news, "Forever milestones").textContent) && frameOf(news, "Forever milestones").textContent.includes("23") && frameOf(news, "Forever milestones").textContent.includes("scheduled the final beta shutdown") && frameOf(news, "Forever milestones").textContent.includes("actual server closure was not observed") && !!frameOf(news, "Forever milestones").querySelector('a[href="https://us.forums.blizzard.com/en/wow/t/heads-up-wow-forever-stress-test-on-october-21/2387920"]') && (Date.now() < 1793833200000 ? !!frameOf(news, "Forever milestones").querySelector('.launch-notice218 [role="timer"]') : Date.now() < 1796889600000 ? !!frameOf(news, "Forever milestones").querySelector('.launch-notice218') && frameOf(news, "Forever milestones").textContent.includes("Barrow Deeps, Hyjal Summit and Onyxia’s Lair open on 9 December 2026") && !frameOf(news, "Forever milestones").querySelector('[role="timer"]') : !frameOf(news, "Forever milestones").querySelector('.launch-notice218')));
+    check("  the News page: no notices yet; OLYMPUS PRIME full by the export of about the hour; no figures yet; the directory link; the later announced beta shutdown plan and the launch", frameOf(news, "Notices").textContent.includes("No notices right now.") && frameOf(news, "OLYMPUS PRIME").textContent.includes("OLYMPUS PRIME is full: the officers' roster export of about") && frameOf(news, "OLYMPUS PRIME").textContent.includes("counts 1000 of 1000 members") && frameOf(news, "The guild in figures").textContent.includes("No figures yet") && !!frameOf(news, "Leadership directory").querySelector('a[href="#/community/leadership"]') && /October/.test(frameOf(news, "Forever milestones").textContent) && frameOf(news, "Forever milestones").textContent.includes("23") && frameOf(news, "Forever milestones").textContent.includes("scheduled the final beta shutdown") && frameOf(news, "Forever milestones").textContent.includes("actual server closure was not observed") && !!frameOf(news, "Forever milestones").querySelector('a[href="https://us.forums.blizzard.com/en/wow/t/heads-up-wow-forever-stress-test-on-october-21/2387920"]') && (Date.now() < 1793833200000 ? !!frameOf(news, "Forever milestones").querySelector('.launch-notice218 [role="timer"]') : Date.now() < 1796889600000 ? !!frameOf(news, "Forever milestones").querySelector('.launch-notice218') && frameOf(news, "Forever milestones").textContent.includes("Barrow Deeps, Hyjal Summit and Onyxia’s Lair open on 9 December 2026") && !frameOf(news, "Forever milestones").querySelector('[role="timer"]') : !frameOf(news, "Forever milestones").querySelector('.launch-notice218')));
     const rel = load("./site-news").RELEASE_NOTES[0];
     check(".222 ordinary members cannot see Site updates or its release-note payload", !frameOf(news,"Site updates")&&!news.app.textContent.includes(rel.lines[0]));
     const owner222=STAFF; // Existing synthetic owner fixture; never recreate its account.
@@ -2120,15 +2120,15 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     // review of 3 Oct 2026: the member's other seat words, an empty calendar window and a directory never changed
     const newsFrameText = async (title) => { const pg = await openPage(MEMBER); await pg.go("#/community/news"); await waitFor(() => !!byText(pg.app, "h2", "Notices"), "News"); const f = frameOf(pg, title); return f ? f.textContent : ""; };
     (await fixtureRun("UPDATE roster_snapshots SET member_count = 995 WHERE id = ?",snap));
-    let seatWords = await newsFrameText("Olympus I");
-    check("(.115) News, Olympus I open: the free seats and the export's hour and count", seatWords.includes("Olympus I has 5 free seats: the officers' roster export of about") && seatWords.includes("counts 995 of 1000 members."), seatWords);
+    let seatWords = await newsFrameText("OLYMPUS PRIME");
+    check("(.115) News, OLYMPUS PRIME open: the free seats and the export's hour and count", seatWords.includes("OLYMPUS PRIME has 5 free seats: the officers' roster export of about") && seatWords.includes("counts 995 of 1000 members."), seatWords);
     (await fixtureRun("UPDATE roster_snapshots SET trusted = 0 WHERE id = ?",snap));
-    seatWords = await newsFrameText("Olympus I");
-    check("  not trusted: 'not known right now', no count", seatWords.includes("Whether Olympus I has room is not known right now") && !seatWords.includes("of 1000"), seatWords);
+    seatWords = await newsFrameText("OLYMPUS PRIME");
+    check("  not trusted: 'not known right now', no count", seatWords.includes("Whether OLYMPUS PRIME has room is not known right now") && !seatWords.includes("of 1000"), seatWords);
     (await fixtureRun("UPDATE roster_snapshots SET trusted = 1, exported_at = ?, received_at = ? WHERE id = ?",now - 7200, now - 7200, snap));
     const newsRefusal = Number((await fixtureRun("INSERT INTO audit (ts, actor, action, subject, details) VALUES (?, 'watcher', 'guild.full', 'Nia Six', '{}')",nowS() - 600)).lastInsertRowid);
-    seatWords = await newsFrameText("Olympus I");
-    check("  an invite refused for space after that export: full by the refusal, with its hour and no count", seatWords.includes("Olympus I is full: the last invite was refused for lack of space (about ") && !seatWords.includes("of 1000"), seatWords);
+    seatWords = await newsFrameText("OLYMPUS PRIME");
+    check("  an invite refused for space after that export: full by the refusal, with its hour and no count", seatWords.includes("OLYMPUS PRIME is full: the last invite was refused for lack of space (about ") && !seatWords.includes("of 1000"), seatWords);
     (await fixtureRun("DELETE FROM audit WHERE id = ?",newsRefusal));
     (await fixtureRun("UPDATE roster_snapshots SET member_count = 1000, exported_at = ?, received_at = ? WHERE id = ?",now - 3600, now - 3600, snap));
     const soon = db.prepare("SELECT id FROM community_events WHERE status = 'scheduled' AND starts_at > ? AND starts_at < ?").all(nowS() - 60, nowS() + 15 * 86400).map((r) => r.id);

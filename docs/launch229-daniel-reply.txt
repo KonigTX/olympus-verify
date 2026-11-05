@@ -1,0 +1,9 @@
+DRAFT — NOT SENT
+
+Thanks, Daniel. I checked the attached 1.4.4 bundle. OLYMPUS PRIME is broadly recognized as an Olympus guild, but flagship authority still has exact old “Olympus” checks for the King and Treasurer. We should update those through explicit launch guild/realm/character identities, while preserving historical signed material.
+
+/oly discord loads the separate Olympus_Link module, but this copy still has the backend public-key placeholder. Its signed requester payload is name/realm based, without a character GUID. Please keep that path disabled until the real public-key and a versioned GUID-bound contract are agreed.
+
+For finance, I cannot promise a complete per-sender ledger on Fern Melder’s PC from mail/trades to Pyralis alone. Treasury records the recipient’s observed mailbox intake or completed trade; GuildFinance shares scoped aggregates rather than payer details, and the native payer receipt goes to that payer. We need an explicit authorized collector export/relay with receipt IDs, corrections, provenance and completeness bounds. A signature on editable local data is a collector assertion, not independent proof from the game server. We are retaining Fern Melder as our canonical officer target.
+
+Two other contract points: the GM grace is 48 hours, while HS1 currently enforces newer-list ordering but I did not find seven-day expiry at authority reads. Also, your API correctly treats nil GetGuildInfo as unknown, not proof of being unguilded. Knight invites must keep that hold unless a fresh positive WHO result can be correlated safely to the current sender GUID. Promotions will use capability detection and one hardware action, with bounded click-by-click fallback.

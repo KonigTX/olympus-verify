@@ -72,6 +72,7 @@ export function buildAllianceOverview205(data, directory) {
 export function renderAllianceOverview205(data, ui, onSelectNode) {
   const { h, posIcon } = ui;
   const nativeRankDisplayName = (slot, name) => slot === 0 ? "Leader (Guild Master)" : name;
+  const guildDisplayName229 = name => typeof name === 'string' && /^Olympus(?: I| PRIME)?$/i.test(name) ? 'OLYMPUS PRIME' : name;
   const root = h("section", { class: "org-alliance frame", id: "alliance-overview", "aria-label": "Olympus Alliance organization overview" });
   let model;
   try { model = buildAllianceOverview205(data, ui.roleDirectory203); }
@@ -80,8 +81,8 @@ export function renderAllianceOverview205(data, ui, onSelectNode) {
   const status = h("p", { class: "org-alliance-status small", role: "status", "aria-live": "polite" });
   const search = h("input", { id: "org-alliance-search205", type: "search", maxlength: "160", placeholder: "Raid Lead NA, Treasurer, recipes…", "aria-label": "Search the Alliance role families" });
   const rank = h("select", { id: "org-alliance-rank205", "aria-label": "Filter by native rank association" }, h("option", { value: "", text: "All ranks" }), model.ranks.map(row => h("option", { value: String(row.nativeSlot), text: "Rank " + row.nativeRankOrdinal + " · " + nativeRankDisplayName(row.nativeSlot, row.label) })));
-  const guild = h("select", { id: "org-alliance-guild205", "aria-label": "Explore a guild branch context" }, h("option", { value: "", text: "All Olympus branches" }), data.guildPlaceholders.map(row => h("option", { value: row.name, text: row.name })));
-  const branchTitle = h("h3", { text: "Olympus I–X · local guild management" });
+  const guild = h("select", { id: "org-alliance-guild205", "aria-label": "Explore a guild branch context" }, h("option", { value: "", text: "All Olympus branches" }), data.guildPlaceholders.map(row => h("option", { value: row.name, text: guildDisplayName229(row.name) })));
+  const branchTitle = h("h3", { text: "OLYMPUS PRIME / Olympus II–X · local guild management" });
   const branchDescription = h("p");
   const families = [], familyCounts = [], seatReferences = [], referenceGroups = [];
   function nodeButton(id, text) {
@@ -156,8 +157,8 @@ export function renderAllianceOverview205(data, ui, onSelectNode) {
   const empty = h("p", { class: "org-alliance-empty", role: "note", hidden: true, text: "No role families match these filters. Try an alternate title or reset the filters." });
   function describeBranch() {
     const branch = data.guildPlaceholders.find(row => row.name === guild.value);
-    branchTitle.textContent = branch ? branch.name + " · local guild context" : "Olympus I–X · local guild management";
-    branchDescription.textContent = branch ? branch.state + ". The cards describe shared local duties for this directory scope, not confirmed officeholders, a formed guild or live capacity. Alliance portfolios still coordinate across branches; the role catalogue below remains shared." : "Choose Olympus I–X to explore a directory scope. Local Guild Masters retain local command. These placeholders establish no formed guild, officeholder or live roster capacity.";
+    branchTitle.textContent = branch ? guildDisplayName229(branch.name) + " · local guild context" : "OLYMPUS PRIME / Olympus II–X · local guild management";
+    branchDescription.textContent = branch ? branch.state + ". The cards describe shared local duties for this directory scope, not confirmed officeholders, a formed guild or live capacity. Alliance portfolios still coordinate across branches; the role catalogue below remains shared." : "Choose OLYMPUS PRIME or Olympus II–X to explore a directory scope. Local Guild Masters retain local command. These placeholders establish no formed guild, officeholder or live roster capacity.";
   }
   function filter() {
     const query = searchWords205(search.value), slot = rank.value === "" ? null : Number(rank.value);

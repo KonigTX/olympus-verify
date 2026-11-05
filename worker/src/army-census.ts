@@ -5,6 +5,7 @@ import { privacyBoundSiteEnv, PrivacySiteRequestHeld } from "./privacy-serving-a
 import { communityContext, captureCommunitySubject, admitted, admittedReadAs, DB_NOW, fenceSql, FENCE_REFUSED, type CommunityContext } from "./community-context";
 import { checkOriginalNativeRequest, checkOriginalNativeHeaders } from "./privacy-native-http-intrinsics";
 import { readRaw, PreviewRefusal } from "./army-body";
+import { FLAGSHIP_GUILD_NAME, canonicalOlympusGuildName } from './guild-affiliation229';
 
 export interface ArmySnapshot {
   format: "olympus-stat-observation-v2"; scope: "own-guild"; source: "volunteer-client";
@@ -23,8 +24,21 @@ function keys(value: unknown, expected: readonly string[]): asserts value is Rec
   if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).join("|") !== expected.join("|")) bad();
 }
 const integer = (v: unknown, min: number, max: number): v is number => typeof v === "number" && Number.isSafeInteger(v) && v >= min && v <= max;
-function slot(name: string): number { return NAMES.indexOf(name); }
+// Keep all eleven historical keys positional. Prime aliases the existing I slot;
+// the stored aggregate retains its original name and exact publication digest.
+function slot(name: string): number { return NAMES.indexOf(name === FLAGSHIP_GUILD_NAME ? 'Olympus I' : name); }
 export function armyKey(snapshot: ArmySnapshot): string { return PREFIX + String(slot(snapshot.guilds[0].name) + 1); }
+/** Display lookup only: competing raw aliases are held, never added or merged. */
+export function branchArmySnapshots229(values: readonly ArmySnapshot[]) {
+  const byGuild = new Map<string, ArmySnapshot>(), ambiguous = new Set<string>();
+  for (const value of values) {
+    const name = canonicalOlympusGuildName(value.guilds[0].name);
+    if (!name) continue;
+    if (byGuild.has(name) || ambiguous.has(name)) { byGuild.delete(name); ambiguous.add(name); }
+    else byGuild.set(name, value);
+  }
+  return {byGuild, ambiguous};
+}
 
 /** Reject unknown fields rather than redact them after persistence. Bucket labels are fixed, never client-supplied names. */
 export function validateArmySnapshot(value: unknown, now: number, fresh = true): ArmySnapshot {

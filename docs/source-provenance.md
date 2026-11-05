@@ -300,3 +300,9 @@ The .193 PR86 review successor additionally fixes semantic data-load cache recov
 
 
 The further .193 review successor validates settled data even when its originating view was destroyed before arrival. This is another small stats60.js cache-recovery correction with additive cancellation regressions and the same one-resource/reference/V4 pin refresh; data and artwork identities remain unchanged.
+
+## .229 current code and display projection
+
+The launch successor preserves the existing eleven Army storage slots, historical relay wire labels and signed leadership grammar. OLYMPUS PRIME is a current affiliation/display alias for the flagship; original raw guild/realm bytes remain in native provenance and signatures. No archive payload, private configuration, live roster or new artwork is added to the public tree. The supplied third-party addon is audited separately as version 1.4.4; its extraction and complete private file inventory remain local evidence.
+
+The public reference successor re-pins six changed JavaScript files: the main SPA, the two organization displays and three Army reader modules. Its seven changed pin rows include the main SPA's existing duplicate source binding. Art, fonts, asset counts, public paths and the network guard remain unchanged. The reference SHA256 is 5e31eb2b2b65af2fd221a9703da841794e2ae8e7a996c3f235fdccf235d883db. Only that reference constant changes in official_assets.py; reconcile_public_root.py binds the resulting helper digest 1db049697869b48f10df32db2663c4244f9c7b06fb6176faa54aecca151ebfaa and the new reference. The two local synthetic website overlays now pin the exact current SPA. These are byte gates; they do not publish a snapshot or qualify native behavior. Canonical policy source is regenerated to the Worker and root mirrors, including the launch-advice disclosure.

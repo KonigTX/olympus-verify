@@ -78,6 +78,13 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".229", date: "2026-11-05", lines: [
+      "OLYMPUS PRIME is the flagship. Legacy Olympus and Olympus I names remain recognized without changing signed records.",
+      "Staff can scan native roster recommendations for Knight promotions, verified Initiates and advisory space review. Each promotion needs a fresh check and an attended click.",
+      "The launch desk offers a short guild message and expanded verification bulletin. Unknown guild state remains held for invites.",
+    ],
+  },
+  {
     build: ".228", date: "2026-11-04", lines: [
       "The role directory and governance book link to matching ranks, offices and articles. Admin settings group related tools.",
       "The guide library includes updated Forever class advice and a raid-team planning reference.",

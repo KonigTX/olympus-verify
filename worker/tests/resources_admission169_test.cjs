@@ -120,6 +120,21 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .229 reverses only this exact launch operations release note.
+  const release229 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".229\", date: \"2026-11-05\", lines: [",
+    "      \"OLYMPUS PRIME is the flagship. Legacy Olympus and Olympus I names remain recognized without changing signed records.\",",
+    "      \"Staff can scan native roster recommendations for Knight promotions, verified Initiates and advisory space review. Each promotion needs a fresh check and an attended click.\",",
+    "      \"The launch desk offers a short guild message and expanded verification bulletin. Unknown guild state remains held for invites.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .229 prepend occurs once', originalNews.split(release229).length === 2);
+  originalNews = originalNews.replace(release229, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+
   // .228 reverses only the exact Evergreen release note.
   const release228 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

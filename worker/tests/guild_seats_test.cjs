@@ -1,4 +1,4 @@
-// Build .115 (3 Oct 2026, Viktor's item B of 2 Oct): whether Olympus I has room (src/guild-seats.ts), through the REAL
+// Build .115 (3 Oct 2026, Viktor's item B of 2 Oct): whether OLYMPUS PRIME has room (src/guild-seats.ts), through the REAL
 // src/*.ts (transpiled by TypeScript itself) against the REAL schema.sql in SQLite (node:sqlite), the site through the
 // real index.ts fetch. Only Discord's HTTP side is stubbed (and recorded: a status reply must make no Discord call);
 // member notices are recorded, never sent. Covers:
@@ -325,7 +325,7 @@ const quiet = async (fn) => { const real = console.error, lines = []; console.er
   check("  /olympus-admin sync does not vouch for it yet", latest().complete === 0 && !content.includes("seat count"), content);
   T += 400;
   s = await seatsNow();
-  check("past ten minutes: unknown/stuck, and the staff line says the next export writes it again", s.reason === "stuck" && gs.seatsStaffLine(s) === "Olympus I room: unknown (the latest export was left unfinished; the addon's next export writes it again)" && roster.SNAPSHOT_WRITE_GRACE_S === 600, gs.seatsStaffLine(s));
+  check("past ten minutes: unknown/stuck, and the staff line says the next export writes it again", s.reason === "stuck" && gs.seatsStaffLine(s) === "OLYMPUS PRIME room: unknown (the latest export was left unfinished; the addon's next export writes it again)" && roster.SNAPSHOT_WRITE_GRACE_S === 600, gs.seatsStaffLine(s));
   content = await admin("sync");
   check("  with every member row there, /olympus-admin sync vouches for it: complete 1, trusted 1", latest().id === stuckId && latest().complete === 1 && latest().trusted === 1 && content.includes("This export now counts for the seat count."), content);
   fresh();
@@ -714,18 +714,20 @@ const quiet = async (fn) => { const real = console.error, lines = []; console.er
   const seatSrc = fs.readFileSync(path.join(root, "src", "guild-seats.ts"), "utf8");
   check("static: the refusal read names actor 'watcher', the actor ingest.ts writes", seatSrc.includes("actor = 'watcher' AND action = 'guild.full'") && fs.readFileSync(path.join(root, "src", "ingest.ts"), "utf8").includes(`audit(env, "watcher", "guild.full"`));
 
-  console.log("\n== /verify-status while Olympus I is full ==");
+  console.log("\n== /verify-status while OLYMPUS PRIME is full ==");
   fresh();
   await snapRow(1000, { exportedAt: T - H - 120, receivedAt: T - H });
   await queued(QUINN, "Queue Quinn");
   FETCHES = []; REST = []; NOTICES = [];
   let reply = await status(QUINN);
   let text = reply.content;
-  const para = text.split("\n").find((l) => l.includes("Olympus I is full")) ?? "";
-  check("it says Olympus I is full, with the count", text.includes("Olympus I is full") && para.includes("1000 of 1000"), text);
+  const para = text.split("\n").find((l) => l.includes("OLYMPUS PRIME is full")) ?? "";
+  check("it says OLYMPUS PRIME is full, with the count", text.includes("OLYMPUS PRIME is full") && para.includes("1000 of 1000"), text);
   check("  the account's place: '**#1** in line'", text.includes("**#1** in line"), text);
   check("  officers may remove inactive characters; reserved names from the site go first; the visitors channel", para.includes("officers may remove inactive characters") && para.includes("reserved names from the site go first") && para.includes(`<#${VISITORS}>`), para);
   check("  it promises no code stays valid", !/stays valid/.test(text));
+  const restricted229 = gs.seatsText(env({ VERIFY_MEMBERSHIP_ONLY: 'true' }), (await seatsNow()));
+  check('.229 restricted launch full-guild copy requires native identity and promises no new invitation or active queue service', restricted229.includes('fresh native guild roster and matching character GUID') && restricted229.includes('Verification does not add a new invitation') && restricted229.includes('Recorded queue positions are historical advice') && !restricted229.includes('sends the next invite when a seat opens'));
   check("  the export's time is rounded down to the hour", times(para).length === 1 && times(para)[0] % H === 0 && times(para)[0] === Math.floor((T - H - 120) / H) * H, times(para));
   check("  ephemeral (flags 64), no mentions parsed, under 2000 characters", reply.flags === 64 && JSON.stringify(reply.allowed_mentions) === JSON.stringify({ parse: [] }) && text.length < 2000);
   check("  no notice, no DM, no Discord call", NOTICES.length === 0 && REST.length === 0 && FETCHES.length === 0, { NOTICES, REST, FETCHES });
@@ -733,13 +735,13 @@ const quiet = async (fn) => { const real = console.error, lines = []; console.er
   check("with CHANNEL_VISITOR_CHAT unset it names 'the visitors channel'", text.includes("the visitors channel") && !text.includes("<#"));
   await run("INSERT INTO members (discord_id) VALUES (?)", MEMBER);
   await run("INSERT INTO characters (name_key, name, discord_id, status, bound_at, member_since) VALUES ('in guild', 'In Guild', ?, 'member', ?, ?)", MEMBER, T - DAY, T - DAY);
-  check("an account with nothing waiting (only a member character) gets no paragraph", !(await status(MEMBER)).content.includes("Olympus I"));
+  check("an account with nothing waiting (only a member character) gets no paragraph", !(await status(MEMBER)).content.includes("OLYMPUS PRIME"));
   await run("INSERT INTO pending (discord_id, name_key, name, created_at, expires_at) VALUES (?, 'later alt', 'Later Alt', ?, ?)", MEMBER, T - 60, T + DAY);
-  check("  but an open code is waiting on an invite, so it does", (await status(MEMBER)).content.includes("Olympus I is full"));
+  check("  but an open code is waiting on an invite, so it does", (await status(MEMBER)).content.includes("OLYMPUS PRIME is full"));
   await run("UPDATE roster_snapshots SET member_count = 999");
   text = (await status(QUINN)).content;
   s = await seatsNow();
-  check("999 at cap 1000: open, 1 free, no paragraph and no place", s.state === "open" && s.free === 1 && !text.includes("Olympus I") && !text.includes("in line"), text);
+  check("999 at cap 1000: open, 1 free, no paragraph and no place", s.state === "open" && s.free === 1 && !text.includes("OLYMPUS PRIME") && !text.includes("in line"), text);
   s = await seatsNow({ GUILD_MEMBER_CAP: "990" });
   check("999 with GUILD_MEMBER_CAP=990: full", s.state === "full" && s.cap === 990 && (await status(QUINN, { GUILD_MEMBER_CAP: "990" })).content.includes("999 of 990"));
   // review of 3 Oct 2026: an invite refused for space earlier, then a trusted roster with room
@@ -778,7 +780,7 @@ const quiet = async (fn) => { const real = console.error, lines = []; console.er
   const openNamed = await verify(VERA, "Vera Code");
   const openTicket = await verify(WREN, null, { REQUEST_CODES: "on" });
   const queueOpen = JSON.stringify((await (await ingest.getQueue(env(), "")).json()).entries);
-  check("/verify with a name answers exactly the same full and not full (no new line)", fullNamed.content === openNamed.content && !/full|Olympus I\b/.test(fullNamed.content), fullNamed.content);
+  check("/verify with a name answers exactly the same full and not full (no new line)", fullNamed.content === openNamed.content && !/full|OLYMPUS PRIME\b/.test(fullNamed.content), fullNamed.content);
   check("/verify with no name (a request code) answers exactly the same", fullTicket.content === openTicket.content && /Your code/.test(fullTicket.content));
   check("getQueue serves identical rows full and not full", queueFull === queueOpen && JSON.parse(queueFull).length === 1);
   await snapRow(1000, { exportedAt: T - 30 });
@@ -823,26 +825,26 @@ const quiet = async (fn) => { const real = console.error, lines = []; console.er
   const ov = await (await site("GET", "/api/admin/overview", { who: ADMIN })).json();
   check("the admin overview carries the exact seat state", ov.seats && ov.seats.state === "full" && ov.seats.rosterAt === T - H - 120 && ov.seats.members === 1000, ov.seats);
   content = await admin("queue");
-  check("/olympus-admin queue, empty: the seat line, then 'Invite queue is empty.'", content === `Olympus I: **full**, 1000 of 1000 on the latest roster export <t:${T - H - 120}:R> · 0 waiting in the invite queue\nInvite queue is empty.`, content);
+  check("/olympus-admin queue, empty: the seat line, then 'Invite queue is empty.'", content === `OLYMPUS PRIME: **full**, 1000 of 1000 on the latest roster export <t:${T - H - 120}:R> · 0 waiting in the invite queue\nInvite queue is empty.`, content);
   await queued(QUINN, "Queue Quinn");
   await queued(PRIA, "Pri Ority", { priority: 1 });
   await run("UPDATE invite_queue SET status = 'invited' WHERE id = ?", await queued(CARL, "Carl Invited")); // invited: listed, not counted as waiting
   content = await admin("queue");
-  check("  non-empty: the seat line with the count first (queued and written only, like the overview), then the list", content.startsWith("Olympus I: **full**, 1000 of 1000") && content.split("\n")[0].endsWith("· 2 waiting in the invite queue") && content.includes("Queue Quinn") && content.includes("Pri Ority") && content.includes("Carl Invited"), content);
+  check("  non-empty: the seat line with the count first (queued and written only, like the overview), then the list", content.startsWith("OLYMPUS PRIME: **full**, 1000 of 1000") && content.split("\n")[0].endsWith("· 2 waiting in the invite queue") && content.includes("Queue Quinn") && content.includes("Pri Ority") && content.includes("Carl Invited"), content);
   content = await admin("roster");
-  check("/olympus-admin roster starts with the same line, read from the snapshot 'Last roster' names", content.startsWith(`Olympus I: **full**, 1000 of 1000 on the latest roster export <t:${T - H - 120}:R>\nLast roster: 1000 members`), content.slice(0, 200));
+  check("/olympus-admin roster starts with the same line, read from the snapshot 'Last roster' names", content.startsWith(`OLYMPUS PRIME: **full**, 1000 of 1000 on the latest roster export <t:${T - H - 120}:R>\nLast roster: 1000 members`), content.slice(0, 200));
   await snapRow(400, { trusted: 0, exportedAt: T - 60 });
   content = await admin("roster");
-  check("  an untrusted latest export: 'unknown' with the remedy", content.startsWith("Olympus I room: unknown (the latest export is not trusted: run /olympus-admin sync if the guild really shrank)"), content.slice(0, 200));
+  check("  an untrusted latest export: 'unknown' with the remedy", content.startsWith("OLYMPUS PRIME room: unknown (the latest export is not trusted: run /olympus-admin sync if the guild really shrank)"), content.slice(0, 200));
   await run("UPDATE roster_snapshots SET trusted = 1 WHERE member_count = 400");
-  check("  open: the free seats", (await admin("roster")).startsWith(`600 seats free on Olympus I (400 of 1000, latest roster export <t:${T - 60}:R>)`));
-  check("  the refused source in words", gs.seatsStaffLine({ state: "full", full: true, source: "refused_invite", refusedAt: T - 5 }) === `Olympus I: **full** (an invite was refused for space <t:${T - 5}:R>)`);
+  check("  open: the free seats", (await admin("roster")).startsWith(`600 seats free on OLYMPUS PRIME (400 of 1000, latest roster export <t:${T - 60}:R>)`));
+  check("  the refused source in words", gs.seatsStaffLine({ state: "full", full: true, source: "refused_invite", refusedAt: T - 5 }) === `OLYMPUS PRIME: **full** (an invite was refused for space <t:${T - 5}:R>)`);
   fresh();
   await snapRow(1000, { exportedAt: T - H });
   await queued(QUINN, "Queue Quinn");
   STAFF = [];
   await ingest.postEvents(env(), { events: [{ type: "guild_full", detail: "0 eligible", candidates: [] }] });
-  check("the guild-full staff notice carries the count", STAFF.length === 1 && STAFF[0].content.includes(`Olympus I: **full**, 1000 of 1000 on the latest roster export <t:${T - H}:R>`), STAFF);
+  check("the guild-full staff notice carries the count", STAFF.length === 1 && STAFF[0].content.includes(`OLYMPUS PRIME: **full**, 1000 of 1000 on the latest roster export <t:${T - H}:R>`), STAFF);
   await ingest.postEvents(env(), { events: [{ type: "guild_full", detail: "0 eligible", candidates: [] }] });
   check("  and is still posted at most once an hour", STAFF.length === 1);
 
@@ -853,7 +855,7 @@ const quiet = async (fn) => { const real = console.error, lines = []; console.er
   await queued(QUINN, "Queue Quinn");
   FAULT = (sql, phase) => phase === "prepare" && (/FROM roster_snapshots ORDER BY id DESC LIMIT 1/.test(sql) && /trusted, complete/.test(sql) || /action = 'guild\.full' ORDER BY/.test(sql) || /AS position\s+FROM invite_queue q/.test(sql));
   let q = await quiet(() => status(QUINN));
-  check("/verify-status answers without the paragraph", typeof q.value.content === "string" && q.value.content.includes("Queue Quinn") && !q.value.content.includes("Olympus I"), q.value.content);
+  check("/verify-status answers without the paragraph", typeof q.value.content === "string" && q.value.content.includes("Queue Quinn") && !q.value.content.includes("OLYMPUS PRIME"), q.value.content);
   // The current ordinary subject batch converts Native failure to its held error;
   // the operational website read below still retains the D1 classification.
   check("  one bounded ordinary-admission log line: the category only, no SQL, no message", q.lines.length === 1 && q.lines[0] === "guild seats failed error", q.lines);
@@ -873,7 +875,7 @@ const quiet = async (fn) => { const real = console.error, lines = []; console.er
   // The policy pages say what the seat state does (the served pages, whitespace folded: the tracked HTML wraps its lines).
   const folded = async (p) => { const r = await site("GET", p); return { status: r.status, text: (await r.text()).replace(/\s+/g, " ") }; };
   const priv = await folded("/legal/privacy"), terms = await folded("/legal/terms");
-  check("the privacy policy has a full-guild paragraph: the deciding export's rule, the hour, your own places to you alone", priv.status === 200 && priv.text.includes("<strong>A full guild.</strong> While Olympus I is full") && roster.ROSTER_SEATS_FOR === 2 * DAY && priv.text.includes("complete, passed the size checks and is less than two days old") && priv.text.includes("<code>/verify-status</code> says so, with the hour of that export or refusal, to an account waiting on an invite") && priv.text.includes("Home and Apply pages say so to an account waiting in the invite queue (with its place) or without a confirmed character (with that hour)") && priv.text.includes("No other member sees your place.") && priv.text.includes("Officers see the invite queue itself"));
+  check("the privacy policy has a full-guild paragraph: the deciding export's rule, the hour, your own places to you alone", priv.status === 200 && priv.text.includes("<strong>A full guild.</strong> While OLYMPUS PRIME is full") && roster.ROSTER_SEATS_FOR === 2 * DAY && priv.text.includes("complete, passed the size checks and is less than two days old") && priv.text.includes("<code>/verify-status</code> says so, with the hour of that export or refusal, to an account waiting on an invite") && priv.text.includes("Home and Apply pages say so to an account waiting in the invite queue (with its place) or without a confirmed character (with that hour)") && priv.text.includes("No other member sees your place.") && priv.text.includes("Officers see the invite queue itself"));
   check("  the staff channels record each confirmation, never a code (review of 3 Oct 2026: the log line names the character and the account; the guild-full notice goes to the staff channel)", priv.text.includes("the bot's private staff channels record each confirmation (the character and the account, never a code)") && !priv.text.includes("records each confirmed code"));
   check("  a snapshot's new facts are in what it stores (when it first arrived, whether complete, whether it passed the size checks)", priv.text.includes("each also recording when that exact roster first arrived, whether all of it was stored, and whether it passed the bot's size checks"));
   check("the terms: a place in the queue is not a seat; being full costs no attempt; the bot removes nobody; reserved names go first", terms.status === 200 && terms.text.includes("<strong>A full guild.</strong>") && terms.text.includes("a refusal for lack of space costs it no invite attempt") && terms.text.includes("A place in the queue is not a seat and promises no date, and names reserved on the site go first") && terms.text.includes("The bot removes nobody to make room; officers may remove inactive characters."));

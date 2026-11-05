@@ -1,5 +1,5 @@
 /**
- * Whether Olympus I has room: Viktor's request (2 Oct 2026, item B). While the guild is at its member limit no invite
+ * Whether OLYMPUS PRIME has room: Viktor's request (2 Oct 2026, item B). While the guild is at its member limit no invite
  * can go out, and a member who reads "queued" for days reads it as broken; this module says so plainly where people
  * look (/verify-status, the guide's My status button, Home and Apply on the site, the staff commands and /health).
  *
@@ -53,7 +53,7 @@ export interface SeatPlace {
 }
 
 /**
- * The roster count at which Olympus I counts as full. Unset or empty: the game's 1000. A value of three or four digits
+ * The roster count at which OLYMPUS PRIME counts as full. Unset or empty: the game's 1000. A value of three or four digits
  * from 900 to 1000 is used as given; anything else ("0", "899", "1001", "1e3", "900x") is reported as invalid and 1000
  * is used, so a mistyped setting can only ever make the bot more cautious about saying "full".
  */
@@ -188,8 +188,9 @@ export function seatsText(env: Env, s: SeatState): string {
   if (!s.full) return "";
   const lead =
     s.source === "roster" && s.rosterAt !== null && s.members !== null
-      ? `**Olympus I is full**: the officers' latest roster export (<t:${hourOf(s.rosterAt)}:R>) counts ${s.members} of ${s.cap} members.`
-      : `**Olympus I is full**: the last invite was refused for lack of space (<t:${hourOf(s.refusedAt ?? 0)}:R>).`;
+      ? `**OLYMPUS PRIME is full**: the officers' latest roster export (<t:${hourOf(s.rosterAt)}:R>) counts ${s.members} of ${s.cap} members.`
+      : `**OLYMPUS PRIME is full**: the last invite was refused for lack of space (<t:${hourOf(s.refusedAt ?? 0)}:R>).`;
+  if (env.VERIFY_MEMBERSHIP_ONLY === 'true') return `${lead} Restricted launch verification requires a fresh native guild roster and matching character GUID. Verification does not add a new invitation. Recorded queue positions are historical advice, not admission approval or a promised seat. The bot removes nobody to make room. Officers review space and eligibility separately. ${visitorLine(env)}`;
   return (
     `${lead} Being full changes nothing about your verification: a full guild never costs you an invite attempt, the bot ` +
     `removes nobody (officers may remove inactive characters to free seats), and an officer sends the next invite when a ` +
@@ -212,9 +213,9 @@ const REASON_WORDS: Record<SeatReason, string> = {
 /** The staff line (exact times): the four states in words, and how many wait when the caller knows. */
 export function seatsStaffLine(s: SeatState, waiting?: number): string {
   let line: string;
-  if (s.full && s.source === "roster") line = `Olympus I: **full**, ${s.members} of ${s.cap} on the latest roster export <t:${s.rosterAt}:R>`;
-  else if (s.full) line = `Olympus I: **full** (an invite was refused for space <t:${s.refusedAt}:R>)`;
-  else if (s.state === "open") line = `${s.free} seat${s.free === 1 ? "" : "s"} free on Olympus I (${s.members} of ${s.cap}, latest roster export <t:${s.rosterAt}:R>)`;
-  else line = `Olympus I room: unknown (${REASON_WORDS[s.reason ?? "error"]})`;
+  if (s.full && s.source === "roster") line = `OLYMPUS PRIME: **full**, ${s.members} of ${s.cap} on the latest roster export <t:${s.rosterAt}:R>`;
+  else if (s.full) line = `OLYMPUS PRIME: **full** (an invite was refused for space <t:${s.refusedAt}:R>)`;
+  else if (s.state === "open") line = `${s.free} seat${s.free === 1 ? "" : "s"} free on OLYMPUS PRIME (${s.members} of ${s.cap}, latest roster export <t:${s.rosterAt}:R>)`;
+  else line = `OLYMPUS PRIME room: unknown (${REASON_WORDS[s.reason ?? "error"]})`;
   return waiting === undefined ? line : `${line} · ${waiting} waiting in the invite queue`;
 }

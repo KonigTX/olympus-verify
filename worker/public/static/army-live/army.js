@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   const protocol = window.OlympusGuildQRProtocol;
-  const allowedGuild = name => name === 'Olympus' || /^Olympus (?:I|II|III|IV|V|VI|VII|VIII|IX|X)$/.test(name);
+  const allowedGuild = name => name === 'OLYMPUS PRIME' || name === 'Olympus' || /^Olympus (?:I|II|III|IV|V|VI|VII|VIII|IX|X)$/.test(name);
   const labels = Object.freeze({classes: ['Warrior', 'Paladin', 'Hunter', 'Rogue', 'Priest', 'Shaman', 'Mage', 'Warlock', 'Druid'], levels: ['Levels 1–9', 'Levels 10–19', 'Levels 20–29', 'Levels 30–39', 'Levels 40–49', 'Levels 50–59', 'Level 60'], ranks: Array.from({length: 10}, (_, index) => 'Rank position ' + index)});
   const count = value => value === 'few' ? 'Fewer than 5' : value === null ? 'Unavailable' : String(value);
   const time = value => new Date(value * 1000).toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'});
@@ -18,12 +18,13 @@
   }
   function card(snapshot, evaluatedAt) {
     const guild = snapshot.guilds[0], article = node('article', undefined, 'army-card'), stale = evaluatedAt - snapshot.observedAt > 86400 || evaluatedAt - guild.receivedAt > 86400;
-    article.append(node('span', stale ? 'Stale community observation' : 'Unverified community observation', 'source-label'), node('h2', guild.name), node('p', snapshot.realmGroup + ' · ' + snapshot.faction, 'muted'));
+    article.setAttribute('data-army-source-guild', guild.name);
+    article.append(node('span', stale ? 'Stale community observation' : 'Unverified community observation', 'source-label'), node('h2', /^Olympus(?: I| PRIME)?$/i.test(guild.name) ? 'OLYMPUS PRIME' : guild.name), node('p', snapshot.realmGroup + ' · ' + snapshot.faction, 'muted'));
     const figures = node('dl', undefined, 'figures');
     for (const [label, value] of [[stale ? 'Last reported characters' : 'Reported characters', guild.reportedCharacters], ['Reported online', evaluatedAt - guild.receivedAt > 900 ? null : guild.online]]) { const item = node('div'); item.append(node('dt', label), node('dd', count(value))); figures.append(item); }
     article.append(figures);
     const metadata = node('dl', undefined, 'metadata');
-    for (const [label, value] of [['Source observation', time(snapshot.observedAt)], ['Guild data received', time(guild.receivedAt)], ['Source status', stale ? 'Historical report · source older than 24 hours' : evaluatedAt - guild.receivedAt > 900 ? 'Online count no longer current' : 'Within the source freshness window']]) { const item = node('div'); item.append(node('dt', label), node('dd', value)); metadata.append(item); }
+    for (const [label, value] of [['Reported guild label', guild.name], ['Source observation', time(snapshot.observedAt)], ['Guild data received', time(guild.receivedAt)], ['Source status', stale ? 'Historical report · source older than 24 hours' : evaluatedAt - guild.receivedAt > 900 ? 'Online count no longer current' : 'Within the source freshness window']]) { const item = node('div'); item.append(node('dt', label), node('dd', value)); metadata.append(item); }
     article.append(metadata);
     for (const key of ['classes', 'levels', 'ranks']) details(article, key === 'classes' ? 'Classes' : key === 'levels' ? 'Level bands' : 'In-game rank positions', guild[key], labels[key]);
     article.append(node('p', 'Characters, not unique people. This report proves neither game origin nor membership. Rank positions carry no authority on this site.', 'help'));
@@ -81,9 +82,10 @@
         const heading = Array.from(article.children).find(child => child.tagName === 'H2');
         if (!heading) continue;
         const sections = Array.from(article.children).filter(child => child.tagName === 'DETAILS');
-        state.expanded.set(heading.textContent, new Set(sections.filter(child => child.open).map(child => child.children[0].textContent)));
+        const sourceGuild = article.getAttribute('data-army-source-guild') || heading.textContent;
+        state.expanded.set(sourceGuild, new Set(sections.filter(child => child.open).map(child => child.children[0].textContent)));
         const holder = active ? sections.find(child => child.children[0] === active) : undefined;
-        if (holder) { state.focus = [heading.textContent, holder.children[0].textContent]; state.from = active; }
+        if (holder) { state.focus = [sourceGuild, holder.children[0].textContent]; state.from = active; }
       }
       return state;
     }

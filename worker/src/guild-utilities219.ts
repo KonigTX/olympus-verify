@@ -7,7 +7,8 @@ import { privacySubjectWritableSql } from './privacy-serving-authority';
 import { APPLICATION_SPECS_219 } from './application-specs219';
 import { TALENT_ATTACHMENT_CLASSES } from './talent-build-contract';
 import { talentBuildAttachment } from './talent-build-attachment';
-import { parsedArmySnapshot219, armyKey, type ArmySnapshot } from './army-census';
+import { parsedArmySnapshot219, armyKey, branchArmySnapshots229, type ArmySnapshot } from './army-census';
+import { canonicalOlympusGuildName } from './guild-affiliation229';
 import { ROYAL_WRIT_POLICY } from './royal-writs199';
 import { NATIVE_RANKS_199 } from './governance-offices';
 import { FOREVER_SCHEDULE } from './site-data';
@@ -108,12 +109,13 @@ export async function referenceLookup219(env:Env,a:GuildActor219,name:string):Pr
   const rows=await guildActorBatch219(env,a,[env.DB.prepare(`SELECT ${DB_NOW} now`),env.DB.prepare("SELECT key,value,updated_at,updated_by FROM site_settings WHERE key GLOB 'army:census:v2:*' ORDER BY CAST(SUBSTR(key,16) AS INTEGER),key LIMIT 12")]);
   const at=Number((rows[0]!.results[0] as {now:number}).now),snapshots=new Map<string,ArmySnapshot>();let held=false;
   for(const raw of rows[1]!.results){const row=raw as {key:string;value:string;updated_at:number;updated_by:string|null},snapshot=parsedArmySnapshot219(row,at);if(!snapshot||armyKey(snapshot)!==row.key||snapshots.has(snapshot.guilds[0].name)){held=true;break;}snapshots.set(snapshot.guilds[0].name,snapshot);}
+  const aliases=branchArmySnapshots229([...snapshots.values()]);
   const empty=!held&&snapshots.size===0;
   const scope='Branch contexts and accepted Army aggregates; not a live membership or invitation guarantee. Daniel’s automatic relay is off. October Beta 1000/1000 +247 queued is historical only.';
-  const description=empty?'No published capacity snapshot for Olympus I–X yet. Live capacity is unknown. '+scope:scope;
-  return {title:'Olympus I–X · branch status',url:base+'/#/army',description,fields:empty?[]:org.guildPlaceholders.map((branch:Any219)=>{
-   const snapshot=held?null:snapshots.get(branch.name),row=snapshot?.guilds[0],age=row?Math.max(0,at-row.receivedAt):null;
-   return field(branch.name,branch.state+'. '+(!row?'Live capacity unknown; '+(held?'stored aggregate validation is held.':'no accepted current aggregate.'):'Volunteer-client aggregate (unverified): '+(row.reportedCharacters==='few'?'fewer than 5':row.reportedCharacters)+' reported characters; received '+new Date(row.receivedAt*1000).toISOString()+'. '+(age!>86400?'Stale; live capacity unknown.':'A dated observation, not current free-slot proof.')));
+  const description=empty?'No published capacity snapshot for OLYMPUS PRIME / Olympus II–X yet. Live capacity is unknown. '+scope:scope;
+  return {title:'OLYMPUS PRIME / Olympus II–X · branch status',url:base+'/#/army',description,fields:empty?[]:org.guildPlaceholders.map((branch:Any219)=>{
+   const name=canonicalOlympusGuildName(branch.name),ambiguous=!!name&&aliases.ambiguous.has(name),snapshot=held||!name?null:aliases.byGuild.get(name),row=snapshot?.guilds[0],age=row?Math.max(0,at-row.receivedAt):null;
+   return field(name??branch.name,branch.state+'. '+(!row?'Live capacity unknown; '+(held?'stored aggregate validation is held.':ambiguous?'competing stored guild aliases are held for review.':'no accepted current aggregate.'):'Volunteer-client aggregate (unverified), reported as '+row.name+': '+(row.reportedCharacters==='few'?'fewer than 5':row.reportedCharacters)+' reported characters; received '+new Date(row.receivedAt*1000).toISOString()+'. '+(age!>86400?'Stale; live capacity unknown.':'A dated observation, not current free-slot proof.')));
   }),footer:{text:'No automatic invitation, transfer, ranking or Link action. Officer review uses current evidence; small populations retain the Army suppression rules.'}};
  }
  if(name==='council'){

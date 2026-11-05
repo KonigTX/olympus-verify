@@ -25,9 +25,9 @@ const fresh183 = (id, overrides = {}) => ({ signedIn: true, denied: false, user:
   await fixtureRun("INSERT INTO invite_queue (name_key,name,discord_id,status,created_at) VALUES ('local queue','Local Queue',?,'queued',?)", MEMBER, now - 7200);
   let firstRead183 = true;
   const initial = await openPage(MEMBER, {}, { seatInitialDelay183: path => { if (path === "/api/me?view=seats" && firstRead183) { firstRead183 = false; return 150; } return 0; } });
-  check("boot full state is not presented while a fresh officer-report read is pending", initial.boot.seats.state === "full" && !!seat183(initial) && seat183(initial).textContent.includes("Checking the latest Olympus I officer report") && !report183(initial));
+  check("boot full state is not presented while a fresh officer-report read is pending", initial.boot.seats.state === "full" && !!seat183(initial) && seat183(initial).textContent.includes("Checking the latest OLYMPUS PRIME officer report") && !report183(initial));
   await waitFor(() => !!report183(initial), "fresh original seat report");
-  check("fresh original officer report includes its hour, count and only the reader's queue place", report183(initial)?.textContent.includes("Latest officer report: the Olympus I roster export of about") && report183(initial).textContent.includes("counts 1000 of 1000 members") && report183(initial).textContent.includes("Local Queue is #1 in line for a seat.") && !report183(initial).textContent.includes("right now"));
+  check("fresh original officer report includes its hour, count and only the reader's queue place", report183(initial)?.textContent.includes("Latest officer report: the OLYMPUS PRIME roster export of about") && report183(initial).textContent.includes("counts 1000 of 1000 members") && report183(initial).textContent.includes("Local Queue is #1 in line for a seat.") && !report183(initial).textContent.includes("right now"));
 
   const reads = [];
   initial.before((path, init) => { if (path === "/api/me?view=seats") reads.push(init); return false; });
@@ -88,7 +88,7 @@ const fresh183 = (id, overrides = {}) => ({ signedIn: true, denied: false, user:
   visibility183(true);
   check("visibility loss immediately clears seat and own-queue text without changing the form", !report183(visible) && seat183(visible).hidden && visibleField.value === "Keep typing across visibility" && visibleMain.querySelector("form") === visibleForm && resumedReads === 0);
   visibility183(false); await settle(); await settle();
-  check("returning to the active view requests a fresh report instead of reviving the old banner", resumedReads === 1 && !report183(visible) && seat183(visible).textContent.includes("Checking the latest Olympus I officer report"));
+  check("returning to the active view requests a fresh report instead of reviving the old banner", resumedReads === 1 && !report183(visible) && seat183(visible).textContent.includes("Checking the latest OLYMPUS PRIME officer report"));
   visibility183(true); visibility183(false);
   await waitFor(() => report183(visible)?.textContent.includes("Fresh Visible Queue"), "current visible generation"); await pause183(250);
   check("the newest visible read preserves typing and a pre-hide 401 cannot sign out or overwrite it", resumedReads === 2 && !!byText(visible.app, "button", "Sign out") && report183(visible)?.textContent.includes("Fresh Visible Queue is #2 in line for a seat.") && visible.app.querySelector("main") === visibleMain && visibleMain.querySelector("form") === visibleForm && visibleField.value === "Keep typing across visibility" && visibleForm.querySelector(".dirty")?.hidden === false && !visible.document.body.textContent.includes("You were signed out"));

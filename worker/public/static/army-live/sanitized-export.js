@@ -12,7 +12,7 @@
   const SNAPSHOT = ['format', 'scope', 'source', 'sourceVerified', 'membershipProof', 'addonVersion', 'realmGroup', 'faction', 'observedAt', 'guilds'];
   const ROW = ['name', 'receivedAt', 'reportedCharacters', 'online', 'classes', 'levels', 'ranks'];
   const NAMES = ['Olympus', 'Olympus I', 'Olympus II', 'Olympus III', 'Olympus IV', 'Olympus V', 'Olympus VI', 'Olympus VII', 'Olympus VIII', 'Olympus IX', 'Olympus X'];
-  const canonicalGuild = name => typeof name === 'string' ? NAMES.find(value => value.toUpperCase() === name.replace(/[a-z]/g, c => c.toUpperCase())) : undefined;
+  const canonicalGuild = name => typeof name === 'string' ? name.replace(/[a-z]/g, c => c.toUpperCase()) === 'OLYMPUS PRIME' ? 'OLYMPUS PRIME' : NAMES.find(value => value.toUpperCase() === name.replace(/[a-z]/g, c => c.toUpperCase())) : undefined;
   const fail = () => { throw Error('Only a dedicated, sanitized OlympusSiteAggregate export is accepted. Raw addon files, chat, keys, identities and executable Lua are refused.'); };
   const integer = (v, min, max) => Number.isSafeInteger(v) && v >= min && v <= max;
   function keys(value, allowed) {
@@ -67,7 +67,7 @@
     label(v.realmGroup); if (!['Alliance', 'Horde'].includes(v.faction)) fail();
     if (!integer(now, 0, 4102444800) || !integer(v.observedAt, 1, now) || now - v.observedAt > 86400 || !Array.isArray(v.guilds) || v.guilds.length !== 1) fail();
     const g = v.guilds[0]; keys(g, ROW);
-    if (!NAMES.includes(g.name) || !integer(g.receivedAt, 1, v.observedAt) || now - g.receivedAt > 86400) fail();
+    if ((!NAMES.includes(g.name) && g.name !== 'OLYMPUS PRIME') || !integer(g.receivedAt, 1, v.observedAt) || now - g.receivedAt > 86400) fail();
     const total = g.reportedCharacters, online = g.online;
     if (total !== 'few' && !integer(total, 5, 1000)) fail();
     if (total === 'few' && online !== null || online !== null && online !== 'few' && !integer(online, 0, typeof total === 'number' ? total : 0)) fail();

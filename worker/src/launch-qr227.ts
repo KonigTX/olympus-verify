@@ -4,7 +4,7 @@
  * Wire grammar: its web/public/core.js, MIT licensed. Existing upstream notice
  * is retained at worker/vendor/olympus-link/LICENSE. The old gated core is not
  * imported: this independent data-only boundary cannot mount its runtime. */
-import { RELAY_GUILDS_V1 } from './site-relay-feed-v1';
+import { canonicalOlympusGuildName, type OlympusGuildName } from './guild-affiliation229';
 
 export const LAUNCH_QR_PRODUCER227 = '71bc357c251b49a167821cc0b7f922eb69fa35b6';
 export const LAUNCH_QR_PAGE227 = 'https://dnl-gentile.github.io/olympus-addon/';
@@ -12,7 +12,7 @@ export class LaunchQrRefusal227 extends Error { constructor(readonly code: strin
 type UnverifiedProof227 = Readonly<{ issued: number; keyId: string; confirmer: string; gv: 'r' | 'w' | 'c'; sig: string; pub: string; tier: 'c' | 'p'; certExp: number; certSig: string }>;
 export type UnverifiedLaunchQr227 = Readonly<{
   protocol: 'OLB5'; producerCommit: typeof LAUNCH_QR_PRODUCER227;
-  wire: string; requester: string; signedGuild: string; canonicalGuild: typeof RELAY_GUILDS_V1[number]; faction: 'Alliance';
+  wire: string; requester: string; signedGuild: string; canonicalGuild: OlympusGuildName; faction: 'Alliance';
   nonce: string; requestCode: string; tag: string; proofs: readonly UnverifiedProof227[];
   trust: 'unverified_signed_claims'; canGrantRoles: false; requesterGuid: null; nativeRank: null; realmGroup: null;
 }>;
@@ -67,7 +67,7 @@ export function parseLaunchQrCandidate227(input: unknown): UnverifiedLaunchQr227
     try { wire = decodeURIComponent(encoded.replace(/\+/g,' ')).trim(); } catch { return refuse('invalid_membership_bundle'); }
   }
   const bundle = parseWire(wire);
-  const canonicalGuild = RELAY_GUILDS_V1.find(name => name.toLowerCase() === bundle.guild.toLowerCase());
+  const canonicalGuild = bundle.guild === bundle.guild.trim() ? canonicalOlympusGuildName(bundle.guild) : null;
   if (!canonicalGuild || bundle.faction !== 'Alliance') return refuse('unaffiliated_guild_or_faction');
   // Claimed-only evidence cannot satisfy the owner's launch membership rule,
   // even if a future verifier establishes that its signatures are genuine.
