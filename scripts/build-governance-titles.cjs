@@ -76,7 +76,7 @@ const cabinet228Bytes = fs.readFileSync(path.join(root, 'docs/governance-cabinet
 if (sha256(cabinet228Bytes) !== 'a5b043cf785a6d1bd0f9692b70a5febe9d7b36b5132c6fe119b23406da152841') throw Error('Cabinet228 finite text manifest changed');
 const cabinet228 = JSON.parse(cabinet228Bytes);
 const currentCopyBytes = fs.readFileSync(path.join(root, 'docs/governance-current-reader-copy228.json'));
-if (sha256(currentCopyBytes) !== '65aa6691adf21b9c6864193ff4fef02287e9e45646bfd53c17ce5d56412465b4') throw Error('Current reader copy manifest changed');
+if (sha256(currentCopyBytes) !== '1a70754c9ea8ff9d8788eae6789f555b287ff04a95e98c43a6bb884a1c098544') throw Error('Current reader copy manifest changed');
 const currentCopy228 = JSON.parse(currentCopyBytes);
 
 function scopedParagraphBridge(text, inverse, scope, manifest, label) {

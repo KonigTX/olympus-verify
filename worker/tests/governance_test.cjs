@@ -66,7 +66,7 @@ check("the documented rank bank preset, Treasurer custody and auditor independen
     && !text.includes("creates no Council-wide bank entitlement") && !charter.includes("historical High Council preset");
 })());
 check("superseded source decisions remain explicit history followed by the current owner clarification", text.includes("D11 Historical owner erasure decision — 7 October 2026; superseded for current operation by D13.") && text.includes("D12 Historical owner transition decision — 7 October 2026; superseded by D14.") && text.includes("D13 Current Native erasure clarification — 18 October 2026.") && text.includes("D14 Current beta-reset clarification — 18 October 2026."));
-check("R7 plus owner199five-Title and finite rank reconciliation has exact source bytes and SHA256", bytes.length === 273554 && crypto.createHash("sha256").update(bytes).digest("hex") === "99115d9f4a7320e0f24177be1f5d29271719099f7dcffb9894759b1ce80672ac");
+check("R7 plus owner199five-Title and finite rank reconciliation has exact source bytes and SHA256", bytes.length === 273507 && crypto.createHash("sha256").update(bytes).digest("hex") === "fb6816b77507c2855f45511a32d1b46fbdcab804965e78a3650eb6f071684cac");
 check("canonical Titles and finite218/204 plus original17 inverses restore every prior outside-R7 byte", titleStart > 0 && titleEnd > titleStart && titleEdition === titles.trimEnd() + "\n\n" && titleBuilder.currentBridge222(titleBuilder.presentationBridge218(titleBuilder.factsBridge(titleBuilder.rankBridge(precedingEdition))), false, 'outside') === currentOutside && Buffer.byteLength(precedingEdition) === 173953 && crypto.createHash("sha256").update(precedingEdition).digest("hex") === "54b4a8f0676d9cc3fd846d62bbb931f080c31e22017ed716e687197b8ebe4ef5");
 check("finite204 substitutions are idempotent and refuse missing or duplicated corrected paragraphs", (() => {
   const currentFactsOutside218 = titleBuilder.presentationBridge218(titleBuilder.currentBridge222(currentOutside, true, 'outside'), true);
@@ -294,11 +294,29 @@ check("two-record historical inverse rejects extra fields, unscoped metadata, ch
 check("all labels have an explicit classification, related structural node and limits", data.terms.every((term) => data.termGroups.some((group) => group.id === term.classification) && ids.has(term.nodeId) && term.note.length > 20 && ids.get(term.nodeId).limits.length > 20));
 check("ten native rank slots remain separate and complete", JSON.stringify(data.nativeRanks.map((r) => r.name)) === JSON.stringify(rankNames) && data.nativeRanks.every((r, i) => r.order === i + 1) && data.terms.filter((t) => t.classification === "native").length === 10);
 check("Veteran configuration includes Invite Member plus repairs without applying permissions", data.nativeRanks[5].meaning.includes("Invite Member and Guild Bank Repairs") && text.includes("Invite Member") && !data.nativeRanks[5].meaning.includes("Withdraw Gold") && data.adoption.nativePermissionsApplied === false);
+// Reverse the three exact current copy and liaison changes before the earlier graph seals.
+const readerNodeEdits228 = [
+  {"id":"council","field":"limits","currentSHA256":"29d180e1c9604eca81017a8e3cbaef8ffbeb169fa1a8b17b2aff44c90f746421","before":"Guild Master, Co-Guild Master and Treasurer form the core Council offices. An accepted warrant and eligible vote remain separate from native ranks and actual permissions."},
+  {"id":"emissary-heraldry","field":"coordinates","currentSHA256":"1bfb8a2a8a3e2c919ae3938ed12d594269222d45ed03d066bc6f448bf82d4ca6","before":["heraldry"]},
+  {"id":"propaganda","field":"limits","currentSHA256":"28e978ad48bca3d2b6da8be436729e34588f078b9d7481b1e3aca4f1775eae87","before":"The Minister approves campaign direction within the accepted warrant. Heraldry owns official records and publication standards; editors and platform operators retain separately granted access. No harassment, deceptive impersonation or private-information disclosure."},
+];
+function originalReaderNodes228(nodes) {
+  for (const {id,currentSHA256} of readerNodeEdits228) {
+    const matching = nodes.filter(node => node.id === id);
+    if (matching.length !== 1 || crypto.createHash("sha256").update(JSON.stringify(matching[0])).digest("hex") !== currentSHA256) return null;
+  }
+  return nodes.map(node => {
+    const edit = readerNodeEdits228.find(row => row.id === node.id);
+    return edit ? {...node,[edit.field]:edit.before} : node;
+  });
+}
 // Invert only the declared intake parent delta; keep the original graph authority unchanged.
 function originalNodes218(model) {
   const deltaBytes=fs.readFileSync(path.join(root,"../docs/governance-nodes222.json"));
   if(crypto.createHash("sha256").update(deltaBytes).digest("hex")!=="5053da5e5e3d33f29c2d6610954fcf59cee9491d78a93880c5d072e99ea4db31")throw Error("Finite node manifest changed");
-  const delta=JSON.parse(deltaBytes),nodes=require("../../scripts/governance-cabinet224-inverse.cjs").restoreCabinet224(model.nodes.filter(node => node.id !== "systems-heraldry"),"nodes");
+  const readerNodes = originalReaderNodes228(model.nodes);
+  if (!readerNodes) return null;
+  const delta=JSON.parse(deltaBytes),nodes=require("../../scripts/governance-cabinet224-inverse.cjs").restoreCabinet224(readerNodes.filter(node => node.id !== "systems-heraldry"),"nodes");
   if(nodes.length!==42||JSON.stringify(nodes.filter(n=>n.id==="systems"))!==JSON.stringify([delta.systemsAfter])||JSON.stringify(nodes.filter(n=>n.id==="propaganda"))!==JSON.stringify([delta.propaganda]))return null;
   model={...model,nodes:nodes.filter(n=>n.id!=="propaganda").map(n=>n.id==="systems"?delta.systemsBefore:n)};
   const changes = model.cabinet218?.reportingChanges;
@@ -329,7 +347,11 @@ check("historical graph inverse rejects undeclared changes, missing/extra declar
   extra.cabinet218.reportingChanges.push({...extra.cabinet218.reportingChanges[0]});
   wrongCurrent.nodes.find(node => node.id === "intake").parent = "heraldry";
   extraNode.nodes.push({...extraNode.nodes[0],id:"unapproved"});
-  return preservesOriginalNodes218(data) && [unlisted,missing,extra,wrongCurrent,extraNode].every(model => !preservesOriginalNodes218(model));
+  const changedReaderNodes = readerNodeEdits228.map(({id}) => {
+    const changed = clone(); changed.nodes.find(node => node.id === id).limits += " Unreviewed.";
+    return changed;
+  });
+  return preservesOriginalNodes218(data) && [unlisted,missing,extra,wrongCurrent,extraNode,...changedReaderNodes].every(model => !preservesOriginalNodes218(model));
 })());
 check("seven subsequent Council records and two new ministries are finite additions without new rank or permission", JSON.stringify(data.terms.slice(96).map(term => [term.ordinal,term.officeKey])) === JSON.stringify([[97,"office_97"],[98,"office_98"],[99,"office_99"],[100,"office_100"],[101,"office_101"],[102,"office_102"],[103,"office_103"]]) && data.terms.slice(96).every(term => term.tier === "high_council" && term.nativeSlot === 1 && term.nativeRankOrdinal === 2 && term.applicationEligible === false && term.mappingApplies === false && term.applicationRoleKeys.length === 0) && ["security","concordat"].every(id => ids.get(id).parent === "council" && ids.get(id).relation === "accountability" && data.officeMandates.filter(office => office.nodeId === id).length === 1) && data.termGroups.length === 11);
 check("Council portfolio mandates and all nine class heads remain explicit offices", ["War Head for PvP", "War Head for Raiding", "Federal Treasurer", "Minister of Artisanry", "Minister of Heraldry", "Council of Justice", "Independent Bank Auditor", ...["Warrior", "Paladin", "Hunter", "Rogue", "Priest", "Mage", "Warlock", "Shaman", "Druid"].map((name) => name + " Class Head")].every((title) => require("../../scripts/governance-cabinet224-inverse.cjs").restoreCabinet224(data.officeMandates,"officeMandates").filter((office) => office.title === title).length === 1));
@@ -337,7 +359,7 @@ check("Founder->Council and local GM->Officers are accountability links", ids.ge
 check("four original portfolios and shared Systems preserve non-Council technical support alongside Propaganda", ["war", "treasury", "artisanry", "heraldry"].every((id) => ids.get(id).parent === "council" && ids.get(id).kind === "core portfolio") && data.nodes.filter((node) => node.kind === "core portfolio").length === 4 && ids.get("systems").kind === "shared support division" && ids.get("systems").parent === "council" && ids.get("systems").limits.includes("Technical contributors are outside the High Council") && ids.get("propaganda").parent === "council" && data.terms.find(t=>t.officeKey==="office_03").tier === "officer_corps" && ids.get("systems").limits.includes("grants no Council vote, production access or signing authority"));
 check("Justice and auditor retain independent conflict-exclusion boundaries", ids.get("justice").relation === "independence" && ids.get("auditor").relation === "independence" && ids.get("auditor").limits.includes("Cannot audit their own custody"));
 const emissaries = data.nodes.filter((node) => node.parent === "emissaries");
-check("five local emissaries coordinate to the exact portfolios without command lines", emissaries.length === 5 && emissaries.every((node) => node.relation === "coordination") && JSON.stringify(emissaries.flatMap((node) => node.coordinates)) === JSON.stringify(["war-pvp", "war-raiding", "treasury", "artisanry", "heraldry"]));
+check("five local emissaries coordinate to the exact portfolios without command lines", emissaries.length === 5 && emissaries.every((node) => node.relation === "coordination") && JSON.stringify(emissaries.flatMap((node) => node.coordinates)) === JSON.stringify(["war-pvp", "war-raiding", "treasury", "artisanry", "propaganda"]));
 check("local tactical, custody and support remits remain below delegated local officers", ["tactical", "custody", "local-intake", "local-events", "class-support", "welfare"].every((id) => ids.get(id).parent === "officers"));
 check("courtesy/review vocabulary does not create native powers", ["Privy Council", "The Court", "Sovereign (The King)"].every((label) => data.terms.find((t) => t.label === label).note.includes("creates no further governing body")) && data.terms.find((t) => t.label === "Muted").note.includes("applies no sanction") && ids.get("honorary").limits.includes("No automatic"));
 check("I-X placeholders are exact and expressly unappointed", JSON.stringify(data.guildPlaceholders.map((g) => g.name)) === JSON.stringify(["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"].map((s) => "Olympus " + s)) && data.guildPlaceholders.every((g) => g.state === "Unappointed placeholder"));
@@ -438,7 +460,7 @@ check(".218 bounty reference remains in-game only and excludes named-target publ
  const clause=policyClause218(titles,"### Section III.9.2 — Games of chance, wagers and activation","(b) The proposed Writs of Blood & Vengeance");
  return !!clause&&clause.includes("Any bounty is posted in-game only; this site never lists a named target")&&clause.includes("No named bounty target, personal dossier or harassment instruction")&&clause.includes("duel stakes remain disabled");
 })());
-const safeGovernanceLinks218=source=>{const links=[...source.matchAll(/\[[^\]\n]+\]\(([^)\s]+)\)/g)];return links.length===27&&links.every(m=>/^(?:#\/|https:\/\/)/.test(m[1]) || m[1] === "/static/governance/council-portfolios228.md");};
+const safeGovernanceLinks218=source=>{const links=[...source.matchAll(/\[[^\]\n]+\]\(([^)\s]+)\)/g)];return links.length===27&&links.every(m=>/^(?:#\/|https:\/\/)/.test(m[1]))&&links.filter(m=>m[1]==="#/organization/council").length===3;};
 check("all 27 book links fit the existing narrow reader allowlist and rank planner uses a fragment",safeGovernanceLinks218(text)&&text.includes("[rank planner](#/admin/ranks)")&&!text.includes("[rank planner](/admin/ranks)"));
 check(".218 an otherwise identical root-relative rank link is rejected by the finite link guard",!safeGovernanceLinks218(text.replace("[rank planner](#/admin/ranks)","[rank planner](/admin/ranks)")));
 check(".222 current introduction names103offices and139keys without silently rewriting historical register evidence",(()=>{

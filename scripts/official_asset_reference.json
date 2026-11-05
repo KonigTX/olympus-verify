@@ -8,14 +8,14 @@
     {
       "path": "worker/public/static/app.css",
       "mode": "100644",
-      "bytes": 88845,
-      "sha256": "7eb0f65461bdf3f57d20e0203774448581a32432c7bd5938a02a1e5ab8232cc9"
+      "bytes": 88871,
+      "sha256": "96910e98d2cabd6630dac28bb51e9a18004d73eb98dc57210e90fee13e7f712a"
     },
     {
       "path": "worker/public/static/app.js",
       "mode": "100644",
-      "bytes": 770340,
-      "sha256": "fa2b92eaf11611829c9098e82a277499b30a7397f27029abe4452df40bee09d5"
+      "bytes": 772733,
+      "sha256": "e44b7f1c34a1d1c8fcb021dbd91e54119d4df0b97a90d42d65c8eb439fb8c156"
     },
     {
       "path": "worker/public/static/olympus-icon.png",
@@ -3830,8 +3830,8 @@
     {
       "path": "worker/public/static/app.js",
       "mode": "100644",
-      "bytes": 770340,
-      "sha256": "fa2b92eaf11611829c9098e82a277499b30a7397f27029abe4452df40bee09d5"
+      "bytes": 772733,
+      "sha256": "e44b7f1c34a1d1c8fcb021dbd91e54119d4df0b97a90d42d65c8eb439fb8c156"
     },
     {
       "path": "worker/public/static/rank-planner/app.js",
@@ -4028,20 +4028,20 @@
     {
       "path": "worker/public/static/governance/operational-charter.md",
       "mode": "100644",
-      "bytes": 29060,
-      "sha256": "21c1fb633a483fbc51ac29107dcb9859abe1202883d31e6c04b590bf0afffd8b"
+      "bytes": 29018,
+      "sha256": "192433098439a5a8b2f2cf0a22bdcb5c07784b6432cae34666f5531728ff7500"
     },
     {
       "path": "worker/public/static/governance/organization.json",
       "mode": "100644",
-      "bytes": 454367,
-      "sha256": "5fd859efe169385953c74610cf6c117035c426fe9f74cffc9415eb35887666c1"
+      "bytes": 454392,
+      "sha256": "e7a3063026f3e12301adf34035a17e7beef9c0ee8e182f259e2964b9c23113ae"
     },
     {
       "path": "worker/public/static/governance/reconciled-book.md",
       "mode": "100644",
-      "bytes": 273554,
-      "sha256": "99115d9f4a7320e0f24177be1f5d29271719099f7dcffb9894759b1ce80672ac"
+      "bytes": 273507,
+      "sha256": "fb6816b77507c2855f45511a32d1b46fbdcab804965e78a3650eb6f071684cac"
     },
     {
       "path": "worker/public/static/guides218.css",

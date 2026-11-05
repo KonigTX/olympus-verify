@@ -6,8 +6,8 @@
   "appointmentsIssued": false,
   "book": {
     "path": "/static/governance/reconciled-book.md",
-    "bytes": 273554,
-    "sha256": "99115d9f4a7320e0f24177be1f5d29271719099f7dcffb9894759b1ce80672ac"
+    "bytes": 273507,
+    "sha256": "fb6816b77507c2855f45511a32d1b46fbdcab804965e78a3650eb6f071684cac"
   },
   "councilComposition": {
     "status": "owner_directed_current228",
@@ -460,7 +460,7 @@
       "kind": "council of accepted offices",
       "icon": "officer",
       "remit": "Olympus-wide standards, budgets and portfolio coordination.",
-      "limits": "Guild Master, Co-Guild Master and Treasurer form the core Council offices. An accepted warrant and eligible vote remain separate from native ranks and actual permissions.",
+      "limits": "The Guild Master chairs the Council. The Co-Guild Master serves alongside twelve portfolios. An accepted warrant and eligible vote remain separate from native ranks and actual permissions.",
       "coordinates": [],
       "chapter": "organisation-and-offices"
     },
@@ -786,7 +786,7 @@
       "remit": "Verified local news and approved event publicity.",
       "limits": "Communications duties are not extra native officer ranks.",
       "coordinates": [
-        "heraldry"
+        "propaganda"
       ],
       "chapter": "organisation-and-offices"
     },
@@ -971,7 +971,7 @@
       "kind": "High Council portfolio",
       "icon": "herald",
       "remit": "Guild campaigns, recruitment storytelling and broadcaster-safe creative direction, with accurate claims and attributable sources.",
-      "limits": "The Minister approves campaign direction within the accepted warrant. Heraldry owns official records and publication standards; editors and platform operators retain separately granted access. No harassment, deceptive impersonation or private-information disclosure.",
+      "limits": "The Herald directs campaigns and official communications within the accepted warrant. The Registrar maintains the official register. Editors and platform operators retain separately granted access. No harassment, deceptive impersonation or private-information disclosure.",
       "coordinates": [
         "heraldry",
         "intake",
