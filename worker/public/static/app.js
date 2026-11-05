@@ -345,6 +345,12 @@
     const owner = peers.find(variant => variant.presentation === "native") || peers[0];
     return owner?.key === key ? note : "";
   }
+  function familyApplicationChoice201(family) {
+    const reserved = ["leader","high_council","officer_corps"].includes(family.tier) || family.sourceKeys.some(reservedKey201);
+    const intent = family.application;
+    return { reserved, intent: intent && !reserved && family.kind === "role" && ["member","raider","artisan"].includes(intent.applicationTrack)
+      && (!intent.targetOffice || !reservedKey201(intent.targetOffice)) ? intent : null };
+  }
   function applicationRoleDirectory201(onChoose = null, initial = {}, options = {}) {
     const directory = roleDirectory203(), guides = M().roleGuides201 || {}, sections = [], entries = [];
     if (!directory) {
@@ -405,12 +411,10 @@
         id === "members" ? h("p", {class:"role-standing-scope218 small muted",text:"Guild Member and Raider accept applications. For a change in your guild standing, ask the responsible officer to review your record."}) : null, grid);
       section.open = id === "members" || families.some(family => family.key === currentFamily);
       for (const family of families) {
-        const row = office199(family.primaryKey), reserved = ["leader","high_council","officer_corps"].includes(family.tier) || family.sourceKeys.some(reservedKey201);
-        const intent = family.application, eligible = !!intent && !reserved && family.kind === "role" && ["member","raider","artisan"].includes(intent.applicationTrack)
-          && (!intent.targetOffice || !reservedKey201(intent.targetOffice));
+        const row = office199(family.primaryKey), { reserved, intent } = familyApplicationChoice201(family);
         const chosen = family.key === currentFamily;
         const badge = family.kind === "status" ? "Standing or recognition — not an application" : family.kind === "institution" ? "Governance body — not an application"
-          : reserved ? "Reserved seat — no applications" : eligible ? "Applications accepted" : family.kind === "activity" ? "Optional Member activity" : "Standing or recognition — not an application";
+          : reserved ? "Reserved seat — no applications" : intent ? "Applications accepted" : family.kind === "activity" ? "Optional Member activity" : "Standing or recognition — not an application";
         const variants = family.variants.filter(variant => !["alias","native","historical"].includes(variant.presentation)).map(variant => {
           const source = office199(variant.key), native = source?.group === "native";
           const presentation = variant.presentation || (["region","class"].includes(variant.kind) ? variant.kind : native ? "native" : "office");
@@ -461,7 +465,7 @@
               canonicalFamilyGuide219(family,guides), roleReferenceLinks228(row || family.sourceKeys.map(office199).find(Boolean), "activity",
                 family.sourceKeys.find(key => ballotKeys.has(key))), ownHolder(family.primaryKey),
               ...family.variants.filter(variant => ["alias","native","historical"].includes(variant.presentation)).map(variant => ownHolder(variant.key))),
-            eligible && onChoose ? h("button", {type:"button",class:"btn small","data-apply-role201":intent.targetOffice || family.primaryKey,"data-family-apply203":family.key,disabled:!!appointedTo(intent.targetOffice || family.primaryKey) || admissionClosed219,
+            intent && onChoose ? h("button", {type:"button",class:"btn small","data-apply-role201":intent.targetOffice || family.primaryKey,"data-family-apply203":family.key,disabled:!!appointedTo(intent.targetOffice || family.primaryKey) || admissionClosed219,
               text:appointedTo(intent.targetOffice || family.primaryKey) ? "Appointment recorded" : admissionClosed219 ? "Applications closed" : "Apply for this role",
               onclick:() => onChoose({applicationTrack:intent.applicationTrack,targetOffice:intent.targetOffice})}) : null,
             family.kind === "activity" && family.sourceKeys.includes("pvp_team") && onChoose ? h("button", {type:"button",class:"btn small","data-activity-member203":family.key,disabled:!!appointedTo("member") || admissionClosed219,
@@ -515,6 +519,33 @@
     chooser.id = "application-directory201"; chooser.classList.add("application-directory201");
     chooser.setAttribute("data-role-directory-version", "203");
     if (currentKey) chooser.setAttribute("data-initial-role203", currentKey);
+    return chooser;
+  }
+  function applicationTrackChooser228(targetOffice = "", showReservedNotice = true) {
+    const directory = roleDirectory203();
+    const closed = S.settings?.applicationsOpen === false && !["submitted","reviewing"].includes(S.application?.status);
+    const guide = (key, text) => h("a", {href:"#/roles"+(key ? "/"+encodeURIComponent(key) : ""),target:"_blank",rel:"noopener",text});
+    const choice = (label, intent, holderKey, attrs) => {
+      const unavailable = holderKey && appointedTo(holderKey) ? "Appointment recorded" : closed ? "Applications closed" : "";
+      return unavailable ? h("span", {class:"muted small",text:label+" · "+unavailable})
+        : h("a", {class:"btn small",href:`#/vote/${intent.applicationTrack}/${encodeURIComponent(intent.targetOffice || "new")}`,text:label,...attrs});
+    };
+    const ordinary = directory?.families.flatMap(family => {
+      const { intent } = familyApplicationChoice201(family);
+      if (intent) return [h("li", null, choice(family.label,intent,intent.targetOffice || family.primaryKey,{"data-family-apply203":family.key}), " · ", guide(family.key,family.label+" guide"))];
+      if (family.kind === "activity" && family.sourceKeys.includes("pvp_team")) return [h("li", null,
+        choice("Choose Member and mention PvP interests",{applicationTrack:"member"},"member",{"data-activity-member203":family.key}), " · ", guide(family.key,"PvP activity guide"))];
+      return [];
+    });
+    const patron = directory && royalWritsVisible200() ? h("div", {"data-patron-role-chooser":"true"},
+      h("p", null, choice("Review the Patron application",{applicationTrack:"patron"},null,{}), " · ", guide("tithe","Gold Writ guide")),
+      h("p", {class:"muted small",text:track199("patron")?.description || "Voluntary charter requests require review."})) : null;
+    const chooser = frame("Application tracks", null,
+      showReservedNotice ? h("p", {class:"muted small",text:reservedNotice201}) : null,
+      directory && Object.prototype.hasOwnProperty.call(directory.keyToFamily,targetOffice) ? h("p", {class:"small"}, guide(targetOffice,"Guide for the original role (opens in a new tab)")) : null,
+      ordinary?.length ? h("ul", null, ordinary) : h("p", {class:"muted",text:"The current application tracks are unavailable."}), patron,
+      h("p", {class:"small"}, guide("","Search the Roles directory (opens in a new tab)")));
+    chooser.id = "application-track-chooser228";
     return chooser;
   }
   // The boot carries the RESOLVED identity (item 7, 14 Oct 2026): the exact public beta, or an activated full-release profile
@@ -2958,7 +2989,7 @@
         a ? h("p", {text:"Your original application and choices remain on record. You may withdraw it, or explicitly choose an eligible ordinary role below. Nothing changes until you save a replacement application."}) : null,
         a ? applicationSummary(a) : null, applicationBoardPrivacy210(a),
         a && a.status !== "withdrawn" ? h("button", {class:"btn small",type:"button",text:"Withdraw my application",onclick:withdraw}) : null),
-        applicationRoleDirectory201(next => { location.hash = `#/vote/${next.applicationTrack}/${encodeURIComponent(next.targetOffice || "new")}`; },intent199 || {})]);
+        applicationTrackChooser228(intent199?.targetOffice, false)]);
       return;
     }
     if (intent199?.applicationTrack === "patron" && !royalWritsVisible200() && !(editingOpen219 && ans.applicationTrack === "patron")) {
@@ -2966,7 +2997,7 @@
         h("p", {text:"Royal Writs are currently switched off. You can explore the other application paths below. Any existing application and its original track remain recorded; choosing another path is a new, explicit edit."}),
         a ? applicationSummary(a) : null, applicationBoardPrivacy210(a),
         a && a.status !== "withdrawn" ? h("button", {class:"btn small",type:"button",text:"Withdraw my application",onclick:withdraw}) : null),
-        applicationRoleDirectory201(next => { location.hash = `#/vote/${next.applicationTrack}/${encodeURIComponent(next.targetOffice || "new")}`; })]);
+        applicationTrackChooser228()]);
       return;
     }
     const form = h("form", { novalidate: true });
@@ -3089,11 +3120,7 @@
       h("div", { class: "options" }, meta.positions.filter((p) => p.group === "membership" && !reservedKey201(p.key)).map(optionFor)),
       h("span", { class: "err", hidden: true }));
     if (intent199) posField.hidden = true;
-    const trackPicker199 = applicationRoleDirectory201(next => {
-      S.applicationIntent199 = next;
-      location.hash = `#/vote/${next.applicationTrack}/${encodeURIComponent(next.targetOffice || "new")}`;
-
-    }, intent199 || {});
+    const trackPicker199 = applicationTrackChooser228();
     // Voted leadership roles put the application on the board, and only with the applicant's own tick (an application
     // saved before the board covered one of its roles stays off it until then). The Worker checks the same.
     const boardOk = h("input", { type: "checkbox", checked: !!(a && a.boardAt && (a.status === "submitted" || a.status === "reviewing")) });
@@ -3549,15 +3576,15 @@
       clear(main); boardShells.delete(main); main.dataset.applicationTrack199 = "true";
       S.applicationIntent199 = null; S.pick = "";
       add(main, [frame("Reserved seat — no applications",null,h("p",{text:reservedNotice201})),
-        applicationRoleDirectory201(next => {location.hash = `#/vote/${next.applicationTrack}/${encodeURIComponent(next.targetOffice || "new")}`;},{targetOffice:dec(parts[1] || "")})]);
+        applicationTrackChooser228(dec(parts[1] || ""), false)]);
       return;
     }
     if (parts.length > 1) {
       clear(main); boardShells.delete(main); main.dataset.applicationTrack199 = "true";
-      if (!selectedTrack199 || parts.length !== 2) {add(main, frame("Application track unavailable", null, h("a", {href:"#/vote",text:"Choose a supported application track"}))); return;}
+      if (!selectedTrack199 || parts.length !== 2) {add(main, frame("Application track unavailable", null, h("a", {href:"#/apply",text:"Choose a supported application track"}))); return;}
       const selectedOffice199 = dec(parts[1]), needsOffice199 = ["officer","high_council"].includes(selectedTrack199.id), exactOffice199 = selectedOffice199 !== "new", office = office199(selectedOffice199);
       if ((needsOffice199 || exactOffice199) && (!office || !office.applicationEligible || office.applicationTrack !== selectedTrack199.id)) {
-        add(main, frame("Application track unavailable", null, h("p", {text:"Choose a currently supported office and its matching application track."}), h("a", {href:"#/vote",text:"Choose your application track"}))); return;
+        add(main, frame("Application track unavailable", null, h("p", {text:"Choose a currently supported office and its matching application track."}), h("a", {href:"#/apply",text:"Choose your application track"}))); return;
       }
       S.applicationIntent199 = {applicationTrack:selectedTrack199.id,targetOffice:exactOffice199 ? selectedOffice199 : null};
       ROUTES.apply(main); return;
@@ -3573,9 +3600,6 @@
     const settingsKey = JSON.stringify([s.votingOpen, s.noVote, s.appointed, s.royalWritsOn === true]);
     let shell = boardShells.get(main);
     if (shell && (shell.settingsKey !== settingsKey || shell.actor !== actor || shell.actorRevision !== actorRevision)) { clear(main); shell = null; boardShells.delete(main); }
-    if (!main.querySelector("#application-directory201")) {
-      add(main, [applicationRoleDirectory201(next => { location.hash = `#/vote/${next.applicationTrack}/${encodeURIComponent(next.targetOffice || "new")}`; }), writsPanel199("vote")]);
-    }
     // The Worker already caches these counts for 30 seconds. Reuse them while moving between roles, but always
     // read the selected role afresh: a changed appointment, membership or voting switch still refuses at the server.
     const cached = boardSummaryRead && nowMs() >= boardSummaryRead.at && nowMs() - boardSummaryRead.at < 30000;
@@ -3657,12 +3681,15 @@
       h("section", { class: "frame" },
         h("div", { class: "plaque" }, h("h2", { text: "Leadership applications board" })), // .210: seats are reserved appointments, not elections
         h("p", { text: "Choose a role, read its retained applications and record a view for or against a candidate. Leadership seats are filled by appointment; these views inform the leadership review." }),
+        h("p", {class:"muted small",text:reservedNotice201}),
+        h("p", {class:"small"}, h("a", {href:"#/roles",text:"Search the Roles directory"}), " · ", h("a", {href:"#/apply",text:"Open application tracks"})),
         h("details", { class: "voting-help" }, h("summary", { text: "How the board works" }),
           h("p", null, "Leadership applicants are on this board under each voted role they chose, first choice or backup, with their answers. Vote ", h("b", { text: "for" }), " the people you want in a role and ", h("b", { text: "against" }), " the ones you do not; click again to take a vote back. You can change your mind until voting closes."),
           anyQuiet ? h("p", { class: "muted small" }, "Roles marked with the crown ", crown(), " are chosen by the guild's leadership without a public vote: they have no board and no write-ins.") : null),
         summaryStatus,
         noticeBox("ok", "icon-shield", h("p", null, h("strong", { text: "Your votes are private. " }), "Nobody sees how anyone voted or how many votes anyone has, except the guild's leadership. Every voter sees the applicants in a different order, so nobody is first for everyone."))),
       h("div", { class: "board-layout" }, roleList, content),
+      writsPanel199("vote"),
     ]);
     boardShells.set(main, { settingsKey, roleList, rolePick, summaryStatus, content, actor, actorRevision });
     // A prior role's response must be inert even though its surrounding page remains mounted.
@@ -7188,9 +7215,22 @@
     });
     return frame("Your answer", e.mine ? h("span", { class: "badge green", text: `answered ${RSVP_LABELS[e.mine.status] || e.mine.status}` }) : null, form);
   }
+  function organizerActionTable(columns, tbody, { stacked = true, hidden = false } = {}) {
+    tbody.setAttribute("role", "rowgroup");
+    return h("div", { class: "table-wrap", hidden }, h("table", { class: stacked ? "data organizer-action-table" : "data", role: "table" },
+      h("thead", { role: "rowgroup" }, h("tr", { role: "row" }, columns.map(text => h("th", { scope: "col", role: "columnheader", text })))), tbody));
+  }
+  function organizerActionRow(columns, cells, stacked = true) {
+    if (stacked) cells.forEach((cell, index) => {
+      cell.setAttribute("role", "cell");
+      cell.insertBefore(h("span", { class: "organizer-cell-label", "aria-hidden": "true", "data-label": columns[index] }), cell.firstChild);
+    });
+    return h("tr", { role: "row" }, cells);
+  }
   function signupsPanel(id, firstPage, firstCursor, e) {
+    const columns = ["Member", "Answer", "Character", "Role", "Roster"];
     const tbody = h("tbody");
-    const table = h("div", { class: "table-wrap", hidden: true }, h("table", { class: "data" }, h("thead", null, h("tr", null, h("th", { text: "Member" }), h("th", { text: "Answer" }), h("th", { text: "Character" }), h("th", { text: "Role" }), h("th", { text: "Roster" }))), tbody));
+    const table = organizerActionTable(columns, tbody, { stacked: e.canManage === true, hidden: true });
     const status = h("p", { class: "muted small" });
     const more = h("button", { class: "btn small", type: "button", text: "Show more", hidden: true });
     let cursor = firstCursor;
@@ -7258,7 +7298,13 @@
       return h("td", null, pick, " ", saveBtn);
     };
     const put = (rows) => {
-      for (const s of rows) tbody.appendChild(h("tr", null, h("td", { text: s.displayName || "(no name)" }), h("td", null, RSVP_LABELS[s.status] || s.status, s.changedSinceRsvp ? [" ", h("span", { class: "badge warn", text: "before the time changed" })] : null), h("td", { text: s.character || "—" }), h("td", null, s.raidRole ? [rrIcon(s.raidRole), " ", RAID_ROLE_LABELS[s.raidRole] || s.raidRole] : "—"), rosterCell(s)));
+      for (const s of rows) tbody.appendChild(organizerActionRow(columns, [
+        h("td", { text: s.displayName || "(no name)" }),
+        h("td", null, RSVP_LABELS[s.status] || s.status, s.changedSinceRsvp ? [" ", h("span", { class: "badge warn", text: "before the time changed" })] : null),
+        h("td", { text: s.character || "—" }),
+        h("td", null, s.raidRole ? [rrIcon(s.raidRole), " ", RAID_ROLE_LABELS[s.raidRole] || s.raidRole] : "—"),
+        rosterCell(s),
+      ], e.canManage === true));
     };
     const finish = () => { more.hidden = !cursor; table.hidden = !tbody.firstChild; status.textContent = tbody.firstChild ? "" : "Nobody has answered yet."; };
     const fetchPage = async (c, live) => api("GET", `/api/community/event?id=${encodeURIComponent(id)}${c ? `&cursor=${encodeURIComponent(c)}` : ""}`, undefined, live ? { live } : {});
@@ -7743,6 +7789,7 @@
       cursor = data.nextCursor;
       const started = e && sec(e.startsAt) <= nowSec() && e.status !== "cancelled";
       if (message) holder.appendChild(noticeBox("warn", "icon-warning", h("p", { text: message })));
+      const columns = ["Member", "Answer", "Attendance", "Note", "Action"];
       const tbody = h("tbody");
       const status = h("p", { class: "muted small" });
       const more = h("button", { class: "btn small", type: "button", text: "Show more", hidden: !cursor });
@@ -7751,7 +7798,11 @@
         const reason = named(selectOf([{ key: "late", label: REASON_WORDS.late }, { key: "left_early", label: REASON_WORDS.left_early }], a.attendance && a.attendance.reasonCode ? a.attendance.reasonCode : "", { placeholder: "no note" }), "Attendance note");
         const saveBtn = h("button", { class: "btn small", type: "button", text: a.attendance ? "Change" : "Record" });
         const note = h("span", { class: "muted small", text: a.attendance ? `recorded ${fmtShort(sec(a.attendance.recordedAt))}` : "" });
-        const tr = h("tr", null, h("td", { text: a.displayName || "(no name)" }), h("td", { text: a.rsvp ? RSVP_LABELS[a.rsvp] || a.rsvp : "—" }), h("td", null, state), h("td", null, reason), h("td", null, saveBtn, " ", note));
+        const tr = organizerActionRow(columns, [
+          h("td", { text: a.displayName || "(no name)" }),
+          h("td", { text: a.rsvp ? RSVP_LABELS[a.rsvp] || a.rsvp : "—" }),
+          h("td", null, state), h("td", null, reason), h("td", null, saveBtn, " ", note),
+        ]);
         if (!started) { state.disabled = true; reason.disabled = true; saveBtn.disabled = true; }
         saveBtn.addEventListener("click", async () => {
           if (!state.value) { toast(ORGANIZER_ERRORS.invalid_entries, "bad"); return; }
@@ -7792,7 +7843,7 @@
       holder.appendChild(frame(`Attendance: ${e ? e.title : "event"}`, h("div", { class: "btn-row" }, h("a", { class: "btn small", href: eventHref(id), text: "Back to the event" }), e && e.canManage ? h("a", { class: "btn small", href: `${eventHref(id)}/edit`, text: "Edit" }) : null),
         e && !started ? noticeBox("info", "icon-clock", h("p", { text: e.status === "cancelled" ? "This event is cancelled; nothing is recorded." : ORGANIZER_ERRORS.event_not_started })) : null,
         h("p", { class: "muted small", text: "Everyone who answered or was recorded, by display name. Recording is informational: it changes no role and no rank. A member who no longer qualifies is not shown." }),
-        status, h("div", { class: "table-wrap" }, h("table", { class: "data" }, h("thead", null, h("tr", null, h("th", { text: "Member" }), h("th", { text: "Answer" }), h("th", { text: "Attendance" }), h("th", { text: "Note" }), h("th", { text: "" }))), tbody)), h("div", { class: "btn-row" }, more)));
+        status, organizerActionTable(columns, tbody), h("div", { class: "btn-row" }, more)));
     };
     await draw();
   }

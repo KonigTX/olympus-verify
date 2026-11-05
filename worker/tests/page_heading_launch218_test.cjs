@@ -76,18 +76,31 @@ async function headingAndLaunch218() {
       && exactCountdown(admission.querySelector('.frame'), guildLaunchAt * 1000, earlyClock)
       && admission.textContent.includes('It guarantees neither service availability, an invite nor a free seat.'));
 
-    for (const [route,title] of [['#/roles','Olympus ranks'],['#/vote','Explore Olympus roles, ranks and titles'],['#/apply','Your application'],['#/community/workshop','Community']]) {
+    for (const [route,title] of [['#/roles','Olympus ranks'],['#/vote','Leadership applications board'],['#/apply','Your application'],['#/community/workshop','Community']]) {
       await page.go(route); await must(() => headings(mainOf(page)).length === 1, route+' primary heading'); main=mainOf(page);
       const titles = frameTitles(main);
       check('.218 '+route+' promotes exactly one first frame title', headings(main).length === 1 && !!main.querySelector('h1.page-heading218')
         && titles.length > 0 && titles[0] === headings(main)[0] && headings(main)[0].textContent === title);
       check('.218 '+route+' keeps all later frame titles at H2', titles.slice(1).every(node => node.tagName === 'H2') && main.querySelectorAll('.page-heading218').length === 1);
+      if (route === '#/vote') check('CC056 the board starts with the role controls and links to the canonical searchable directory',
+        !main.querySelector('#application-directory201') && !!main.querySelector('.board-layout .role-list') && !!main.querySelector('.board-layout select.role-pick')
+        && !!main.querySelector('.frame a[href="#/roles"]') && main.querySelectorAll('.board-layout .role-list a').length === page.boot.meta.ballots.length);
       if (route === '#/apply') official(main, 'Apply');
     }
 
     await page.go('#/apply');
     check('.218 an available Apply form alone uses editable-form instructions',!!mainOf(page).querySelector('form')
       && mainOf(page).querySelector('.launch-notice218').textContent.includes('in this application'));
+    const chooser228=mainOf(page).querySelector('#application-track-chooser228');
+    check('CC056 Apply offers exactly the original three open family intents, their guides and the optional Member PvP path without loading the full directory',
+      !!chooser228 && !mainOf(page).querySelector('#application-directory201')
+      && JSON.stringify(chooser228.querySelectorAll('a[data-family-apply203]').map(node=>node.getAttribute('data-family-apply203')).sort())===JSON.stringify(['artisan','member','raider'])
+      && ['member','raider','artisan'].every(key=>{
+        const family=page.boot.meta.roleDirectory203.families.find(row=>row.key===key),intent=family.application;
+        return chooser228.querySelector(`a[data-family-apply203="${key}"]`)?.getAttribute('href')===`#/vote/${intent.applicationTrack}/${encodeURIComponent(intent.targetOffice||'new')}`
+          && !!chooser228.querySelector(`a[href="#/roles/${key}"][target="_blank"]`);
+      }) && !!chooser228.querySelector('a[data-activity-member203][href="#/vote/member/new"]')
+      && !!chooser228.querySelector('a[href="#/roles"][target="_blank"]') && !chooser228.querySelector('[data-patron-role-chooser]'));
     // .219 exposes an editor for retained open reserved/paused applications;
     // merely opening it must not change their private choices or sharing.
     for(const [track218,office218] of [['officer','office_62'],['patron',null]]) {

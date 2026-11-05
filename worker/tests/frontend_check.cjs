@@ -1015,17 +1015,29 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   o2.answer(null); o2.hold(null);
   // (b) the same after a readback replaced the rows: the controls stay, nothing adopted
   await reloadEvent();
-  fakeContexts = 1; heldContexts = 1; let refusals = 0;
-  o2.answer((p) => p === "/api/community/events/decide" && refusals++ === 0 ? status403() : (p === "/api/community/context" && fakeContexts-- > 0 ? contextChanged : null));
-  o2.hold((p) => p === "/api/community/context" && heldContexts-- > 0 ? 300 : 0);
+  const originalPicker = picks()[1];
+  let releaseContext, contextHeld = false, contextDelivered = false, refusals = 0;
+  const contextGate = new Promise(resolve => { releaseContext = resolve; });
+  o2.answer((p) => p === "/api/community/events/decide" && refusals++ === 0 ? status403() : null);
+  o2.intercept(async (pathname, init) => {
+    if (pathname !== "/api/community/context" || contextHeld) return;
+    const response = await realRosterReply(pathname, init);
+    if (!response.ok) return response;
+    contextHeld = true;
+    await contextGate;
+    contextDelivered = true;
+    return Response.json(contextChanged);
+  });
   picks()[0].value = "accepted"; saves()[0].click(); // the refused command starts the held context refresh
-  await waitFor(() => heldContexts === 0, "the held context refresh", 1500);
+  const staleContextHeld = await waitFor(() => contextHeld, "the held context refresh", 8000);
   (await fixtureRun("UPDATE community_event_signups SET decision_revision = decision_revision + 1 WHERE event_id = ?", EVENT));
   picks()[1].value = "bench"; saves()[1].click(); // a definite refusal: its readback replaces the rows
-  await waitFor(() => seen().includes("Not decided."), "the readback that replaces the rows");
-  await new Promise((resolve) => setTimeout(resolve, 600)); // the held context reply arrives now
-  check("F4b.1 follow-up: a changed context reply arriving after the rows were replaced adopts nothing: the controls stay and the Calendar tab stays", calendarTab() && picks().length >= 2 && saves().length >= 2);
-  o2.answer(null); o2.hold(null);
+  const contextRowsReplaced = await waitFor(() => picks().length === 2 && picks()[1] !== originalPicker
+    && seen().includes("Not decided."), "the readback that replaces the rows", 8000);
+  releaseContext();
+  await settle(); await settle();
+  check("F4b.1 follow-up: a changed context reply arriving after the rows were replaced adopts nothing: the controls stay and the Calendar tab stays", staleContextHeld && contextRowsReplaced && contextDelivered && calendarTab() && picks().length >= 2 && saves().length >= 2);
+  o2.answer(null); o2.intercept(null);
   // (c) the positive: a current refresh adopts the changed context and redraws
   await reloadEvent();
   fakeContexts = 1;

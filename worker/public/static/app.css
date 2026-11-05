@@ -501,6 +501,17 @@ table.data td.wrap { white-space: normal; min-width: 160px; }
 table.data th { font-weight: 400; color: var(--gold); background: rgba(25, 22, 14, 0.95); position: sticky; top: 0; white-space: nowrap; font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase; }
 table.data tr:hover td { background: rgba(255, 209, 0, 0.06); }
 table.data tr.clickable { cursor: pointer; }
+.organizer-cell-label { display: none; }
+@media (max-width: 480px) {
+  .organizer-action-table { position: relative; }
+  .organizer-action-table, .organizer-action-table tbody, .organizer-action-table tbody tr, .organizer-action-table td { display: block; }
+  .organizer-action-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  table.data.organizer-action-table td { padding: 6px 10px; white-space: normal; overflow-wrap: anywhere; }
+  .organizer-action-table tbody tr + tr { border-top: 1px solid var(--line); }
+  .organizer-action-table .organizer-cell-label { display: block; color: var(--muted); font-size: 0.75rem; }
+  .organizer-action-table .organizer-cell-label::before { content: attr(data-label); }
+  .organizer-action-table td select { max-width: 100%; }
+}
 /* Native dialog openers retain the table's typography and visible keyboard focus. */
 .row-detail-open { appearance: none; border: 0; background: none; padding: 2px 0; font: inherit; color: var(--gold-soft); text-align: left; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; max-width: 100%; overflow-wrap: anywhere; }
 .row-detail-open:hover { color: var(--white); }

@@ -113,12 +113,13 @@ const body218 = String.raw`
   const reservedNotice218 = 'Leader, High Council and Officer Corps seats are reserved appointments. You cannot apply for them, including when no holder is listed.';
   await page.go('#/vote/officer');
   check('.228 the Officer board points back to the exact role family', page.app.querySelector('.board-role-content a[href="#/roles/officer"]')?.textContent === 'Role guide');
-  for (const route of ['#/roles', '#/vote', '#/apply']) {
+  for (const [route, surface] of [['#/roles','#application-directory201 .notice-box'],['#/vote','.frame'],['#/apply','#application-track-chooser228']]) {
     await page.go(route);
-    await waitFor(() => !!page.app.querySelector('#application-directory201'), 'reserved notice on '+route);
-    const notices=page.app.querySelectorAll('#application-directory201 .notice-box p').filter(node=>node.textContent===reservedNotice218);
+    await waitFor(() => !!page.app.querySelector(surface), 'reserved notice on '+route);
+    const notices=page.app.querySelectorAll(surface+' p').filter(node=>node.textContent===reservedNotice218);
     check('.218 '+route+' explains reserved seats exactly once', notices.length===1&&page.app.textContent.split(reservedNotice218).length===2);
   }
+  await page.go('#/roles');
   const standingNotes218=Object.values(guides).filter(guide=>guide.eligibility==='standing').map(guide=>guide.eligibilityNote);
   const naturalStanding218='Guild Member and Raider accept applications. For a change in your guild standing, ask the responsible officer to review your record.';
   const standingSection218=page.app.querySelector('[data-role-section201="members"]'),standingIntro218=standingSection218?.querySelectorAll('.role-standing-scope218')||[];
