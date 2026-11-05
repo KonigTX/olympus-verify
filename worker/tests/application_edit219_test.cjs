@@ -64,6 +64,31 @@ async function applicationEdit219(){
  })&&ownNote.value==='Keep this local draft while jumping'&&own.location.hash==='#/vote/raider/new');
  const copy=await request('GET','/api/me/export');
  check('own copy includes all declared characters and updated private answers',copy.status===200&&copy.body.site.application.answers.talentBuilds.characters[1].character==='Editor Alt'&&copy.body.site.application.answers.extra==='Updated private note.');
+ const concurrentOwn=await request('PUT','/api/application',{...updated,editToken:(await request('GET','/api/me')).body.application.editToken,answers:{...updated.answers,extra:'Saved separately while the editor was open.'}});
+ const ownForm=own.app.querySelector('form'),ownAck=ownForm.querySelector('[data-field="ack"] input');
+ const ownWrites=[];let ownReplies=0,recoveryReads=0,dropRecoveryRead=true;
+ own.before((url,init)=>{
+  if(url==='/api/application'&&init.method==='PUT')ownWrites.push(JSON.parse(init.body));
+  if(url==='/api/me'&&init.method==='GET'){recoveryReads++;return dropRecoveryRead;}
+  return false;
+ });
+ own.answer((url,init)=>{if(url==='/api/application'&&init.method==='PUT')ownReplies++;return null;});
+ ownAck.checked=true;fire(ownForm,'submit');
+ await waitFor(()=>ownReplies===1,'stale editor PUT reply',8000);await settle();
+ const review=byText(own.app,'button','Check the saved application');
+ check('a real stale reply keeps the exact typed draft and blocks another write until review',concurrentOwn.status===200&&!!review&&byText(own.app,'button','Save changes').disabled&&ownNote.value==='Keep this local draft while jumping'&&JSON.parse(saved().answers).extra==='Saved separately while the editor was open.',{concurrentStatus:concurrentOwn.status,review:!!review,saved:JSON.parse(saved().answers).extra,appMessage:own.document.body.textContent.slice(-450)});
+ if(review){
+  review.click();await waitFor(()=>recoveryReads===1,'failed application recovery read');await settle();await settle();
+  check('a failed recovery read holds the draft and permits an explicit retry',!review.disabled&&byText(own.app,'button','Save changes').disabled&&ownNote.value==='Keep this local draft while jumping'&&ownWrites.length===1);
+  dropRecoveryRead=false;review.click();
+  await waitFor(()=>!!byText(own.app,'button','Keep my draft for the next save'),'current application recovery receipt',8000);
+  check('recovery shows the real newer saved answers without automatically sending the draft',own.app.textContent.includes('Saved separately while the editor was open.')&&ownNote.value==='Keep this local draft while jumping'&&recoveryReads===2&&ownWrites.length===1);
+  byText(own.app,'button','Keep my draft for the next save').click();
+  check('adopting the current token keeps the mounted draft and asks for a fresh acknowledgement',own.app.querySelector('[data-field="extra"] textarea')===ownNote&&!ownAck.checked&&!byText(own.app,'button','Save changes').disabled&&ownWrites.length===1);
+  ownAck.checked=true;fire(ownForm,'submit');
+  await waitFor(()=>JSON.parse(saved().answers).extra==='Keep this local draft while jumping','explicit updated application PUT',8000);
+  check('explicit save uses only the freshly reviewed token and keeps original review history',ownWrites.length===2&&ownWrites[1].editToken===concurrentOwn.body.application.editToken&&saved().created_at===initialTime&&saved().reviewed_by===STAFF&&saved().status==='reviewing');
+ }
  r=await request('PUT','/api/application',{...body,character:'Other One'},OTHER);
  check('paused admissions still reject a new applicant',r.status===403&&r.body.error==='closed'&&!one('SELECT 1 FROM site_applications WHERE discord_id=?',OTHER));
  me=await request('GET','/api/me');
@@ -183,8 +208,9 @@ async function applicationEdit219(){
  const selectClass=value=>{selectedClass.value=value;fire(selectedClass,'change');};
  const storageWrites=[],originalSet=draftPage.sessionStorage.setItem;
  draftPage.sessionStorage.setItem=(key,value)=>{storageWrites.push(String(value));originalSet(key,value);};
- const posts=[];
+ const posts=[];let buildReplies=0;
  draftPage.before((url,init)=>{if(url==='/api/application'&&init.method==='PUT')posts.push(JSON.parse(init.body));return false;});
+ draftPage.answer((url,init)=>{if(url==='/api/application'&&init.method==='PUT')buildReplies++;return null;});
  main60.value=warrior60;fire(main60,'input');privateDraft.value='Unsaved applicant text across a class switch.';fire(privateDraft,'input');
  selectClass('mage');
  check('class switch sets aside prior main and legacy builds and explains how to restore them',!main30.value&&!main60.value&&!legacy.value&&draftForm.textContent.includes('Switch back to restore'),draftForm.querySelector('[role="status"]')?.textContent);
@@ -222,6 +248,25 @@ async function applicationEdit219(){
  await waitFor(()=>one('SELECT class FROM site_applications WHERE discord_id=?',BUILD_OWNER).class==='mage','actual corrected application PUT',8000);
  const finalDraft=JSON.parse(one('SELECT answers FROM site_applications WHERE discord_id=?',BUILD_OWNER).answers);
  check('real PUT sends only the selected main builds, the original alt and the typed applicant answer',posts.at(-1).answers.talentBuild===''&&finalDraft.talentBuilds.characters[0].build30===mage30&&finalDraft.talentBuilds.characters[0].build60===''&&JSON.stringify(finalDraft.talentBuilds.characters[1])===JSON.stringify(alt)&&finalDraft.extra==='Unsaved applicant text across a class switch.');
+ await waitFor(()=>draftPage.app.querySelector('form')!==draftForm,'updated application editor');
+ const undecidedForm=draftPage.app.querySelector('form'),undecidedClass=undecidedForm.querySelector('[data-field="class"] select');
+ undecidedClass.value='undecided';fire(undecidedClass,'change');
+ undecidedForm.querySelector('[data-field="ack"] input').checked=true;
+ const beforeUndecided=posts.length;fire(undecidedForm,'submit');
+ await waitFor(()=>buildReplies===beforeUndecided+1,'Undecided save reply');await settle();
+ const undecidedRow=one('SELECT * FROM site_applications WHERE discord_id=?',BUILD_OWNER),undecidedAnswers=JSON.parse(undecidedRow.answers);
+ check('real editor saves a named Undecided main with parked main builds and the original declared alt',undecidedRow.class==='undecided'&&undecidedAnswers.talentBuilds.characters[0].class==='undecided'&&!undecidedAnswers.talentBuilds.characters[0].build30&&JSON.stringify(undecidedAnswers.talentBuilds.characters[1])===JSON.stringify(alt),{savedClass:undecidedRow.class,posted:posts.at(-1)?.answers.talentBuilds,appMessage:draftPage.document.body.textContent.slice(-450)});
+ if(undecidedRow.class==='undecided'){
+  const token=(await request('GET','/api/me',undefined,BUILD_OWNER)).body.application.editToken;
+  const malformed=posts.at(-1);
+  for(const [label,characters] of [
+   ['a main build attached to Undecided',[{...undecidedAnswers.talentBuilds.characters[0],build30:mage30},alt]],
+   ['an Undecided alt',[undecidedAnswers.talentBuilds.characters[0],{...alt,class:'undecided',build30:''}]],
+  ]){
+   const invalid=await request('PUT','/api/application',{...malformed,editToken:token,answers:{...malformed.answers,talentBuilds:{version:1,characters}}},BUILD_OWNER);
+   check('Worker refuses '+label+' without changing the application',invalid.status===400&&invalid.body.field==='talentBuilds'&&one('SELECT answers FROM site_applications WHERE discord_id=?',BUILD_OWNER).answers===undecidedRow.answers);
+  }
+ }
  check('application editing uses the exact existing schema',JSON.stringify(db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").all())===schemaBefore);
  console.log('\n'+ok+'/'+n+' passed');process.exit(ok===n?0:1);
 }

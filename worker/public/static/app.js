@@ -2986,6 +2986,10 @@
       return;
     }
     const form = h("form", { novalidate: true });
+    const editorOwner = S.user?.id, editorHash = location.hash;
+    const liveEditor = () => form.isConnected && !endingSiteSession && S.signedIn && !S.denied &&
+      S.user?.id === editorOwner && location.hash === editorHash;
+    let editToken = a?.editToken ?? null;
     // Only this branch creates an editable form; every earlier refusal keeps neutral copy. A retired notice has none.
     applicationNotice218?.querySelector(".launch-application-copy218").replaceWith(launchApplicationCopy218(true));
     const unsaved = h("span", { class: "dirty", hidden: true, text: "Unsaved changes" });
@@ -3313,6 +3317,61 @@
     const fallback = h("input", { type: "checkbox", checked: a ? a.fallback : true });
     const ack = h("input", { type: "checkbox", checked: false });
     const submit = h("button", { class: "btn big", type: "submit", text: a ? "Save changes" : "Submit application" });
+    const recovery = h("section", { class: "card", hidden: true, "aria-labelledby": "application-recovery-heading" });
+    function showApplicationConflict() {
+      const message = h("p", { role: "status", text: "Your draft is still in this form. Check the saved application before trying to save again." });
+      const review = h("button", { class: "btn small", type: "button", text: "Check the saved application", onclick: async () => {
+        if (!liveEditor() || review.disabled) return;
+        review.disabled = true;
+        clear(current);
+        message.textContent = "Checking your saved application…";
+        try {
+          const data = await api("GET", "/api/me", undefined, { live: liveEditor });
+          if (!liveEditor()) return;
+          if (data?.user?.id !== editorOwner || data.denied) {
+            message.textContent = "The original account could not be confirmed. The draft is still here.";
+            return;
+          }
+          const fresh = data.application;
+          const editable = fresh && ["submitted", "reviewing"].includes(fresh.status) && /^[a-f0-9]{64}$/.test(fresh.editToken);
+          message.textContent = editable
+            ? "Compare the saved answers with your draft. Keeping the draft prepares a separate save. Review your sharing choices again before submitting."
+            : "The saved application is no longer open for editing. Your draft is still here.";
+          const saved = fresh ? h("details", { open: true },
+            h("summary", { text: `Saved application · ${statusText(fresh.status)}` }),
+            applicationSummary(fresh)) : null;
+          const discard = h("button", { class: "btn small", type: "button", text: "Discard draft and open saved application", onclick: () => {
+            if (!liveEditor()) return;
+            S.application = fresh;
+            S.applicationIntent199 = null;
+            render();
+          } });
+          const keep = editable ? h("button", { class: "btn small", type: "button", text: "Keep my draft for the next save", onclick: () => {
+            if (!liveEditor()) return;
+            editToken = fresh.editToken;
+            for (const check of [ack, boardOk, boardPortraitOk, boardIntentOk199, talentSharing]) check.checked = false;
+            sync();
+            updateTalentSharing();
+            recovery.hidden = true;
+            clear(recovery);
+            submit.disabled = false;
+            touch();
+            ack.focus();
+          } }) : null;
+          add(current, [saved, h("div", { class: "btn-row" }, keep, discard)]);
+        } catch (err) {
+          if (liveEditor()) message.textContent = err.message + " Your draft is still here. Try checking again.";
+        } finally {
+          if (liveEditor()) review.disabled = false;
+        }
+      } });
+      const current = h("div");
+      clear(recovery);
+      add(recovery, [h("h3", { id: "application-recovery-heading", text: "Your saved application changed" }), message, review, current]);
+      recovery.hidden = false;
+      touch();
+      jumpToSection(recovery);
+    }
     add(leaderBlock, [
       h("div", { class: "rule" }),
       h("div", { class: "section-title" }, icon("pos-officer"), h("h3", { text: "Leading people" })),
@@ -3372,6 +3431,7 @@
           h("p", null, h("strong", { text: "Read this before you submit. " }), "Joke, troll or abusive applications are permanently denied, and the denial covers everything this account does here: its votes, nominations and reserved names. It is not reconsidered. So is registering several accounts to vote more than once."),
           h("label", { class: "check" }, ack, h("span", { text: "I understand, and everything above is true." }))),
         h("span", { class: "err", hidden: true })),
+      recovery,
       h("div", { class: "savebar apply-savebar", id: "application-submit" }, h("div", { class: "btn-row" }, submit, h("button", { class: "btn small", type: "button", text: "Back to role choices", onclick: () => jumpToSection(document.getElementById("application-choices")) })), unsaved),
       a && (a.status === "submitted" || a.status === "reviewing")
         ? h("div", { class: "btn-row mt" }, h("button", { class: "btn small", type: "button", text: "Withdraw my application", onclick: withdraw }), h("span", { class: "muted small", text: a.boardAt ? "It comes off the voting board; you can apply again while applications are open." : "You can apply again while applications are open." }))
@@ -3381,6 +3441,7 @@
     sync();
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (!liveEditor() || submit.disabled) return;
       if (!ack.checked) return showFieldError(form, "ack", "Tick the box to confirm you read the warning.");
       const mismatch = "This build names another class. Use a build for the selected class.";
       if (wrongBuildClass(legacyBuildInput.value, cls.value)) return showFieldError(form, "talentBuild", mismatch);
@@ -3404,21 +3465,28 @@
       answers.references = refs.map((r) => ({ kind: r.kind, key: r.key, label: r.label }));
       answers.professions = professions.filter((p) => profs.has(p.key)).map((p) => p.key);
       const backups = backupSels.map((x) => x.value).filter(Boolean);
-      const body = { editToken:a?.editToken ?? null, ...(intent199 ? {applicationTrack:intent199.applicationTrack,targetOffice:intent199.targetOffice,boardApplicationIntent:isVoted() && boardOk.checked && boardIntentOk199.checked} : {}), position, classLead: position === "class_lead" ? classLeadSel.value : null, backups, character: character.value, class: cls.value, role: role.value, region: region.value, avail: hexFromBits(bitsFromBlocks(blocks, zone)), availTz: zone, fallback: fallback.checked, board: isVoted() && boardOk.checked, boardPortrait: isVoted() && boardOk.checked && boardPortraitOk.checked, boardTalentBuilds:isVoted() && boardOk.checked && talentSharing.checked, answers, ack: true };
+      const body = { editToken, ...(intent199 ? {applicationTrack:intent199.applicationTrack,targetOffice:intent199.targetOffice,boardApplicationIntent:isVoted() && boardOk.checked && boardIntentOk199.checked} : {}), position, classLead: position === "class_lead" ? classLeadSel.value : null, backups, character: character.value, class: cls.value, role: role.value, region: region.value, avail: hexFromBits(bitsFromBlocks(blocks, zone)), availTz: zone, fallback: fallback.checked, board: isVoted() && boardOk.checked, boardPortrait: isVoted() && boardOk.checked && boardPortraitOk.checked, boardTalentBuilds:isVoted() && boardOk.checked && talentSharing.checked, answers, ack: true };
       submit.disabled = true;
       try {
-        const out = await api("PUT", "/api/application", body);
+        const out = await api("PUT", "/api/application", body, { live: liveEditor });
+        if (!liveEditor()) return;
+        if (!out?.application) throw new ApiError(200, { error: "unreadable_answer" });
         S.application = out.application;
         S.applicationIntent199 = null;
         setDirty("apply", false, unsaved);
         toast(a ? "Application updated." : "Application submitted. Good luck!", "good");
         render();
       } catch (err) {
+        if (!liveEditor()) return;
+        if (err.status === 409 && ["stale_application", "application_changed"].includes(codeOf(err))) {
+          showApplicationConflict();
+          return;
+        }
         // Put to the vote since this page was opened: the refusal brings the current list, and the box appears to tick.
         if (err.data && Array.isArray(err.data.noVote) && S.settings) { S.settings.noVote = err.data.noVote; sync(); }
         showFieldError(form, err.data && err.data.field, err.message);
       } finally {
-        submit.disabled = false;
+        if (liveEditor()) submit.disabled = !recovery.hidden;
       }
     });
     async function withdraw() {
@@ -3494,7 +3562,7 @@
     }
     const declaredBuilds = ans.talentBuilds && ans.talentBuilds.version === 1 && Array.isArray(ans.talentBuilds.characters) ? ans.talentBuilds.characters.slice(0,3).flatMap(item => [30,60].filter(level => item["build"+level]).map(level => ({character:item.character,class:item.class,level,code:item["build"+level]}))) : [];
     const declaredCharacters219 = ans.talentBuilds?.version === 1 && Array.isArray(ans.talentBuilds.characters) ? ans.talentBuilds.characters.slice(0,3) : [];
-    if(declaredCharacters219.length) add(paper,[h("h4",{text:"Declared Main and Alts"}),h("ul",null,declaredCharacters219.map((item,index)=>h("li",{text:(index ? "Alt: " : "Main: ")+String(item.character || "")+" — "+labelOf(meta.classes,item.class)+(!item.build30 && !item.build60 ? "; no talent build attached" : "")}))),h("p",{class:"muted small",text:"Self-reported application characters; this is not proof of ownership or roster membership."})]);
+    if(declaredCharacters219.length) add(paper,[h("h4",{text:"Declared Main and Alts"}),h("ul",null,declaredCharacters219.map((item,index)=>h("li",{text:(index ? "Alt: " : "Main: ")+String(item.character || "")+" — "+(item.class === "undecided" ? "Undecided" : labelOf(meta.classes,item.class))+(!item.build30 && !item.build60 ? "; no talent build attached" : "")}))),h("p",{class:"muted small",text:"Self-reported application characters; this is not proof of ownership or roster membership."})]);
     if(declaredBuilds.length) add(paper,[h("h4",{text:"Declared character talent builds"}),talentBuildLinks(declaredBuilds),h("p",{class:"muted small",text:ans.boardTalentBuildsOptIn === true ? "Separate board sharing was selected; the board shows only currently valid attachments while its consent remains active." : "Private application attachments; not shared on the voting board."})]);
     if (paper.firstChild) { paper.classList.add("mt"); out.appendChild(paper); }
     if ((ans.references || []).length) add(out, [h("h3", { class: "mt", text: "References" }), h("div", { class: "stack" }, ans.references.map((p) => personRow(p)))]);
