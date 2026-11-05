@@ -3390,6 +3390,50 @@ function originalTerms218(terms) {
     const refused210 = async p => await waitFor(() => p.app.textContent.includes("The decision result could not be confirmed."), "RT16 spent refused application view", 8000);
 
     {
+      const id = await seed210();
+      const key = await load("./privacy-serving-authority").privacySubjectKey(env(), id);
+      await fixtureRun("UPDATE site_users SET denied=1, denied_at=?, denied_reason='Local legacy denial fixture' WHERE discord_id=?", now - 5, id);
+      await fixtureRun("UPDATE site_applications SET rejection_subject_key=?, rejection_scope='pure_member_including_fallback0', rejection_window_expired=1 WHERE discord_id=?", key, id);
+      const holdCopy = "Lifting this denial is on hold. Staff need to verify the original decision.";
+      const finishedReview = ({ p }) => waitFor(() => !!byText(p.app, "button", "Save note") || p.app.textContent.includes("Application could not be opened"), "C09 review preparation", 8000);
+      const deniedState = () => JSON.stringify(one("SELECT denied, denied_at, denied_reason FROM site_users WHERE discord_id=?", id));
+      const before = deniedState();
+      const held = await open210(id); await finishedReview(held);
+      check("C09 an unavailable Lift keeps the denied account review and its other controls available",
+        held.p.app.textContent.includes(holdCopy) && held.p.app.textContent.includes("Local legacy denial fixture")
+        && !!byText(held.p.app, "button", "Save note") && !!byText(held.p.app, "button", "Delete their site data")
+        && !byText(held.p.app, "button", "Lift the denial") && preparations210(held.rows).length === 4
+        && held.rows.some(r => r.path === "/api/admin/applications/" + id) && posts210(held.rows).length === 0 && deniedState() === before);
+
+      const cleanId = await seed210();
+      await fixtureRun("UPDATE site_users SET denied=1, denied_at=? WHERE discord_id=?", now - 5, cleanId);
+      const clean = await open210(cleanId); await finishedReview(clean);
+      check("C09 an available legacy Lift still shows the original action", !!byText(clean.p.app, "button", "Lift the denial")
+        && !clean.p.app.textContent.includes(holdCopy) && preparations210(clean.rows).length === 4 && posts210(clean.rows).length === 0);
+
+      const staffCookie = await cookieFor(STAFF);
+      for (const malformed of ["wrong unavailable action", "false availability with an issued token"]) {
+        const broken = await open210(cleanId, async (path, init) => {
+          if (!path.includes("decision-target?route=undeny")) return null;
+          const response = await indexMod.default.fetch(new Request("https://guild.example" + path, {
+            headers: { ...init.headers, Cookie: staffCookie, Origin: "https://guild.example" },
+          }), env(), ctx);
+          if (response.status !== 200) throw Error("C09 ordinary Lift fixture preparation failed");
+          const actual = await response.json();
+          const body = malformed === "wrong unavailable action"
+            ? { decisionAvailable: false, decisionAction: "membership_reconsideration_v1", targetToken: null, preparedAt: null, expiresAt: null, reviewKey: null }
+            : { ...actual, decisionAvailable: false };
+          return new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } });
+        });
+        await finishedReview(broken);
+        check("C09 malformed Lift preparation is held as a review failure (" + malformed + ")",
+          broken.p.app.textContent.includes("Application could not be opened") && !broken.p.app.textContent.includes(holdCopy)
+          && !byText(broken.p.app, "button", "Lift the denial") && !byText(broken.p.app, "button", "Save note")
+          && !broken.rows.some(r => r.path === "/api/admin/applications/" + cleanId) && posts210(broken.rows).length === 0);
+      }
+    }
+
+    {
       const id = await seed210(), start = Date.now();
       const { p, rows } = await open210(id, null, start); await ready210(p);
       const announced = /Decision window [0-5]:\d{2}/.test(p.app.textContent);

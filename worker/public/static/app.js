@@ -5595,9 +5595,12 @@
         const prepared = await api("GET", `/api/admin/users/${encodeURIComponent(id)}/decision-target?route=${targetRoute}&decisionAction=${action}${policy}`, undefined, { live });
         if (!live()) return;
         if (targetRoute === "deny" && prepared?.decisionAvailable === false && prepared.targetToken === null) continue;
+        const lift = targetRoute === "undeny";
+        if (lift && prepared?.decisionAvailable === false && prepared.decisionAction === "business_only"
+          && prepared.targetToken === null && prepared.preparedAt === null && prepared.expiresAt === null && prepared.reviewKey === null) continue;
         const allowed = targetRoute === "deny" ? ["membership_rejection_v1"]
           : targetRoute === "undeny" ? ["business_only", "membership_reconsideration_v1"] : [action];
-        if (!prepared || typeof prepared.targetToken !== "string" || !prepared.targetToken || prepared.targetToken.length > 8192
+        if (!prepared || (lift && prepared.decisionAvailable !== true) || typeof prepared.targetToken !== "string" || !prepared.targetToken || prepared.targetToken.length > 8192
           || !Number.isSafeInteger(prepared.preparedAt) || prepared.preparedAt <= 0 || !Number.isSafeInteger(prepared.expiresAt)
           || prepared.expiresAt <= prepared.preparedAt || prepared.expiresAt - prepared.preparedAt > 300
           || typeof prepared.reviewKey !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(prepared.reviewKey)) throw new ApiError(409, { message: "The decision could not be prepared. Reload the application and review it again." });
@@ -5689,9 +5692,11 @@
       toast(`Marked ${statusText(status).toLowerCase()}.`, "good"); adminApplication(body, id);
     });
     const denyBtn = u.denied
-      ? h("button", { class: "btn", type: "button", text: "Lift the denial", onclick: () => decide("undeny", async () =>
-          await confirmBox("Lift the denial?", "They can use the site again. Reserved names released by the denial stay released.", "Lift it") ? undefined : null,
-          () => { toast("Denial lifted."); adminApplication(body, id); }) })
+      ? targets.has("undeny")
+        ? h("button", { class: "btn", type: "button", text: "Lift the denial", onclick: () => decide("undeny", async () =>
+            await confirmBox("Lift the denial?", "They can use the site again. Reserved names released by the denial stay released.", "Lift it") ? undefined : null,
+            () => { toast("Denial lifted."); adminApplication(body, id); }) })
+        : h("p", { class: "small muted", text: "Lifting this denial is on hold. Staff need to verify the original decision." })
       : !targets.has("deny") ? h("p", { class: "small muted", text: "A permanent denial for this account requires an attended membership review." })
       : h("button", { class: "btn danger", type: "button", text: "Deny permanently", onclick: () => decide("deny", async () => {
           const reason = await promptBox("Deny permanently", "For joke, troll or abusive applications. They are signed out, cannot save anything again, their votes stop counting, their application leaves the board, and their reserved names are released.", "Reason (only site admins see it; an officer's lookup shows only that the account was denied)", "Deny permanently", { danger: true });
