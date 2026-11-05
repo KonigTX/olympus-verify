@@ -5,7 +5,8 @@ import { audit, linksNotBefore, now,type PrivacyReference } from "./db";
 import { intVar, officerRankNames, rankCheckExempt, staffChannel, staffRoles } from "./env";
 import { normalizeCharacter } from "./codes";
 import { explainDiscordError, guildMember, logLine, postMessage, removeRole, setNickname, staffNotice } from "./discord";
-import { grantMemberRole, callBudget, affords, GRANT_CALLS, type CallBudget } from "./roles";
+import { grantMemberRole, callBudget, affords, GRANT_CALLS, type CallBudget, type GrantOutcome } from "./roles";
+import type { OriginalConsumedMembership230 } from './ingest';
 import {captureBetaRoleDispatch,betaRoleDispatchHeld,type BetaRoleDispatch} from './beta-reset-policy';
 import type { RemovalDispatch } from './role-settlements';
 import { flushNotices, notify, noticeBatch, type NoticeBatch } from "./dm";
@@ -1084,10 +1085,10 @@ async function afterDeparture(env: Env, discordId: string, name: string, how: st
 }
 
 /** Character confirmed on the roster with a verified binding → member: Guild Member role, nickname, log line, DM. */
-export async function promote(env: Env, discordId: string, nameKey: string, name: string, batch?: NoticeBatch, guid?: string | null, calls?: CallBudget,originalCapture?:PrivacySubject|null,originalDispatch?:BetaRoleDispatch,launchSource?:LaunchMembershipSource) {
+export async function promote(env: Env, discordId: string, nameKey: string, name: string, batch?: NoticeBatch, guid?: string | null, calls?: CallBudget,originalCapture?:PrivacySubject|null,originalDispatch?:BetaRoleDispatch,launchSource?:LaunchMembershipSource,originalConsumed230?:OriginalConsumedMembership230):Promise<GrantOutcome> {
   const roleDispatch=originalDispatch??captureBetaRoleDispatch(env);
   const capture=originalCapture===undefined?await readPrivacySubject(env,discordId):originalCapture;
-  if(capture&&capture.state!=='active')return;
+  if(capture&&capture.state!=='active')return 'held';
   const t = now();
   const g = guidOf(guid); // pinned only if none is: a pin is never overwritten here (reconcileIdentities decides that)
   await env.DB.batch([
@@ -1097,7 +1098,7 @@ export async function promote(env: Env, discordId: string, nameKey: string, name
     ).bind(nameKey, t, g,discordId,capture?.subjectGeneration??null),
     env.DB.prepare(`UPDATE invite_queue SET status = 'joined', joined_at = ?2 WHERE name_key = ?1 AND discord_id=?3 AND status IN ('queued','written','invited') AND ${privacyGenerationFenceSql(3,4)}`).bind(nameKey, t,discordId,capture?.subjectGeneration??null),
   ]);
-  await afterPromotion(env, discordId, name, batch, calls,capture,false,roleDispatch,launchSource);
+  return afterPromotion(env, discordId, name, batch, calls,capture,false,roleDispatch,launchSource,originalConsumed230);
 }
 
 /**
@@ -1106,44 +1107,48 @@ export async function promote(env: Env, discordId: string, nameKey: string, name
  * roster.member (which the role sweep reads to grant a deferred role), the log line and the welcome. At most twelve
  * statements, the welcome's share of the notices' flush included (roster-effects.ts EFFECT_WORST.promote less the claim).
  */
-async function afterPromotion(env: Env, discordId: string, name: string, batch?: NoticeBatch, calls?: CallBudget,capture:PrivacySubject|null=null,deferCronRole=false,originalDispatch?:BetaRoleDispatch,launchSource?:LaunchMembershipSource) {
+async function afterPromotion(env: Env, discordId: string, name: string, batch?: NoticeBatch, calls?: CallBudget,capture:PrivacySubject|null=null,deferCronRole=false,originalDispatch?:BetaRoleDispatch,launchSource?:LaunchMembershipSource,originalConsumed230?:OriginalConsumedMembership230):Promise<GrantOutcome> {
   const roleDispatch=originalDispatch??captureBetaRoleDispatch(env);
   const reference={subject:discordId,capture};
-  if(!(await env.DB.prepare(`SELECT (${privacyGenerationFenceSql(1,2)}) AS current`).bind(discordId,capture?.subjectGeneration??null).first<{current:number}>())?.current)return;
-  if(launchSource&&!await launchMembershipCurrent(env,launchSource))return;
+  if(!(await env.DB.prepare(`SELECT (${privacyGenerationFenceSql(1,2)}) AS current`).bind(discordId,capture?.subjectGeneration??null).first<{current:number}>())?.current)return 'held';
+  if(launchSource&&!await launchMembershipCurrent(env,launchSource))return 'held';
   // The role grant is optional (ROLE_GUILD_MEMBER may be unset once the role is retired), and nothing below depends
   // on it succeeding. Until 26 Sep the nickname and welcome sat after addRole inside one try, so any role failure —
   // including the role simply having been deleted — silently stopped nicknames as well.
   let granted = false;
   let blocked = false;
+  let roleOutcome:GrantOutcome='no-role';
   if (deferCronRole && env.ROLE_GUILD_MEMBER) {
+    roleOutcome='held';
     // The original durable member claim and roster.member audit are the role sweep's
     // continuation. Do not mint a five-minute role intent in a deliberately zero-HTTP phase.
     await audit(env,"system","role.deferred",name,{discordId,source:"promote",reason:"central_role_sweep"},reference);
   } else if (env.ROLE_GUILD_MEMBER) {
     try {
       // .55: through the one role writer (roles.ts): a held blocking role withholds the grant, fail-closed config too.
-      const writer=grantMemberRole as unknown as (...args:[Env,string,string,string,string[]|undefined,CallBudget|undefined,{subjectGeneration:string|null;launchSource?:LaunchMembershipSource},BetaRoleDispatch])=>ReturnType<typeof grantMemberRole>;
+      const writer=grantMemberRole as unknown as (...args:[Env,string,string,string,string[]|undefined,CallBudget|undefined,{subjectGeneration:string|null;launchSource?:LaunchMembershipSource;originalConsumed230?:OriginalConsumedMembership230},BetaRoleDispatch])=>ReturnType<typeof grantMemberRole>;
       const roleEnv=env.PRIVACY_ERASURE_ENABLED==='true'||membershipTransitionEnabled(env)?{...env,DB:privacyProviderCustodyDatabase(env)}:env;
       const roleCalls=deferCronRole&&calls?{...calls,limit:0}:calls;
-      const outcome = await writer(roleEnv, discordId, `olympus-verify: ${name} confirmed on the guild roster`, "promote", undefined, roleCalls,{subjectGeneration:capture?.subjectGeneration??null,...(launchSource?{launchSource}:{})},roleDispatch);
+      const outcome = await writer(roleEnv, discordId, `olympus-verify: ${name} confirmed on the guild roster`, "promote", undefined, roleCalls,{subjectGeneration:capture?.subjectGeneration??null,...(launchSource?{launchSource}:{}),...(originalConsumed230?{originalConsumed230}:{})},roleDispatch);
+      roleOutcome=outcome;
       granted = outcome === "granted" || outcome === "has-role";
       blocked = outcome === "blocked";
       if(deferCronRole)await audit(env,"system","role.deferred",name,{discordId,source:"promote",reason:outcome},reference);
       else {
       if (blocked) await logLine(env, `⛔ roster: **${name}** (<@${discordId}>) is on the roster, but a server restriction is on the account; Guild Member withheld until it is lifted.`,[reference]);
-      else if (outcome === "held") await logLine(env, `⏸️ roster: **${name}** (<@${discordId}>) is on the roster, but the account must apply again after a rename Blizzard required; Guild Member withheld until an administrator approves it.`,[reference]); // .114
+      else if (outcome === "held" || outcome === "unknown") await logLine(env, `⏸️ roster: **${name}** (<@${discordId}>) is on the roster, but Guild Member access is currently on hold. Ask an Olympus officer to check your access.`,[reference]);
       else if (outcome === "misconfigured") await logLine(env, `⚠️ roster: ROLE_GUILD_MEMBER is not a role of this server; no Guild Member granted for **${name}**.`,[reference]);
       else if (outcome === "unverified" || outcome === "budget") await audit(env, "system", "role.deferred", name, { discordId, source: "promote", reason: outcome },reference);
       else if (outcome === "banned") await audit(env, "system", "role.refused_banned", name, { discordId },reference);
       }
     } catch (e) {
+      roleOutcome='unknown';
       await audit(env, "system", "role.add_failed", name, { discordId, error: String(e) },reference);
       if(!deferCronRole)await logLine(env, `⚠️ roster: could not grant Guild Member to <@${discordId}> for **${name}**: ${explainDiscordError(e)}`,[reference]);
     }
   }
   if (env.SET_NICKNAME === "true") {
-    if(!(await env.DB.prepare(`SELECT (${privacyGenerationFenceSql(1,2)}) AS current`).bind(discordId,capture?.subjectGeneration??null).first<{current:number}>())?.current)return;
+    if(!(await env.DB.prepare(`SELECT (${privacyGenerationFenceSql(1,2)}) AS current`).bind(discordId,capture?.subjectGeneration??null).first<{current:number}>())?.current)return roleOutcome;
     try {
       await setNickname(env, discordId, name.slice(0, 32));
     } catch (e) {
@@ -1151,9 +1156,10 @@ async function afterPromotion(env: Env, discordId: string, name: string, batch?:
     }
   }
   await audit(env, "system", "roster.member", name, { discordId, roleGranted: granted, roleBlocked: blocked },reference);
-  if(deferCronRole)return; // the original claim retains the cron welcome/log; attended and manual behavior is unchanged
+  if(deferCronRole)return roleOutcome; // the original claim retains the cron welcome/log; attended and manual behavior is unchanged
   await logLine(env, `➕ roster: **${name}** (<@${discordId}>) confirmed on the roster${granted ? " — Guild Member granted" : deferCronRole ? " — Guild Member pending the central role sweep" : ""}.`,[reference]);
   await notify(env, discordId, `Welcome to Olympus — **${name}** is on the guild roster.`, "welcome", batch,capture);
+  return roleOutcome;
 }
 
 // ---------- the member effects as a worklist (.115, third review round; Codex, 3 Oct 2026 16:48 UTC, finding A) ----------

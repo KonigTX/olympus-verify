@@ -120,6 +120,21 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .230 reverses only this exact native membership access release note.
+  const release230 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".230\", date: \"2026-11-05\", lines: [",
+    "      \"Verification reports confirmed membership separately from Guild Member access and shows when access is on hold.\",",
+    "      \"A fresh in-game verification can restore missing Guild Member access after the launch access checks pass.\",",
+    "      \"Discord verification instructions name OLYMPUS PRIME and direct members to their current account instructions or an officer for help.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .230 prepend occurs once', originalNews.split(release230).length === 2);
+  originalNews = originalNews.replace(release230, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+
   // .229 reverses only this exact launch operations release note.
   const release229 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

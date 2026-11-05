@@ -8,6 +8,8 @@
 #   bash scripts/deploy-commit.sh <commit> --dry-run [--outdir <dir>]   # bundle only, nothing uploaded
 #   bash scripts/deploy-commit.sh <commit> --target privacy-floor    # a fixed private service from the same archive
 #   bash scripts/deploy-commit.sh <commit> --tag <tree> --message <bundle-sha256> --bind-source-tree
+#   bash scripts/deploy-commit.sh <commit> --keep-vars --tag <tree> --message <bundle-sha256> --shared-member230-mode close-only
+#   bash scripts/deploy-commit.sh <commit> --keep-vars --tag <tree> --message <bundle-sha256> --shared-member230-mode enabled --shared-member230-closure <ordinary-file>
 #
 # Targets select only the five checked-in configurations below; no caller config, name, environment or arbitrary
 # variable is accepted. Source-tree bindings are derived from the selected commit, never embedded in their own
@@ -29,6 +31,9 @@ tag=""
 message=""
 bind_source_tree=""
 keep_vars=""
+shared_member230_mode=""
+shared_member230_closure=""
+shared_member230_recovery=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --dry-run) dry_run=1; shift ;;
@@ -47,6 +52,17 @@ while [ "$#" -gt 0 ]; do
     --bind-source-tree)
       [ -z "$bind_source_tree" ] || { echo "refusing: --bind-source-tree cannot repeat" >&2; exit 1; }
       bind_source_tree=1; shift ;;
+    --shared-member230-mode)
+      [ -z "$shared_member230_mode" ] && { [ "${2:-}" = close-only ] || [ "${2:-}" = enabled ]; } || { echo "refusing: --shared-member230-mode needs close-only or enabled and cannot repeat" >&2; exit 1; }
+      shared_member230_mode="$2"; shift 2 ;;
+    --shared-member230-closure)
+      [ -z "$shared_member230_closure" ] && [ -n "${2:-}" ] || { echo "refusing: --shared-member230-closure needs one ordinary file and cannot repeat" >&2; exit 1; }
+      case "$2" in -*) echo "refusing: --shared-member230-closure needs an ordinary file" >&2; exit 1 ;; esac
+      shared_member230_closure="$2"; shift 2 ;;
+    --shared-member230-recovery)
+      [ -z "$shared_member230_recovery" ] && [ -n "${2:-}" ] || { echo "refusing: --shared-member230-recovery needs one ordinary plan file and cannot repeat" >&2; exit 1; }
+      case "$2" in -*) echo "refusing: --shared-member230-recovery needs an ordinary plan file" >&2; exit 1 ;; esac
+      shared_member230_recovery="$2"; shift 2 ;;
     --outdir)
       [ -n "${2:-}" ] || { echo "refusing: --outdir needs a directory" >&2; exit 1; }
       case "$2" in -*) echo "refusing: --outdir needs a directory" >&2; exit 1 ;; esac
@@ -75,6 +91,11 @@ if [ -n "$bind_source_tree" ]; then
   [ -n "$source_binding" ] || { echo "refusing: this target has no source-tree binding" >&2; exit 1; }
   [ "$target" != main ] || [ -n "$tag" ] || { echo "refusing: a main source-tree binding requires the release annotations" >&2; exit 1; }
 fi
+if [ -n "$shared_member230_mode" ] || [ -n "$shared_member230_closure" ] || [ -n "$shared_member230_recovery" ]; then
+  [ "$target" = main ] && [ -n "$shared_member230_mode" ] && [ -n "$keep_vars" ] && [ -n "$tag" ] && [ -n "$message" ] && [ -z "$bind_source_tree" ] || { echo "refusing: shared-member230 requires main, --keep-vars and exact tag/message; no source-tree binding or arbitrary delta" >&2; exit 1; }
+  [ "$shared_member230_mode" != enabled ] || [ -n "$shared_member230_closure" ] || { echo "refusing: enabled shared-member230 requires its original closure file" >&2; exit 1; }
+  [ -z "$shared_member230_recovery" ] || { [ "$shared_member230_mode" = close-only ] && [ -z "$shared_member230_closure" ]; } || { echo "refusing: shared-member230 recovery is close-only and cannot combine with a closure" >&2; exit 1; }
+fi
 sha="$(git rev-parse --verify "$commit^{commit}")"
 source_tree="$(git rev-parse --verify "$sha^{tree}")"
 [ -z "$tag" ] || [ "$tag" = "$source_tree" ] || { echo "refusing: --tag does not equal the selected commit's tree" >&2; exit 1; }
@@ -97,7 +118,6 @@ args=(deploy --config "$tmp/worker/$config")
 [ -z "$outdir" ] || args+=(--outdir "$outdir")
 [ -z "$tag" ] || args+=(--tag "$tag" --message "$message")
 [ -z "$bind_source_tree" ] || args+=(--var "$source_binding:$source_tree")
-echo "Deploying commit $sha${dry_run:+ (dry run)} from a clean export ($tmp): wrangler ${args[*]}"
 # The archived profile qualifies the caller's ordinary physical install before any Wrangler process or upload.
 # A retired refusal stub, another lock graph or implicit npx resolution cannot supply release authority.
 checker="$tmp/scripts/check-deploy-toolchain.cjs"
@@ -106,4 +126,14 @@ if [ ! -f "$checker" ]; then
   checker="$(pwd -P)/scripts/check-deploy-toolchain.cjs"
 fi
 cli="$(node "$checker" "$tmp" "$(pwd -P)" "$sha" "$source_tree")"
+if [ -n "$shared_member230_mode" ]; then
+  shared_checker="$tmp/scripts/check-shared-member230-deploy.cjs"
+  [ -f "$shared_checker" ] || { echo "refusing: this archive has no qualified shared-member230 selector" >&2; exit 1; }
+  shared_vars="$(node "$shared_checker" "$tmp" "$(pwd -P)" "$sha" "$source_tree" "$shared_member230_mode" "$message" "${shared_member230_closure:---none}" "${shared_member230_recovery:---none}")"
+  while IFS= read -r binding; do
+    [ -n "$binding" ] || { echo "refusing: empty shared-member230 binding" >&2; exit 1; }
+    args+=(--var "$binding")
+  done <<< "$shared_vars"
+fi
+echo "Deploying commit $sha${dry_run:+ (dry run)} from a clean export ($tmp): wrangler ${args[*]}"
 ( cd worker && node "$cli" "${args[@]}" )

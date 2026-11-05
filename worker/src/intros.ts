@@ -19,6 +19,7 @@ import type { Env } from "./env";
 import { activeRulesetSnapshot, rulesetDecidedText, rulesetLabel, type RulesetSnapshot } from "./ruleset-profile";
 import { audit, now } from "./db";
 import { DiscordError, EPHEMERAL, explainDiscordError, json, option, reply, rest, subcommand, userOf, type Interaction } from "./discord";
+import { FLAGSHIP_GUILD_NAME } from "./guild-affiliation229";
 
 export const INTROS_COMMAND = "olympus-intros";
 
@@ -76,7 +77,7 @@ export const LINK_HOSTS = [
 ];
 
 const LEGACY_GUIDE_INVITE = "You can request a guild invite this way before joining.";
-const IN_GAME_GUIDE_INVITE = "Ask an Olympus officer for an in-game invite first. The website invite queue is paused.";
+const IN_GAME_GUIDE_INVITE = `Ask an ${FLAGSHIP_GUILD_NAME} officer for an in-game invite first. The website invite queue is paused.`;
 
 export const INTROS: Intro[] = [
   {
@@ -84,15 +85,15 @@ export const INTROS: Intro[] = [
     channel: "olympus-info",
     embeds: [
       {
-        title: "Olympus — Asmongold's guild in World of Warcraft: Forever",
+        title: `${FLAGSHIP_GUILD_NAME} — Asmongold's guild in World of Warcraft: Forever`,
         color: GOLD,
         description: [
-          "Olympus guild direction: **{ruleset-label}**.",
+          `${FLAGSHIP_GUILD_NAME} guild direction: **{ruleset-label}**.`,
           "",
           "**Get into the guild channels**",
           "1. Read the server rules in {#server-rules}; they apply here too.",
           `2. Follow the pinned guide in {#join-olympus}: get a code and send the shown line from your character in game. ${LEGACY_GUIDE_INVITE} The member channels open after the bot confirms your character on the officer-exported guild roster and the access checks pass.`,
-          "3. In Olympus 2 or a later Olympus guild? Chat in {#olympus-visitors}; only the main guild is verified here.",
+          `3. In Olympus 2 or a later Olympus guild? Chat in {#olympus-visitors}; only ${FLAGSHIP_GUILD_NAME} is verified here.`,
           "",
           "**Good to know**",
           "• Access updates appear in {#olympus-notices}; the bot never DMs you.",
@@ -109,7 +110,7 @@ export const INTROS: Intro[] = [
           // Evergreen Stage 2 (4 Nov 2026): the window closed on 3 November, so the field is a dated record, true either side of launch.
           { name: "Early name reservation", value: "October 27 – November 3, 2026 (closed). North America opened October 27 at 1:00 p.m. PDT (20:00 UTC); other regions had separate hours. A Skyborne Heroic Pack, Skyborne Epic Pack or Warcraft Forever Collection purchase was required on that WoW account. Up to three characters total across all Rulesets, first come, first served. A name on our guild planning list does not reserve it in the game." },
           { name: "First new raids", value: "Unlock December 9, 2026." },
-          { name: "Olympus ruleset", value: "{ruleset-ruleset} · {ruleset-faction} ({ruleset-decided}). Forever is realmless: choose the guild's ruleset and region, rather than a traditional realm." },
+          { name: `${FLAGSHIP_GUILD_NAME} ruleset`, value: "{ruleset-ruleset} · {ruleset-faction} ({ruleset-decided}). Forever is realmless: choose the guild's ruleset and region, rather than a traditional realm." },
           { name: "New in Forever", value: "The Skyborne race (Zephras Isle), Mount Hyjal, Shen'dralas and Riverglades, nine new dungeons, the Hyjal Summit (20-player) and Barrow Deeps (10-player) raids, the Darkspear Islands 15 vs 15 battleground, Legacy progression for alts, camping and opt-in transmog." },
         ],
         footer: { text: "Official schedule and ruleset announcements checked October 26, 2026. Announcements are not observed game-state proof." },
@@ -155,7 +156,7 @@ export const INTROS: Intro[] = [
     embeds: [{
       title: "Olympus visitors",
       color: GOLD,
-      description: "For Olympus 2 and later, and for anyone curious about Olympus. Only the main Olympus guild is verified in {#join-olympus}.\nThe server rules apply: no recruitment spam, gold or account sales, or boosting ads.",
+      description: `For Olympus 2 and later, and for anyone curious about Olympus. Only ${FLAGSHIP_GUILD_NAME} is verified in {#join-olympus}.\nThe server rules apply: no recruitment spam, gold or account sales, or boosting ads.`,
     }],
   },
   {
@@ -164,7 +165,7 @@ export const INTROS: Intro[] = [
     embeds: [{
       title: "Guild announcements",
       color: GOLD,
-      description: "News from Olympus leadership.\nOlympus guild direction: **{ruleset-label}**.\n**Ruleset: {ruleset-ruleset} · Faction: {ruleset-faction}** ({ruleset-decided}).\nRaid notices are in {#raid-announcements}. React to acknowledge; questions go to {#guild-chat}.",
+      description: `News from ${FLAGSHIP_GUILD_NAME} leadership.\n${FLAGSHIP_GUILD_NAME} guild direction: **{ruleset-label}**.\n**Ruleset: {ruleset-ruleset} · Faction: {ruleset-faction}** ({ruleset-decided}).\nRaid notices are in {#raid-announcements}. React to acknowledge; questions go to {#guild-chat}.`,
     }],
   },
   {
@@ -354,7 +355,7 @@ export const INTROS: Intro[] = [
       title: "Guild officer coordination",
       color: GOLD,
       description: [
-        "Day-to-day coordination for Olympus I officers. Use {#council-chat} for coordination across Olympus I–X and {#council-decisions} for short agreed notes.",
+        `Day-to-day coordination for ${FLAGSHIP_GUILD_NAME} officers. Use {#council-chat} for coordination across Olympus I–X and {#council-decisions} for short agreed notes.`,
         "",
         "Keep decisions factual and record operational actions in the existing guild tools. Flag any unresolved hand-off so another officer can follow it up.",
         "",

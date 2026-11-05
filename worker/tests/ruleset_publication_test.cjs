@@ -147,7 +147,7 @@ async function fixture(generation=null,over={}){
  f=await fixture(g);s=await f.select();f.effectHook=async()=>{await f.env.DB.batch(data.rulesetPublicationEraseStatements(f.env,ADMIN));await f.run('DELETE FROM site_users WHERE discord_id=?',ADMIN);await f.run("UPDATE privacy_subjects SET state='retired',revision=2,erased_at=?,retain_until=? WHERE subject_id=?",T,T+366*86400,ADMIN);};
  r=await f.request('POST','/publish',{publicationId:s.data.publicationId,target:'guide'});const erased=f.db.prepare("SELECT * FROM ruleset_publications WHERE target_key='guide'").get();
  check('erase during actual POST preserves late exact pointer without actor/session resurrection',r.status===200&&r.data.state==='held'&&erased.message_id&&erased.actor===null&&erased.actor_generation===null&&erased.session_version===null&&f.effects===1,{response:r,state:erased.state,messageId:erased.message_id,actor:erased.actor,incarnation:erased.actor_account_incarnation});
- check('erasure retains independent approved guild payload, not personal content',erased.frozen_payload.includes('Olympus guild direction:')&&JSON.stringify(JSON.parse(erased.frozen_payload).embeds)===JSON.stringify(load('guide').guideMessage(f.env,profile.currentRulesetProfile()).embeds)&&!erased.frozen_payload.includes(ADMIN));
+ check('erasure retains independent approved guild payload, not personal content',erased.frozen_payload.includes('OLYMPUS PRIME guild direction:')&&JSON.stringify(JSON.parse(erased.frozen_payload).embeds)===JSON.stringify(load('guide').guideMessage(f.env,profile.currentRulesetProfile()).embeds)&&!erased.frozen_payload.includes(ADMIN));
  f=await fixture(g);s=await f.select();f.getHook=async()=>await f.run('UPDATE site_users SET session_version=2 WHERE discord_id=?',ADMIN);r=await f.request('POST','/publish',{publicationId:s.data.publicationId,target:'guide'});check('original session revoked across provider GET refuses before write',r.status!==200&&f.effects===0);
  for(const mode of ['retiring','generation','absence','destination','payload','selection','nonce']){
   f=await fixture(mode==='absence'?null:g);s=await f.select();f.getHook=async()=>{
@@ -195,8 +195,9 @@ async function fixture(generation=null,over={}){
   VERIFY_NATIVE_SCOPE:JSON.stringify({version:1,guild:'Olympus',realm:'Fixture Live Realm'})});
  const strictCopy=payload=>{
   const text=payload?.embeds?.[0]?.description??'';
-  return text.includes('Ask an Olympus officer for an in-game invite')&&text.includes('The website invite queue is paused')
-   &&text.includes('Once your character is in the main Olympus guild')&&text.includes('Get my code')&&text.includes('paste the shown line')
+  return text.includes('Ask an OLYMPUS PRIME officer for an in-game invite')&&text.includes('The website invite queue is paused')
+   &&text.includes('Once your character is in OLYMPUS PRIME')&&text.includes('Get my code')&&text.includes('paste the shown line')
+   &&text.includes('current instructions')&&!text.includes('can restore a missing role')
    &&!text.includes('enters the queue')&&payload.components[0].components.some(button=>button.custom_id==='guide:verify');
  };
  const strictSelection=await strictGuide.select();
@@ -204,7 +205,7 @@ async function fixture(generation=null,over={}){
  const strictInfo=infoDescription(strictGuide);
  check('managed intro changes only the invite instruction in strict mode, preserving legacy and the code flow',
   legacyInfo.includes('You can request a guild invite this way before joining.')
-  &&strictInfo===legacyInfo.replace('You can request a guild invite this way before joining.','Ask an Olympus officer for an in-game invite first. The website invite queue is paused.')
+  &&strictInfo===legacyInfo.replace('You can request a guild invite this way before joining.','Ask an OLYMPUS PRIME officer for an in-game invite first. The website invite queue is paused.')
   &&strictInfo.includes('get a code and send the shown line from your character in game')&&strictGuide.effects===0,strictInfo);
  check('strict managed guide freezes in-game invite and real verification instructions before any effect',
   strictSelection.status===200&&strictCopy(frozenGuide)&&strictGuide.effects===0,frozenGuide?.embeds?.[0]?.description);

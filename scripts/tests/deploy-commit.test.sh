@@ -17,6 +17,12 @@ trap 'rm -rf -- "$fake"' EXIT
 export REAL_NODE="$(command -v node)"
 cat > "$fake/node" <<'EOF'
 #!/usr/bin/env bash
+if [ -n "${FAKE_CALLER_ROOT_OVERRIDE:-}" ]; then
+  case "${1:-}" in
+    */check-deploy-toolchain.cjs|*/check-shared-member230-deploy.cjs)
+      args=("$@"); args[2]="$FAKE_CALLER_ROOT_OVERRIDE"; exec "$REAL_NODE" "${args[@]}" ;;
+  esac
+fi
 case "${1:-}" in *wrangler-dist*cli.js) shift ;; *) exec "$REAL_NODE" "$@" ;; esac
 printf '%s\n' "--no-install wrangler $*" >> "$FAKE_LOG"
 printf '%s\n' "$@" > "$FAKE_ARGV"
@@ -109,6 +115,90 @@ for bad in '--target' '--target unknown' '--target ../wrangler.toml' '--target m
   # shellcheck disable=SC2086
   rc="$(run HEAD --dry-run $bad)"
   check "'$bad' is refused before wrangler runs" $([ "$rc" -ne 0 ] && [ "$(calls)" -eq 0 ] && grep -q refusing "$fake/err" && echo 0 || echo 1)
+done
+
+# New Build230 form is exercised from a genuine small Git archive of the actual
+# edited source/parser/checker. The physical toolchain check remains real; only
+# its caller-root path is redirected to this qualified ordinary installed tree.
+# No product commit/checkout movement, dependency install or provider invocation.
+candidate="$fake/shared230"
+mkdir -p "$candidate/scripts" "$candidate/worker/src"
+printf '* -text\n' > "$candidate/.gitattributes"
+for file in scripts/deploy-commit.sh scripts/check-deploy-toolchain.cjs scripts/deploy-toolchain-profile.json scripts/check-shared-member230-deploy.cjs worker/wrangler.toml worker/package-lock.json worker/src/shared-membership-cutover230.ts worker/src/privacy-shared-member-recovery230.ts; do
+  cp -- "$here/$file" "$candidate/$file"
+done
+git init -q --initial-branch=fixture "$candidate"
+git -C "$candidate" -c core.autocrlf=false add .
+git -C "$candidate" -c user.name='Synthetic deployment fixture' -c user.email='fixture@invalid' -c commit.gpgsign=false commit -qm 'Synthetic archive for bounded deploy contract'
+candidate_sha="$(git -C "$candidate" rev-parse HEAD)"
+candidate_tree="$(git -C "$candidate" rev-parse HEAD^{tree})"
+candidate_run() { : > "$FAKE_LOG"; env -u CLOUDFLARE_ENV -u WRANGLER_ENV FAKE_CALLER_ROOT_OVERRIDE="$here" bash "$candidate/scripts/deploy-commit.sh" "$candidate_sha" "$@" > "$fake/out" 2> "$fake/err"; echo $?; }
+closure="$fake/closure.json"
+node - "$candidate_sha" "$candidate_tree" "$bundle" "$closure" <<'NODE'
+const fs=require('node:fs');const [commit,tree,bundle,file]=process.argv.slice(2),at=Math.floor(Date.now()/1000)-1;
+fs.writeFileSync(file,JSON.stringify({version:1,contract:'olympus-shared-member-230-v1',operationId:'c'.repeat(32),priorEpoch:'a'.repeat(32),writeEpoch:'b'.repeat(32),sourceCommit:commit,sourceTree:tree,bundleSHA256:bundle,providerA:'11111111-2222-4333-8444-555555555555',writerCoverageSHA256:'1'.repeat(64),debtPredicateSHA256:'2'.repeat(64),createdAt:at,expiresAt:at+300}),{flag:'wx'});
+NODE
+rc="$(candidate_run --dry-run --keep-vars --tag "$candidate_tree" --message "$bundle" --shared-member230-mode close-only)"
+check "Build230 A close-only emits only fixed MODE, preserving Eold and dormant bindings" $([ "$rc" -eq 0 ] && [ "$(calls)" -eq 1 ] && [ "$(grep -c '^--var$' "$FAKE_ARGV")" -eq 1 ] && grep -Fxq 'SHARED_MEMBERSHIP230_MODE:close-only' "$FAKE_ARGV" && ! grep -q 'PRIVACY_SERVING_SOURCE_TREE:' "$FAKE_ARGV" && echo 0 || echo 1)
+for mode in enabled close-only; do
+  rc="$(candidate_run --dry-run --keep-vars --tag "$candidate_tree" --message "$bundle" --shared-member230-mode "$mode" --shared-member230-closure "$closure")"
+  check "Build230 $mode exact closure emits only four fixed bindings" $([ "$rc" -eq 0 ] && [ "$(calls)" -eq 1 ] && [ "$(grep -c '^--var$' "$FAKE_ARGV")" -eq 4 ] && grep -Fxq "SHARED_MEMBERSHIP230_MODE:$mode" "$FAKE_ARGV" && grep -Fxq "SHARED_MEMBERSHIP230_CLOSURE_JSON:$(cat "$closure")" "$FAKE_ARGV" && grep -Fxq "PRIVACY_WRITE_ADMISSION_EPOCH:$(printf 'b%.0s' {1..32})" "$FAKE_ARGV" && ! grep -q 'PRIVACY_SERVING_SOURCE_TREE:' "$FAKE_ARGV" && echo 0 || echo 1)
+done
+for bad in '--shared-member230-mode' '--shared-member230-mode off' '--shared-member230-mode arbitrary' '--shared-member230-mode close-only --shared-member230-mode close-only' '--shared-member230-mode enabled' '--shared-member230-closure' '--shared-member230-closure arbitrary' '--shared-member230-mode close-only --bind-source-tree' '--shared-member230-mode close-only --target privacy-floor' '--shared-member230-mode close-only --target privacy-operator' '--shared-member230-mode close-only --var OTHER:value'; do
+  # Fixed deliberate token lists, no eval.
+  # shellcheck disable=SC2086
+  rc="$(candidate_run --dry-run --keep-vars --tag "$candidate_tree" --message "$bundle" $bad)"
+  check "new variant '$bad' stops before Wrangler" $([ "$rc" -ne 0 ] && [ "$(calls)" -eq 0 ] && grep -q refusing "$fake/err" && echo 0 || echo 1)
+done
+rc="$(candidate_run --dry-run --tag "$candidate_tree" --message "$bundle" --shared-member230-mode close-only)"
+check "new variant without keep-vars refuses" $([ "$rc" -ne 0 ] && [ "$(calls)" -eq 0 ] && echo 0 || echo 1)
+rc="$(candidate_run --dry-run --keep-vars --shared-member230-mode close-only)"
+check "new variant without exact metadata refuses" $([ "$rc" -ne 0 ] && [ "$(calls)" -eq 0 ] && echo 0 || echo 1)
+rc="$(candidate_run --dry-run --keep-vars --tag "$candidate_tree" --message "$bundle" --shared-member230-mode enabled --shared-member230-closure "$closure" --shared-member230-closure "$closure")"
+check "repeated closure refuses" $([ "$rc" -ne 0 ] && [ "$(calls)" -eq 0 ] && echo 0 || echo 1)
+rc="$(candidate_run --dry-run --keep-vars --tag "$candidate_tree" --message "$bundle" --shared-member230-mode enabled --shared-member230-closure "$candidate")"
+check "directory closure refuses without reading it" $([ "$rc" -ne 0 ] && [ "$(calls)" -eq 0 ] && echo 0 || echo 1)
+for change in sourceCommit sourceTree bundleSHA256 expired future extra-key noncanonical non-string; do
+  altered="$fake/closure-$change.json"
+  node - "$closure" "$altered" "$change" <<'NODE'
+const fs=require('node:fs'),[input,output,change]=process.argv.slice(2),c=JSON.parse(fs.readFileSync(input,'utf8')),now=Math.floor(Date.now()/1000);let suffix='';
+if(['sourceCommit','sourceTree','bundleSHA256'].includes(change))c[change]='0'.repeat(c[change].length);
+if(change==='expired'){c.createdAt=now-300;c.expiresAt=now;}
+if(change==='future'){c.createdAt=now+60;c.expiresAt=c.createdAt+300;}
+if(change==='extra-key')c.roleId='1552077551839617104';
+if(change==='noncanonical')suffix='\n';
+if(change==='non-string')c.sourceCommit=[c.sourceCommit];
+fs.writeFileSync(output,JSON.stringify(c)+suffix,{flag:'wx'});
+NODE
+  rc="$(candidate_run --dry-run --keep-vars --tag "$candidate_tree" --message "$bundle" --shared-member230-mode enabled --shared-member230-closure "$altered")"
+  check "closure $change drift refuses before Wrangler" $([ "$rc" -ne 0 ] && [ "$(calls)" -eq 0 ] && grep -q refusing "$fake/err" && echo 0 || echo 1)
+done
+
+recovery="$fake/recovery.json"
+node - "$candidate_sha" "$candidate_tree" "$bundle" "$recovery" <<'NODE'
+const fs=require('node:fs'),[commit,tree,bundle,file]=process.argv.slice(2),at=Math.floor(Date.now()/1000)-1;
+fs.writeFileSync(file,JSON.stringify({version:1,contract:'olympus-shared-member-230-off-recovery-v1',operationId:'d'.repeat(32),sourceCommit:commit,sourceTree:tree,bundleSHA256:bundle,expectedSourceTuple:JSON.stringify([1,'olympus-write-admission-epoch-2','a'.repeat(32),'closed',0,'','',7,9]),writeEpoch:'e'.repeat(32),createdAt:at,expiresAt:at+300}),{flag:'wx'});
+NODE
+rc="$(candidate_run --dry-run --keep-vars --tag "$candidate_tree" --message "$bundle" --shared-member230-mode close-only --shared-member230-recovery "$recovery")"
+check "OFF recovery emits exactly MODE+fresh EPOCH, preserving old closure pins" $([ "$rc" -eq 0 ] && [ "$(calls)" -eq 1 ] && [ "$(grep -c '^--var$' "$FAKE_ARGV")" -eq 2 ] && grep -Fxq 'SHARED_MEMBERSHIP230_MODE:close-only' "$FAKE_ARGV" && grep -Fxq "PRIVACY_WRITE_ADMISSION_EPOCH:$(printf 'e%.0s' {1..32})" "$FAKE_ARGV" && ! grep -q 'CLOSURE_' "$FAKE_ARGV" && echo 0 || echo 1)
+rc="$(candidate_run --dry-run --keep-vars --tag "$candidate_tree" --message "$bundle" --shared-member230-mode enabled --shared-member230-closure "$closure" --shared-member230-recovery "$recovery")"
+check "recovery never combines with enabled/closure" $([ "$rc" -ne 0 ] && [ "$(calls)" -eq 0 ] && echo 0 || echo 1)
+rc="$(candidate_run --dry-run --keep-vars --tag "$candidate_tree" --message "$bundle" --shared-member230-mode close-only --shared-member230-recovery "$recovery" --shared-member230-recovery "$recovery")"
+check "recovery flag cannot repeat" $([ "$rc" -ne 0 ] && [ "$(calls)" -eq 0 ] && echo 0 || echo 1)
+for change in sourceCommit sourceTree bundleSHA256 expired future extra-key same-epoch active-tuple; do
+  altered="$fake/recovery-$change.json"
+  node - "$recovery" "$altered" "$change" <<'NODE'
+const fs=require('node:fs'),[input,output,change]=process.argv.slice(2),p=JSON.parse(fs.readFileSync(input,'utf8')),now=Math.floor(Date.now()/1000);
+if(['sourceCommit','sourceTree','bundleSHA256'].includes(change))p[change]='0'.repeat(p[change].length);
+if(change==='expired'){p.createdAt=now-300;p.expiresAt=now;}
+if(change==='future'){p.createdAt=now+60;p.expiresAt=p.createdAt+300;}
+if(change==='extra-key')p.mode='enabled';
+if(change==='same-epoch')p.writeEpoch=JSON.parse(p.expectedSourceTuple)[2];
+if(change==='active-tuple'){const t=JSON.parse(p.expectedSourceTuple);t[4]=1;p.expectedSourceTuple=JSON.stringify(t);}
+fs.writeFileSync(output,JSON.stringify(p),{flag:'wx'});
+NODE
+  rc="$(candidate_run --dry-run --keep-vars --tag "$candidate_tree" --message "$bundle" --shared-member230-mode close-only --shared-member230-recovery "$altered")"
+  check "OFF recovery $change drift refuses before Wrangler" $([ "$rc" -ne 0 ] && [ "$(calls)" -eq 0 ] && grep -q refusing "$fake/err" && echo 0 || echo 1)
 done
 
 echo

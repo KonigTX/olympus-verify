@@ -78,6 +78,13 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".230", date: "2026-11-05", lines: [
+      "Verification reports confirmed membership separately from Guild Member access and shows when access is on hold.",
+      "A fresh in-game verification can restore missing Guild Member access after the launch access checks pass.",
+      "Discord verification instructions name OLYMPUS PRIME and direct members to their current account instructions or an officer for help.",
+    ],
+  },
+  {
     build: ".229", date: "2026-11-05", lines: [
       "OLYMPUS PRIME is the flagship. Legacy Olympus and Olympus I names remain recognized without changing signed records.",
       "Staff can scan native roster recommendations for Knight promotions, verified Initiates and advisory space review. Each promotion needs a fresh check and an attended click.",
