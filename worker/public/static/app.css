@@ -1002,6 +1002,9 @@ html[data-stream-shield="on"] main.shell,html[data-stream-shield="on"] #app>.not
 .beta-epoch-figures{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px 12px}
 .beta-epoch-figures dd{margin:0;color:var(--gold-soft);overflow-wrap:anywhere}
 @media(max-width:370px){.topbar-in{gap:8px}.topbar-actions{gap:6px}.beta-epoch-figures{grid-template-columns:1fr}.beta-epoch-figures dd{margin-bottom:8px}}
+@media (max-width: 180px) {
+  .brand { gap: 6px; }
+}
 @media(forced-colors:active){.stream-shield-toggle[aria-pressed="true"]{outline:3px solid Highlight;box-shadow:none}.stream-shield-toggle[aria-pressed="true"] .ico{filter:none}}
 
 /* .199: one rank guide and a five-column crosswalk; long office names remain readable at 320px. */

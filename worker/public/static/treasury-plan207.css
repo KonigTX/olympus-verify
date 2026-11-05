@@ -107,6 +107,10 @@
   .tp207-actions > .btn { width: 100%; }
   .tp207-bars li { grid-template-columns: 2.8rem minmax(0, 1fr) 5.8rem; font-size: .7rem; }
 }
+@media (max-width: 180px) {
+  .tp207-bars li { grid-template-columns: minmax(0, 1fr); }
+  .tp207-bars li > :last-child { text-align: left; }
+}
 @media print {
   .treasury-plan207 { max-width: none; color: #111; font-size: 10pt; line-height: 1.4; }
   .treasury-plan207 :is(.tp207-hero, .tp207-member-summary, .tp207-calculator, .tp207-chapter, .tp207-metric, .tp207-result, .tp207-rule, .tp207-model-note, .tp207-warning, .tp207-gift) { color: #111; background: white; box-shadow: none; border-color: #777; }
