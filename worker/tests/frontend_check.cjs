@@ -1015,7 +1015,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   o2.answer(null); o2.hold(null);
   // (b) the same after a readback replaced the rows: the controls stay, nothing adopted
   await reloadEvent();
-  const originalPicker = picks()[1];
+  const originalPickers = picks();
   let releaseContext, contextHeld = false, contextDelivered = false, refusals = 0;
   const contextGate = new Promise(resolve => { releaseContext = resolve; });
   o2.answer((p) => p === "/api/community/events/decide" && refusals++ === 0 ? status403() : null);
@@ -1032,8 +1032,11 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   const staleContextHeld = await waitFor(() => contextHeld, "the held context refresh", 8000);
   (await fixtureRun("UPDATE community_event_signups SET decision_revision = decision_revision + 1 WHERE event_id = ?", EVENT));
   picks()[1].value = "bench"; saves()[1].click(); // a definite refusal: its readback replaces the rows
-  const contextRowsReplaced = await waitFor(() => picks().length === 2 && picks()[1] !== originalPicker
-    && seen().includes("Not decided."), "the readback that replaces the rows", 8000);
+  const contextRowsReplaced = await waitFor(() => {
+    const currentPickers = picks();
+    return currentPickers.length === originalPickers.length && currentPickers[1] !== originalPickers[1]
+      && seen().includes("Not decided.");
+  }, "the readback that replaces the rows", 8000);
   releaseContext();
   await settle(); await settle();
   check("F4b.1 follow-up: a changed context reply arriving after the rows were replaced adopts nothing: the controls stay and the Calendar tab stays", staleContextHeld && contextRowsReplaced && contextDelivered && calendarTab() && picks().length >= 2 && saves().length >= 2);
@@ -2051,7 +2054,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     check("  Admin → News while off: the tab, the switch's state, that nothing can be posted, the form locked", texts(adm6.app, 'nav[aria-label="Admin sections"] a').includes("News") && adm6.app.textContent.includes("News is switched off (Admin → Settings); notices cannot be posted while it is off.") && byText(adm6.app, "button", "Post notice").disabled === true && adm6.app.querySelector("#f-news-title").disabled === true);
     await adm6.go("#/admin/settings");
     await waitFor(() => !!adm6.app.querySelector("#news-on"), "the News switch");
-    check("  Admin → Settings has the News switch beside the others, unticked", adm6.app.querySelector("#news-on").checked === false && adm6.app.textContent.includes("News page: guild members and site administrators can read Community → News"));
+    check("  Admin → Settings has the Town Crier switch beside the others, unticked", adm6.app.querySelector("#news-on").checked === false && adm6.app.textContent.includes("Town Crier: guild members and site administrators can read the dispatches"));
     adm6.app.querySelector("#news-on").checked = true;
     byText(adm6.app, "button", "Save settings").click();
     await waitFor(() => (one("SELECT value FROM site_settings WHERE key = 'newsOn'") || {}).value === "1", "the switch saved");
@@ -2889,7 +2892,7 @@ function originalTerms218(terms) {
         && digest(require("../../scripts/governance-cabinet224-inverse.cjs").restoreCabinet224(model.nodes,"nodes").filter(node => !["trading","security","concordat","propaganda","systems-heraldry"].includes(node.id)).map(node=>node.id==="intake"?{...node,parent:"heraldry"}:node.id==="systems"?JSON.parse(fs.readFileSync(path.join(root,"../docs/governance-nodes222.json"),"utf8")).systemsBefore:node)) === "62fd12faf62b8529a8679a80a1ee278e2422048502c01738ac2fe7286c677ddf"
         && digest(require("../../scripts/governance-cabinet224-inverse.cjs").restoreCabinet224(model.officeMandates,"officeMandates").filter(office => !["trading","security","concordat","propaganda","systems-heraldry"].includes(office.nodeId))) === "ae968c007def93478c0bfac5e51169f9a3f4bd62d7abddaaa624210aa267ae2c"
         && digest(originalTerms218(model.terms.slice(0, 95))) === "74fb4f44153a550b7b306789763e73932393e96124d781572c6d2db5c9b87d3b"
-        && model.book.bytes === 273549 && model.book.sha256 === "b159f28edc74892fe37732200e05ef118162b7db8cfd6b19721e5ce3889709cd"
+        && model.book.bytes === 273554 && model.book.sha256 === "99115d9f4a7320e0f24177be1f5d29271719099f7dcffb9894759b1ce80672ac"
         && model.appointments.length === 139 && new Set(model.appointments.map(row => row.key)).size === 139 && model.councilComposition.currentSeats.length === 14
         && nodes.get("systems-heraldry").parent === "council" && model.appointments.some(office => office.key === "office_103" && office.nativeSlot === 1 && office.applicationEligible === false && office.mappingApplies === false)
         && trading.officeKey === "office_96" && trading.ordinal === 96 && trading.label === "Lord High Factor · Minister of Trading & Markets" && trading.tier === "high_council" && trading.nativeSlot === 1 && trading.applicationEligible === false && trading.mappingApplies === false;

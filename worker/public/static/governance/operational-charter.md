@@ -54,7 +54,7 @@ The established dues rule is one gold weekly, a fourteen-day new-member exemptio
 
 A requisition names the purpose, item or amount, event or beneficiary category, responsible requester and required date. The approver checks the budget and applicable threshold. The custodian records the actual transfer, and a different person reconciles it where independence is required. Related transfers are considered together so a substantial request cannot be split to evade review. No officer pays a private expense from the common bank merely because they hold a senior rank.
 
-The Independent Bank Auditor reports findings to the unconflicted reviewing authority. Before examination, actual withdrawal, custody and approval rights over the assets must be reconciled with audit independence, including rights inherited from a historical High Council preset. A title saying “auditor” does not neutralize an existing withdrawal permission. The auditor verifies records and reports an exception; an authorized custodian executes any correction. The person who approved or handled the transaction does not independently certify their own work.
+The Independent Bank Auditor reports findings to the unconflicted reviewing authority. Before examination, actual withdrawal, custody and approval rights over the assets must be reconciled with audit independence, including rights inherited from the documented High Council rank preset. A title saying “auditor” does not neutralize an existing withdrawal permission. The auditor verifies records and reports an exception; an authorized custodian executes any correction. The person who approved or handled the transaction does not independently certify their own work.
 
 ## O7 The Association of Artisanry
 
