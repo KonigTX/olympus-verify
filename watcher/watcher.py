@@ -104,7 +104,7 @@ LINE_TS_RE = re.compile(r"^(?P<mo>\d{1,2})/(?P<d>\d{1,2})\s+(?P<h>\d{1,2}):(?P<m
 CLIENT_IN = "Active Player Created"
 CLIENT_OUT = ("Client Object Manager Destroyed", "Client Destroy")
 
-WATCHER_VERSION = "0.6.16"
+WATCHER_VERSION = "0.6.17"
 STRICT_DISPLAY_PROTOCOL = "launch-roster-display-v1"
 STRICT_DISPLAY_PATH = "/queue/unverified?keyVersion=" + STRICT_DISPLAY_PROTOCOL
 STRICT_DISPLAY_MAX_BYTES = 512 * 1024
@@ -1800,9 +1800,12 @@ class Watcher:
         self.require_launch_worker()
         ok = True
         for label, p in (("chat log", self.chat_log), ("SavedVariables", self.sv_file), ("addon folder", self.queue_file.parent)):
-            exists = p.exists()
-            log(f"{label}: {p} {'OK' if exists else 'MISSING (created by WoW on first use)' if label != 'addon folder' else 'MISSING — install the addon first'}")
-            ok &= exists or label != "addon folder"
+            exists = p.is_file() if self.membership_only and label == "SavedVariables" else p.exists()
+            required = label == "addon folder" or self.membership_only and label == "SavedVariables"
+            missing = "MISSING — install the addon first" if label == "addon folder" else (
+                "MISSING — log into the selected client/account and /reload" if required else "MISSING (created by WoW on first use)")
+            log(f"{label}: {p} {'OK' if exists else missing}")
+            ok &= exists or not required
         queue_path = "/queue?presenceOnly=1" if self.membership_only else "/queue"
         reachable, res = self.worker.call("GET", queue_path, retries=1)
         paused = res if isinstance(res, dict) and (res.get("paused") or res.get("configurationError") or res.get("httpStatus") in (401, 403, 429)) else None
@@ -1885,6 +1888,7 @@ def main() -> int:
     ap.add_argument("--config", default="config.json")
     ap.add_argument("--check", action="store_true", help="validate configuration and exit")
     ap.add_argument("--membership-only", action="store_true", help="require the strict native-membership profile without changing configuration")
+    ap.add_argument("--wow-dir", help="select an existing absolute WoW client directory without changing configuration")
     a = ap.parse_args()
     # 0.6.9: a missing, unreadable or malformed config.json is a message and exit 2, never a traceback.
     try:
@@ -1899,6 +1903,16 @@ def main() -> int:
     if not isinstance(cfg, dict):
         log("config: config.json must be a JSON object (see config.example.json)")
         return 2
+    if a.wow_dir is not None:
+        try:
+            wow_dir = Path(a.wow_dir)
+            usable = bool(a.wow_dir.strip()) and wow_dir.is_absolute() and wow_dir.is_dir()
+        except (OSError, ValueError):
+            usable = False
+        if not usable:
+            log("config: --wow-dir must name an existing absolute directory")
+            return 2
+        cfg = {**cfg, "wow_dir": str(wow_dir)}
     missing = [k for k in ("worker_url", "watcher_token", "verify_secret", "wow_dir", "account") if k not in cfg]
     if missing:
         log("config: missing " + ", ".join(missing) + " (see config.example.json)")
@@ -1913,6 +1927,8 @@ def main() -> int:
             w = Watcher(cfg)
             log(f"watcher {WATCHER_VERSION}: mode {'members-only' if w.membership_only else 'legacy'}"
                 + (" (required by --membership-only)" if a.membership_only else ""))
+            if a.wow_dir is not None:
+                log("WoW source directory selected by --wow-dir; private configuration unchanged")
             if a.check:
                 return w.check()
             w.run()

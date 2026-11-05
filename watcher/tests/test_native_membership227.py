@@ -127,6 +127,8 @@ class NativeMembershipTests(unittest.TestCase):
 
     def test_strict_check_uses_actual_versioned_presence_transport_without_writes_or_secrets(self):
         self.w.queue_file.parent.mkdir(parents=True, exist_ok=True)
+        self.w.sv_file.parent.mkdir(parents=True, exist_ok=True)
+        self.w.sv_file.write_text('-- synthetic native export\n', encoding='utf-8')
         original = b'-- retained legacy queue\n'
         self.w.queue_file.write_bytes(original)
         before = copy.deepcopy(self.w.state.d)
@@ -261,6 +263,57 @@ class NativeMembershipTests(unittest.TestCase):
                 else:
                     check.assert_not_called()
                     self.assertIn('membership_only must be a boolean', output.getvalue())
+
+    def test_wow_directory_cli_selects_actual_paths_without_rewriting_config_or_state_location(self):
+        selected = self.root / 'selected game with spaces'
+        selected.mkdir()
+        config = self.root / 'synthetic-game-path.json'
+        config.write_text(json.dumps(self.w.cfg), encoding='utf-8')
+        original = config.read_bytes()
+        for checking in (True, False):
+            method = 'check' if checking else 'run'
+            argv = ['watcher.py', '--config', str(config), '--membership-only', '--wow-dir', str(selected)]
+            argv += ['--check'] if checking else []
+            with self.subTest(checking=checking), patch.object(sys, 'argv', argv), \
+                    patch.object(watcher.Watcher, method, autospec=True, return_value=0) as action, \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(watcher.main(), 0)
+            instance = action.call_args.args[0]
+            self.assertEqual(instance.cfg, {**self.w.cfg, 'wow_dir': str(selected), 'membership_only': True})
+            self.assertEqual(instance.sv_file, selected / 'WTF' / 'Account' / 'LOCAL_TEST' / 'SavedVariables' / 'OlympusVerify.lua')
+            self.assertEqual(instance.chat_log, selected / 'Logs' / 'WoWChatLog.txt')
+            self.assertEqual(instance.queue_file, selected / 'Interface' / 'AddOns' / 'OlympusVerify' / 'OlympusQueue.lua')
+            self.assertEqual(instance.state.path, self.w.state.path)
+            self.assertEqual(config.read_bytes(), original)
+
+    def test_wow_directory_cli_rejects_empty_relative_missing_and_file_before_lease(self):
+        config = self.root / 'synthetic-path-refusal.json'
+        config.write_text(json.dumps(self.w.cfg), encoding='utf-8')
+        original = config.read_bytes()
+        regular = self.root / 'not-a-directory'
+        regular.write_text('synthetic', encoding='utf-8')
+        for value in ('', ' ', 'relative-game', str(self.root / 'absent'), str(regular)):
+            with self.subTest(value=value), patch.object(sys, 'argv', ['watcher.py', '--config', str(config),
+                    '--membership-only', '--wow-dir', value, '--check']), patch.object(watcher, 'StateLease') as lease, \
+                    patch.object(watcher, 'Watcher') as constructor, contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(watcher.main(), 2)
+            lease.assert_not_called()
+            constructor.assert_not_called()
+            self.assertEqual(config.read_bytes(), original)
+
+    def test_strict_check_requires_a_savedvariables_file_in_its_selected_tree(self):
+        self.w.queue_file.parent.mkdir(parents=True, exist_ok=True)
+        health = {'ok': True, 'verification': {'mode': 'members-only', 'nativeScopePinned': True,
+                  'nativeMembershipProofVersion': 1}}
+        self.w.worker.call = lambda m, p, **kw: (True, health if p == '/health' else {'entries': [], 'presenceOnly': True})
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(self.w.check(), 1)
+            self.w.sv_file.parent.mkdir(parents=True, exist_ok=True)
+            self.w.sv_file.mkdir()
+            self.assertEqual(self.w.check(), 1)  # A directory at the filename is not an export.
+            self.w.sv_file.rmdir()
+            self.w.sv_file.write_text('-- synthetic native export\n', encoding='utf-8')
+            self.assertEqual(self.w.check(), 0)
 
     def test_presence_poll_preserves_legacy_queue_and_unknown_acknowledgement(self):
         self.w.queue_file.parent.mkdir(parents=True, exist_ok=True)
