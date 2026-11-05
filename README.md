@@ -36,6 +36,30 @@ contact with the API docs).
 >   database (its step 1), then deploys an exact jointly signed commit from its `git archive` with
 >   `bash scripts/deploy-commit.sh <sha>`.
 
+## Current owner-host verification setup
+
+Use the exact reviewed Olympus Verify addon and Watcher on the owner host. Confirm the active
+Forever installation and its interface number before copying the addon into
+`<WoW>\_forever_\Interface\AddOns\OlympusVerify`. The
+[launch readiness runbook](docs/launch227-verification-readiness.md) records the required
+live guild and realm capture, reviewed scope pin, and native acceptance.
+
+- Use the shipped [addon example](addon/OlympusVerify/Config.example.lua) and
+  [Watcher example](watcher/config.example.json) to prepare private local configuration.
+  Set the addon's `secret` to the same value as Watcher `verify_secret`, and set Watcher
+  `worker_url`, `watcher_token`, `wow_dir` and `account` for the reviewed host. Keep
+  `state_file` in a private local folder outside sync clients, and preserve it on restart.
+- Membership-only verification uses `membershipOnly = true` in the addon,
+  `"membership_only": true` in Watcher and `VERIFY_MEMBERSHIP_ONLY = "true"` in the Worker.
+  Review the exact collector and local retention settings in the examples, including
+  `treasuryTracking`, `treasuryRecipient`, `treasury_recipient` and `treasury_retention_days`.
+- Run `python watcher.py --config config.json --check` from the Watcher folder, then use
+  `python watcher.py --config config.json` for a visible first start. Strict startup checks
+  authenticated `/health` for members-only mode, a pinned native scope and membership
+  proof version 1. Exit code 3 means that readiness check held ingestion. For a scheduled
+  start, use `python.exe` with the Watcher folder as the working directory and retain its
+  exit result and logs. The [console launcher](watcher/run-watcher.cmd) is for an attended run.
+
 ## The flow
 
 ```
