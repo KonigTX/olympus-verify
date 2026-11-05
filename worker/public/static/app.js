@@ -804,6 +804,7 @@
     decisionActorRevision++;
     S.signedIn = false;
     toast("You were signed out. Sign in with Discord again.", "bad");
+    dirtyKeys.clear();
     render();
     try { location.replace(SESSION_ENDED_ENTRY); } catch { /* The transition keeps a direct link if navigation is blocked. */ }
   }
@@ -812,6 +813,7 @@
   async function api(method, path, body, options = {}) {
     if (method !== "GET") boardSummaryRead = null; // A lost write answer must invalidate the read cache too.
     const init = { method, headers: { "X-Olympus": PAGE_VERSION, ...(options.headers || {}) }, credentials: "same-origin" };
+    if (options.signal) init.signal = options.signal;
     if (body !== undefined) {
       init.headers["Content-Type"] = "application/json";
       init.body = JSON.stringify(body);
@@ -1676,10 +1678,17 @@
     const live = () => main.parentNode === app && main.dataset.viewRequest === request;
     if (e && e.status === 401 || !live()) return;
     if (e?.memberAsset) {
+      const controller = new AbortController();
+      let timer;
+      const checking = () => !controller.signal.aborted && live();
       try {
-        const account = await api("GET", "/api/me", undefined, { live });
-        if (live() && (account?.signedIn === false || account?.denied === true)) endSiteSession();
+        const account = await Promise.race([
+          api("GET", "/api/me", undefined, { live: checking, signal: controller.signal }),
+          new Promise(resolve => { timer = setTimeout(() => { controller.abort(); resolve(null); }, 5000); }),
+        ]);
+        if (checking() && (account?.signedIn === false || account?.denied === true || account?.inServer === false)) endSiteSession();
       } catch { /* A current 401 already returned to sign-in. Other failures retain the original load error. */ }
+      finally { clearTimeout(timer); }
       if (!live()) return;
     }
     main.appendChild(frame("Something went wrong", null, h("p", { text: (e && e.message) || String(e) })));

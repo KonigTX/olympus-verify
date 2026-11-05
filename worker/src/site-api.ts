@@ -290,6 +290,7 @@ export async function meData(env: Env, user: SiteUser, settings?: SiteSettings, 
   const seatInfo = user.denied ? null : await guildSeats(env, now(), id);
   return {
     signedIn: true,
+    inServer: user.in_server === 1,
     now: now(),
     user: { ...publicUser(env, user, admin),
       canUseStreamShield: !user.denied && await canUseStreamShield(env, id),

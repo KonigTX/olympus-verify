@@ -577,8 +577,9 @@ const directoryCoverage203 = page => {
     const session218 = await openPage(MEMBER);
     session218.answer(pathname => isBoardRole218(pathname) ? new Response('{"error":"signed_out"}', { status: 401, headers: { "Content-Type": "application/json" } }) : null);
     await session218.go("#/vote/officer");
-    await waitFor(() => !session218.app.querySelector(".board-results"), ".218 unchanged API401 retirement");
-    check(".218 a role401 retains the original sign-out path rather than a rate-refusal state", !session218.app.querySelector(".board-results") && !byText(session218.app.querySelector("header"), "button", "Sign out") && !session218.app.textContent.includes("Applications could not be checked"));
+    await waitFor(() => session218.location.replaced, ".218 API401 document replacement", 8000);
+    check(".218 a role401 clears the board and private header before returning to sign-in", session218.location.navigated === '/?entry=session-ended'
+      && !!session218.app.querySelector('[data-session-ending]') && !session218.app.querySelector(".board-results, header") && !session218.app.textContent.includes("Applications could not be checked"));
     const denied218 = await openPage(MEMBER);
     denied218.answer(pathname => pathname === "/api/board" ? new Response('{"error":"site_forbidden"}', { status: 403, headers: { "Content-Type": "application/json" } }) : null);
     denied218.hold(pathname => isBoardRole218(pathname) ? 100 : 0);

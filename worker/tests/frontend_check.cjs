@@ -428,6 +428,33 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     await settle(); await settle();
     check("CC074 a failed asset on a departed view cannot check or change the newer session",
       !!staleScript && staleChecks === 0 && !staleTool.location.replaced && !!byText(staleTool.app,'button','Sign out'));
+    const slowTool = await openPage(MEMBER);
+    let releaseAssetCheck, assetCheckSignal;
+    const heldAssetCheck = new Promise(resolve => { releaseAssetCheck = resolve; });
+    slowTool.intercept(async (pathname, init) => {
+      if (pathname !== '/api/me') return;
+      assetCheckSignal = init.signal;
+      return heldAssetCheck;
+    });
+    await slowTool.go('#/talents');
+    slowTool.document.querySelector('script[src="/static/talents/calculator.js"]')?.dispatchEvent(new Event('error'));
+    const boundedLoadFailure = await waitFor(() => slowTool.app.textContent.includes('The tool could not be loaded.'), 'CC074 a stalled confirmation shows the original load error', 8000);
+    releaseAssetCheck(new Response('{"error":"signed_out"}', { status: 401 }));
+    await settle(); await settle();
+    check("CC074 a stalled confirmation is bounded and its late reply cannot sign out the tab",
+      boundedLoadFailure && assetCheckSignal?.aborted === true && !slowTool.location.replaced && !!byText(slowTool.app,'button','Sign out'));
+    const departedTool = await openPage(OTHER);
+    await fixtureRun("UPDATE site_users SET in_server=0 WHERE discord_id=?", OTHER);
+    try {
+      await departedTool.go('#/talents');
+      departedTool.document.querySelector('script[src="/static/talents/calculator.js"]')?.dispatchEvent(new Event('error'));
+      const returned = await waitFor(() => departedTool.location.replaced, 'CC074 departed identity returns to the portal', 8000);
+      const departedGate = await indexMod.default.fetch(new Request('https://guild.example/?entry=session-ended', { headers: { Cookie: departedTool.cookie } }), env({ ASSETS: governanceAssets }), ctx);
+      const departedHtml = await departedGate.text();
+      check("CC074 departed membership returns to the existing account-help gate after a failed asset",
+        returned && departedGate.status === 200 && departedHtml.includes('Join the Asmongold Discord server')
+        && departedHtml.includes('href="/privacy/access"') && !/<script\b|id="boot"/i.test(departedHtml));
+    } finally { await fixtureRun("UPDATE site_users SET in_server=1 WHERE discord_id=?", OTHER); }
   }
   {
     // .210 QA: a second navigation while "Leave without saving?" is open must not stack a second confirmation.
