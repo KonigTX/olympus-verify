@@ -5438,7 +5438,7 @@
   }
 
   const applicationDecisionReads = new WeakMap();
-  async function adminApplication(body, id, draftNote = null) {
+  async function adminApplication(body, id, draft = null) {
     const read = {}, actor = S.user, actorState = JSON.stringify(actor), actorRevision = decisionActorRevision, route = currentRoute();
     applicationDecisionReads.set(body, read);
     const live = () => applicationDecisionReads.get(body) === read && app.contains(body) && currentRoute() === route
@@ -5446,7 +5446,7 @@
     // Tokens precede the displayed detail. A stale view never prepares a replacement target at click time.
     const targets = new Map();
     clear(body); add(body, h("p", { role: "status", text: "Opening the application…" }));
-    let d;
+    let d, reviewKey;
     try {
       for (const targetRoute of ["status", "deny", "undeny", "delete"]) {
         if (!live()) return;
@@ -5459,8 +5459,11 @@
         const allowed = targetRoute === "deny" ? ["membership_rejection_v1"]
           : targetRoute === "undeny" ? ["business_only", "membership_reconsideration_v1"] : [action];
         if (!prepared || typeof prepared.targetToken !== "string" || !prepared.targetToken || prepared.targetToken.length > 8192
-          || !Number.isSafeInteger(prepared.expiresAt) || prepared.expiresAt <= 0) throw new ApiError(409, { message: "The decision could not be prepared. Reload the application and review it again." });
+          || !Number.isSafeInteger(prepared.expiresAt) || prepared.expiresAt <= 0
+          || typeof prepared.reviewKey !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(prepared.reviewKey)) throw new ApiError(409, { message: "The decision could not be prepared. Reload the application and review it again." });
         if (!allowed.includes(prepared.decisionAction)) throw new ApiError(409, { message: "The prepared decision did not match this action. Reload the application and review it again." });
+        if (reviewKey && prepared.reviewKey !== reviewKey) throw new ApiError(409, { message: "The account changed while you opened this review." });
+        reviewKey = prepared.reviewKey;
         targets.set(targetRoute, Object.freeze({ token: prepared.targetToken, action: prepared.decisionAction, expiresAt: prepared.expiresAt }));
       }
       d = await api("GET", `/api/admin/applications/${encodeURIComponent(id)}`, undefined, { live });
@@ -5475,7 +5478,7 @@
         noticeBox("warn", "icon-warning", h("p", { text: held
           ? "The original membership decision for this account could not be safely confirmed. No data or access was changed. Ask a site administrator to investigate. Reopening alone may not resolve this hold."
           : "This application could not be read. Return to the list and try again. No changes were made." })),
-        draftNote !== null ? h("button", { class: "btn small", type: "button", text: "Retry and keep my note", onclick: () => { if (live()) adminApplication(body, id, draftNote); } }) : null));
+        draft ? h("button", { class: "btn small", type: "button", text: "Retry and keep my note", onclick: () => { if (live()) adminApplication(body, id, draft); } }) : null));
       return;
     }
     if (!live()) return;
@@ -5484,15 +5487,17 @@
     const acct = d.account;
     const note = h("textarea", { rows: "3", maxlength: "1000" });
     const savedNote = a?.adminNote || "";
-    if (a) note.value = draftNote ?? savedNote;
+    const keptDraft = !!a && draft?.reviewKey === reviewKey;
+    if (a) note.value = keptDraft ? draft.text : savedNote;
     let pending = false, spent = false;
     const deadline = Math.min(...Array.from(targets.values(), target => target.expiresAt));
     const decisionWindow = h("p", { class: "small muted" });
     const decisionNotice = h("p", { class: "small muted", role: "status",
-      text: a && draftNote !== null ? "Your unsaved note was kept. Review it against this refreshed application before saving." : "" });
+      text: keptDraft ? "Your unsaved note was kept. Review it against this refreshed application before saving."
+        : draft ? "The original account or application is unavailable. This view shows the current record." : "" });
     const controls = [];
     const reload = h("button", { type: "button", class: "btn small", text: "Reload application",
-      onclick: () => { if (live() && !pending) adminApplication(body, id, a && note.value !== savedNote ? note.value : null); } });
+      onclick: () => { if (live() && !pending) adminApplication(body, id, a && note.value !== savedNote ? { reviewKey, text: note.value } : null); } });
     const sync = () => {
       const left = Math.max(0, deadline - nowSec());
       const unavailable = !live() || pending;

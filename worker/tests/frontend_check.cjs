@@ -3412,6 +3412,7 @@ function originalTerms218(terms) {
     }
 
     { const id = await seed210(), { p, rows } = await open210(id); await ready210(p);
+      p.app.querySelector("textarea").value = "Unsent note for the earlier account";
       byText(p.app, "button", "Delete their site data")?.click();
       await waitFor(() => !!p.document.body.querySelector("dialog input[type=text]"), "RT16 old incarnation delete confirmation");
       const oldBirth = one("SELECT account_incarnation FROM site_users WHERE discord_id = ?", id).account_incarnation;
@@ -3424,6 +3425,9 @@ function originalTerms218(terms) {
       if (typed) { typed.value = "DELETE"; fire(typed, "input"); byText(dialog, "button", "Delete their data")?.click(); }
       await refused210(p);
       check("RT16 an old confirmed delete cannot silently rebase onto a recreated account", oldBirth !== replacementBirth && one("SELECT account_incarnation FROM site_users WHERE discord_id = ?", id)?.account_incarnation === replacementBirth && status210(id)?.admin_note === "Replacement remains" && posts210(rows).length === 1 && preparations210(rows).length === 4);
+      byText(p.app, "button", "Reload application")?.click(); await ready210(p);
+      check("RT16 manual refresh keeps the replacement account's own note", p.app.querySelector("textarea")?.value === "Replacement remains"
+        && p.app.textContent.includes("This view shows the current record.") && posts210(rows).length === 1 && preparations210(rows).length === 8);
     }
 
     { const id = await seed210(); let replaced = false;

@@ -104,7 +104,7 @@ function targetShape(x:unknown):Target{if(!x||typeof x!=='object'||Array.isArray
  if(typeof r.actorNonce!=='string'||r.actorNonce.length!==32||!HEX.test(r.actorNonce)||r.actorNonce!==session.n||typeof r.id!=='string'||!ID.test(r.id)||typeof r.targetNonce!=='string'||!HEX.test(r.targetNonce)||r.g!==null&&(typeof r.g!=='string'||!HEX.test(r.g))||r.revision!==null&&(!Number.isSafeInteger(r.revision)||(r.revision as number)<0)||!Number.isSafeInteger(r.version)||(r.version as number)<1||![0,1].includes(r.denied as number)||r.deniedAt!==null&&!Number.isSafeInteger(r.deniedAt)||r.app!==null&&typeof r.app!=='string'||typeof r.proof!=='string'||!Number.isSafeInteger(r.prepared)||(r.prepared as number)<1||!Number.isSafeInteger(r.expires)||r.expires!==Math.min((r.prepared as number)+300,session.e)||typeof r.decisionId!=='string'||!HEX.test(r.decisionId)||!['business_only','membership_rejection_v1','membership_reconsideration_v1','partial_delete'].includes(r.action as string)||typeof r.route!=='string'||!['status','deny','undeny','delete'].includes(r.route)||typeof r.subjectKey!=='string'||!canonicalRejectionKey(r.subjectKey)||typeof r.reviewDigest!=='string'||!/^[0-9a-f]{64}$/.test(r.reviewDigest))return held();
  const proof=JSON.parse(r.proof as string);if(!Array.isArray(proof)||proof.length!==4)return held();return Object.freeze({...r,session}) as Target;}
 export function canonicalRejectionKey(x:unknown):x is string{if(typeof x!=='string'||!KEY.test(x)||x.includes('\0'))return false;try{const bytes=unb64u(x);return bytes.byteLength===32&&b64u(bytes)===x;}catch{return false;}}
-export async function membershipDecisionTargetToken(origin:MembershipDecisionOrigin,env:Env,route:DecisionRoute):Promise<Readonly<{targetToken:string|null;decisionAction:Action;decisionAvailable:boolean;expiresAt:number|null}>>{
+export async function membershipDecisionTargetToken(origin:MembershipDecisionOrigin,env:Env,route:DecisionRoute):Promise<Readonly<{targetToken:string|null;decisionAction:Action;decisionAvailable:boolean;expiresAt:number|null;reviewKey:string|null}>>{
  const o=original(origin,env),s=o.session;
  if(!s||o.method!=='GET')return held();
  const subjectKey=await privacySubjectKey(o.authEnv,o.id);original(origin,env);
@@ -112,9 +112,15 @@ export async function membershipDecisionTargetToken(origin:MembershipDecisionOri
  const snapshot=reviewRaw(data(row,'review_raw'));original(origin,env);const digest=await reviewDigest(snapshot);original(origin,env);
  const t=targetShape({session:s,actorNonce:row.actor_nonce,id:o.id,targetNonce:row.target_nonce,g:row.g,revision:row.revision,version:row.version,denied:row.denied,deniedAt:row.denied_at,app:row.app,proof:row.proof,prepared:row.prepared,expires:Math.min(Number(row.prepared)+300,s.e),decisionId:row.decision_id,action:o.action,route,subjectKey,reviewDigest:digest});
  const selected=route==='deny'||route==='undeny'?permanentDenialAction(t,route,data(row,'has_rejection')):{action:t.action,available:true};
- if(!selected.available)return Object.freeze({targetToken:null,decisionAction:selected.action,decisionAvailable:false,expiresAt:null});
- const raw=b64u(new TextEncoder().encode(JSON.stringify({...t,action:selected.action}))),mac=await sign(o.authEnv.COOKIE_SECRET,TOKEN_PURPOSE,raw);original(origin,env);const token=raw+'.'+mac;if(token.length>8192)return held();
- return Object.freeze({targetToken:token,decisionAction:selected.action,decisionAvailable:selected.available,expiresAt:t.expires});
+ if(!selected.available)return Object.freeze({targetToken:null,decisionAction:selected.action,decisionAvailable:false,expiresAt:null,reviewKey:null});
+ const raw=b64u(new TextEncoder().encode(JSON.stringify({...t,action:selected.action})));
+ // Scope an in-memory draft to the same actor and account birth. Only the target token authorizes a decision.
+ const [mac,reviewKey]=await Promise.all([
+  sign(o.authEnv.COOKIE_SECRET,TOKEN_PURPOSE,raw),
+  sign(o.authEnv.COOKIE_SECRET,'site-membership-review-note-scope-v1',JSON.stringify([s.u,s.n,t.id,t.targetNonce]))
+ ]);
+ original(origin,env);const token=raw+'.'+mac;if(token.length>8192)return held();
+ return Object.freeze({targetToken:token,decisionAction:selected.action,decisionAvailable:selected.available,expiresAt:t.expires,reviewKey});
 }
 /** Verify once before readJson awaits. A negative/expired/unknown token never renews its native target. */
 export async function prepareMembershipDecision(origin:MembershipDecisionOrigin,env:Env):Promise<void>{
