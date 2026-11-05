@@ -138,12 +138,14 @@ export function renderOrganization(main, data, ui) {
     : "No native rank placement or promotion follows from this title or status.";
   const reservedTerm201 = term => term.reservedSeat201 || ["leader", "high_council", "officer_corps"].includes(term.tier);
   const termFamily218 = term => ui.roleDirectory203?.families?.find(row => row.key === ui.roleDirectory203.keyToFamily[term.officeKey]);
-  const seatLink = term => {
-    const family = ui.roleDirectory203?.families?.find(row => row.key === ui.roleDirectory203.keyToFamily[term.officeKey]);
+  const applicationLink = (family, label) => {
     const app = family?.application;
-    if (reservedTerm201(term) || !app || ui.officeAvailability?.[family.primaryKey] === false) return null;
-    return h("a", { class: "btn small org-seat-apply", href: "#/vote/" + app.applicationTrack + "/" + encodeURIComponent(app.targetOffice || "new"), "data-office-application": family.primaryKey, "data-application-track": app.applicationTrack, text: "Review ordinary role application" });
+    if (!app || ui.officeAvailability?.[family.primaryKey] === false) return null;
+    return h("a", { class: "btn small org-seat-apply", href: "#/vote/" + app.applicationTrack + "/" + encodeURIComponent(app.targetOffice || "new"), "data-office-application": family.primaryKey, "data-application-track": app.applicationTrack, text: label });
   };
+  const seatLink = term => reservedTerm201(term) ? null : applicationLink(termFamily218(term), "Review ordinary role application");
+  const applicationLinks = (ui.roleDirectory203?.families || []).filter(family => family.application)
+    .map(family => applicationLink(family, "Apply as " + family.label)).filter(Boolean);
   const officeBadges = term => h("p", { class: "org-office-badges" },
     h("span", { class: "org-tier-badge org-tier-" + term.tier, text: termFamily218(term)?.kind === "institution" ? "Governance institution" : term.tierLabel }),
     termFamily218(term)?.kind === "institution" ? null : h("span", { class: "small", text: "Rank " + term.nativeRankOrdinal + " · " + nativeRankDisplayName(term.nativeSlot, term.nativeRankName) }),
@@ -348,6 +350,7 @@ export function renderOrganization(main, data, ui) {
     h("section", { class: "frame" }, h("h2", { text: "Role guides and office register" }),
       h("p", { text: "The Roles directory brings alternate titles and regional or class duties into their complete family guides. Use the chart here for lines of responsibility." }),
       h("a", { class: "btn small", href: "#/roles", text: "Explore the role directory" }),
+      applicationLinks.length ? h("nav", { class: "btn-row", "aria-label": "Ordinary applications" }, applicationLinks) : null,
       h("details", { class:"org-catalogue-history203" }, h("summary", { text:"Office register · " + data.roleRank199.officeCount + " stable offices / " + data.roleRank199.assignableKeyCount + " stored keys" }), h("p", { class:"small muted", text:"The register keeps original identifiers and scoped records for existing links. See Roles for current definitions and application options." }), termList))]);
   // Show the interactive map before its longer rank, Council and reading references.
   const mapReadingSections221 = [...main.children].filter(node => node.classList?.contains("org-rank-guide") || node.classList?.contains("org-council-overview") || node.classList?.contains("org-guide"));
