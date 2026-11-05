@@ -2978,9 +2978,46 @@ function originalTerms218(terms) {
       await p.go(route(id)); await loaded(p);
       check(".130 preview renders safe title text without script markup or private event details", p.app.querySelector("pre").textContent.includes("script") && !p.app.querySelector("script") && !p.app.querySelector("pre").textContent.includes("PRIVATE_SIGNUP_DETAILS") && !byText(p.app, "button", "Publish announcement").disabled);
       const readable = p.app.querySelector("[data-announcement-preview]");
-      check(".130 primary preview shows readable local time and title without Discord markup", readable.textContent.includes("Raid <script>alert(1)</script>") && readable.textContent.includes("Duration: 120 minutes") && !readable.textContent.includes("<t:") && !readable.textContent.includes("**") && readable.querySelector("a").getAttribute("href").endsWith("/" + id));
+      const eventPath = "community/calendar/" + id;
+      const calendarUrl = "https://guild.example/?to=" + encodeURIComponent(eventPath);
+      check(".130 primary preview shows readable local time and title without Discord markup", readable.textContent.includes("Raid <script>alert(1)</script>") && readable.textContent.includes("Duration: 120 minutes") && !readable.textContent.includes("<t:") && !readable.textContent.includes("**") && readable.querySelector("a")?.getAttribute("href") === calendarUrl);
       const exactMessageDetail = p.app.querySelector("main.shell pre.details").closest("details");
-      check(".130 collapsed exact-message detail preserves the complete frozen payload", exactMessageDetail.querySelector("pre").textContent === (await apiAs(ORG, "GET", `/api/community/events/discord?eventId=${id}`, undefined, over)).body.payload.content && !exactMessageDetail.hasAttribute("open"));
+      const previewPath = `/api/community/events/discord?eventId=${id}`;
+      const livePreview = (await apiAs(ORG, "GET", previewPath, undefined, over)).body;
+      check(".130 collapsed exact-message detail preserves the complete frozen payload", exactMessageDetail.querySelector("pre").textContent === livePreview.payload.content && !exactMessageDetail.hasAttribute("open"));
+      const variant = await openPage(ORG, over);
+      await variant.go(route(id)); await loaded(variant);
+      const showLinkVariant = async (url) => {
+        const content = livePreview.payload.content.replace(calendarUrl, url);
+        variant.answer(pathname => pathname === previewPath ? { ...livePreview, payload: { ...livePreview.payload, content } } : null);
+        byText(variant.app, "button", "Refresh announcement status").click(); await loaded(variant);
+        const panel = variant.app.querySelector("[data-announcement-preview]");
+        return { panel, content, exact: variant.app.querySelector("pre").textContent };
+      };
+      const historicalUrl = "https://guild.example/#/" + eventPath;
+      const historical = await showLinkVariant(historicalUrl);
+      check(".130 the exact historical fragment remains readable with its raw text intact", historical.panel.querySelector("a")?.getAttribute("href") === historicalUrl && !historical.panel.textContent.includes("<t:") && historical.exact === historical.content);
+      const wrongId = (id[0] === "A" ? "B" : "A") + id.slice(1);
+      const disallowed = [
+        calendarUrl.replace("guild.example", "outside.example"),
+        calendarUrl.replace(id, wrongId),
+        calendarUrl + "&to=vote",
+        historicalUrl + "/edit",
+      ];
+      let allPlain = true;
+      for (const url of disallowed) {
+        const rejected = await showLinkVariant(url);
+        allPlain = allPlain && !rejected.panel.querySelector("a") && rejected.panel.textContent === rejected.content && rejected.exact === rejected.content;
+      }
+      check(".130 foreign, wrong-event, duplicate-return and historical subpath variants render only as exact text", allPlain);
+      const href = readable.querySelector("a")?.getAttribute("href");
+      const landing = href ? await indexMod.default.fetch(new Request(href, { headers: { Cookie: p.cookie } }), env(over), ctx) : null;
+      const destination = landing?.headers.get("Location");
+      if (landing?.status === 303 && destination === "/#/" + eventPath) {
+        await variant.go(new URL(destination, href).hash);
+        await waitFor(() => !!byText(variant.app, "a", "Discord announcement"), "event opened from the preview");
+      }
+      check(".130 the preview link returns an admitted organizer to the original event", landing?.status === 303 && destination === "/#/" + eventPath && variant.app.textContent.includes("Raid <script>alert(1)</script>") && !!byText(variant.app, "a", "Discord announcement"));
       p.drop((pathname, init) => pathname.endsWith("/discord/publish") && init.method === "POST");
       byText(p.app, "button", "Publish announcement").click();
       await waitFor(() => p.app.textContent.includes("published and matches"), "lost browser answer reconciles durable publication");

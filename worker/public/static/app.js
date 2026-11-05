@@ -7196,14 +7196,18 @@
       const lines = content.split("\n"), title = lines[0] && /^\*\*(.*)\*\*$/.exec(lines[0]);
       const when = lines[1] && /^<t:([0-9]{1,12}):F> · <t:\1:R>$/.exec(lines[1]);
       const duration = lines[2] && /^Duration: ([0-9]+) minutes$/.exec(lines[2]);
-      const calendar = lines[3] && /^\[Sign up on the Olympus calendar\]\((https:\/\/[a-z0-9.-]+\/#\/community\/calendar\/[A-Za-z0-9_-]{22})\)$/.exec(lines[3]);
+      const calendarRoute = "community/calendar/" + id, origin = new URL(location.href).origin;
+      const calendar = id.length === 22 && opPattern.test(id) && origin.startsWith("https://")
+        ? [origin + "/?to=" + encodeURIComponent(calendarRoute), origin + "/#/" + calendarRoute]
+          .find(href => lines[3] === `[Sign up on the Olympus calendar](${href})`)
+        : null;
       const seconds = when && Number(when[1]);
-      if (lines.length !== 5 || !title || !when || !duration || !calendar || !calendar[1].endsWith("/" + id) || !Number.isSafeInteger(seconds) || !Number.isFinite(new Date(seconds * 1000).getTime())) {
+      if (lines.length !== 5 || !title || !when || !duration || !calendar || !Number.isSafeInteger(seconds) || !Number.isFinite(new Date(seconds * 1000).getTime())) {
         preview.appendChild(h("p", { text: content })); return;
       }
       add(preview, [h("strong", { text: title[1].replace(/\\([\\`*_{}\[\]()<>#|~])/g, "$1") }),
         h("p", { text: fmtDateTime(seconds) }), h("p", { text: lines[2] }),
-        h("a", { href: calendar[1], text: "Sign up on the Olympus calendar" }), h("p", { text: lines[4] }),
+        h("a", { href: calendar, text: "Sign up on the Olympus calendar" }), h("p", { text: lines[4] }),
         h("p", { class: "muted small", text: "Time is shown in your browser's time zone. Discord shows each reader their local time." })]);
     };
     const publish = h("button", { class: "btn", type: "button", text: "Publish announcement" });
