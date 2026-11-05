@@ -2473,7 +2473,7 @@
   // Evergreen Stage 2, 4 Nov 2026: Blizzard's announced Forever schedule in one place, so Home, Apply and News change
   // together and the bot's /launch (site-data.ts FOREVER_SCHEDULE) agrees. The global launch is 4 November 2026 at
   // 23:00 UTC, also the default guild invite time (settings.launchAt), which stays the guild's own editable schedule.
-  // The first raids are dated 9 December 2026 with no announced hour, so their notice lasts until that day ends in PST,
+  // The first raids are dated 9 December 2026, so their notice lasts until that day ends in PST,
   // the guild's westernmost region (10 December, 08:00 UTC), and then retires.
   const FOREVER_SCHEDULE = Object.freeze({ launchAt: 1793833200, firstRaids: "9 December 2026", raidDayEndAt: 1796889600 });
   function datesPanel() {
@@ -2490,7 +2490,7 @@
         h("div", { class: "date-card" },
           icon("icon-names", "l"),
           h("div", null,
-            h("h3", { text: namesOpen ? "Website name entry is open" : "Website name entry is closed" }),
+            h("h3", { text: namesOpen ? "Website name entry is open" : namesSoon ? "Website name entry opens soon" : "Reserved-name list" }),
             namesOpen ? h("p", null, "List the names you reserved in game ", S.signedIn ? h("a", { href: "#/names", text: "on your reserved-name list" }) : "after signing in", ".")
               : namesSoon ? h("p", { text: `It opens ${fmtDateTime(s.namesOpenAt)} (${fmtPacific(s.namesOpenAt)}).` }) : null)),
         h("div", { class: "date-card" },
@@ -2657,8 +2657,8 @@
           h("p", { class: "muted small", text: `${plural(S.boardVotes || 0, "applicant")} voted on, ${plural((S.votes || []).length, "write-in")}. Only the guild's leadership sees counts.` })),
         h("a", { class: "card", href: "#/names" },
           h("div", { class: "card-head" }, icon("icon-names"), h("h3", { text: "Reserved names" })),
-          h("div", { class: "big", id: "names-count", text: namesOpen ? `${(S.reserved || []).length} of ${M().limits.reserved}` : namesSoon ? "Soon" : "Closed" }),
-          h("p", { class: "muted small", text: namesOpen ? "Saved on your list below." : namesSoon ? "Website name entry is not open yet." : "Website name entry is closed." }))),
+          h("div", { class: "big", id: "names-count", text: namesOpen ? `${(S.reserved || []).length} of ${M().limits.reserved}` : namesSoon ? "Soon" : plural((S.reserved || []).length, "name") + " saved" }),
+          h("p", { class: "muted small", text: namesOpen ? "Saved on your list below." : namesSoon ? "Website name entry is not open yet." : "View the names you saved." }))),
       frame("Beta Epoch Archive", h("span", { class: "badge", text: "Guild history" }),
         h("p", null, "Blizzard's 20 October update scheduled the final beta shutdown for 23 October 2026 at 10:00 AM PDT (17:00 UTC). ", h("a", {href:"https://us.forums.blizzard.com/en/wow/t/heads-up-wow-forever-stress-test-on-october-21/2387920",target:"_blank",rel:"noopener noreferrer",text:"Read the announced schedule"}), ". Its guild work continues into the announced PvE · Alliance direction."),
         h("p", { class: "muted small", text: "This archive records the guild's published rules, release history and aggregate milestones. It contains no former-member roster, private account copies or erased member records. The shutdown time is Blizzard's announced plan, not a server closure observed by this site; the guild's separate reset-policy cutoff is unchanged." }),
@@ -2701,7 +2701,7 @@
       h("h3", { text: "What happens to them" }),
       h("p", { text: "Blizzard's early name reservation ran from 27 October to 3 November 2026. If you reserved names, list them here so leadership can match them to you." }),
       h("p", { text: inGame
-        ? "Leadership keeps this list private and decides who has been promised a seat. During launch verification, officers invite in game; the website doesn't queue invites. Be online on that character."
+        ? "Leadership keeps this list private and records who was promised a seat. Officers invite in game. The website queue is paused. Be online on that character."
         : "Leadership keeps this list private and decides who has been promised a seat. From the guild’s invite date, approved names go to the top of the invite queue, and an officer sends each invite by hand, so be online on that character." }),
       h("p", { text: "This list doesn't reserve names or link characters. To link your Discord account, whisper your verification code to an officer in game." }));
     const section = h("section", { class: "frame", id: "names" }, h("div", { class: "plaque" }, h("h2", { text: "Your reserved names" })));
@@ -2724,7 +2724,7 @@
       input.addEventListener("input", () => { setDirty("names", true, unsaved); const p = nameProblem(input.value); err.textContent = p; err.hidden = !p; });
       inputs.push(input);
       const hint = !r ? null
-        : r.status === "queued" ? (inGame ? "Locked while officers invite in game during launch verification." : "Already in the invite queue, so it cannot be changed here.")
+        : r.status === "queued" ? (inGame ? "Locked while officers handle invitations in game." : "Already in the invite queue, so it cannot be changed here.")
         : r.status === "ended" ? "The invite for this name ended without you joining (declined, or no answer after several tries). Ask an officer if you still want it, or remove it."
         : null;
       rows.appendChild(h("div", { class: "field" }, h("div", { class: "inline" }, input, h("span", { class: "badge-slot" }, r ? badgeOf(r) : null)), err, hint ? h("span", { class: "hint", text: hint }) : null));
@@ -2925,7 +2925,7 @@
     // statement that the names list reserves nothing lives on the list itself.
     const instruction = applicationEditable ? "Record your Main and declared Alts in this application. " : "Record your Main and declared Alts on your guild application when applications are open. ";
     return h("p", {class:"launch-application-copy218"}, instruction,
-      !applicationEditable ? h("a", {href:"#/apply",text:"View your guild application"}) : null, !applicationEditable ? " · " : null, h("a", {href:"#/names",text:"Keep your reserved-name list current"}), ".");
+      !applicationEditable ? h("a", {href:"#/apply",text:"View your guild application"}) : null, !applicationEditable ? " · " : null, h("a", {href:"#/names",text:"View your reserved-name list"}), ".");
   }
   /** Blizzard's next Forever milestone only, independent of the editable guild admission schedule (FOREVER_SCHEDULE):
    * the launch countdown, then the first raids, then nothing once 9 December has ended in PST. */
@@ -2935,8 +2935,8 @@
     const live = t >= FOREVER_SCHEDULE.launchAt;
     return h("aside", {class:"launch-notice218", "aria-label":live ? "Forever raid schedule" : "Forever global launch"},
       h("p", {class:"launch-notice-title218"}, h("strong", {text:live ? "9 December · first Forever raids" : "November 4 · Forever global launch"})),
-      live ? h("p", {text:`First raids open on ${FOREVER_SCHEDULE.firstRaids}; Blizzard has not announced the hour. They are Barrow Deeps, Hyjal Summit and Onyxia’s Lair.`}) : countdown(FOREVER_SCHEDULE.launchAt, {onDone:refreshWhenClean}),
-      live ? h("p", null,h("a", {href:"https://news.blizzard.com/en-us/article/24315820/world-of-warcraft-forever-goes-live-globally-november-4",target:"_blank",rel:"noopener noreferrer",text:"Blizzard’s announced launch and raid schedule"})) : h("p", {text:"4 November 2026 · 23:00 UTC · 3:00 PM PST."}),
+      live ? h("p", {text:`Barrow Deeps, Hyjal Summit and Onyxia’s Lair open on ${FOREVER_SCHEDULE.firstRaids}. Check Blizzard for the opening time.`}) : countdown(FOREVER_SCHEDULE.launchAt, {onDone:refreshWhenClean}),
+      live ? h("p", null,h("a", {href:"https://news.blizzard.com/en-us/article/24315820/world-of-warcraft-forever-now-live",target:"_blank",rel:"noopener noreferrer",text:"Blizzard’s launch and raid update"})) : h("p", {text:"4 November 2026 · 23:00 UTC · 3:00 PM PST."}),
       launchApplicationCopy218(applicationEditable));
   }
   ROUTES.apply = function apply(main) {
@@ -4351,7 +4351,7 @@
     const [confirmed, confirmedRow] = box(s.namesTimeConfirmed, "Reservation hour marked confirmed (legacy)", "Retained with the earlier reservation record. The current Blizzard announcement is shown separately; website entry and guild invite scheduling use their own settings below.");
     const [namesOpen, namesOpenRow] = box(s.namesOpen, "People may enter reserved names (from the time above)");
     const [autoQueue, autoQueueRow] = box(s.autoQueue, "From the guild invite date, automatically queue approved reserved names", s.reservedQueueOnSite === false
-      ? "Paused during launch verification: officers invite in game, and the website queues no names."
+      ? "The website queue is paused. Officers invite in game."
       : "Checked every half hour. Off: use Queue on the Reserved names tab when you are ready.");
     const [appsOpen, appsOpenRow] = box(s.applicationsOpen, "Applications are open");
     const [votingOpen, votingOpenRow] = box(s.votingOpen, "Voting is open (the board and write-in nominations)");
@@ -5364,7 +5364,7 @@
     add(body, [
       message ? noticeBox("warn", "icon-warning", h("p", { text: message })) : null,
       frame("News", h("span", { class: "badge " + (d.newsOn ? "green" : "muted"), text: d.newsOn ? "on" : "off" }),
-        h("p", { class: "muted small", text: "The Town Crier is visible to guild members and site administrators. It covers your notices, whether Olympus I has room, the guild in figures (counts only), the next events, when the leadership directory changed, the Forever schedule. Site updates are visible only to the owner. Switch it in Admin → Settings." }),
+        h("p", { class: "muted small", text: "The Town Crier is visible to guild members and site administrators. It covers notices, room in Olympus I, guild counts, upcoming events, leadership directory changes and Forever milestones. Site updates are visible only to the owner. Switch it in Admin → Settings." }),
         d.newsOn ? null : noticeBox("info", "icon-clock", h("p", { text: "News is switched off (Admin → Settings); notices cannot be posted while it is off." })),
         kv([["Shown now", `${notices.length} of ${limits.liveMax || 20}`], ["Past their time, awaiting the cleanup", String(d.awaitingCleanup || 0)], ["Operation records kept (120 days each)", String(d.operationRecords || 0)]])),
       frame("Notices shown now", null, list.length ? list : h("p", { class: "muted small", text: "No notice is shown right now." })),
@@ -5804,7 +5804,7 @@
           const summary = `Queued ${out.queued}, moved to the front ${out.bumped}, already in the guild ${out.inGuild}${out.contested ? `, contested (skipped) ${out.contested}` : ""}${out.blocked ? `, banned owner (skipped) ${out.blocked}` : ""}.`;
           if (out.held === true) {
             const completed = out.queued || out.bumped || out.inGuild;
-            const paused = "Queueing is paused during launch verification. Officers invite in game.";
+            const paused = "The website queue is paused. Officers invite in game.";
             toast(completed ? `${summary} ${paused}` : `${paused} Nothing was queued.`, "bad");
           } else toast(summary + (out.more ? " More names are waiting. Press Queue again." : ""), "good");
         } else toast(`${out.changed} changed.`, "good");
@@ -5838,7 +5838,7 @@
     });
     clear(body);
     add(body, frame("Reserved names", null,
-      h("p", { class: "muted small" }, inGame ? "During launch verification, officers invite in game, so the website doesn't queue approved names and the Queue buttons are paused. Approve names to record who was promised a seat; the player still whispers their code to link Discord." : `Approved names go to the top of the invite queue ${s.autoQueue ? "automatically from the guild invite date" : "when you press Queue (automatic queueing is off in Settings)"}: ${s.launchAt ? fmtDateTime(s.launchAt) : "—"}. An officer still sends each invite, and the player still whispers their code to link Discord. A name entered by more than one account is not queued while more than one of those claims is approved. A queued name whose invite ended without them joining can be approved again and queued again.`),
+      h("p", { class: "muted small" }, inGame ? "Officers invite in game. The website queue is paused. Approve names to record who was promised a seat. The player still whispers their code to link Discord." : `Approved names go to the top of the invite queue ${s.autoQueue ? "automatically from the guild invite date" : "when you press Queue (automatic queueing is off in Settings)"}: ${s.launchAt ? fmtDateTime(s.launchAt) : "—"}. An officer still sends each invite, and the player still whispers their code to link Discord. A name entered by more than one account is not queued while more than one of those claims is approved. A queued name whose invite ended without them joining can be approved again and queued again.`),
       h("div", { class: "filters" },
         h("label", { class: "field" }, h("span", { class: "lab small", text: "Status" }), status),
         h("label", { class: "field" }, h("span", { class: "lab small", text: "Search (Enter)" }), search)),
@@ -6519,7 +6519,7 @@
         h("a", { href: "#/community/leadership", text: "Open Community → Leadership" }))),
       // Evergreen Stage 2, 4 Nov 2026: every line here holds on either side of the launch. The notice moves from the
       // launch countdown to the first raids and retires after 9 December; the guild's own invite date is a plain label.
-      frame("Forever schedule", null,
+      frame("Forever milestones", null,
         d.beta && d.beta.scheduleStatus === "announced-plan-not-observed" && Number.isSafeInteger(d.beta.announcedClosureAt)
           ? h("p", null, `Blizzard's 20 October update scheduled the final beta shutdown for ${fmtDateTime(d.beta.announcedClosureAt)} (${fmtPacific(d.beta.announcedClosureAt)}). `,
               h("a", {href:"https://us.forums.blizzard.com/en/wow/t/heads-up-wow-forever-stress-test-on-october-21/2387920",target:"_blank",rel:"noopener noreferrer",text:"Announced plan"}), "; actual server closure was not observed by this site.")

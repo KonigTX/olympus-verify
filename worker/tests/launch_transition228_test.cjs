@@ -112,14 +112,14 @@ async function launchTransition228(){
   check('the open name-entry card agrees with its heading',!!nameCard&&nameCard.textContent.includes('Website name entry is open')&&!nameCard.textContent.includes('planned from')&&!text.includes('Name entry on this site is planned from')&&!text.includes('once the guild opens it'),nameCard&&nameCard.textContent);
   const count=main.querySelector('#names-count');
   check('the Home reserved-names card reads as a sentence',!!count&&/^\d+ of \d+$/.test(count.textContent)&&count.parentNode.textContent.includes('Saved on your list below.'),count&&count.parentNode.textContent);
-  check('legacy admission: the panel says approved names go to the top of the invite queue',!!names&&names.textContent.includes('approved names go to the top of the invite queue')&&!names.textContent.includes('During launch verification'));
+  check('legacy admission: the panel says approved names go to the top of the invite queue',!!names&&names.textContent.includes('approved names go to the top of the invite queue')&&!names.textContent.includes('The website queue is paused'));
   await page.go('#/apply');await waitFor(()=>!!mainOf(page).querySelector('form'),'the Apply form');
   const copy=mainOf(page).querySelector('.launch-notice218 .launch-application-copy218');
   check('Apply keeps the editable-form instruction and no reservation disclaimer',!!copy&&copy.textContent.includes('in this application')&&!copy.textContent.includes('neither reserves'),copy&&copy.textContent);
  });
  await guard('Home after launch',async()=>{
   const page=await pageAt(POST),main=mainOf(page),notices=main.querySelectorAll('.launch-notice218'),names=main.querySelector('#names');
-  check('Home after launch: the notice shows only the next milestone, the first raids on 9 December with no announced hour',notices.length===1&&notices[0].getAttribute('aria-label')==='Forever raid schedule'&&notices[0].textContent.includes('First raids open on 9 December 2026; Blizzard has not announced the hour.')&&!notices[0].querySelector('[role="timer"]')&&!notices[0].textContent.includes('23:00 UTC')&&!notices[0].textContent.includes('27 October')&&!notices[0].textContent.includes('date passed'),notices[0]&&notices[0].textContent);
+  check('Home after launch: the notice shows only the next milestone, the first raids on 9 December with no announced hour',notices.length===1&&notices[0].getAttribute('aria-label')==='Forever raid schedule'&&notices[0].textContent.includes('Barrow Deeps, Hyjal Summit and Onyxia’s Lair open on 9 December 2026. Check Blizzard for the opening time.')&&!notices[0].querySelector('[role="timer"]')&&!notices[0].textContent.includes('23:00 UTC')&&!notices[0].textContent.includes('27 October')&&!notices[0].textContent.includes('date passed'),notices[0]&&notices[0].textContent);
   check('  the names panel stays in the past tense after launch, with its one statement',!!names&&names.textContent.includes("Blizzard's early name reservation ran from 27 October to 3 November 2026.")&&(main.textContent.match(RESERVE)||[]).length===1);
  });
  await guard('raid day',async()=>{
@@ -132,17 +132,17 @@ async function launchTransition228(){
   await retired.go('#/apply');await waitFor(()=>!!mainOf(retired).querySelector('form'),'the Apply form after the notice retired');
   check('  and on Apply, whose form still renders',!mainOf(retired).querySelector('.launch-notice218')&&!!mainOf(retired).querySelector('form'));
   await retired.go('#/community/news');await waitFor(()=>!!byText(retired.app,'h2','Notices'),'the News page after the notice retired');
-  check('  and on News',!retired.app.querySelector('.launch-notice218')&&!!byText(retired.app,'h2','Forever schedule'));
+  check('  and on News',!retired.app.querySelector('.launch-notice218')&&!!byText(retired.app,'h2','Forever milestones'));
  });
 
  console.log('== News (CL-166) ==');
  await guard('News',async()=>{
   for(const [label,clock] of [['before',PRE],['after',POST]]){
    const page=await pageAt(clock);await page.go('#/community/news');await waitFor(()=>!!byText(page.app,'h2','Notices'),'the News page '+label+' launch');
-   const title=byText(page.app,'h2','Forever schedule'),frame=title&&title.closest('section'),plan=frame&&frame.querySelector('.guild-invite-plan218');
-   check('News '+label+' launch: the schedule frame is titled Forever schedule',!!frame&&!byText(page.app,'h2','The road to launch'));
+   const title=byText(page.app,'h2','Forever milestones'),frame=title&&title.closest('section'),plan=frame&&frame.querySelector('.guild-invite-plan218');
+   check('News '+label+' launch: the frame is titled Forever milestones',!!frame&&!byText(page.app,'h2','The road to launch'));
    check('  its guild invite line is correct '+label+' launch',!!plan&&!plan.textContent.includes('are planned from')&&plan.textContent.includes('separate from Blizzard’s global launch'),plan&&plan.textContent);
-   check('  it shows '+(label==='before'?'the launch countdown':'the raid milestone'),!!frame&&(label==='before'?frame.querySelectorAll('[role="timer"]').length===1:frame.textContent.includes('First raids open on 9 December 2026')&&!frame.querySelector('[role="timer"]')));
+   check('  it shows '+(label==='before'?'the launch countdown':'the raid milestone'),!!frame&&(label==='before'?frame.querySelectorAll('[role="timer"]').length===1:frame.textContent.includes('Barrow Deeps, Hyjal Summit and Onyxia’s Lair open on 9 December 2026')&&!frame.querySelector('[role="timer"]')));
   }
  });
 
@@ -153,7 +153,7 @@ async function launchTransition228(){
   const queueId=Number((await fixtureRun("INSERT INTO invite_queue (name_key,name,discord_id,status,created_at,approved_by,priority) VALUES ('tlqone','Tlqone',?,'queued',?,'site',1)",MEMBER,now-30)).lastInsertRowid);
   await fixtureRun("UPDATE site_reserved SET status='queued',queue_id=?,queued_at=? WHERE name_key='tlqone'",queueId,now-30);
   const page=await pageAt(POST,MEMBERS_ONLY),names=mainOf(page).querySelector('#names');
-  check('membership-only Home: officers invite in game during launch verification; the website queue is not promised',page.boot.settings.reservedQueueOnSite===false&&!!names&&names.textContent.includes('During launch verification, officers invite in game')&&!names.textContent.includes('top of the invite queue')&&!names.textContent.includes('In the invite queue'),names&&names.textContent);
+  check('membership-only Home: officers invite in game during launch verification; the website queue is not promised',page.boot.settings.reservedQueueOnSite===false&&!!names&&names.textContent.includes('Officers invite in game. The website queue is paused.')&&!names.textContent.includes('top of the invite queue')&&!names.textContent.includes('In the invite queue'),names&&names.textContent);
   check('  a name queued before the hold shows the in-game invite, not the website queue',!!names&&names.textContent.includes('Officers invite in game'));
   const legacy=await pageAt(POST),legacyNames=mainOf(legacy).querySelector('#names');
   check('  legacy Home still shows the website queue badge for the same name',legacy.boot.settings.reservedQueueOnSite===true&&!!legacyNames&&legacyNames.textContent.includes('In the invite queue'));
@@ -169,13 +169,13 @@ async function launchTransition228(){
    const options=texts(page.app,'option'),copy=mainOf(page).textContent;
    check(label+' admin filter: approved names read “Approved, not yet queued”',options.includes('Approved, not yet queued')&&!options.some(t=>/waiting for launch/i.test(t)),options);
    if(label==='legacy'){
-    check('  legacy admin copy keeps the website queue and live Queue buttons',copy.includes('Approved names go to the top of the invite queue')&&!byText(page.app,'button','Queue selected now').disabled&&!copy.includes('During launch verification'));
+    check('  legacy admin copy keeps the website queue and live Queue buttons',copy.includes('Approved names go to the top of the invite queue')&&!byText(page.app,'button','Queue selected now').disabled&&!copy.includes('The website queue is paused'));
     page.answer(p=>p==='/api/admin/reserved/queue'?{ok:true,queued:0,bumped:0,inGuild:0,blocked:0,contested:0,more:false,held:true}:null);
     const box=page.app.querySelector('input[aria-label="Select Tlqone"]');box.checked=true;fire(box,'change');
     byText(page.app,'button','Queue selected now').click();await settle();
     const anyway=page.document.querySelector('dialog')&&byText(page.document.querySelector('dialog'),'button','Queue anyway');if(anyway){anyway.click();await settle();}
     await waitFor(()=>page.document.body.textContent.includes('Nothing was queued')||page.document.body.textContent.includes('Queued 0'),'the queue answer toast');
-    check('  a held answer is reported as paused, never as “Queued 0”',page.document.body.textContent.includes('Queueing is paused during launch verification')&&!page.document.body.textContent.includes('Queued 0'));
+    check('  a held answer is reported as paused, never as “Queued 0”',page.document.body.textContent.includes('The website queue is paused. Officers invite in game.')&&!page.document.body.textContent.includes('Queued 0'));
     await waitFor(()=>page.app.querySelector('input[aria-label="Select Tlqone"]')!==box,'queue refresh after first reply');
     page.answer(p=>p==='/api/admin/reserved/queue'?{ok:true,queued:1,bumped:0,inGuild:0,blocked:0,contested:0,more:false,held:true}:null);
     const nextBox=page.app.querySelector('input[aria-label="Select Tlqone"]');nextBox.checked=true;fire(nextBox,'change');
@@ -184,7 +184,7 @@ async function launchTransition228(){
     await waitFor(()=>page.document.body.textContent.includes('Queued 1'),'the partial queue answer toast');
     check('  the partial queue reply reports work already completed before the hold',page.document.body.textContent.includes('Queued 1, moved to the front 0, already in the guild 0. Queueing is paused'));
     page.answer(null);
-   }else check('  membership-only admin copy: officers invite in game during launch verification, and Queue is paused',copy.includes('During launch verification, officers invite in game')&&!copy.includes('Approved names go to the top of the invite queue')&&byText(page.app,'button','Queue selected now').disabled===true&&byText(page.app,'button','Queue every approved name now').disabled===true,copy.slice(0,600));
+   }else check('  membership-only admin copy: officers invite in game during launch verification, and Queue is paused',copy.includes('Officers invite in game. The website queue is paused.')&&!copy.includes('Approved names go to the top of the invite queue')&&byText(page.app,'button','Queue selected now').disabled===true&&byText(page.app,'button','Queue every approved name now').disabled===true,copy.slice(0,600));
   }
   await resetNames();
  });

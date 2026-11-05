@@ -70,8 +70,10 @@ async function headingAndLaunch218() {
     official(main, 'Home');
     const admission = main.querySelector('.launch-and-admission218');
     // Evergreen Stage 2: a switched-off entry whose date has passed reads closed, not "not open yet" or "planned from".
-    check('.218 elapsed website threshold does not imply open entry while the switch is OFF', !!admission && admission.textContent.includes('Website name entry is closed') && !admission.textContent.includes('Website name entry is open')
-      && main.textContent.includes('Website name entry is closed.') && !main.textContent.includes('Website name entry is not open yet.') && !admission.textContent.includes('Name entry on this site is planned from'));
+    check('.218 elapsed threshold with the switch OFF reports the closure once at the reserved-name list', !!admission && admission.textContent.includes('Reserved-name list')
+      && !admission.textContent.includes('Website name entry is open') && main.querySelector('#names').textContent.includes('Entering names is closed right now.')
+      && main.textContent.split('Entering names is closed right now.').length === 2 && !main.textContent.includes('Website name entry is closed')
+      && !main.textContent.includes('Website name entry is not open yet.'));
     check('.218 guild invite countdown keeps its independently configured target', !!admission && admission.textContent.includes('Guild invites are planned from')
       && exactCountdown(admission.querySelector('.frame'), guildLaunchAt * 1000, earlyClock)
       && admission.textContent.includes('It guarantees neither service availability, an invite nor a free seat.'));
@@ -123,7 +125,7 @@ async function headingAndLaunch218() {
         }));
     }
     await page.go('#/community/news');
-    await must(() => mainOf(page).textContent.includes('Forever schedule'), 'actual News Forever schedule response');
+    await must(() => mainOf(page).textContent.includes('Forever milestones'), 'actual News Forever milestones response');
     official(mainOf(page),'News with deliberately different guild date');
     check('.218 News keeps the guild date in an explicitly separate invite reference',
       !!mainOf(page).querySelector('.guild-invite-plan218') && mainOf(page).querySelector('.guild-invite-plan218').textContent.includes('This is the guild’s schedule, separate from Blizzard’s global launch')
@@ -180,16 +182,17 @@ async function headingAndLaunch218() {
     await fixtureRun("UPDATE site_settings SET value=? WHERE key='namesOpenAt'", String(Math.floor(Date.parse('2026-11-08T12:00:00Z') / 1000)));
     await fixtureRun("UPDATE site_settings SET value=? WHERE key='launchAt'", String(Math.floor(Date.parse('2026-10-30T12:00:00Z') / 1000)));
     const later = await openPage(MEMBER, {}, {clockNow:earlyClock}); observe(later);
-    check('.218 ON website switch with a future threshold still says entry closed', later.boot.settings.namesOpen === true
-      && later.app.textContent.includes('Website name entry is closed') && later.app.textContent.includes('Website name entry is not open yet.')
+    check('.218 ON website switch with a future threshold shows the upcoming opening', later.boot.settings.namesOpen === true
+      && later.app.textContent.includes('Website name entry opens soon') && later.app.textContent.includes('Website name entry is not open yet.')
       && !later.app.textContent.includes('Website name entry is open'));
     official(mainOf(later), 'Home with changed guild schedule');
     await later.go('#/apply'); official(mainOf(later), 'Apply with changed guild schedule');
 
     const passed = await openPage(MEMBER, {}, {clockNow:officialAt+1000}); observe(passed);
     const passedBanner = mainOf(passed).querySelector('.launch-notice218');
-    check('.221 elapsed launch advances to the announced raid date without inventing an unlock hour or live availability', passedBanner?.textContent.includes('First raids open on 9 December 2026')
-      && passedBanner.textContent.includes('Blizzard has not announced the hour')
+    check('.221 elapsed launch advances to the announced raid date and directs readers to Blizzard for the opening time', passedBanner?.textContent.includes('Barrow Deeps, Hyjal Summit and Onyxia’s Lair open on 9 December 2026')
+      && passedBanner.textContent.includes('Check Blizzard for the opening time')
+      && !!passedBanner.querySelector('a[href="https://news.blizzard.com/en-us/article/24315820/world-of-warcraft-forever-now-live"]')
       && !passedBanner.querySelector('[role="timer"]') && !passedBanner.textContent.includes('Open now')
       && passedBanner.getAttribute('aria-label') === 'Forever raid schedule');
     check('.218 Home links to an application without implying an editable form is on Home',
