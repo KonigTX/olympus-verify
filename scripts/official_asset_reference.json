@@ -8,8 +8,8 @@
     {
       "path": "worker/public/static/app.css",
       "mode": "100644",
-      "bytes": 88871,
-      "sha256": "96910e98d2cabd6630dac28bb51e9a18004d73eb98dc57210e90fee13e7f712a"
+      "bytes": 88924,
+      "sha256": "6187d00b45088774d0a59755195daa6658015867a8a44c23a59bd5574cfa5962"
     },
     {
       "path": "worker/public/static/app.js",
@@ -4226,8 +4226,8 @@
     {
       "path": "worker/public/static/treasury-plan207.css",
       "mode": "100644",
-      "bytes": 9592,
-      "sha256": "853c859054bd42d7c51a615258fdc7d1715e4f750f169ca7def5e7c1b4694a1e"
+      "bytes": 9735,
+      "sha256": "b9d8491f88b8d18e86c9ee73b3fff0caa40e866944ef51f72878a010d366e92c"
     },
     {
       "path": "worker/public/static/treasury-plan207.js",
