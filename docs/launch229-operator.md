@@ -8,8 +8,10 @@ Use the qualified, fast-forwarded primary checkout at `C:\Users\vikto\OneDrive\A
 
    ```powershell
    Set-Location -LiteralPath 'C:\Users\vikto\OneDrive\Apps\Olympus\olympus-verify\watcher'
-   python .\watcher.py --config .\config.json --check
+   python .\watcher.py --config .\config.json --membership-only --check
    ```
+
+   The positive `--membership-only` flag requires strict mode for this process even when the existing private configuration predates launch; it does not rewrite that file, its credentials or its state location. Preflight checks the Worker membership profile and its presence-only protocol. Watcher 0.6.16 prints `mode members-only (required by --membership-only)`. A passing older unflagged preflight does not establish this mode. The check is online and takes the normal state lease; it can persist diagnostic/pause state. Keep its output private: paths, officer/relay names, the configured queue identity and a short code digest are diagnostic data, although raw codes and secrets are withheld.
 
    After a successful preflight, start the launcher and retain its output outside OneDrive:
 
@@ -18,7 +20,7 @@ Use the qualified, fast-forwarded primary checkout at `C:\Users\vikto\OneDrive\A
    & .\run-watcher.cmd 2>&1 | Tee-Object -FilePath "$env:LOCALAPPDATA\OlympusVerify\watcher-launch229.log" -Append
    ```
 
-   A CMD alternative from the same folder is `run-watcher.cmd`. Leave its window open. Closing the window stops collection. The launcher offers a restart after exit; inspect a storage/custody error before accepting that restart.
+   A CMD alternative from the same folder is `run-watcher.cmd`; the launcher also supplies `--membership-only`. Use the same reviewed Python runtime for preflight and startup (`python` on the launcher's PATH). Leave its window open. Closing the window stops collection. The launcher offers a restart after exit; inspect a storage/custody error before accepting that restart.
 
 2. Open a second PowerShell window to monitor the private local log:
 

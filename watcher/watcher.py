@@ -14,8 +14,8 @@ What it does, forever, politely:
 It never touches the game client, never sends input, never keeps the client awake. It reads files WoW writes and
 writes one data file WoW reads at load time — the same contract every addon-companion app uses.
 
-    python watcher.py --config config.json            run
-    python watcher.py --config config.json --check    validate paths and the Worker token, then exit
+    python watcher.py --config config.json --membership-only            run the strict launch collector
+    python watcher.py --config config.json --membership-only --check    check the strict Worker profile and paths, then exit
 """
 from __future__ import annotations
 
@@ -104,7 +104,7 @@ LINE_TS_RE = re.compile(r"^(?P<mo>\d{1,2})/(?P<d>\d{1,2})\s+(?P<h>\d{1,2}):(?P<m
 CLIENT_IN = "Active Player Created"
 CLIENT_OUT = ("Client Object Manager Destroyed", "Client Destroy")
 
-WATCHER_VERSION = "0.6.15"
+WATCHER_VERSION = "0.6.16"
 STRICT_DISPLAY_PROTOCOL = "launch-roster-display-v1"
 STRICT_DISPLAY_PATH = "/queue/unverified?keyVersion=" + STRICT_DISPLAY_PROTOCOL
 STRICT_DISPLAY_MAX_BYTES = 512 * 1024
@@ -1797,14 +1797,18 @@ class Watcher:
 
     # ---------- main ----------
     def check(self) -> int:
+        self.require_launch_worker()
         ok = True
         for label, p in (("chat log", self.chat_log), ("SavedVariables", self.sv_file), ("addon folder", self.queue_file.parent)):
             exists = p.exists()
             log(f"{label}: {p} {'OK' if exists else 'MISSING (created by WoW on first use)' if label != 'addon folder' else 'MISSING — install the addon first'}")
             ok &= exists or label != "addon folder"
-        reachable, res = self.worker.call("GET", "/queue", retries=1)
+        queue_path = "/queue?presenceOnly=1" if self.membership_only else "/queue"
+        reachable, res = self.worker.call("GET", queue_path, retries=1)
         paused = res if isinstance(res, dict) and (res.get("paused") or res.get("configurationError") or res.get("httpStatus") in (401, 403, 429)) else None
         queue_ready = reachable and not paused and isinstance(res, dict) and isinstance(res.get("entries"), list)
+        if self.membership_only:
+            queue_ready = queue_ready and res.get("presenceOnly") is True
         if paused:
             # 0.6.5: a pause is reported as one, with its cause, instead of a bare FAILED
             until = datetime.fromtimestamp(time.time() + int(paused.get("retryAfterSeconds") or 0)).strftime("%d %b %H:%M")
@@ -1815,7 +1819,7 @@ class Watcher:
         # Worker.call deliberately treats a terminal4xx as a delivery receipt for POSTs.
         # A diagnostic GET needs an actual queue object, not that transport-level boolean.
         ok &= bool(queue_ready)
-        if queue_ready:
+        if queue_ready and not self.membership_only:
             got, u = self.worker.call("GET", "/queue/unverified", retries=1)
             if got and isinstance(u, dict) and isinstance(u.get("members"), list):
                 log(f"unverified list: {len(u['members'])} not verified, {len(u.get('verified') or [])} verified with Discord names (build {u.get('build', '?')})"
@@ -1880,6 +1884,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="config.json")
     ap.add_argument("--check", action="store_true", help="validate configuration and exit")
+    ap.add_argument("--membership-only", action="store_true", help="require the strict native-membership profile without changing configuration")
     a = ap.parse_args()
     # 0.6.9: a missing, unreadable or malformed config.json is a message and exit 2, never a traceback.
     try:
@@ -1898,11 +1903,16 @@ def main() -> int:
     if missing:
         log("config: missing " + ", ".join(missing) + " (see config.example.json)")
         return 2
+    if a.membership_only:
+        # Positive-only launch admission. Keep credentials, state location and the private file unchanged.
+        cfg = {**cfg, "membership_only": True}
     try:
         # Acquire before Watcher construction, which can persist trusted_keys_since.
         # The offline recovery command uses this same cooperating-writer lease.
         with StateLease(Path(cfg.get("state_file", "watcher-state.json"))):
             w = Watcher(cfg)
+            log(f"watcher {WATCHER_VERSION}: mode {'members-only' if w.membership_only else 'legacy'}"
+                + (" (required by --membership-only)" if a.membership_only else ""))
             if a.check:
                 return w.check()
             w.run()

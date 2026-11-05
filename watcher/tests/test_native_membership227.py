@@ -3,12 +3,15 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import copy
+import contextlib
 import io
 import json
 import sys
 import tempfile
 import time
 import unittest
+import urllib.error
+import urllib.parse
 from unittest.mock import patch
 from pathlib import Path
 
@@ -121,6 +124,143 @@ class NativeMembershipTests(unittest.TestCase):
         self.w.membership_only = False
         self.w.worker.call = lambda *args, **kwargs: self.fail('Legacy startup changed')
         self.w.require_launch_worker()
+
+    def test_strict_check_uses_actual_versioned_presence_transport_without_writes_or_secrets(self):
+        self.w.queue_file.parent.mkdir(parents=True, exist_ok=True)
+        original = b'-- retained legacy queue\n'
+        self.w.queue_file.write_bytes(original)
+        before = copy.deepcopy(self.w.state.d)
+        del self.w.worker.call  # Exercise the real protocol-appending transport, not the setUp stub.
+        calls, output = [], io.StringIO()
+        health = {'ok': True, 'verification': {'mode': 'members-only', 'nativeScopePinned': True,
+                  'nativeMembershipProofVersion': 1}, 'relays': {'requestCodes': True}}
+
+        def answer(request, timeout):
+            self.assertEqual(request.get_method(), 'GET')
+            self.assertIsNone(request.data)
+            parsed = urllib.parse.urlsplit(request.full_url)
+            calls.append((parsed.path, urllib.parse.parse_qs(parsed.query)))
+            if parsed.path == '/health':
+                return io.BytesIO(json.dumps(health).encode())
+            # The live route refuses the membership protocol without presenceOnly=1.
+            if calls[-1] != ('/queue', {'presenceOnly': ['1'], 'keyVersion': ['launch-membership-v1']}):
+                raise urllib.error.HTTPError(request.full_url, 400, 'synthetic protocol refusal', {}, io.BytesIO(b''))
+            return io.BytesIO(b'{"presenceOnly":true,"entries":[],"discordId":"999999999999999999"}')
+
+        with patch.object(self.w.worker.opener, 'open', side_effect=answer), contextlib.redirect_stdout(output):
+            self.assertEqual(self.w.check(), 0, output.getvalue())
+        self.assertEqual(calls, [('/health', {}), ('/queue', {'presenceOnly': ['1'],
+                         'keyVersion': ['launch-membership-v1']}), ('/health', {})])
+        self.assertEqual(self.w.state.d, before)
+        self.assertEqual(self.w.queue_file.read_bytes(), original)
+        self.assertFalse(self.w.strict_display_file.exists())
+        self.assertFalse(self.w.launch_operations_file.exists())
+        for private in (SECRET, 'test-token', GUID, '999999999999999999',
+                        codes.valid_codes(SECRET, 'Fern Melder')[0]):
+            self.assertNotIn(private, output.getvalue())
+
+    def test_legacy_check_keeps_actual_unversioned_queue_report_and_health_transport(self):
+        self.w.queue_file.parent.mkdir(parents=True, exist_ok=True)
+        self.w.membership_only = self.w.worker.membership_only = False
+        del self.w.worker.call
+        calls = []
+        responses = {'/queue': {'entries': []}, '/queue/unverified': {'members': [], 'verified': [],
+                     'firstSeenAvailable': True, 'build': 'synthetic'}, '/health': {'relays': {'requestCodes': True}}}
+
+        def answer(request, timeout):
+            self.assertEqual(request.get_method(), 'GET')
+            self.assertIsNone(request.data)
+            parsed = urllib.parse.urlsplit(request.full_url)
+            self.assertEqual(parsed.query, '')
+            calls.append(parsed.path)
+            return io.BytesIO(json.dumps(responses[parsed.path]).encode())
+
+        with patch.object(self.w.worker.opener, 'open', side_effect=answer), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(self.w.check(), 0)
+        self.assertEqual(calls, ['/queue', '/queue/unverified', '/health'])
+        for path in (self.w.queue_file, self.w.strict_display_file, self.w.launch_operations_file):
+            self.assertFalse(path.exists())
+
+    def test_strict_check_refuses_unconfirmed_presence_without_legacy_diagnostics(self):
+        self.w.queue_file.parent.mkdir(parents=True, exist_ok=True)
+        health = {'ok': True, 'verification': {'mode': 'members-only', 'nativeScopePinned': True,
+                  'nativeMembershipProofVersion': 1}}
+        for response in (None, {}, {'entries': []}, {'presenceOnly': False, 'entries': []},
+                         {'presenceOnly': True, 'entries': 'unknown'}):
+            with self.subTest(response=response):
+                calls = []
+                self.w.worker.call = lambda m, p, **kw: (calls.append((m, p)) or (True, health if p == '/health' else response))
+                with contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(self.w.check(), 1)
+                self.assertEqual(calls, [('GET', '/health'), ('GET', '/queue?presenceOnly=1')])
+
+    def test_strict_check_real_http_refusals_are_not_success_or_ingestion(self):
+        self.w.queue_file.parent.mkdir(parents=True, exist_ok=True)
+        health = {'ok': True, 'verification': {'mode': 'members-only', 'nativeScopePinned': True,
+                  'nativeMembershipProofVersion': 1}}
+        for status in (400, 401, 403, 429):
+            with self.subTest(status=status):
+                self.w.worker = watcher.Worker('https://test.invalid', 'synthetic-only')
+                self.w.worker.membership_only = True
+                calls = []
+
+                def answer(request, timeout):
+                    calls.append((request.get_method(), urllib.parse.urlsplit(request.full_url).path))
+                    if calls[-1] == ('GET', '/health'):
+                        return io.BytesIO(json.dumps(health).encode())
+                    raise urllib.error.HTTPError(request.full_url, status, 'synthetic refusal', {}, io.BytesIO(b'never log this body'))
+
+                with patch.object(self.w.worker.opener, 'open', side_effect=answer), contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(self.w.check(), 1)
+                self.assertEqual(calls, [('GET', '/health'), ('GET', '/queue')])
+
+    def test_strict_check_requires_current_health_before_queue(self):
+        for health in ({'ok': True}, {'ok': True, 'verification': {'mode': 'legacy'}},
+                       {'ok': True, 'verification': {'mode': 'members-only', 'nativeScopePinned': False,
+                                                   'nativeMembershipProofVersion': 1}}):
+            calls = []
+            self.w.worker.call = lambda m, p, **kw: (calls.append((m, p)) or (True, health))
+            with self.assertRaises(watcher.LaunchNotReady), contextlib.redirect_stdout(io.StringIO()):
+                self.w.check()
+            self.assertEqual(calls, [('GET', '/health')])
+
+    def test_positive_cli_requires_strict_mode_without_rewriting_config_or_other_fields(self):
+        config = self.root / 'synthetic-startup.json'
+        original = {**self.w.cfg, 'membership_only': False}
+        config.write_text(json.dumps(original), encoding='utf-8')
+        original_bytes = config.read_bytes()
+        for force, checking in ((True, True), (True, False), (False, True), (False, False)):
+            with self.subTest(force=force, checking=checking), patch.object(watcher, 'Watcher') as constructor:
+                constructor.return_value.check.return_value = 0
+                argv = ['watcher.py', '--config', str(config)]
+                argv += ['--membership-only'] if force else []
+                argv += ['--check'] if checking else []
+                with patch.object(sys, 'argv', argv), contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(watcher.main(), 0)
+                self.assertEqual(constructor.call_args.args[0], {**original, 'membership_only': force})
+                (constructor.return_value.check if checking else constructor.return_value.run).assert_called_once_with()
+                self.assertEqual(config.read_bytes(), original_bytes)
+
+    def test_cli_absence_preserves_invalid_mode_refusal_and_positive_flag_is_explicit(self):
+        config = self.root / 'synthetic-invalid-mode.json'
+        for invalid in ('true', 1, None, [], {}):
+            config.write_text(json.dumps({**self.w.cfg, 'membership_only': invalid}), encoding='utf-8')
+            original = config.read_bytes()
+            for force in (False, True):
+                output = io.StringIO()
+                argv = ['watcher.py', '--config', str(config), '--check'] + (['--membership-only'] if force else [])
+                with self.subTest(invalid=invalid, force=force), patch.object(sys, 'argv', argv), \
+                        patch.object(watcher.Watcher, 'check', autospec=True, return_value=0) as check, \
+                        patch.object(watcher.urllib.request.OpenerDirector, 'open', side_effect=AssertionError('unexpected network')), \
+                        contextlib.redirect_stdout(output):
+                    self.assertEqual(watcher.main(), 0 if force else 2)
+                self.assertEqual(config.read_bytes(), original)
+                if force:
+                    self.assertIs(check.call_args.args[0].membership_only, True)
+                    self.assertIn('mode members-only (required by --membership-only)', output.getvalue())
+                else:
+                    check.assert_not_called()
+                    self.assertIn('membership_only must be a boolean', output.getvalue())
 
     def test_presence_poll_preserves_legacy_queue_and_unknown_acknowledgement(self):
         self.w.queue_file.parent.mkdir(parents=True, exist_ok=True)

@@ -4,12 +4,13 @@ REM (state_file) resolve correctly no matter where this is launched from. Output
 REM console so you can see it working; minimise the window rather than closing it.
 REM
 REM For Task Scheduler ("at log on"), point the task at this file and add a redirect on the last
-REM line instead:  python watcher.py --config config.json >> watcher.log 2>&1
+REM line instead:  python watcher.py --config config.json --membership-only >> watcher.log 2>&1
 REM Keep state_file in a private local folder outside sync clients such as OneDrive.
 REM A released .197 OS lock file stays on disk; do not delete it on restart.
+REM The positive launch flag requires native membership without changing private configuration.
 cd /d "%~dp0"
 title Olympus watcher - leave running
-python watcher.py --config config.json
+python watcher.py --config config.json --membership-only
 echo.
 echo *** The watcher has stopped. Press a key to restart it, or close this window. ***
 echo Check any storage error first. Keep the same state and configuration; never delete custody to resume.
