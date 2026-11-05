@@ -2250,7 +2250,7 @@
   ROUTES["treasury-plan"] = async (main, parts) => {
     const user = S.user, settings = S.settings, route = currentRoute(), view = main.dataset.viewRequest;
     const revision = decisionActorRevision, generation = treasuryGeneration218;
-    let disposed = false, pending = false, finished = false, mounted = false, timer = null, disposePlan = null;
+    let disposed = false, pending = false, finished = false, mounted = false, timer = null, disposePlan = null, suspendedPlan = null;
     const active = () => !disposed && app.contains(main) && main.dataset.viewRequest === view && S.user === user && S.settings === settings && currentRoute() === route && S.signedIn && !S.denied && decisionActorRevision === revision;
     const current = () => active() && generation === treasuryGeneration218 && !treasurySignoutHeld218();
     const removePlan = () => {
@@ -2258,6 +2258,7 @@
       timer = null;
       const cleanup = disposePlan;
       disposePlan = null;
+      suspendedPlan = null;
       mounted = false;
       clear(main);
       cleanup?.();
@@ -2292,14 +2293,40 @@
       mounted = true;
       arm();
     };
-    const loadPlan = async () => {
+    const loadPlan = async (renew = false) => {
       if (!current() || pending || finished) return;
       pending = true;
-      removePlan();
+      if (renew) {
+        // At expiry, detach the presentation until a fresh answer confirms this view.
+        clearTimeout(timer);
+        timer = null;
+        suspendedPlan = {
+          nodes: [...main.childNodes],
+          focus: main.contains(document.activeElement) ? document.activeElement : null,
+          x: window.scrollX, y: window.scrollY
+        };
+        clear(main);
+      } else removePlan();
       waiting();
+      const waitingX = window.scrollX, waitingY = window.scrollY;
       try {
-        if (!treasuryPlanAllowed218() && !await verifyAccess()) { if (current()) refuse(); return; }
+        if (!treasuryPlanAllowed218() && !await verifyAccess()) {
+          if (current()) { removePlan(); refuse(); }
+          return;
+        }
         if (!current()) return;
+        if (suspendedPlan) {
+          if (!treasuryPlanAllowed218()) throw new ApiError(0, { error: "access_unconfirmed" });
+          const { nodes, focus, x, y } = suspendedPlan;
+          suspendedPlan = null;
+          const restoreScroll = Number.isFinite(y) && window.scrollX === waitingX && window.scrollY === waitingY;
+          clear(main);
+          add(main, nodes);
+          if (restoreScroll) window.scrollTo(x, y);
+          if (focus && document.activeElement === document.body) focus.focus({ preventScroll: true });
+          arm();
+          return;
+        }
         const { renderTreasuryPlan207 } = await import("/static/treasury-plan207.js");
         if (!current()) return;
         // A held module import can outlive the grant that started it.
@@ -2317,8 +2344,8 @@
     function checkExpiry() {
       if (!current() || pending || finished) return;
       if (mounted && treasuryPlanAllowed218()) { arm(); return; }
-      if (mounted) { removePlan(); waiting(); }
-      if (!document.hidden) void loadPlan();
+      if (!document.hidden) void loadPlan(mounted);
+      else if (mounted) { removePlan(); waiting(); }
     }
     function pageRestored(event) {
       // A bfcached tab may have missed a sign-out message while frozen.
@@ -2439,14 +2466,14 @@
     if (!current() || !live()) return false;
     const age = Date.now() - answer.at;
     if (age < 0 || age >= TREASURY_ACCESS_TTL218) throw new ApiError(0, { error: "access_unconfirmed" });
-    const visible = treasuryPlanAllowed218(), allowed = answer.canRead;
-    const changed = (user.canReadTreasuryPlan === true) !== allowed;
+    const bar = app.querySelector("header.topbar"), visible = !!bar?.querySelector('a[href="#/treasury-plan"]');
+    const allowed = answer.canRead;
     treasuryAnswer218 = answer;
     // Keep the identity object captured by unrelated active readers.
-    if (changed) user.canReadTreasuryPlan = allowed;
-    if (changed || visible !== treasuryPlanAllowed218()) {
-      const bar = app.querySelector("header.topbar");
-      if (bar) { bar.replaceWith(topbar(currentRoute())); observeFocusInsets(); }
+    if ((user.canReadTreasuryPlan === true) !== allowed) user.canReadTreasuryPlan = allowed;
+    if (bar && visible !== treasuryPlanAllowed218()) {
+      bar.replaceWith(topbar(currentRoute()));
+      observeFocusInsets();
     }
     return allowed;
   }

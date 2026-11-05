@@ -363,6 +363,8 @@ const visibility218=(p,hidden=false)=>{
     return reply218(attempt===1);
   });
   await bounded160.page.go("#/treasury-plan");await waitFor(()=>plan218(bounded160.page),"fresh boot Treasury plan");
+  const originalPlan160=bounded160.page.app.querySelector("[data-treasury-plan-fixture]");
+  const originalBar160=bounded160.page.app.querySelector("header.topbar");
   bounded160.page.clock(bounded160.clock+ttl160-1);visibility218(bounded160.page);
   check("CC160 fresh boot presentation remains usable inside its original bound without a read",plan218(bounded160.page)&&read160===0&&bounded160.rendered.count===1);
   check("CC081 the authorized Treasury mount receives the canonical office label from real metadata",
@@ -371,16 +373,19 @@ const visibility218=(p,hidden=false)=>{
   const expiry160=[...bounded160.scheduled].at(-1);
   expiry160?.fire();
   await settle();
-  check("CC160 mounted expiry removes the plan before the stale check responds",!plan218(bounded160.page)&&bounded160.rendered.disposed===1&&read160===1);
+  check("CC160 mounted expiry detaches the plan before the stale check responds",!plan218(bounded160.page)&&bounded160.rendered.disposed===0&&read160===1);
   visibility218(bounded160.page);visibility218(bounded160.page);await settle();
   check("CC160 repeated visible events share the pending current Treasury check",read160===1);
   allow160.resolve();await settle();await settle();
-  check("CC160 a current positive reply mounts only one new dated plan",plan218(bounded160.page)&&bounded160.rendered.count===2&&read160===1);
+  check("CC160 a current positive reply restores the same dated plan without remounting",
+    bounded160.page.app.querySelector("[data-treasury-plan-fixture]")===originalPlan160
+    && bounded160.page.app.querySelector("header.topbar")===originalBar160
+    && bounded160.rendered.count===1 && bounded160.rendered.disposed===0 && read160===1);
   bounded160.page.clock(bounded160.clock+ttl160*2);
   visibility218(bounded160.page);await settle();
   check("CC160 visibility restore also removes an expired plan before the response",!plan218(bounded160.page)&&read160===2);
   deny160.resolve();await settle();await settle();
-  check("CC160 fresh revocation shows the officer gate and never remounts the expired plan",!plan218(bounded160.page)&&bounded160.page.app.textContent.includes("Officers and above")&&bounded160.rendered.count===2);
+  check("CC160 fresh revocation shows the officer gate and never remounts the expired plan",!plan218(bounded160.page)&&bounded160.page.app.textContent.includes("Officers and above")&&bounded160.rendered.count===1&&bounded160.rendered.disposed===1);
 
   const fail160=await timedTreasury218();let failedReads160=0;
   fail160.page.intercept(path=>{if(path==="/api/treasury-plan/access"){failedReads160++;return slow218(17);}});
