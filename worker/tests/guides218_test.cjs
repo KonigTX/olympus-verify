@@ -198,6 +198,12 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
     && official(specFact('shaman', 'elemental').pro.priorities[0], ['Replaces Lava Burst', '5% critical strike chance'])
     && official(specFact('shaman', 'enhancement').pro.priorities[0], ['150% normalized weapon damage', 'six-second cooldown'])
     && official(specFact('shaman', 'restoration').pro.priorities[0], ['no initial heal', '12 seconds']));
+  check('the Shaman and Priest snapshot notes distinguish historical entries from the November class changes',
+    classFact('shaman').changes.some(row => row.status === 'pinned-data' && row.text.includes('The October snapshot had no Call of Thunder in Elemental'))
+    && !classFact('shaman').changes.some(row => row.text.includes('removed: Call of Thunder'))
+    && official(classFact('shaman').changes[4], ['Call of Thunder replaces Lava Burst'])
+    && classFact('priest').changes[0].status === 'pinned-data' && classFact('priest').changes[0].sources.includes(source9)
+    && classFact('priest').changes[0].text.includes('Binding Heal (since replaced by Holy Binding)'));
   check('Paladin updates distinguish retired Holy and Protection talents from the new Retribution capstone',
     specFact('paladin', 'holy').beginner.leveling[0].includes('Voice of Truth was removed from the Holy tree')
     && specFact('paladin', 'protection').beginner.leveling[0].includes('Improved Seal of Fury is gone')
@@ -218,6 +224,22 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
     && presetWarning('shaman-elemental-leveling-30').includes('Lava Burst replaced by Call of Thunder')
     && presetWarning('mage-fire-raid-60').includes('Critical Mass now caps at 3')
     && presetWarning('warrior-fury-raid-60').includes('Flurry now caps at 3'));
+  const furtherVerifiedWarnings = [
+    ['mage-arcane-leveling-30', 'Missile Barrage', 2, 'increased Arcane Resilience to three ranks'],
+    ['mage-fire-leveling-30', 'Improved Fire Blast', 2, 'moved Improved Fire Blast to row 3'],
+    ['hunter-beast-mastery-leveling-30', 'Pathfinding', 2, 'Pathfinding to row 3'],
+    ['shaman-enhancement-raid-60', 'Improved Ghost Wolf', 2, 'Improved Ghost Wolf to row 4'],
+    ['shaman-enhancement-leveling-30', 'Improved Ghost Wolf', 2, 'Improved Ghost Wolf to row 4'],
+    ['paladin-retribution-raid-60', 'Conviction', 5, 'Conviction now caps at 3'],
+    ['paladin-retribution-leveling-30', 'Conviction', 5, 'Conviction now caps at 3'],
+  ];
+  check('each additional November warning has a matching allocation in the unchanged build code',
+    furtherVerifiedWarnings.every(([id, talent, ranks, warning]) => {
+      const preset = DATA.presets.find(row => row.id === id);
+      const tree = talents.classes.find(row => row.id === preset.classId);
+      const index = tree.trees.flatMap(spec => spec.talents).findIndex(row => row.name === talent);
+      return calculator.parseBuild(talents, preset.code).build.ranks[index] === ranks && preset.why.some(line => line.includes(warning));
+    }));
   m = await mounted({ view: 'class', classId: cls.id, talentRevision: talents.revision, canAttach: false, attachReason: 'Applications are closed right now, so a build cannot be attached.', onAttach: () => attached.push('no') });
   const closedButtons = m.box.tags('button').filter(b => text(b) === 'Attach to my application');
   check('with applications closed every attach button is disabled and the reason is shown', closedButtons.length > 0 && closedButtons.every(b => b.disabled) && text(m.box).includes('Applications are closed right now'));
@@ -275,6 +297,20 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
     allBoxes.length === 26 && new Set(labelTargets).size === 26
     && allBoxes.every(box => box.getAttribute('type') === 'checkbox' && labelTargets.includes(box.getAttribute('id')))
     && text(m.box).split('Ticks stay on this page only').length === 2);
+  const actionClaims = [
+    ...DATA.tools.attunements.flatMap(raid => raid.steps.filter(row => row.kind === 'action')),
+    ...DATA.tools.preBis.slots.map(slot => slot.guidance),
+    ...DATA.tools.preBis.checklist.filter(row => row.kind === 'action'),
+  ];
+  check('each checklist checkbox has its own instruction, expanded evidence grade and any note as its description',
+    new Set(allBoxes.map(box => box.getAttribute('aria-describedby'))).size === 26
+    && allBoxes.every((box, index) => {
+      const claim = actionClaims[index], id = box.getAttribute('aria-describedby');
+      const description = box.parentNode.all(node => id && node.getAttribute('id') === id)[0];
+      return description && text(description).includes(claim.value ?? 'Unavailable')
+        && description.tags('abbr')[0].getAttribute('aria-label') === DATA.grades[claim.grade]
+        && (!claim.note || text(description).includes(claim.note)) && links(description).length === 0;
+    }));
   const questInput = raidSections[0].tags('input')[0], slotInput = slots.tags('input')[0], prepInput = prep.tags('input')[0];
   questInput.checked = true; questInput.fire('change');
   slotInput.checked = true; slotInput.fire('change');
@@ -457,16 +493,20 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
     [1, 17, 118].every(index => DATA.sources[index].url === topic && DATA.sources[index].kind === 'official')
     && [[47, 4], [48, 5], [49, 6], [50, 7], [150, 9]].every(([index, post]) => DATA.sources[index].url === topic + '/' + post));
   const citationFixture = clone(DATA);
-  citationFixture.classes[0].changes[0].sources = [1, 1, 17, 118, 150, 86];
+  const publisherPrefixed = DATA.sources.findIndex(source => source.label.startsWith(source.publisher + ': '));
+  citationFixture.classes[0].changes[0].sources = [1, 1, 17, 118, 150, 86, publisherPrefixed];
   const citation = await mounted({ view: 'class', classId: DATA.classes[0].id, talentRevision: talents.revision }, citationFixture);
-  const [baseTopicLink, datedPostLink, playerPostLink] = sourceLines(citation.box)[0].tags('a');
+  const [baseTopicLink, datedPostLink, playerPostLink, prefixedTitleLink] = sourceLines(citation.box)[0].tags('a');
   check('a citation combines same-topic aliases and keeps every source title and the exact dated post',
-    links(sourceLines(citation.box)[0]).join('|') === [topic, topic + '/9', DATA.sources[86].url].join('|')
+    links(sourceLines(citation.box)[0]).join('|') === [topic, topic + '/9', DATA.sources[86].url, DATA.sources[publisherPrefixed].url].join('|')
     && text(baseTopicLink) === 'Blizzard Entertainment — ' + [1, 17, 118].map(index => DATA.sources[index].label).join(' / ')
     && text(datedPostLink) === 'Blizzard Entertainment — ' + DATA.sources[150].label);
   check('Blizzard hosts player posts without getting publisher credit for their claims',
     [86, 120].every(index => DATA.sources[index].kind === 'community' && DATA.sources[index].publisher === 'Blizzard forums (player posts)')
     && text(playerPostLink).startsWith('Blizzard forums (player posts) — Beta player report'));
+  const prefixed = DATA.sources[publisherPrefixed];
+  check('a source title starting with its publisher renders that publisher once and keeps its topic',
+    text(prefixedTitleLink) === prefixed.publisher + ' — ' + prefixed.label.slice(prefixed.publisher.length + 2));
   const guideViews = [
     ...DATA.classes.flatMap(c => [{ view: 'class', classId: c.id }, ...c.specs.map(s => ({ view: 'class', classId: c.id, specId: s.id }))]),
     ...DATA.professions.map(p => ({ view: 'profession', profession: p.key })),
@@ -481,6 +521,8 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
       for (const a of anchors) {
         const [name, href] = [text(a), a.getAttribute('href')];
         assert.match(name, /^.+ — .+$/, JSON.stringify(opts) + ': source title missing');
+        const [publisher, title] = name.split(' — ', 2);
+        assert.ok(!title.startsWith(publisher + ': ') && !title.startsWith(publisher + ' '), JSON.stringify(opts) + ': repeated publisher');
         assert.ok(!purposeByName.has(name) || purposeByName.get(name) === href, JSON.stringify(opts) + ': same link name identifies different sources');
         purposeByName.set(name, href);
       }

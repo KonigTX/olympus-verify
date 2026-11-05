@@ -146,7 +146,9 @@
         const { url, publisher, kind, label } = data.sources[n];
         const key = JSON.stringify([url, publisher, kind]);
         if (!citations.has(key)) citations.set(key, { url, publisher, labels: new Set() });
-        citations.get(key).labels.add(label);
+        const prefix = label.startsWith(publisher + ": ") ? publisher + ": " : publisher + " ";
+        const title = label.startsWith(prefix) ? label.slice(prefix.length).trimStart() : label;
+        citations.get(key).labels.add(title || label);
       }
       return el("span", { class: "guides218-sources" }, citations.size === 1 ? "Source: " : "Sources: ",
         [...citations.values()].map(({ url, publisher, labels }, i) =>
@@ -155,12 +157,15 @@
     const talentCredit = () => el("p", { class: "muted small guides218-talent-credit" }, "Beta talent data from ",
       external("https://talentsforever.com/", "Talents Forever"), " by Chris Baldwin, summarized by Olympus under ",
       external(TALENT_LICENSE_URL, "CC BY 4.0"), ".");
-    function grade(data, g) {
-      return el("abbr", { class: "guides218-grade", "data-grade": g, title: data.grades[g], text: g });
+    function grade(data, g, described = false) {
+      return el("abbr", { class: "guides218-grade", "data-grade": g, title: data.grades[g], "aria-label": described ? data.grades[g] : null, text: g });
+    }
+    function claimDetails(data, c, described = false) {
+      return [el("span", { text: c.grade === "U" ? "Unavailable" : c.value }), " ", grade(data, c.grade, described),
+        c.note ? el("span", { class: "muted guides218-note", text: " " + c.note }) : null];
     }
     function claimEvidence(data, c) {
-      return [el("span", { text: c.grade === "U" ? "Unavailable" : c.value }), " ", grade(data, c.grade),
-        c.note ? el("span", { class: "muted guides218-note", text: " " + c.note }) : null, " ", sourcesLine(data, c.sources)];
+      return [claimDetails(data, c), " ", sourcesLine(data, c.sources)];
     }
     function claim(data, c) {
       return el("li", { class: "guides218-claim", "data-grade": c.grade },
@@ -278,10 +283,12 @@
       const update = () => { count.textContent = done.size + " of " + rows.length + " done."; };
       update();
       return [count, el("ul", { class: "guides218-checklist" }, rows.map((r, i) => {
-        const id = listId + "-" + i, c = r.guidance || r;
-        const box = el("input", { type: "checkbox", id, onchange: () => { if (box.checked) done.add(i); else done.delete(i); update(); } });
+        const id = listId + "-" + i, descriptionId = id + "-description", c = r.guidance || r;
+        const box = el("input", { type: "checkbox", id, "aria-describedby": descriptionId,
+          onchange: () => { if (box.checked) done.add(i); else done.delete(i); update(); } });
         return el("li", { "data-grade": c.grade }, box, el("label", { for: id, text: r.label }),
-          el("div", { class: "small" }, r.guidance ? [el("strong", { class: "guides218-claim-label", text: c.label }), " "] : null, claimEvidence(data, c)));
+          el("div", { class: "small" }, r.guidance ? [el("strong", { class: "guides218-claim-label", text: c.label }), " "] : null,
+            el("span", { id: descriptionId }, claimDetails(data, c, true)), " ", sourcesLine(data, c.sources)));
       }))];
     }
     function checklistSections(data, rows, actionTitle, referenceTitle) {
