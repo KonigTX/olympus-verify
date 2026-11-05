@@ -109,7 +109,7 @@ async function guildCommands219(){
     &&embed.description.includes('The in-game name for slot 0 is Guild Master.')&&org219.nativeRanks[0].name==='Leader');
   }
   if(name==='branches')check('CC-018 no Army snapshots gives one plain empty state and retains capacity, history and authority boundaries',
-   embed?.description.includes('No published capacity snapshot for Olympus I–X yet. Live capacity is unknown.')&&
+   embed?.description.includes('No published capacity snapshot for OLYMPUS PRIME / Olympus II–X yet. Live capacity is unknown.')&&
    embed.description.includes('October Beta 1000/1000 +247 queued is historical only.')&&
    !embed.fields?.length&&embed.footer?.text.includes('No automatic invitation, transfer, ranking or Link action.'));
   if(name==='treasury')check('Treasury identifies the Discord treasurer and the exact separate game recipient',r.answer.embeds[0].title.includes('Fernmelder')&&r.answer.embeds[0].description.includes('mail or trade to Fern Melder')&&r.answer.embeds[0].fields.some(f=>f.value.includes('100g standard bail remain available')));
