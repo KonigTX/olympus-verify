@@ -37,7 +37,64 @@ function load(name){const cache=new Map();function read(file){file=path.resolve(
  check('raid successor preserves the twenty identities and all nineteen unrelated command bodies',plan228.expectedCount===20&&plan228.changedCommands.join(',')==='1:raid'&&planner228.verifyGuildCommandReadback228(plan228,after228).nineteenOtherCommandsPreserved);
  check('raid successor rejects wrong scope, stale baseline, altered subcommands or permissions',refused(()=>planner228.prepareGuildCommandPlan228(final.map(c=>({...c,guild_id:'300000000000000000'})),raid228,custody228))&&refused(()=>planner228.prepareGuildCommandPlan228(before,raid228,custody228))&&refused(()=>planner228.prepareGuildCommandPlan228(final,{...raid228,options:raid228.options.slice(0,-1)},custody228))&&refused(()=>planner228.prepareGuildCommandPlan228(final,{...raid228,default_member_permissions:'0'},custody228))&&refused(()=>planner228.prepareGuildCommandPlan228(final,{...raid228,contexts:[0]},custody228)));
  check('raid successor refuses altered option details and unrelated readback changes',refused(()=>planner228.prepareGuildCommandPlan228(final,{...raid228,options:raid228.options.map(c=>c.name==='hub'?{...c,options:[]}:c)},custody228))&&refused(()=>planner228.verifyGuildCommandReadback228(plan228,after228.map(c=>c.name==='event'?{...c,description:'Changed alias'}:c))));
+ const classes=await import(pathToFileURL(path.join(root,'scripts/guild-class-choice-plan228.mjs')));
+ const normalizedDigest=rows=>normal.digestCommands219(normal.normalizeCommands219(rows));
+ const classCustody=rows=>({...custody,expectedExistingSHA256:normalizedDigest(rows)});
+ const exactClassCustody=classCustody(after228);
+ const classPlan=classes.prepareGuildClassChoicePlan228(after228,catalog228.GUILD_COMMANDS_228,exactClassCustody);
+ const classReadback=classPlan.commands.map(scope);
+ const prepareClasses=(rows,source=catalog228.GUILD_COMMANDS_228,proof=classCustody(rows))=>classes.prepareGuildClassChoicePlan228(rows,source,proof);
+ const verifyClasses=(proposal,rows)=>classes.verifyGuildClassChoiceReadback228(proposal,rows,catalog228.GUILD_COMMANDS_228,exactClassCustody);
+ const alter=(rows,change)=>{const copy=structuredClone(rows);change(copy);return copy;};
+ const guideChoice=rows=>classOption(rows,'guide','class');
+ const foreverChoice=rows=>classOption(rows,'forever','guide');
+ const revertChoices=alter(classPlan.commands,rows=>{for(const [name,sub] of variants)classOption(rows,name,sub).choices=classOption(after228,name,sub).choices;});
+ check('offline class plan changes exactly both class arrays and preserves all other definitions',
+  classPlan.changedCommands.join(',')==='1:forever,1:guide'&&normalizedDigest(revertChoices)===exactClassCustody.expectedExistingSHA256
+  &&variants.every(([name,sub])=>JSON.stringify(classOption(classReadback,name,sub).choices)===JSON.stringify(classOption(catalog228.GUILD_COMMANDS_228,name,sub).choices)));
+ check('offline verification accepts all 20 definitions and keeps provider IDs and overrides as separate evidence',
+  verifyClasses(classPlan,classReadback).count===20&&verifyClasses(classPlan,classReadback).providerIDsAndPermissionOverridesVerified===false);
+ const bareRaidClassPlan=prepareClasses(final);
+ check('the class plan preserves whichever raid definition the independent approved inventory contains',
+  normalizedDigest(bareRaidClassPlan.commands.filter(row=>row.name==='raid'))===normalizedDigest(final.filter(row=>row.name==='raid'))
+  &&normalizedDigest(classReadback.filter(row=>row.name==='raid'))===normalizedDigest(after228.filter(row=>row.name==='raid')));
+ check('the class plan needs an independently approved full inventory digest and the exact guild and application',
+  refused(()=>prepareClasses(after228,catalog228.GUILD_COMMANDS_228,custody228))
+  &&refused(()=>prepareClasses(alter(after228,rows=>{rows[0].guild_id='300000000000000000';})))
+  &&refused(()=>prepareClasses(alter(after228,rows=>{rows[0].application_id='300000000000000001';}))));
+ check('the class plan refuses changed inventory identity and unexpected fields that normalization would strip',
+  refused(()=>prepareClasses(alter(after228,rows=>{rows[0].name='extra';})))
+  &&refused(()=>prepareClasses(alter(after228,rows=>{rows[0].contexts=[0,1];})))
+  &&refused(()=>prepareClasses(alter(after228,rows=>{guideChoice(rows).unsupported=true;}))));
+ check('the class plan requires two unique typed paths and nine unique unlocalized choices at each',
+  refused(()=>prepareClasses(alter(after228,rows=>{guideChoice(rows).type=4;})))
+  &&refused(()=>prepareClasses(alter(after228,rows=>{const sub=rows.find(row=>row.name==='guide').options.find(option=>option.name==='class');sub.options.push({...sub.options[0]});})))
+  &&refused(()=>prepareClasses(alter(after228,rows=>{guideChoice(rows).choices[0]=guideChoice(rows).choices[1];})))
+  &&refused(()=>prepareClasses(alter(after228,rows=>{foreverChoice(rows).choices[0].name_localizations={fr:'Guerrier'};}))));
+ check('the class plan refuses stale or tampered candidate lists, including altered labels, order or values',
+  refused(()=>prepareClasses(after228,defs))
+  &&refused(()=>prepareClasses(after228,alter(catalog228.GUILD_COMMANDS_228,rows=>{guideChoice(rows).choices[0].name='Other';})))
+  &&refused(()=>prepareClasses(after228,alter(catalog228.GUILD_COMMANDS_228,rows=>{guideChoice(rows).choices.reverse();})))
+  &&refused(()=>prepareClasses(after228,alter(catalog228.GUILD_COMMANDS_228,rows=>{foreverChoice(rows).choices[0].value='unknown';}))));
+ check('partial parity is held and full parity produces no executable class plan',
+  refused(()=>prepareClasses(alter(after228,rows=>{guideChoice(rows).choices=guideChoice(classReadback).choices;})))
+  &&refused(()=>prepareClasses(classReadback)));
+ const changedDefaultPermissions=alter(classReadback,rows=>{rows.find(row=>row.name==='guide').default_member_permissions='0';});
+ const rehashedClassPlan={...classPlan,commands:normal.normalizeCommands219(changedDefaultPermissions),payloadSHA256:normalizedDigest(changedDefaultPermissions)};
+ check('verification refuses rehashed collateral permission drift, an incomplete readback and unrecognized metadata',
+  refused(()=>verifyClasses(rehashedClassPlan,changedDefaultPermissions))
+  &&refused(()=>verifyClasses(classPlan,classReadback.slice(1)))
+  &&refused(()=>verifyClasses(classPlan,alter(classReadback,rows=>{rows[0].integration_types=[0];}))));
+ const driftedClassBefore=alter(after228,rows=>{rows[0].description='Changed definition';});
+ const driftedClassPlan=prepareClasses(driftedClassBefore);
+ check('verification rejects a self-consistent plan and readback from an unapproved baseline',
+  refused(()=>verifyClasses(driftedClassPlan,driftedClassPlan.commands.map(scope))));
+ check('the original raid verifier still refuses combined class changes even with a recomputed payload digest',
+  refused(()=>planner228.verifyGuildCommandReadback228(plan228,classReadback))
+  &&refused(()=>planner228.verifyGuildCommandReadback228({...plan228,commands:classPlan.commands,payloadSHA256:classPlan.payloadSHA256},classReadback)));
  const cap='e'.repeat(64),host='olympus-verify.synthetic.workers.dev',issuedAt=Date.now(),expiresAt=issuedAt+180000,TOKEN='synthetic-discord-token-not-production';
+ check('the existing raid preview runtime cannot accept the offline class plan',
+  refused(()=>factory.createRegistrationSource228({capability:cap,issuedAt,expiresAt,requestHost:host,plan:classPlan})));
  function runtime(mode='success',baseline=before,registration=plan,createSource=factory.createRegistrationSource224){
   let clock=issuedAt,gets=0,puts=0,commands=baseline,waiter,release;
   const source=createSource({capability:cap,issuedAt,expiresAt,requestHost:host,plan:registration});
