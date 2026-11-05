@@ -9,6 +9,12 @@ export const GUIDE_FIELD = "character"; // the text input inside it
 
 const GOLD = 0xc9a227;
 
+/** Resolve the Worker mode at render time without a static dependency back through guild-seats. */
+export async function usesLegacyInviteQueue(env: Env): Promise<boolean> {
+  const { captureLaunchVerification } = await import("./launch-verification227");
+  return captureLaunchVerification(env).mode === "legacy";
+}
+
 /** Where people outside the main guild are pointed: a channel mention when CHANNEL_VISITOR_CHAT is set. */
 export function visitorChat(env: Env): string {
   const id = (env.CHANNEL_VISITOR_CHAT ?? "").trim();
@@ -32,14 +38,14 @@ export const visitorLine = (env: Env) => `Olympus 2 and the later Olympus guilds
  */
 /** 14 Oct 2026 (item 7): the caller resolves the active identity; a held identity means no guide. `freshRoles` (Revision 4,
  * A6): the caller's captured lane grants fresh roles now (configured and past epochStart); otherwise the .160 wording. */
-export function guideMessage(env: Env, profile: RulesetProfile, freshRoles = false) {
+export function guideMessage(env: Env, profile: RulesetProfile, freshRoles = false, legacyInviteQueue = true) {
   const officers = env.OFFICER_CHARACTERS || "an officer";
   const review = env.ADMISSION_MODE === "review";
   const role = !!env.ROLE_GUILD_MEMBER;
   const nickname = env.SET_NICKNAME === "true";
-  const invite = review
-    ? "If you are applying, an officer reviews the confirmed request before your invite enters the queue; an officer sends the invite from the game client when the guild has room."
-    : "If you are applying, your invite enters the queue; an officer sends it from the game client when the guild has room.";
+  const invite = !legacyInviteQueue ? "" : review
+    ? " If you are applying, an officer reviews the confirmed request before your invite enters the queue; an officer sends the invite from the game client when the guild has room."
+    : " If you are applying, your invite enters the queue; an officer sends it from the game client when the guild has room.";
   const access = freshRoles
     ? " Your guild roles open the member channels once your verified character appears on a current guild roster export and the access checks pass."
     : role
@@ -54,12 +60,14 @@ export function guideMessage(env: Env, profile: RulesetProfile, freshRoles = fal
         description: [
           `${profile.phase === "public_direction" ? "Olympus guild direction" : "Current game"}: **${rulesetLabel(profile)}**.`,
           "",
-          "For a character in, or applying to, the main Olympus guild. The website is optional for this verification flow.", // .114: no Battle.net promise while its sign-in is switched off (bnet-switch.ts)
+          legacyInviteQueue
+            ? "For a character in, or applying to, the main Olympus guild. The website is optional for this verification flow."
+            : "Joining Olympus? Ask an Olympus officer for an in-game invite. The website invite queue is paused. Once your character is in the main Olympus guild, follow the steps below to link Discord. The website is optional for this verification flow.",
           "",
           "**1. Get a code** — press **Get my code**. The bot shows the line to use in game. If the current officer relay needs a character name first, enter it exactly as it appears in game.",
           `**2. Send it from your character** — log in as the character you want linked, paste the shown line into the in-game chat box and press Enter. It whispers the code to an available officer (${officers}); the character that sends it is the one linked. Follow the bot's current instructions if no officer is online; mailing the code to an officer works too.`,
           "",
-          `The officer's checked addon confirms the code from that character. ${invite}${access}${nick}`,
+          `The officer's checked addon confirms the code from that character.${invite}${access}${nick}`,
           role
             ? "Already a member? Use the same steps. **My status** shows your progress and can restore a missing role when your membership proof is current and no access restriction prevents it."
             : "Already in the guild? Use the same steps; there is nothing to approve, and **My status** shows your progress.",

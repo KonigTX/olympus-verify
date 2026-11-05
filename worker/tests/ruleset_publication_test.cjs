@@ -56,7 +56,13 @@ async function fixture(generation=null,over={}){
   const req=new Request('https://guild.example/api/admin/ruleset-publication'+suffix,{method,headers:{Cookie:cookie,Origin:'https://guild.example','X-Olympus':core.PAGE_VERSION,'Content-Type':'application/json',...extra},...(method==='GET'?{}:{body:JSON.stringify(body)})});
   const start=sqlCount,physicalStart=physicalCount,res=await index.default.fetch(req,rawEnv,{waitUntil:()=>{}});maxSql=Math.max(maxSql,sqlCount-start);maxPhysicalSql=Math.max(maxPhysicalSql,physicalCount-physicalStart);return {status:res.status,data:await res.json()};};
  const select=async()=>{const a=await request('GET','');return request('POST','/select',{profileRevision:profile.currentRulesetProfile().revision,form:a.data.form});};
- return {db,env,run,reissue,request,select,messages,calls,get session(){return issued.session;},get effects(){return calls.filter(c=>c[0]!=='GET').length;},set before(v){before=v;},set after(v){after=v;},set effectHook(v){effectHook=v;},set getHook(v){getHook=v;},set losePost(v){losePost=v;},set losePatch(v){losePatch=v;},set responseScanVersion(v){responseScanVersion=v;},set lostBatch(v){lostBatch=v;},set wrongBot(v){wrongBot=v;},set wrongGuild(v){wrongGuild=v;},set rateLimitMethod(v){rateLimitMethod=v;},get cookie(){return cookie;},set cookie(v){cookie=v;}};
+ const signed=async(interaction,privateKey)=>{
+  const body=JSON.stringify({application_id:BOT,guild_id:GUILD,token:'synthetic-guide-token',...interaction}),timestamp=String(T);
+  const signature=Buffer.from(await crypto.subtle.sign('Ed25519',privateKey,new TextEncoder().encode(timestamp+body))).toString('hex');
+  const response=await index.default.fetch(new Request('https://bot.example/interactions',{method:'POST',headers:{'Content-Type':'application/json','X-Signature-Timestamp':timestamp,'X-Signature-Ed25519':signature},body}),rawEnv,{waitUntil:()=>{}});
+  return {status:response.status,data:await response.json()};
+ };
+ return {db,env,run,reissue,request,select,signed,messages,calls,get session(){return issued.session;},get effects(){return calls.filter(c=>c[0]!=='GET').length;},set before(v){before=v;},set after(v){after=v;},set effectHook(v){effectHook=v;},set getHook(v){getHook=v;},set losePost(v){losePost=v;},set losePatch(v){losePatch=v;},set responseScanVersion(v){responseScanVersion=v;},set lostBatch(v){lostBatch=v;},set wrongBot(v){wrongBot=v;},set wrongGuild(v){wrongGuild=v;},set rateLimitMethod(v){rateLimitMethod=v;},get cookie(){return cookie;},set cookie(v){cookie=v;}};
 }
 (async()=>{
  const canonical=load('guide').guideMessage({ADMISSION_MODE:'review',OFFICER_CHARACTERS:'Synthetic Officer',ROLE_GUILD_MEMBER:'700000000000000099',SET_NICKNAME:'false'},profile.currentRulesetProfile());
@@ -181,6 +187,33 @@ async function fixture(generation=null,over={}){
  check('real fixed-clock retention strips actors, keeps shared known pointer and no-repeat custody',f.db.prepare('SELECT COUNT(*)n FROM ruleset_publications WHERE actor IS NOT NULL').get().n===0&&f.db.prepare("SELECT message_id FROM ruleset_publications WHERE target_key='guide'").get().message_id&&f.db.prepare('SELECT COUNT(*)n FROM ruleset_publications').get().n===4);
  const family=load('privacy-access-family-history').privacyFamilyHistoryDefinition('community.ruleset_publication.operations');check('new own-history key is closed and curated',typeof family.statements==='function');
  check('actual new table is classified with real registered hooks',await load('privacy-business-catalog').servingPrivacyCatalogCurrent(f.env));
+ const guideKeys=await crypto.subtle.generateKey({name:'Ed25519'},true,['sign','verify']);
+ const guidePublicKey=Buffer.from(await crypto.subtle.exportKey('raw',guideKeys.publicKey)).toString('hex');
+ const strictGuide=await fixture(g,{DISCORD_PUBLIC_KEY:guidePublicKey,ROLE_OFFICER:OTHER,REQUEST_CODES:'on',VERIFY_MEMBERSHIP_ONLY:'true',
+  VERIFY_NATIVE_SCOPE:JSON.stringify({version:1,guild:'Olympus',realm:'Fixture Live Realm'})});
+ const strictCopy=payload=>{
+  const text=payload?.embeds?.[0]?.description??'';
+  return text.includes('Ask an Olympus officer for an in-game invite')&&text.includes('The website invite queue is paused')
+   &&text.includes('Once your character is in the main Olympus guild')&&text.includes('Get my code')&&text.includes('paste the shown line')
+   &&!text.includes('enters the queue')&&payload.components[0].components.some(button=>button.custom_id==='guide:verify');
+ };
+ const strictSelection=await strictGuide.select();
+ const frozenGuide=JSON.parse(strictGuide.db.prepare("SELECT frozen_payload FROM ruleset_publications WHERE target_key='guide'").get()?.frozen_payload??'null');
+ check('strict managed guide freezes in-game invite and real verification instructions before any effect',
+  strictSelection.status===200&&strictCopy(frozenGuide)&&strictGuide.effects===0,frozenGuide?.embeds?.[0]?.description);
+ const guideChannel=CH['olympus-info'];
+ const runGuide=(name,id,roles=[OTHER])=>strictGuide.signed({id,type:2,channel_id:guideChannel,member:{user:{id:ADMIN,username:'synthetic-staff'},roles},data:{type:1,name:'olympus-admin',options:[{type:1,name}]}},guideKeys.privateKey);
+ const blockedGuide=await runGuide('post-guide','700000000000000901',[]);
+ check('signed nonofficer guide request keeps its original refusal and causes no effect',blockedGuide.status===200&&/officer/i.test(blockedGuide.data.data?.content??'')&&strictGuide.effects===0,blockedGuide);
+ const postedGuide=await runGuide('post-guide','700000000000000902');
+ const guideMessage=[...strictGuide.messages.values()][0];
+ check('signed strict post-guide publishes the same member instructions through synthetic transport',
+  postedGuide.status===200&&postedGuide.data.data?.content.includes('Guide posted')&&strictCopy(guideMessage)&&strictGuide.effects===1,postedGuide,guideMessage?.embeds?.[0]?.description);
+ if(guideMessage)guideMessage.pinned=true;
+ const refreshedGuide=await runGuide('refresh-guide','700000000000000903');
+ check('signed strict refresh-guide edits the same simulated pinned guide and keeps the verification button',
+  refreshedGuide.status===200&&refreshedGuide.data.data?.content.includes('updated in place')&&strictGuide.messages.size===1
+  &&strictCopy(guideMessage)&&strictGuide.effects===2&&guideMessage.pinned,refreshedGuide,guideMessage?.embeds?.[0]?.description);
  check('all statements obey D1 hundred-parameter cap',maxParameters<=100);console.log(JSON.stringify({maxParameters,maxSqlPerRequest:maxSql,maxPhysicalSqlPerRequest:maxPhysicalSql,scheduledWorst:load('scheduled-budget').SCHEDULED_WORST_CASE}));
  console.log(`${ok}/${n} passed`);if(ok!==n)process.exitCode=1;
 })().catch(e=>{console.error(e);process.exitCode=1;});

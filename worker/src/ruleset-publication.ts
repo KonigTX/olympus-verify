@@ -9,7 +9,7 @@ import { apiJson,isSiteAdmin,readSession,sameOrigin,PAGE_VERSION,sign,verify } f
 import { DB_NOW,randomToken,fenceSql } from './community-context';
 import { privacyAccountIncarnation,privacyAccountIncarnationLiteralFenceSql,privacyProviderCustodyDatabase,PRIVACY_YEAR } from './privacy-serving-authority';
 import { activeRulesetSnapshot,betaRulesetSnapshot,parseFutureProfileSecret,rulesetDigest,RULESET_SETTINGS_KEYS,type RulesetSnapshot } from './ruleset-profile';
-import { guideMessage } from './guide';
+import { guideMessage, usesLegacyInviteQueue } from './guide';
 import { INTROS,parseChannels,renderEmbeds,resolveText,introHash,validateEmbeds } from './intros';
 import { qualifyPublicationDestination,publicationMessage,discoverGuide,messageOwned,messageMatches,writePublication,definitePublicationRefusal,type PublicPayload } from './ruleset-pin-publication';
 
@@ -43,9 +43,10 @@ async function plan(env:Env,snap:RulesetSnapshot){
  const c=channels(env),guild=env.INTROS_GUILD_ID;
  if(!guild||guild!==env.GUILD_ID)throw new Refused('publication_guild_unqualified');
  const rows=await env.DB.prepare('SELECT * FROM intro_posts WHERE guild_id=?1').bind(guild).all<{intro_key:string;parent_id:string;channel_id:string;message_id:string}>();
+ const legacyInviteQueue=await usesLegacyInviteQueue(env);
  const targets=await Promise.all(TARGETS.map(async key=>{
   const intro=INTROS.find(i=>i.key===key),parent=key==='guide'?c['join-olympus']!:c[intro!.channel]!;
-  const p:PublicPayload=key==='guide'?{content:'',...guideMessage(env,snap.profile!)} as PublicPayload:{content:resolveText(intro!.content??'',c),embeds:renderEmbeds(intro!,c,snap),allowed_mentions:{parse:[]}};
+  const p:PublicPayload=key==='guide'?{content:'',...guideMessage(env,snap.profile!,false,legacyInviteQueue)} as PublicPayload:{content:resolveText(intro!.content??'',c),embeds:renderEmbeds(intro!,c,snap),allowed_mentions:{parse:[]}};
   if(validateEmbeds(p.embeds as Parameters<typeof validateEmbeds>[0]).length||JSON.stringify(p).length>16000)throw new Refused('publication_payload_unqualified');
   const old=rows.results.find(r=>r.intro_key===key);
   if(old&&(old.parent_id!==parent||old.channel_id!==parent))throw new Refused('publication_destination_changed');
