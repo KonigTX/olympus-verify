@@ -8,8 +8,8 @@
     {
       "path": "worker/public/static/app.css",
       "mode": "100644",
-      "bytes": 88751,
-      "sha256": "78e4d498399379e1efc4d91fc0898d6d9f4a07d2571115fe8b852e59a5e788a6"
+      "bytes": 88845,
+      "sha256": "7eb0f65461bdf3f57d20e0203774448581a32432c7bd5938a02a1e5ab8232cc9"
     },
     {
       "path": "worker/public/static/app.js",
@@ -626,8 +626,8 @@
     {
       "path": "worker/public/static/organization-view.css",
       "mode": "100644",
-      "bytes": 35716,
-      "sha256": "375fb857efa9e0a40e6f302739cbb34242fdb379e3989d23330d71afae574c7f"
+      "bytes": 35700,
+      "sha256": "8384b3949a13f212dde4d5d5c35bd51551d27a8b66c31552f8c2a7c9d15f301b"
     },
     {
       "path": "worker/public/static/wow/cursor-point.png",

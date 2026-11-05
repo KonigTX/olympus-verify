@@ -892,6 +892,8 @@ table.data select, table.data input { max-width: 180px; }
 .organization-legend .relation-independence { border-left: 3px double var(--green-soft); }
 .organization-legend .relation-classification { border-left-style: dotted; border-left-color: var(--muted); }
 .organization-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(250px, 1fr); gap: 24px; align-items: start; margin-bottom: 24px; }
+/* Contain the chart while its route stylesheet loads. */
+.org-viewport { overflow: hidden; }
 .organization-tree { min-width: 0; }
 .organization-branch { min-width: 0; margin-bottom: 12px; border: 1px solid var(--line); background: rgba(0, 0, 0, 0.5); }
 .organization-branch > summary { padding: 12px; cursor: pointer; color: var(--gold-soft); overflow-wrap: anywhere; }
