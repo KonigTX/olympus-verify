@@ -52,6 +52,30 @@ async function ambiguousDeclineHolds(){
   }finally{f.close();}
  }
 }
+async function legacyDenialWaitsForStaffReview(){
+ const f=fixture();
+ try{
+  const cookie=await f.signIn(ID);
+  await seedPersonal(f,{roles:1});
+  await f.write("UPDATE site_users SET denied=1,denied_at=?,denied_reason='Older flag' WHERE discord_id=?",clock,ID);
+  const appointed=f.raw("SELECT value FROM site_settings WHERE key='appointed'").value;
+  const providerCalls=f.http.length;
+  const erasure=await request(f,cookie);
+  const job=f.raw('SELECT * FROM privacy_serving_jobs WHERE operation_id=?',OP);
+  check('older denial without original evidence becomes a known hold before cleanup',erasure.response.status===202&&job?.state==='held'&&job.hold_reason==='staff_review_required'
+   &&f.http.length===providerCalls&&f.roles.get(ID).includes(MEMBER)&&f.raw("SELECT value FROM site_settings WHERE key='appointed'").value===appointed
+   &&!!f.raw('SELECT 1 FROM characters WHERE discord_id=?',ID)&&!!f.raw('SELECT 1 FROM site_applications WHERE discord_id=?',ID)&&!f.terminalCommitted);
+  const status=await f.status(OP,erasure.body.statusToken),readback=await json(status);
+  const invalid=await f.status(OP,erasure.body.statusToken.slice(0,-1)+'!');
+  check('only the existing private proof reads the held request, with no keyed marker or replay',status.status===200&&readback?.state==='held'
+   &&readback.holdReason==='staff_review_required'&&readback.servingAccountErased===false&&invalid.status===404
+   &&!f.raw('SELECT 1 FROM privacy_denial_markers')&&!f.raw('SELECT 1 FROM privacy_restore_replay'));
+  clock+=121;
+  const retry=await f.job('legacy-denial-staff-review');
+  check('automatic continuations leave the same held operation for staff review',retry.attempted===0&&f.http.length===providerCalls
+   &&f.raw('SELECT last_attempt_at FROM privacy_serving_jobs WHERE operation_id=?',OP).last_attempt_at===job.last_attempt_at);
+ }finally{f.close();}
+}
 async function permanentDenialPolicy(){
  const f=fixture();
  try{
@@ -228,7 +252,7 @@ async function olderDenialHeldGuidance(){
    const receipt=await submission.text(),token=hasOriginalCode(receipt);
    const job=()=>f.raw('SELECT * FROM privacy_serving_jobs WHERE operation_id=?',operation);
    check(lane+' older denial produces a genuine held job and original private status code',
-    submission.status===(identify?202:200)&&!!token&&job()?.state==='held'&&job()?.hold_reason==='native_attempt_pending'
+    submission.status===(identify?202:200)&&!!token&&job()?.state==='held'&&job()?.hold_reason==='staff_review_required'
     &&!!f.raw('SELECT 1 FROM site_users WHERE discord_id=?',ID)&&!f.raw('SELECT 1 FROM privacy_denial_markers')
     &&!f.raw('SELECT 1 FROM privacy_restore_replay')&&!f.terminalCommitted);
    const snapshot=JSON.stringify(job()),transport=f.http.length;
@@ -246,7 +270,7 @@ async function olderDenialHeldGuidance(){
    check(lane+' original saved status proof reads without a session, provider call or change to the job',
     valid.status===200&&validHtml.includes('<strong>held</strong>')&&hasOriginalCode(validHtml)===token&&snapshot===JSON.stringify(job())&&transport===f.http.length);
    check(lane+' held presentation contains no raw subject or internal denial reason',
-    [receipt,validHtml].every(html=>![ID,'older denial fixture','native_attempt_pending','Serving account records were erased','Serving account erasure was recorded'].some(value=>html.includes(value))));
+    [receipt,validHtml].every(html=>![ID,'older denial fixture','native_attempt_pending','staff_review_required','Serving account records were erased','Serving account erasure was recorded'].some(value=>html.includes(value))));
    outcomes.push({lane,receipt:hasGuidance(receipt),savedStatus:hasGuidance(validHtml)});
   }finally{f.close();}
  }
@@ -259,6 +283,7 @@ async function olderDenialHeldGuidance(){
  await legacyLiftRequiresEmptyProof();
  await ordinaryDeclineAndErasure();
  await ambiguousDeclineHolds();
+ await legacyDenialWaitsForStaffReview();
  await permanentDenialPolicy();
  await olderDenialHeldGuidance();
  console.log(`${checks}/${checks} C09 Native erasure checks passed`);

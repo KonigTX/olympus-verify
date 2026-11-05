@@ -4,7 +4,7 @@
 import type {Env} from './env';
 import {nativeErasureMode} from './privacy-native-mode';
 import {captureAccountErasureProof,originalErasureJobBirthSql,CURRENT_ERASURE_SQL,PRIVACY_DB_NOW,admitInactiveServingAccount,type AccountErasureProof} from './privacy-serving-authority';
-import {continueServingErasure,erasureAttemptDiscipline,ERASURE_ATTEMPT_UNRESOLVED} from './privacy-serving-erase';
+import {continueServingErasure,erasureAttemptDiscipline,ERASURE_ATTEMPT_UNRESOLVED,STAFF_REVIEW_REQUIRED} from './privacy-serving-erase';
 import {cleanupPrivacyMessages} from './privacy-provider-messages';
 import {newsWebhookCleanupCandidatesSql} from './site-news-webhook';
 import {admitInactiveBotAccount} from './privacy-inactive-bot';
@@ -20,8 +20,10 @@ function originalQueuedErasure(row:OriginalQueuedErasure):OriginalQueuedErasure{
  const last=copy.last_attempt_at;if(last!==null&&(!Number.isSafeInteger(last)||(last as number)<1))throw Error('erasure_original_queue_held');
  return Object.freeze({subject:p.subject,subjectGeneration:p.subjectGeneration,operationId:p.operationId,requestDigest:p.requestDigest,accountIncarnation:p.accountIncarnation,last_attempt_at:last as number|null});
 }
+// A deliberate staff hold is excluded from both the queue and its consuming claim.
+const STAFF_REVIEW_EXCLUSION=` AND COALESCE(hold_reason,'')<>'${STAFF_REVIEW_REQUIRED}'`;
 /** Attempt discipline only: an attempt that may have reached terminal custody is never selected or claimed again automatically. */
-const DISCIPLINE_EXCLUSION=` AND COALESCE(hold_reason,'') NOT IN('${ERASURE_ATTEMPT_UNRESOLVED}','independent_suppression_outcome_unknown')`;
+const DISCIPLINE_EXCLUSION=`${STAFF_REVIEW_EXCLUSION} AND COALESCE(hold_reason,'') NOT IN('${ERASURE_ATTEMPT_UNRESOLVED}','independent_suppression_outcome_unknown')`;
 // Native retries are original-operation, idempotent SQL/DELETE continuations. They never
 // adopt a historical configured/Floor attempt or assert cancellation of an older HTTP call.
 const NATIVE_PENDING='native_attempt_pending';
@@ -39,7 +41,7 @@ export async function runServingErasureJob(env:Env):Promise<{attempted:number;co
  // An invalid discipline value holds new attempts and inactive admission; the independent provider-message debt lane continues.
  const discipline=erasureAttemptFenceMode(env)===null?null:erasureAttemptDiscipline(env);
  let row=discipline===null?null:await env.DB.prepare(`SELECT operation_id AS operationId,subject_id AS subject,subject_generation AS subjectGeneration,request_digest AS requestDigest,original_account_incarnation AS accountIncarnation,last_attempt_at
- FROM privacy_serving_jobs WHERE state IN('waiting_role','held') AND retain_until>${PRIVACY_DB_NOW} AND (last_attempt_at IS NULL OR last_attempt_at<=${PRIVACY_DB_NOW}-120)${discipline?DISCIPLINE_EXCLUSION:''}
+ FROM privacy_serving_jobs WHERE state IN('waiting_role','held') AND retain_until>${PRIVACY_DB_NOW} AND (last_attempt_at IS NULL OR last_attempt_at<=${PRIVACY_DB_NOW}-120)${discipline?DISCIPLINE_EXCLUSION:STAFF_REVIEW_EXCLUSION}
  ORDER BY COALESCE(last_attempt_at,0),created_at,operation_id LIMIT 1`).first<OriginalQueuedErasure>();
  if(row)row=originalQueuedErasure(row);
  if(!row&&discipline!==null){const admitted=await admitInactiveServingAccount(env)??await admitInactiveBotAccount(env);if(admitted){
@@ -62,7 +64,7 @@ export async function runServingErasureJob(env:Env):Promise<{attempted:number;co
  }
  if(discipline)return continueDisciplinedQueuedErasure(env,row);
  const proof=captureAccountErasureProof({purpose:'account_erasure',subject:row.subject,subjectGeneration:row.subjectGeneration,operationId:row.operationId,requestDigest:row.requestDigest,accountIncarnation:row.accountIncarnation}).proof;
- const claim=await env.DB.prepare(`UPDATE privacy_serving_jobs SET last_attempt_at=${PRIVACY_DB_NOW} WHERE operation_id=?1 AND last_attempt_at IS ?5 AND ${CURRENT_ERASURE_SQL} AND EXISTS(SELECT 1 FROM privacy_serving_jobs j WHERE j.operation_id=?1 AND ${originalErasureJobBirthSql(proof)})`)
+ const claim=await env.DB.prepare(`UPDATE privacy_serving_jobs SET last_attempt_at=${PRIVACY_DB_NOW} WHERE operation_id=?1 AND last_attempt_at IS ?5${STAFF_REVIEW_EXCLUSION} AND ${CURRENT_ERASURE_SQL} AND EXISTS(SELECT 1 FROM privacy_serving_jobs j WHERE j.operation_id=?1 AND ${originalErasureJobBirthSql(proof)})`)
  .bind(proof.operationId,proof.subject,proof.subjectGeneration,proof.requestDigest,row.last_attempt_at).run();
  if(claim.meta.changes!==1)return{attempted:0,completed:0,held:0};
  let completed=0,reason='continuation_failed',staffAccess:'human-managed'|'none'|'unknown'='unknown';

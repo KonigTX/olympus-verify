@@ -89,6 +89,7 @@ function ambiguousAccountReferencesSql(discipline=false):string{
 
 export type ServingCompletion={state:'held'|'unknown'|'complete';reason:string|null;servingAccountErased:boolean;allCopiesErased:false;providerMessages:'unqualified';recoveryCopies:'operator-held';staffAccess:MemberRoleSettlement['staffAccess'];staffAccessDetails:StaffAccessDetails;messageDebt?:{known:number;unknown:number}};
 const held=(reason:string,state:'held'|'unknown'='held',staffAccess:MemberRoleSettlement['staffAccess']='unknown',details=staffAccessDetails(staffAccess)):ServingCompletion=>({state,reason,servingAccountErased:false,allCopiesErased:false,providerMessages:'unqualified',recoveryCopies:'operator-held',staffAccess,staffAccessDetails:details});
+export const STAFF_REVIEW_REQUIRED='staff_review_required';
 type CentralRoleAdapter={settleAccountErasureMemberRole:(env:Env,proof:AccountErasureProof)=>Promise<MemberRoleSettlement>;accountErasureRoleSettledSql:string;reconcileAccountErasureRoleDebt:(env:Env,proof:AccountErasureProof)=>Promise<unknown>};
 /** There is exactly one role writer. Its adapter supplies a fixed authored SQL receipt predicate, never request SQL. */
 export async function continueServingErasure(env:Env,proof:AccountErasureProof,attempt?:OriginalErasureAttempt):Promise<ServingCompletion>{
@@ -97,13 +98,27 @@ export async function continueServingErasure(env:Env,proof:AccountErasureProof,a
  const discipline=erasureAttemptDiscipline(env);if(discipline===null)return held('erasure_attempt_discipline_invalid');
  const fence=erasureAttemptFenceMode(env);if(fence===null)return held('erasure_attempt_fence_invalid');
  if(fence){if(!attempt)return held('erasure_attempt_identity_required');enterOriginalErasureAttempt(attempt,env,proof);}else if(attempt)return held('erasure_attempt_identity_unexpected');
- // The original six-field job proof was captured before the feature check and first await.
- // Retain its original birth/absence purpose through the ED01 Native current/clear ACK.
- if(!await currentAccountErasureProof(env,proof))return held('request_not_current');
  // .164: a self-authorized Native request has its own bounded role cleanup and fresh
  // consuming absence receipt. Historical unknown effects are retained, not rewritten
  // into successful original acknowledgements or used to stop unrelated public traffic.
  if(nativeErasureMode(env)){
+  // Classify a bare older denial under the same original job and birth read, before any cleanup.
+  // Current or expired decision mirrors and unmatched keyed evidence retain their original terminal checks.
+  const subjectKey=proof.accountIncarnation===null?null:await privacySubjectKey(env,proof.subject);
+  const start=await env.DB.prepare(`SELECT CASE
+   WHEN NOT (${CURRENT_ERASURE_SQL} AND EXISTS(SELECT 1 FROM privacy_serving_jobs j WHERE j.operation_id=?1 AND ${originalErasureJobBirthSql(proof)})) THEN 'stale'
+   WHEN EXISTS(SELECT 1 FROM privacy_serving_jobs WHERE operation_id=?1 AND hold_reason='${STAFF_REVIEW_REQUIRED}') THEN 'staff_review'
+   WHEN ?5 IS NOT NULL AND EXISTS(SELECT 1 FROM site_users u WHERE u.discord_id=?2 AND u.denied IS 1
+    AND u.rejection_event_id IS NULL AND u.rejection_subject_key IS NULL AND u.rejection_scope IS NULL AND u.rejection_window_expired IS 0)
+    AND NOT EXISTS(SELECT 1 FROM site_applications a WHERE a.discord_id=?2 AND (a.rejection_event_id IS NOT NULL
+     OR a.rejection_subject_key IS NOT NULL OR a.rejection_scope IS NOT NULL OR a.rejection_window_expired IS NOT 0))
+    AND NOT EXISTS(SELECT 1 FROM privacy_rejection_decisions WHERE subject_key=?5)
+    AND NOT EXISTS(SELECT 1 FROM privacy_denial_markers WHERE subject_key=?5) THEN 'staff_review'
+   ELSE 'ready' END AS disposition`).bind(proof.operationId,proof.subject,proof.subjectGeneration,proof.requestDigest,subjectKey).first<{disposition:string}>();
+  const disposition=start&&Object.getOwnPropertyDescriptor(start,'disposition');
+  const value=disposition&&Object.hasOwn(disposition,'value')?disposition.value:undefined;
+  if(value==='staff_review')return held(STAFF_REVIEW_REQUIRED);
+  if(value!=='ready')return held('request_not_current');
   const references=await cleanupNativePersonalReferences(env,proof);
   if(references.state!=='cleaned')return held('native_reference_cleanup_unconfirmed','unknown');
   // These registered, exact own-setting projections must precede the strict
@@ -132,6 +147,7 @@ export async function continueServingErasure(env:Env,proof:AccountErasureProof,a
   await cleanupPrivacyMessages(env,proof.subject);
   return completeServingAccount(env,proof,{state:'absent',checkedAt:cleanup.checkedAt,staffAccess:cleanup.staffAccess},receiptSql,discipline,undefined,true);
  }
+ if(!await currentAccountErasureProof(env,proof))return held('request_not_current');
  const central=await import('./roles') as unknown as Partial<CentralRoleAdapter>;
  if(typeof central.settleAccountErasureMemberRole!=='function'||typeof central.accountErasureRoleSettledSql!=='string')return held('central_role_adapter_unavailable');
  const outcome=await central.settleAccountErasureMemberRole(env,proof);
