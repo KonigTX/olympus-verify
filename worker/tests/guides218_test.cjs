@@ -77,6 +77,7 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   refuse('another schema', d => { d.schema = 'olympus-guides-v2'; });
   refuse('another talent revision', d => { d.talentRevision = '000000000000'; });
   refuse('a source on an unlisted host', d => { d.sources[0].url = 'https://example.com/x'; });
+  refuse('a Classic DB2 source with an unreviewed build', d => { d.sources[0].url = 'https://wago.tools/db2/Spell/csv?build=1.60.1.70790'; });
   refuse('an http source', d => { d.sources[0].url = d.sources[0].url.replace('https:', 'http:'); });
   refuse('a catalogue source on the licence host', d => { d.sources[0].url = 'https://creativecommons.org/licenses/by/4.0/'; });
   refuse('an Unavailable claim with a value', d => { const c = d.classes[0].specs[0].pro.priorities[0] || (d.classes[0].specs[0].pro.priorities[0] = { label: 'x', value: 'y', grade: 'E', sources: [0] }); c.grade = 'U'; c.value = 'guess'; });
@@ -93,6 +94,12 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   refuse('an unavailable raid fact treated as an action', d => { d.tools.attunements[0].steps.find(row => row.grade === 'U').kind = 'action'; });
   refuse('a buff with an invalid raid context', d => { d.tools.worldBuffs[0].raid = 'open'; });
   refuse('a consumable with an unrecognized role', d => { d.tools.consumables[0].roles = ['damage']; });
+  const flaskRow = (data, id) => data.tools.consumables.find(row => row.id === 'flask-of-' + id);
+  refuse('a duplicate Classic flask spell ID', d => { flaskRow(d, 'supreme-power').classicFlaskSpellId = flaskRow(d, 'the-titans').classicFlaskSpellId; });
+  refuse('a Classic flask included in additive encounter stats', d => { flaskRow(d, 'the-titans').stats = { stamina: 9 }; });
+  refuse('a Classic flask without its versioned source', d => { flaskRow(d, 'the-titans').sources = [14]; });
+  refuse('a Classic flask without a recorded duration', d => { flaskRow(d, 'the-titans').durationMin = null; });
+  refuse('a Classic flask presented as Forever evidence', d => { flaskRow(d, 'the-titans').grade = 'C'; });
   refuse('a stat key inherited from the label map prototype', d => { d.tools.worldBuffs[0].stats.constructor = 1; });
 
   // 3. Every preset is a real, attachable build from the pinned snapshot.
@@ -337,10 +344,62 @@ const links = n => n.tags('a').map(a => a.getAttribute('href'));
   choose(m.box, 'songflower-serenade');
   choose(m.box, 'juju-ember');
   check('Classic numeric references stay marked in each relevant context with recorded durations',
-    figures(m.box, 'open-world') === 'Agility: +15|Critical strike %: +5|Fire resistance: +15|Intellect: +15|Spirit: +15|Stamina: +15|Strength: +15'
+    figures(m.box, 'open-world') === 'Agility: +15|Critical strike %: +5|Fire resistance: +15|Intellect: +15|Spell critical %: +5|Spirit: +15|Stamina: +15|Strength: +15'
     && figures(m.box, 'raid') === 'Fire resistance: +15'
     && ['open-world', 'raid'].every(id => text(encounter(m.box, id)).includes('not Forever-verified')
       && text(encounter(m.box, id)).includes('Shortest recorded duration: 10 min.')));
+  const songflower = buffInput(m.box, 'songflower-serenade').parentNode;
+  const tribute = buffInput(m.box, 'dire-maul-tribute').parentNode;
+  check('Songflower and all three Dire Maul effects cite exact Classic spell IDs and versioned original client data',
+    text(songflower).includes('melee, ranged and spell critical strike chance (spell 15366)')
+    && text(tribute).includes("Mol'dar's Moxie increases total Stamina by 15% (spell 22818)")
+    && text(tribute).includes("Fengus' Ferocity adds 200 attack power (22817)")
+    && text(tribute).includes("Slip'kik's Savvy adds 3 percentage points of spell critical strike chance (22820)")
+    && [songflower, tribute].every(row => links(row).includes('https://wago.tools/db2/SpellEffect/csv?build=1.15.9.69722')));
+  choose(m.box, 'major-mana-potion');
+  check('both encounter summaries separate recorded durations from selections without a recorded duration',
+    text(encounter(m.box, 'open-world')).includes('1 of 3 selections without a recorded duration.')
+    && text(encounter(m.box, 'raid')).includes('1 of 2 selections without a recorded duration.')
+    && ['open-world','raid'].every(id => text(encounter(m.box,id)).includes('Shortest recorded duration: 10 min.'))
+    && text(buffInput(m.box,'major-mana-potion').parentNode).includes('No duration recorded.'));
+  choose(m.box, 'major-mana-potion', false);
+  const comparison = m.box.all(node => node.getAttribute('data-classic-flask') !== null)[0];
+  const flaskIds = ['the-titans', 'distilled-wisdom', 'supreme-power'];
+  check('three grade-E flask rows use unique Classic spell IDs, one described native radio group and original tooltips',
+    flaskIds.map(id => flaskRow(DATA,id).classicFlaskSpellId).join(',') === '17626,17627,17628'
+    && flaskIds.every(id => {
+      const input = buffInput(m.box, 'flask-of-' + id), row = flaskRow(DATA, id);
+      return row.grade === 'E' && row.durationMin === 120 && row.stats === undefined
+        && input.getAttribute('type') === 'radio' && input.getAttribute('name') === 'guides218-classic-flask'
+        && input.getAttribute('aria-describedby') === 'guides218-classic-flask-rule'
+        && text(input.parentNode).includes('Classic spell ' + row.classicFlaskSpellId)
+        && links(input.parentNode).includes('https://wago.tools/db2/Spell/csv?build=1.15.9.69722');
+    }) && text(comparison).includes('One flask can be active at a time'));
+  const encounterBefore = ['open-world','raid'].map(id => figures(m.box,id));
+  choose(m.box, 'flask-of-the-titans');
+  check('the separate comparison shows Titans with 1,200 maximum health and its recorded duration',
+    text(comparison).includes('+1,200 maximum health') && text(comparison).includes('Recorded duration: 120 min.'));
+  choose(m.box, 'flask-of-distilled-wisdom');
+  check('selecting Distilled Wisdom replaces Titans and does not change either encounter',
+    text(comparison).includes('+2,000 maximum mana') && !text(comparison).includes('+1,200 maximum health')
+    && !buffInput(m.box, 'flask-of-the-titans').checked && buffInput(m.box, 'flask-of-distilled-wisdom').checked
+    && ['open-world','raid'].every((id,index) => figures(m.box,id) === encounterBefore[index]));
+  choose(m.box, 'flask-of-supreme-power');
+  filterRole(m.box, 'tank');
+  check('role filtering preserves the separate choice without lending its effect to an encounter',
+    !buffInput(m.box, 'flask-of-supreme-power') && text(comparison).includes('Up to +150 spell damage')
+    && ['open-world','raid'].every(id => !text(encounter(m.box,id)).includes('+150')));
+  filterRole(m.box, '');
+  comparison.tags('button').find(button => text(button) === 'Clear flask choice').fire('click');
+  check('the separate flask comparison can be cleared without clearing an encounter selection',
+    text(comparison).includes('Choose a Classic flask') && flaskIds.every(id => !buffInput(m.box, 'flask-of-' + id).checked)
+    && ['open-world','raid'].every((id,index) => figures(m.box,id) === encounterBefore[index]));
+  const legacyBuffs = clone(DATA);
+  for (const id of flaskIds) delete flaskRow(legacyBuffs,id).classicFlaskSpellId;
+  const legacyBuffTool = await mounted(buffTool, legacyBuffs);
+  check('older catalogues retain ordinary choices without a fabricated flask comparison',
+    flaskIds.every(id => buffInput(legacyBuffTool.box,'flask-of-' + id).getAttribute('type') === 'checkbox')
+    && !legacyBuffTool.box.all(node => node.getAttribute('data-classic-flask') !== null).length);
   choose(m.box, 'songflower-serenade', false);
   choose(m.box, 'juju-ember', false);
   choose(m.box, 'camp-buffs');

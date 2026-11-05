@@ -49,6 +49,12 @@ catalogue. For current updates, preserve existing source indices and preset code
 and check the catalogue through `guides218_test.cjs` and the asset projection checks. The talent-change counts come from
 `talents/data.json`, which remains the source for the frozen build snapshot.
 
+The buff tool uses Classic Era client build `1.15.9.69722` for the grade-E Songflower, Dire Maul and flask corrections.
+The linked Spell, SpellEffect, SpellMisc and SpellDuration exports identify the precise effects and durations.
+The three flask rows use a unique `classicFlaskSpellId`, grade E and a recorded duration. The tool compares one flask
+at a time outside both encounter previews, following the client tooltip's one-flask rule. These rows carry no additive
+`stats`. An encounter preview reports how many selections lack a recorded duration.
+
 ## Tests
 - `worker/tests/guides218_test.cjs`: source policy, closed validation and refusals, preset round trips, talent-count parity,
   every view, attach shape and disabled state, "Unavailable" rendering, failure and teardown.

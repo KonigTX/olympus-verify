@@ -9,13 +9,16 @@
   const HOSTS = new Set(["worldofwarcraft.blizzard.com", "news.blizzard.com", "us.forums.blizzard.com", "eu.forums.blizzard.com", "warcraft.wiki.gg",
     "www.wowhead.com", "wowhead.com", "www.icy-veins.com", "icy-veins.com", "www.method.gg", "method.gg", "www.warcrafttavern.com", "warcrafttavern.com",
     "talentsforever.com", "www.talentsforever.com", "www.curseforge.com", "curseforge.com", "github.com", "wowpedia.fandom.com"]);
+  const CLASSIC_BUILD = "1.15.9.69722";
+  const CLASSIC_SOURCES = new Set(["Spell", "SpellEffect", "SpellMisc", "SpellDuration"]
+    .map(table => `https://wago.tools/db2/${table}/csv?build=${CLASSIC_BUILD}`));
   const GRADES = ["A", "B", "C", "D", "E", "U"];
   const CODE = /^ot1\.([a-f0-9]{12})\.([a-z]+)\.(30|60)\.([0-9]+)$/;
   const ROLE_ICON = { tank: "role-tank", healer: "role-healer", melee: "role-dps", ranged: "role-dps", caster: "role-dps" };
   const BUFF_ROLES = [["tank", "Tank"], ["healer", "Healer"], ["melee", "Melee"], ["ranged", "Ranged"], ["caster", "Caster"]];
   const TOOLS = [
     ["attunements", "Attunements & pre-raid checklist", "Raid access, what Blizzard has announced, and a slot-by-slot gearing checklist."],
-    ["buffs", "World buffs & consumables", "Pick a role, tick what you will bring and see the combined effect, with every Classic number labelled."],
+    ["buffs", "World buffs & consumables", "Pick a role and compare recorded effects for different encounters, with every Classic number labelled."],
     ["raid-structure", "Raid team structure & leadership", "Fox’s guide to organizing one roster for 10-, 20- and 40-player raids."],
     ["changes", "What changed in Forever", "The systems Forever changes, and the talent snapshot's changes for every class."],
   ];
@@ -31,6 +34,7 @@
   const isList = (v, max) => Array.isArray(v) && v.length <= max;
   function safeUrl(url) {
     if (typeof url !== "string" || url.length > 400) return null;
+    if (CLASSIC_SOURCES.has(url)) return url;
     const m = /^https:\/\/([a-z0-9.-]+)(\/[^\s"'<>]*)?$/.exec(url);
     return m && HOSTS.has(m[1]) ? url : null;
   }
@@ -82,11 +86,18 @@
     if (t.attunements.some(a => !a || !isText(a.raid, 60) || !isText(a.opens, 120) || !isText(a.size, 2) || !claimOk(a.requirement) || !checklistRowsOk(a.steps, 8))) fail("attunements");
     if (!isText(t.preBis.note) || !isList(t.preBis.slots, 16) || t.preBis.slots.some(s => !s || !isText(s.slot, 40) || !claimOk(s.guidance)) || !checklistRowsOk(t.preBis.checklist, 10)) fail("pre-raid");
     const statsOk = st => st === undefined || (st && typeof st === "object" && Object.keys(st).every(k => Object.hasOwn(STAT_LABEL, k) && Number.isFinite(st[k])));
+    const flaskSpells = new Set();
     for (const r of [...t.worldBuffs, ...t.consumables]) {
       if (!r || !isText(r.id, 80) || !isText(r.name, 80) || !isText(r.effect) || !GRADES.includes(r.grade) || !sourceOk(r.sources) || !statsOk(r.stats)
         || (r.raid !== undefined && r.raid !== null && typeof r.raid !== "boolean")
         || (r.roles !== undefined && (!isList(r.roles, BUFF_ROLES.length) || !r.roles.every(role => BUFF_ROLES.some(([id]) => id === role))))
         || !(r.durationMin === null || (Number.isFinite(r.durationMin) && r.durationMin > 0))) fail("buffs");
+      if (r.classicFlaskSpellId !== undefined) {
+        const spell = r.classicFlaskSpellId;
+        if (!Number.isSafeInteger(spell) || spell < 1 || flaskSpells.has(spell) || !t.consumables.includes(r) || r.grade !== "E"
+          || r.stats !== undefined || r.durationMin === null || !r.sources.some(n => CLASSIC_SOURCES.has(data.sources[n].url))) fail("Classic flask");
+        flaskSpells.add(spell);
+      }
     }
     if (t.whatChanged.some(x => !x || !isText(x.topic, 60) || !isText(x.text) || !["announced", "pinned-data", "pending"].includes(x.status) || !sourceOk(x.sources))) fail("compendium");
     if (!isList(data.classSummary, 9) || data.classSummary.some(x => !x || !isText(x.name, 40) || ["changed", "same", "moved", "new", "classicOnly"].some(k => !Number.isInteger(x[k])))) fail("summary");
@@ -358,9 +369,23 @@
       const t = data.tools, rows = [...t.worldBuffs.map(r => ({ ...r, kind: "World buff" })), ...t.consumables.map(r => ({ ...r, kind: "Consumable" }))];
       collect(used, rows);
       const picked = new Set();
+      let flaskPick = null, flaskInput = null;
       const role = el("select", { id: "guides218-role", onchange: () => draw() }, [["", "Every role"], ...BUFF_ROLES]
         .map(([v, text]) => el("option", { value: v, text })));
       const box = el("div", { class: "guides218-buffs" }), total = el("div", { class: "guides218-total", role: "status", "aria-live": "polite" });
+      const flaskResult = el("p", { role: "status", "aria-live": "polite" });
+      const updateFlask = () => {
+        flaskResult.textContent = flaskPick ? `${flaskPick.name}. ${flaskPick.effect} Recorded duration: ${flaskPick.durationMin} min.` : "Choose a Classic flask to see its effect.";
+      };
+      const flaskComparison = rows.some(r => r.classicFlaskSpellId) ? el("div", { class: "guides218-total", "data-classic-flask": "" },
+        el("h3", { text: "Classic Era flask comparison" }),
+        el("p", { id: "guides218-classic-flask-rule", class: "muted small", text: `Classic Era ${CLASSIC_BUILD} reference. One flask can be active at a time. Its effect is shown separately from the encounter previews.` }),
+        flaskResult, el("button", { class: "btn small", type: "button", text: "Clear flask choice", onclick: () => {
+          if (flaskInput) flaskInput.checked = false;
+          flaskPick = flaskInput = null;
+          updateFlask();
+        } })) : null;
+      updateFlask();
       const visibleRows = () => rows.filter(r => !role.value || r.kind === "World buff" || !r.roles?.length || r.roles.includes(role.value));
       function preview(id, title, chosen) {
         const totals = {};
@@ -368,18 +393,20 @@
         for (const r of numeric) for (const [k, v] of Object.entries(r.stats)) totals[k] = (totals[k] || 0) + v;
         const keys = Object.keys(totals);
         const durations = chosen.map(r => r.durationMin).filter(n => n !== null);
+        const withoutDuration = chosen.length - durations.length;
         return el("div", { "data-buff-context": id }, el("h4", { text: title }),
           keys.length ? el("ul", { class: "guides218-list" }, keys.map(k => el("li", { text: STAT_LABEL[k] + ": +" + Math.round(totals[k] * 100) / 100 })))
             : el("p", { class: "small", text: chosen.length ? "No numeric effects recorded for these selections." : "No selections included in this preview." }),
           numeric.length && numeric.length < chosen.length ? el("p", { class: "small", text: "Some selections have no recorded numeric effect." }) : null,
           numeric.some(r => r.grade === "D" || r.grade === "E")
             ? el("p", { class: "muted small", text: "Includes Classic reference numbers that are not Forever-verified." }) : null,
-          durations.length ? el("p", { class: "small", text: "Shortest recorded duration: " + Math.min(...durations) + " min." }) : null);
+          durations.length ? el("p", { class: "small", text: "Shortest recorded duration: " + Math.min(...durations) + " min." }) : null,
+          withoutDuration ? el("p", { class: "small", text: `${withoutDuration} of ${chosen.length} selections without a recorded duration.` }) : null);
       }
       function sum() {
         const chosen = visibleRows().filter(r => picked.has(r.id));
         const hidden = picked.size - chosen.length;
-        total.replaceChildren(el("h3", { text: picked.size ? chosen.length + " selected in this view" : "Nothing selected yet" }),
+        total.replaceChildren(el("h3", { text: picked.size ? chosen.length + " selected in this view" : "No encounter selections yet" }),
           el("div", null,
             hidden ? el("p", { class: "small", text: hidden + " hidden by the role filter. Change the role to see those selections." }) : null,
             chosen.some(r => r.raid === false) ? el("p", { class: "small", text: "World-buff selections marked Outside raid preview are omitted from raid totals." }) : null,
@@ -388,20 +415,37 @@
             preview("raid", "Inside a raid reference", chosen.filter(r => r.raid === true))));
       }
       function draw() {
+        flaskInput = null;
         box.replaceChildren(el("ul", { class: "guides218-checklist" }, visibleRows().map(r => {
           const id = "guides218-buff-" + r.id.replace(/[^a-z0-9-]/g, "");
           const raidStatus = r.raid === true ? "Raid reference" : r.raid === false ? "Outside raid preview" : "No raid estimate";
-          const input = el("input", { type: "checkbox", id, checked: picked.has(r.id), onchange: () => { if (input.checked) picked.add(r.id); else picked.delete(r.id); sum(); } });
+          const classicFlask = r.classicFlaskSpellId !== undefined;
+          const input = el("input", { type: classicFlask ? "radio" : "checkbox", name: classicFlask ? "guides218-classic-flask" : null, id,
+            "aria-describedby": classicFlask ? "guides218-classic-flask-rule" : null,
+            checked: classicFlask ? flaskPick === r : picked.has(r.id), onchange: () => {
+              if (classicFlask) {
+                if (!input.checked) return;
+                if (flaskInput && flaskInput !== input) flaskInput.checked = false;
+                flaskPick = r;
+                flaskInput = input;
+                updateFlask();
+                return;
+              }
+              if (input.checked) picked.add(r.id); else picked.delete(r.id);
+              sum();
+            } });
+          if (classicFlask && flaskPick === r) flaskInput = input;
+          const spell = classicFlask ? ` Classic spell ${r.classicFlaskSpellId}.` : "";
           return el("li", null, input, el("label", { for: id }, el("strong", { text: r.name }), " · " + r.kind),
             el("div", null, grade(data, r.grade), " ", el("span", { class: "guides218-status", text: raidStatus })),
-            el("p", { class: "small", text: r.effect + (r.durationMin ? " Lasts " + r.durationMin + " min." : "") + (r.foreverStatus ? " " + r.foreverStatus : "") }), sourcesLine(data, r.sources));
+            el("p", { class: "small", text: r.effect + spell + (r.durationMin ? " Lasts " + r.durationMin + " min." : " No duration recorded.") + (r.foreverStatus ? " " + r.foreverStatus : "") }), sourcesLine(data, r.sources));
         })));
         sum();
       }
       draw();
       return section("Choose what you will bring", el("label", { for: "guides218-role", text: "Show consumables for " }), role,
-        el("p", { class: "muted small", text: "Previews add recorded values for visible selections. Check beta values, item availability, faction and stacking in game. Camp buffs have no raid estimate." }),
-        box, total);
+        el("p", { class: "muted small", text: "Encounter previews add recorded values for visible selections. Check beta values, item availability, faction and stacking in game. Camp buffs have no raid estimate." }),
+        box, total, flaskComparison);
     }
 
     function render(data) {
