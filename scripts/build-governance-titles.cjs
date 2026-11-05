@@ -72,8 +72,33 @@ function cabinetBridge224(text,inverse=false,scope='book'){
   if(a===1&&b===0){if(!inverse)text=text.replace(before,after);}else if(a===0&&b===1){if(inverse)text=text.replace(after,before);}else throw Error('Ambiguous exact Cabinet224 paragraph');
  }return text;
 }
+const cabinet228Bytes = fs.readFileSync(path.join(root, 'docs/governance-cabinet228-text.json'));
+if (sha256(cabinet228Bytes) !== 'a5b043cf785a6d1bd0f9692b70a5febe9d7b36b5132c6fe119b23406da152841') throw Error('Cabinet228 finite text manifest changed');
+const cabinet228 = JSON.parse(cabinet228Bytes);
+const currentCopyBytes = fs.readFileSync(path.join(root, 'docs/governance-current-reader-copy228.json'));
+if (sha256(currentCopyBytes) !== '1a70754c9ea8ff9d8788eae6789f555b287ff04a95e98c43a6bb884a1c098544') throw Error('Current reader copy manifest changed');
+const currentCopy228 = JSON.parse(currentCopyBytes);
+
+function scopedParagraphBridge(text, inverse, scope, manifest, label) {
+  const changes = manifest.changes.filter(change => change.scope.includes(scope) || scope === "outside" && change.scope.includes("book") && !change.scope.includes("titles"));
+  for (const change of inverse ? changes.slice().reverse() : changes) {
+    const before = '\n\n' + change.before + '\n\n';
+    const after = '\n\n' + change.after + '\n\n';
+    const beforeCount = text.split(before).length - 1;
+    const afterCount = text.split(after).length - 1;
+    if (beforeCount === 1 && afterCount === 0) {
+      if (!inverse) text = text.replace(before, after);
+    } else if (beforeCount === 0 && afterCount === 1) {
+      if (inverse) text = text.replace(after, before);
+    } else throw Error('Ambiguous ' + label + ' paragraph' + (change.key ? ': ' + change.key : ''));
+  }
+  return text;
+}
 function currentBridge222(text, inverse = false, scope = 'book') {
-  if(inverse)text=cabinetBridge224(text,true,scope);
+  if (inverse) {
+    text = scopedParagraphBridge(text, true, scope, currentCopy228, 'current reader copy');
+    text = cabinetBridge224(scopedParagraphBridge(text, true, scope, cabinet228, 'Cabinet228'), true, scope);
+  }
   const applicable = current222.changes.filter(c => scope === 'book' ? c.inBook : scope === 'outside' ? c.inBook && c.scope !== 'titles' : c.scope === scope);
   for (const change of inverse ? applicable.slice().reverse() : applicable) {
     const before = '\n\n' + change.before + '\n\n', after = '\n\n' + change.after + '\n\n';
@@ -82,7 +107,9 @@ function currentBridge222(text, inverse = false, scope = 'book') {
     else if (a === 0 && b === 1) { if (inverse) text = text.replace(after, before); }
     else throw Error('Ambiguous finite governance222 paragraph: ' + change.key);
   }
-  return inverse?text:cabinetBridge224(text,false,scope);
+  if (inverse) return text;
+  text = scopedParagraphBridge(cabinetBridge224(text, false, scope), false, scope, cabinet228, 'Cabinet228');
+  return scopedParagraphBridge(text, false, scope, currentCopy228, 'current reader copy');
 }
 function projection(book, source) {
   source = currentBridge222(source, true, 'titles');

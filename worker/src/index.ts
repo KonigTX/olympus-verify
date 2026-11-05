@@ -21,11 +21,11 @@ import { isGuildCommand219, guildCommandReadOnly219, handleGuildCommand219 } fro
  * This module's named exports are functions only: workerd refuses an entry that exports a scalar (.51).
  */
 import { armyAfterMemberGate, armyGateReply } from "./site-army";
-import { treasuryAfterMemberGate } from "./site-treasury-access";
+import { TREASURY_PLAN_ASSETS, treasuryAfterMemberGate } from "./site-treasury-access";
 import { captureLaunchVerification,launchVerificationEnv } from './launch-verification227';
 import type { Env } from "./env";
 import {nativeErasureMode,nativeServingEnvironment} from './privacy-native-mode';
-import { unverifiedReport } from "./unverified";
+import { STRICT_ROSTER_DISPLAY_PROTOCOL, strictRosterDisplay, unverifiedReport } from "./unverified";
 import { handleInteraction, USER_MENU_LOOKUP } from "./interactions";
 import { DiscordError, INTERACTION_FAILED, json, readInteractionBody, reply, verifyInteraction, type Interaction } from "./discord";
 import { errorRef, idNamespace, logPath } from "./log";
@@ -44,9 +44,10 @@ import { bnetLoginState } from "./bnet-switch";
 import { sweepRenameHolds } from "./rename-review";
 import { policyResponse } from "./policies";
 import { memberLegalNavigation } from "./member-legal-navigation";
-import { CAMERA_PAGE_PATH, memberSiteGate, privateCameraPageAsset, privateSiteAsset } from './site-access';
+import { CAMERA_PAGE_PATH, fetchCanonicalHtmlAsset, memberSiteGate, privateCameraPageAsset, privateSiteAsset } from './site-access';
 import { forwardPrivateProductionControl } from './privacy-private-control-adapter';
 import { LOGIN_ASSETS, POLICY_ASSETS, policyHeaders } from "./policy-render";
+import { immutablePolicyAsset, POLICY_ASSET_DIGEST_PREFIX } from "./policy-asset-cache";
 import { ensureSchema } from "./schema";
 import { recordRelay, relayReportFromQuery, relayStatus, ticketsReady } from "./relays";
 import { handleIntros, INTROS, INTROS_COMMAND, parseChannels } from "./intros";
@@ -180,6 +181,7 @@ export default {
       }
       return policy;
     }
+    if (url.pathname.startsWith(POLICY_ASSET_DIGEST_PREFIX)) return immutablePolicyAsset(request, url, env.ASSETS, host === "site");
     if ((POLICY_ASSETS as readonly string[]).includes(path)) {
       if (request.method === "GET" || request.method === "HEAD") return privateSiteAsset(await env.ASSETS.fetch(request));
       const headers = policyHeaders(); headers.set("Allow", "GET, HEAD"); return new Response("method not allowed", { status: 405, headers });
@@ -195,9 +197,12 @@ export default {
     }
     // Existing browser-only privacy controls remain available after the site account is gone.
     // This exact page/module pair has no server-data fetch, form submission or serving authority.
-    if (host === 'site' && (path === '/static/qr-beta-window-data.html' || path === '/static/qr-beta-window.mjs')) {
+    if (host === 'site' && url.pathname === path && (path === '/static/qr-beta-window-data.html' || path === '/static/qr-beta-window.mjs')) {
       if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('method not allowed', { status: 405, headers: securityHeaders(new Headers({ Allow: 'GET, HEAD' })) });
-      const asset = privateSiteAsset(await env.ASSETS.fetch(request));
+      const source = path === '/static/qr-beta-window-data.html'
+        ? await fetchCanonicalHtmlAsset(request, env.ASSETS, path)
+        : await env.ASSETS.fetch(request);
+      const asset = privateSiteAsset(source);
       const headers = new Headers(asset.headers);
       headers.set('Content-Security-Policy', "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'");
       return new Response(request.method === 'HEAD' ? null : asset.body, { status: asset.status, statusText: asset.statusText, headers });
@@ -226,12 +231,23 @@ export default {
       if (host === 'site') {
         const gate = await memberSiteGate(request, env, path);
         if (gate) return armyGateReply(request, path, gate);
+        // The Worker checks exact routes before ASSETS can decode or collapse an alternate spelling.
+        const assetPath = path.toLowerCase();
+        if (assetPath.startsWith('/static/') && (
+          url.pathname !== path || path.includes('%') || path.includes('//') ||
+          assetPath !== path && (assetPath.startsWith('/static/army-live/') ||
+            (TREASURY_PLAN_ASSETS as readonly string[]).includes(assetPath) ||
+            assetPath === CAMERA_PAGE_PATH || assetPath === '/static/qr-beta-window-data.html')
+        )) return privateSiteAsset(new Response(null, { status: 404 }));
         const armyPrivate = await armyAfterMemberGate(request, env, path);
         if (armyPrivate) return armyPrivate;
         // .218: the Treasury plan's files and its access check are for officers and above (site-treasury-access.ts).
         const treasuryPrivate = await treasuryAfterMemberGate(request, env, path);
         if (treasuryPrivate) return treasuryPrivate;
-        if ((request.method === 'GET' || request.method === 'HEAD') && path.startsWith('/static/')) return path === CAMERA_PAGE_PATH ? privateCameraPageAsset(await env.ASSETS.fetch(request)) : privateSiteAsset(await env.ASSETS.fetch(request));
+        if ((request.method === 'GET' || request.method === 'HEAD') && path.startsWith('/static/')) {
+          if (path === CAMERA_PAGE_PATH) return privateCameraPageAsset(await fetchCanonicalHtmlAsset(request, env.ASSETS, path));
+          return privateSiteAsset(await env.ASSETS.fetch(request));
+        }
       }
       // This build's columns and tables (schema.ts); a no-op once done in this isolate, retried on the next request
       // after a failure. Until it has succeeded, the watcher's endpoints answer 503 (the watcher keeps its work and
@@ -481,6 +497,9 @@ export function classifyHost(env: Env, hostname: string): HostClass {
   return "unknown";
 }
 
+// Full guild exports include notes and escaped Unicode. Keep their body budget separate from signed Discord requests.
+const MAX_WATCHER_POST_BYTES = 1024 * 1024;
+
 /** Every handler is awaited here so a rejected promise lands in the catch above instead of surfacing as a 1101. */
 async function route(request: Request, env: Env, path: string, schemaReady = true, ctx?: ExecutionContext,namesOrigin?:HandlerServingOrigin,originalDispatch?:BetaRoleDispatch): Promise<Response> {
   const roleDispatch=originalDispatch??captureBetaRoleDispatch(env);
@@ -567,11 +586,23 @@ async function route(request: Request, env: Env, path: string, schemaReady = tru
     let body: any = null; // each handler validates its own body, exactly as before .66
     if (request.method === "POST") {
       // .210: a body that is not a JSON object is a final 400; it was a 500, which the watcher retries forever.
-      try { body = await request.json(); } catch { return json({ error: "bad_json", message: "The request body is not valid JSON." }, 400); }
+      try {
+        const raw = await readInteractionBody(request, MAX_WATCHER_POST_BYTES);
+        if (raw === null) return json({ error: "body_too_large", message: "The request body exceeds 1 MiB." }, 413);
+        body = JSON.parse(raw);
+      } catch { return json({ error: "bad_json", message: "The request body is not valid JSON." }, 400); }
       if (body === null || typeof body !== "object" || Array.isArray(body)) return json({ error: "bad_body", message: "The request body must be a JSON object." }, 400);
     }
     if (query.has("keyVersion") || (body !== null && typeof body === "object" && "keyVersion" in body)) {
-      const versions=query.getAll('keyVersion'),presenceOnly=request.method==='GET'&&path==='/queue'&&query.getAll('presenceOnly').includes('1');
+      const versions=query.getAll('keyVersion');
+      if (versions.length === 1 && versions[0] === STRICT_ROSTER_DISPLAY_PROTOCOL && request.method === "GET" && path === "/queue/unverified" && query.size === 1) {
+        const report = await strictRosterDisplay(env, captureLaunchVerification(env));
+        return new Response(JSON.stringify(report ?? { error: "strict_roster_display_unavailable" }), {
+          status: report ? 200 : 409,
+          headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store, no-transform" },
+        });
+      }
+      const presenceOnly=request.method==='GET'&&path==='/queue'&&query.getAll('presenceOnly').includes('1');
       const launch=captureLaunchVerification(env),ingest=request.method==='POST'&&['/ingest/verify','/ingest/roster','/ingest/events'].includes(path)&&launch.mode==='members-only'&&!!launch.scope&&launch.current();
       if(versions.length!==1||versions[0]!=='launch-membership-v1'||body!==null&&typeof body==='object'&&'keyVersion'in body||!presenceOnly&&!ingest)
         return json({ error: "unsupported_protocol", message: "This Worker serves the unversioned protocol only; a keyVersion is not supported." }, 400);
@@ -654,7 +685,7 @@ async function freshRegistrationRefused(env: Env, trigger: string): Promise<void
 }
 
 /** Bumped with every change that needs a redeploy, so GET /health shows which build is live. */
-const BUILD = "2026-11-03.227 Launch verification and local receipts";
+const BUILD = "2026-11-04.228 Evergreen guild site and raid tools";
 
 /**
  * Presence of each secret (never the value) and a D1 round trip — enough to tell a missing `wrangler secret put` from a

@@ -968,9 +968,33 @@ end
 local Roster = {}
 Roster.STATUS_ORDER = { verified = 1, pending = 2, unverified = 3, unknown = 4 }
 
+-- A strict display snapshot is separate from Unverified.Source(), which feeds
+-- legacy removal eligibility. No fallback to the invitation file in this mode.
+function Roster.DisplaySource()
+  if cfg.membershipOnly ~= true then
+    return type(OlympusQueue) == "table" and OlympusQueue or nil
+  end
+  if not IsInGuild() then return nil, "The current native guild is unavailable." end
+  local q = OlympusVerifyLists
+  local guild, realm = Presence.NativeRosterScope()
+  if type(q) ~= "table" or q.version ~= 1 or not guild or not realm or q.guild ~= guild or q.realm ~= realm then
+    return nil, "No current Watcher display lists for this native guild and realm. Refresh the Watcher exchange and reload."
+  end
+  local v, u = q.verified, q.unverified
+  if type(v) ~= "table" or type(u) ~= "table" or type(v.members) ~= "table" or type(u.members) ~= "table"
+    or #v.members + #u.members > 1000 or v.fetchedAt ~= u.fetchedAt or v.snapshotAt ~= u.snapshotAt then
+    return nil, "The strict Watcher display lists are incomplete. Refresh the Watcher exchange and reload."
+  end
+  local fetched, snapshot, now = v.fetchedAt, v.snapshotAt, time()
+  if type(fetched) ~= "number" or type(snapshot) ~= "number" or fetched ~= math.floor(fetched) or snapshot ~= math.floor(snapshot)
+    or snapshot < 1 or snapshot > fetched or fetched > now or snapshot < now - 3600 then
+    return nil, "The strict Watcher lists or native roster are stale. Refresh the Watcher exchange and reload.", true
+  end
+  return q
+end
+
 -- The verified list, keyed by character GUID (survives a rename) and by name.
-function Roster.Linked()
-  local q = OlympusQueue
+function Roster.Linked(q)
   local v = type(q) == "table" and type(q.verified) == "table" and q.verified or nil
   if not v or type(v.members) ~= "table" then return nil end
   local byGuid, byName = {}, {}
@@ -1001,22 +1025,27 @@ function Roster.Members()
   local out = {}
   if not IsInGuild() then return out, info end
   Unverified.GrabRoster()
-  local linked = Roster.Linked()
+  local q = Roster.DisplaySource()
+  local linked = Roster.Linked(q)
   info.hasNames = linked ~= nil
   info.listAt = linked and linked.fetchedAt or nil
   local unv = {}
-  local src = Unverified.Source()
-  if src then for _, m in ipairs(src.members) do unv[L.normalizeCharacter(m.name or "")] = m end end
+  local src = type(q) == "table" and q.unverified or nil
+  if type(src) == "table" and type(src.members) == "table" then
+    for _, m in ipairs(src.members) do unv[L.normalizeCharacter(m.name or "")] = m end
+  end
   local rankSeen, classSeen = {}, {}
   for i = 1, (GetNumGuildMembers() or 0) do
     local name, rank, rankIndex, level, _, _, _, _, online, _, classFile, _, _, _, _, _, guid = GetGuildRosterInfo(i)
     if name then
       local base = BaseName(name)
       local nk = L.normalizeCharacter(base)
-      local link = linked and ((guid and linked.byGuid[guid]) or linked.byName[nk]) or nil
+      local link = linked and ((guid and linked.byGuid[guid]) or (cfg.membershipOnly ~= true and linked.byName[nk])) or nil
       local u = unv[nk]
+      if cfg.membershipOnly == true and u and (not guid or u.guid ~= guid) then u = nil end
+      local sinceLogin = cfg.membershipOnly ~= true and Unverified.session[nk]
       local status
-      if link or Unverified.session[nk] then status = "verified"
+      if link or sinceLogin then status = "verified"
       elseif u then status = u.pending and "pending" or "unverified"
       else status = "unknown" end
       info[status] = info[status] + 1
@@ -1029,7 +1058,7 @@ function Roster.Members()
         online = online and true or false, days = DaysOffline(i, online), status = status,
         discord = link and Roster.UIText(link.username) or nil, display = link and Roster.UIText(link.displayName) or nil,
         discordId = link and nonEmpty(link.discordId) or nil, linkStatus = link and nonEmpty(link.status) or nil,
-        sinceLogin = (not link and Unverified.session[nk]) and true or nil,
+        sinceLogin = (not link and sinceLogin) and true or nil,
       }
     end
   end
@@ -3091,7 +3120,7 @@ OlympusVerifyAPI = {
   RemoveMember = function(name, reason) return OlympusVerify_RemoveMember(name, reason) end,
   -- The roster window's reads (0.6.4). A table for the same reason as Text and Name: nothing here acts, so /olv
   -- preview has nothing to stand in for.
-  Roster = { Members = Roster.Members, Filter = Roster.Filter, Sort = Roster.Sort },
+  Roster = { Members = Roster.Members, Filter = Roster.Filter, Sort = Roster.Sort, DisplaySource = Roster.DisplaySource },
   UnverifiedList = function(n) return Unverified.Candidates(n) end,
   UnverifiedRanks = function(info) return Unverified.Ranks(info) end,
   ToggleUnverifiedRank = function(rank) Unverified.ToggleRank(rank) end,

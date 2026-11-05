@@ -17,10 +17,10 @@ const directoryCoverage203 = page => {
   const model=page.boot.meta.roleDirectory203, expected=[...page.boot.meta.appointments.map(row=>row.key),"member","raider","pvp_team"].sort();
   const declared=model.families.flatMap(family=>family.sourceKeys).sort(),visible=model.families.flatMap(family=>[family.primaryKey,...family.variants.filter(row=>['office','region','class'].includes(row.presentation)).map(row=>row.key)]).sort();
   const actual=page.app.querySelectorAll("[data-role-key201]").map(row=>row.getAttribute("data-role-key201")).sort();
-  return model?.version===1 && model.sourceKeyCount===141 && expected.length===141 && JSON.stringify(declared)===JSON.stringify(expected)
+  return model?.version===1 && model.sourceKeyCount===142 && expected.length===142 && JSON.stringify(declared)===JSON.stringify(expected)
     && expected.every(key=>model.families.find(family=>family.key===model.keyToFamily[key])?.sourceKeys.includes(key))
-    && visible.length===116 && JSON.stringify(actual)===JSON.stringify(visible)
-    && page.app.querySelectorAll("details.role-family203").length===71;
+    && visible.length===117 && JSON.stringify(actual)===JSON.stringify(visible)
+    && page.app.querySelectorAll("details.role-family203").length===72;
 };
 (async () => {
   await siteUser(MEMBER, { global_name: "Mia" }); await character(MEMBER, "Mia One", "Player-1-0001");
@@ -38,7 +38,7 @@ const directoryCoverage203 = page => {
   await staff.go("#/community/directory");
   // .196: the owner-approved default is the Olympus Discord directory. The
   // original .176 member-profile reader remains behind this explicit button.
-  byText(staff.app, "button", "Show opt-in guild profiles and crafting offers").click();
+  byText(staff.app, "button", "Show Member profiles and crafting offers").click();
   await waitFor(() => staff.app.textContent.includes("Site administrator") && requests.some(r => r.pathname.startsWith("/api/community/directory")), ".176 explicit optional profile reader");
   check(".176 actual site admin reads the directory without being marked roster-confirmed", staff.boot.user.isAdmin === true && staff.boot.community.capabilities.confirmedGuildData === false && staff.boot.community.capabilities.communityRead === true && staff.app.textContent.includes("Site administrator") && !staff.app.textContent.includes("not yet confirmed") && requests.some(r => r.pathname.startsWith("/api/community/directory")));
   await staff.go("#/community/profile");
@@ -88,8 +88,8 @@ const directoryCoverage203 = page => {
   check("other read failures also replace the loading state without leaking server detail", !!byText(staff.app, "h2", "Application could not be opened") && !staff.app.textContent.includes("Loading…") && !staff.app.textContent.includes("Opening the application…") && !staff.app.textContent.includes("PRIVATE_OTHER_ERROR") && !!byText(staff.app, "a", "Back to all applications"));
   staff.answer(null); await staff.go("#/admin/applications");
   await staff.go("#/admin/applications/" + OTHER);
-  await waitFor(() => !!byText(staff.app, "button", "Deny permanently"), ".174 genuine readable application");
-  check("a genuine admitted application still opens its existing staff controls", !!byText(staff.app, "button", "Deny permanently") && !!byText(staff.app, "button", "Delete their site data") && !staff.app.textContent.includes("Application decision held"));
+  await waitFor(() => !!byText(staff.app, "button", "Delete their site data"), ".174 genuine readable application");
+  check("an admitted Officer application retains its staff controls and directs permanent denial to review", !!byText(staff.app, "button", "Delete their site data") && !!byText(staff.app, "button", "Save note") && !!byText(staff.app, "button", "Under review") && !byText(staff.app, "button", "Deny permanently") && staff.app.textContent.includes("requires an attended membership review") && !staff.app.textContent.includes("Application decision held"));
   const applicationBoard = staff.app.querySelector("table.admin-application-board");
   check("application detail keeps every voting field in a scrollable table with a separate wrapping role label", !!applicationBoard && applicationBoard.querySelectorAll("th").length === 5 && !!applicationBoard.querySelector(".admin-board-role-label") && staff.app.textContent.includes("Scroll sideways to see every voting column"));
   staff.answer(pathname => pathname === "/api/admin/applications/" + OTHER ? new Response('{"error":"original_membership_decision_held"}', { status: 409, headers: { "Content-Type": "application/json" } }) : null);
@@ -123,7 +123,7 @@ const directoryCoverage203 = page => {
 
   const appointments = await openPage(MEMBER, {}, { bootTransform: boot => { boot.settings.appointed = { officer: "richwcampbell.", treasurer: "Appointed member" }; } });
   await appointments.go("#/roles");
-  check("canonical role families retain all141 source identities and116 real specifications while defaulting to collapsed reading", directoryCoverage203(appointments) && appointments.app.querySelectorAll("details.role-family203").every(d => !d.open && d.querySelector('.role-primary203').querySelectorAll('.role-guide201').length===1 && d.textContent.includes("Responsibilities") && d.textContent.includes("Expectations")));
+  check("canonical role families retain all 142 source identities and 117 specifications while defaulting to collapsed reading", directoryCoverage203(appointments) && appointments.app.querySelectorAll("details.role-family203").every(d => !d.open && d.querySelector('.role-primary203').querySelectorAll('.role-guide201').length===1 && d.textContent.includes("Responsibilities") && d.textContent.includes("Expectations")));
   check("appointment labels retain a trailing-period username once and use an identity-free fallback", appointments.app.textContent.includes("Appointed: richwcampbell.") && !appointments.app.textContent.includes("richwcampbell..") && appointments.app.textContent.includes("Filled by appointment") && !appointments.app.textContent.includes("Appointed: Appointed member"));
   await appointments.go("#/roles/officer");
   const officerFamily218=appointments.app.querySelector('[data-role-family203="officer"]'),officerGuide218=appointments.boot.meta.roleGuides201.officer;
@@ -131,11 +131,11 @@ const directoryCoverage203 = page => {
   await appointments.go("#/roles/raider");
   const raiderFamily218=appointments.app.querySelector('[data-role-family203="raider"]'),raiderPrimary218=raiderFamily218.querySelector('.role-primary203'),rankRaider218=raiderFamily218.querySelector('#role-rank_raider');
   check(".219 canonical Raider application is clear without a duplicate native standing-only footer",raiderFamily218.querySelector('summary .badge')?.textContent==='Applications accepted'&&!raiderPrimary218.textContent.includes('Standing or review status only — not an application vacancy.')&&!raiderPrimary218.textContent.includes(appointments.boot.meta.roleGuides201.raider.eligibilityNote));
-  check(".219 native Raider retains exact metadata and slot6 on its one master specification without a stub drawer",!rankRaider218&&appointments.boot.meta.roleDirectory203.keyToFamily.rank_raider==='raider'&&appointments.boot.meta.roleGuides201.rank_raider.nativeSlot===6&&appointments.boot.meta.roleGuides201.rank_raider.eligibility==='standing'&&raiderPrimary218.querySelector('.rank-office199')?.textContent.includes('Slot 6')&&raiderPrimary218.querySelectorAll('h4').filter(node=>node.textContent==='Responsibilities').length===1&&raiderFamily218.querySelectorAll('.role-variant203 .role-info').length===0&&raiderFamily218.getAttribute('data-role-family203')==='raider');
+  check(".219 native Raider retains exact metadata and slot6 on its one master specification without a stub drawer",!rankRaider218&&appointments.boot.meta.roleDirectory203.keyToFamily.rank_raider==='raider'&&appointments.boot.meta.roleGuides201.rank_raider.nativeSlot===6&&appointments.boot.meta.roleGuides201.rank_raider.eligibility==='standing'&&raiderFamily218.querySelector('summary .rank-office199')?.textContent.includes('Slot 6')&&!raiderPrimary218.querySelector('.rank-office199')&&raiderPrimary218.querySelectorAll('h4').filter(node=>node.textContent==='Responsibilities').length===1&&raiderFamily218.querySelectorAll('.role-variant203 .role-info').length===0&&raiderFamily218.getAttribute('data-role-family203')==='raider');
   await appointments.go("#/vote/officer");
   check("appointed role board preserves appointment closure without doubled punctuation", !appointments.app.textContent.includes("richwcampbell..") && appointments.app.textContent.includes("filled by appointment rather than by the board") && !appointments.app.querySelector("button.vote"));
   await appointments.go("#/apply");
-  check("application's reserved canonical Treasury role is reference-only with its separately keyed private fallback", !appointments.app.querySelectorAll('input[name="position"]').some(r => r.value === "treasurer") && !!appointments.app.querySelector('[data-role-family203="treasurer"] .role-primary203 [data-appointment-scope203="treasurer"]') && !appointments.app.querySelector('[data-role-family203="treasurer"] [data-apply-role201]') && !appointments.app.querySelector('[data-role-key201="treasurer"]') && appointments.app.textContent.includes("Filled by appointment") && !appointments.app.textContent.includes("Appointed: Appointed member"));
+  check("the compact application chooser keeps Treasury closed and points to the canonical guide", !appointments.app.querySelectorAll('input[name="position"]').some(r => r.value === "treasurer") && !appointments.app.querySelector('[data-family-apply203="treasurer"]') && !appointments.app.querySelector('#application-directory201') && !!appointments.app.querySelector('#application-track-chooser228 a[href="#/roles"][target="_blank"]') && appointments.app.textContent.includes("seats are reserved appointments"));
   check("in-flow submit action keeps all application questions and consent with safe section shortcuts", !!appointments.app.querySelector("#application-submit.apply-savebar") && appointments.app.querySelectorAll(".application-sections button").length === 4 && !!byText(appointments.app, "button", "Back to role choices") && appointments.app.textContent.includes("I understand, and everything above is true") && !!appointments.app.querySelector('[data-field="ack"]'));
 
   await member.go("#/governance");
@@ -146,7 +146,7 @@ const directoryCoverage203 = page => {
   const instrumentNoteIndices = member.app.querySelectorAll("details.governance-chapter").map((chapter, index) => chapter.querySelector(".governance-instrument-note") ? index : null).filter(index => index !== null);
   const instrumentNoteIds = member.app.querySelectorAll("details.governance-chapter").filter(chapter => chapter.querySelector(".governance-instrument-note")).map(chapter => chapter.getAttribute("data-chapter")).sort();
   const instrumentIdsDigest = require("node:crypto").createHash("sha256").update(JSON.stringify(instrumentNoteIds)).digest("hex"), reviewedBookDigest = require("node:crypto").createHash("sha256").update(fs.readFileSync(path.join(root, "public/static/governance/reconciled-book.md"))).digest("hex");
-  check(".224 current book's four instrument-note placements and execution limits remain exact", reviewedBookDigest === "947093b9f1bdaf787c63d875b895821f2ac63d51ca4be240992713f9d346d683" && instrumentIdsDigest === "a5cf89f9778efa8f188b4af0db64ab6fb02ca02a177206f7d8247034f47636cf" && JSON.stringify(instrumentNoteIndices) === "[2,3,17,18]" && member.app.querySelectorAll(".governance-instrument-note").every(note => note.textContent.includes("A blank field is not a completed record")));
+  check("the reviewed book's four instrument-note placements and execution limits remain exact", reviewedBookDigest === "fb6816b77507c2855f45511a32d1b46fbdcab804965e78a3650eb6f071684cac" && instrumentIdsDigest === "a5cf89f9778efa8f188b4af0db64ab6fb02ca02a177206f7d8247034f47636cf" && JSON.stringify(instrumentNoteIndices) === "[2,3,17,18]" && member.app.querySelectorAll(".governance-instrument-note").every(note => note.textContent.includes("A blank field is not a completed record")));
   // Search through the real reviewed book, including its genuine strong/plain
   // inline boundary. Mark fragments share one logical match index; neither
   // generated reader controls nor adoption/instrument qualifications are hits.
@@ -208,7 +208,7 @@ const directoryCoverage203 = page => {
   check("a single split-inline match keeps both fragments selected through navigation", currentGovernanceGroup().length === 1 && governanceMarks().every(mark => mark.getAttribute("aria-current") === "true") && JSON.stringify(governanceSourceText()) === unmarkedGovernanceText);
   searchGovernance("Reading and Adopting This Book");
   check("chapter heading matches are highlighted without marking the duplicate contents link", governanceGroups().length === 1 && !!member.app.querySelector("details.governance-chapter summary h2 mark") && !member.app.querySelector(".governance-toc mark"));
-  for (const excluded of ["Archive and release records", "A blank field is not a completed record.", "Explore the organization"]) {
+  for (const excluded of ["Archive and release records", "A blank field is not a completed record.", "Explore the organization", "Roles referenced by Title", "Link to this article"]) {
     searchGovernance(excluded);
     check("generated reader text is not a source-book match: " + excluded, governanceMarks().length === 0 && previousMatch.disabled && nextMatch.disabled && !matchNavigation.hidden && currentGovernanceGroup().length === 0);
   }
@@ -224,7 +224,7 @@ const directoryCoverage203 = page => {
   // P2: a common one-character query must not turn the whole book into tens of
   // thousands of DOM marks. Count independently from unmarked rendered source;
   // the display budget must not truncate the searchable results or navigation.
-  const sourceBlocks = member.app.querySelectorAll("details.governance-chapter").flatMap(chapter => [chapter.querySelector("summary h2"), ...chapter.querySelectorAll(".governance-prose p, .governance-prose h3, .governance-prose h4, .governance-prose li, .governance-prose th, .governance-prose td").filter(block => !block.closest(".governance-instrument-note") && !block.closest(".governance-overview"))]);
+  const sourceBlocks = member.app.querySelectorAll("details.governance-chapter").flatMap(chapter => [chapter.querySelector("summary h2"), ...chapter.querySelectorAll(".governance-prose p, .governance-prose h3, .governance-prose h4, .governance-prose li, .governance-prose th, .governance-prose td").filter(block => !block.closest(".governance-instrument-note, .governance-overview, .role-reference-links228, .governance-article-links228"))]);
   const expectedSingleLetterHits = sourceBlocks.reduce((total, block) => total + [...block.textContent.matchAll(/e/giu)].length, 0);
   const originalEmphasis = JSON.stringify(member.app.querySelectorAll(".governance-prose strong, .governance-prose code").map(node => ({ tag: node.tagName, text: node.textContent })));
   const singleLetterBudget = () => governanceMarks().length > 0 && governanceMarks().length <= 200 && governanceGroups().length <= 200;
@@ -252,11 +252,13 @@ const directoryCoverage203 = page => {
   const groupOf192 = mark => mark ? mark.getAttribute("data-governance-match") : null;
   const blockTag192 = mark => mark.closest("p, h2, h3, h4, li, th, td").tagName;
   const independentCount192 = (source, flags) => sourceBlocks.reduce((total, block) => total + [...block.textContent.matchAll(new RegExp(source, flags))].length, 0);
+  const treasurerHits192 = independentCount192("Treasurer", "giu");
+  const lastTreasurerIndex192 = String(treasurerHits192 - 1);
   const sortedCounts192 = counts => JSON.stringify(Object.keys(counts).sort().map(tag => [tag, counts[tag]]));
   const markedTagCounts192 = () => { const counts = {}; for (const group of governanceGroups()) { const tag = blockTag192(governanceMarks().find(mark => groupOf192(mark) === group)); counts[tag] = (counts[tag] || 0) + 1; } return sortedCounts192(counts); };
   const sourceTagCounts192 = word => { const counts = {}; for (const block of sourceBlocks) { const hits = [...block.textContent.matchAll(new RegExp(word, "giu"))].length; if (hits) counts[block.tagName] = (counts[block.tagName] || 0) + hits; } return sortedCounts192(counts); };
   searchGovernance("Treasurer");
-  check(".192 a known office has its exact occurrence count, equal to an independent count of the unmarked source", governanceGroups().length === 50 && independentCount192("Treasurer", "giu") === 50 && matchStatus().includes("Match 1 of 50") && governanceMarks().every(mark => mark.textContent.toLowerCase() === "treasurer"));
+  check(".192 a known office has its exact occurrence count, equal to an independent count of the unmarked source", treasurerHits192 > 40 && governanceGroups().length === treasurerHits192 && matchStatus().includes("Match 1 of " + treasurerHits192) && governanceMarks().every(mark => mark.textContent.toLowerCase() === "treasurer"));
   searchGovernance("access");
   check(".192 the exact count includes list items, table cells, headings and several hits in one block", governanceGroups().length === 104 && independentCount192("access", "giu") === 104 && markedTagCounts192() === sourceTagCounts192("access") && markedTagCounts192() === JSON.stringify([["H3", 3], ["LI", 2], ["P", 98], ["TD", 1]]) && member.app.querySelectorAll(".governance-prose p, .governance-prose li, .governance-prose td, .governance-prose h3").some(block => new Set(block.querySelectorAll("mark.governance-search-match").map(groupOf192)).size > 1) && matchStatus().includes("Match 1 of 104"));
   searchGovernance("No.");
@@ -272,38 +274,38 @@ const directoryCoverage203 = page => {
   searchGovernance("Treasurer");
   const scrollsAfterTyping192 = scrolled192.length, typedStatus192 = matchStatus();
   nextMatch.click();
-  check(".192 typing selects match 1 without scrolling, and the first Next reveals match 1 instead of skipping to match 2", scrollsAfterTyping192 === scrollsBeforeTyping192 && scrolled192.length === scrollsAfterTyping192 + 1 && groupOf192(scrolled192.at(-1).node) === "0" && currentGovernanceGroup().join(",") === "0" && matchStatus().includes("match 1 of 50") && scrolled192.at(-1).node.closest("details.governance-chapter").open && member.location.hash === "#/governance");
-  check(".192 the reveal announces itself with wording distinct from the typing announcement, for the same match and chapter", typedStatus192.startsWith("Match 1 of 50 · ") && matchStatus() === "Showing match" + typedStatus192.slice("Match".length));
+  check(".192 typing selects match 1 without scrolling, and the first Next reveals match 1 instead of skipping to match 2", scrollsAfterTyping192 === scrollsBeforeTyping192 && scrolled192.length === scrollsAfterTyping192 + 1 && groupOf192(scrolled192.at(-1).node) === "0" && currentGovernanceGroup().join(",") === "0" && matchStatus().includes("match 1 of " + treasurerHits192) && scrolled192.at(-1).node.closest("details.governance-chapter").open && member.location.hash === "#/governance");
+  check(".192 the reveal announces itself with wording distinct from the typing announcement, for the same match and chapter", typedStatus192.startsWith("Match 1 of " + treasurerHits192 + " · ") && matchStatus() === "Showing match" + typedStatus192.slice("Match".length));
   nextMatch.click();
-  check(".192 the next Next advances to match 2", currentGovernanceGroup().join(",") === "1" && groupOf192(scrolled192.at(-1).node) === "1" && matchStatus().includes("Match 2 of 50"));
+  check(".192 the next Next advances to match 2", currentGovernanceGroup().join(",") === "1" && groupOf192(scrolled192.at(-1).node) === "1" && matchStatus().includes("Match 2 of " + treasurerHits192));
   searchGovernance("Treasurer"); previousMatch.click();
-  check(".192 the first Previous after typing still goes to the last match", currentGovernanceGroup().join(",") === "49" && groupOf192(scrolled192.at(-1).node) === "49" && matchStatus().includes("Match 50 of 50"));
+  check(".192 the first Previous after typing still goes to the last match", currentGovernanceGroup().join(",") === lastTreasurerIndex192 && groupOf192(scrolled192.at(-1).node) === lastTreasurerIndex192 && matchStatus().includes("Match " + treasurerHits192 + " of " + treasurerHits192));
   nextMatch.click();
-  check(".192 after Previous, Next wraps straight to match 1", currentGovernanceGroup().join(",") === "0" && groupOf192(scrolled192.at(-1).node) === "0" && matchStatus().includes("Match 1 of 50"));
+  check(".192 after Previous, Next wraps straight to match 1", currentGovernanceGroup().join(",") === "0" && groupOf192(scrolled192.at(-1).node) === "0" && matchStatus().includes("Match 1 of " + treasurerHits192));
 
   const key192 = (key, shift, extra) => { const event = new Event("keydown", { bubbles: true }); event.key = key; event.shiftKey = !!shift; Object.assign(event, extra || {}); governanceSearch.dispatchEvent(event); return event; };
   governanceSearch.focus(); searchGovernance("Treasurer");
   const firstEnter192 = key192("Enter");
-  check(".192 Enter in the search field reveals match 1 first, prevents the default action and keeps focus and query", firstEnter192.defaultPrevented && currentGovernanceGroup().join(",") === "0" && matchStatus().startsWith("Showing match 1 of 50 · ") && groupOf192(scrolled192.at(-1).node) === "0" && member.document.activeElement === governanceSearch && governanceSearch.value === "Treasurer");
+  check(".192 Enter in the search field reveals match 1 first, prevents the default action and keeps focus and query", firstEnter192.defaultPrevented && currentGovernanceGroup().join(",") === "0" && matchStatus().startsWith("Showing match 1 of " + treasurerHits192 + " · ") && groupOf192(scrolled192.at(-1).node) === "0" && member.document.activeElement === governanceSearch && governanceSearch.value === "Treasurer");
   const secondEnter192 = key192("Enter");
-  check(".192 a second Enter moves to match 2 with focus kept", secondEnter192.defaultPrevented && currentGovernanceGroup().join(",") === "1" && matchStatus().includes("Match 2 of 50") && member.document.activeElement === governanceSearch);
+  check(".192 a second Enter moves to match 2 with focus kept", secondEnter192.defaultPrevented && currentGovernanceGroup().join(",") === "1" && matchStatus().includes("Match 2 of " + treasurerHits192) && member.document.activeElement === governanceSearch);
   const shiftEnter192 = key192("Enter", true);
   check(".192 Shift+Enter moves back to match 1 with focus kept", shiftEnter192.defaultPrevented && currentGovernanceGroup().join(",") === "0" && member.document.activeElement === governanceSearch);
   key192("Enter", true);
-  check(".192 Shift+Enter wraps from match 1 to the last match", currentGovernanceGroup().join(",") === "49" && matchStatus().includes("Match 50 of 50") && member.document.activeElement === governanceSearch);
+  check(".192 Shift+Enter wraps from match 1 to the last match", currentGovernanceGroup().join(",") === lastTreasurerIndex192 && matchStatus().includes("Match " + treasurerHits192 + " of " + treasurerHits192) && member.document.activeElement === governanceSearch);
   searchGovernance("Treasurer");
   const firstShiftEnter192 = key192("Enter", true);
-  check(".192 the first Shift+Enter after typing goes to the last match, as Previous does", firstShiftEnter192.defaultPrevented && currentGovernanceGroup().join(",") === "49" && member.document.activeElement === governanceSearch);
+  check(".192 the first Shift+Enter after typing goes to the last match, as Previous does", firstShiftEnter192.defaultPrevented && currentGovernanceGroup().join(",") === lastTreasurerIndex192 && member.document.activeElement === governanceSearch);
   const otherKey192 = key192("a");
-  check(".192 other keys in the search field are left alone", !otherKey192.defaultPrevented && currentGovernanceGroup().join(",") === "49");
+  check(".192 other keys in the search field are left alone", !otherKey192.defaultPrevented && currentGovernanceGroup().join(",") === lastTreasurerIndex192);
   searchGovernance("Treasurer");
   const scrollsBeforeIme192 = scrolled192.length;
   const composingEnter192 = key192("Enter", false, { isComposing: true });
-  check(".192 an IME composition Enter (isComposing) neither moves nor prevents the default action", !composingEnter192.defaultPrevented && scrolled192.length === scrollsBeforeIme192 && currentGovernanceGroup().join(",") === "0" && matchStatus().startsWith("Match 1 of 50 · ") && member.document.activeElement === governanceSearch);
+  check(".192 an IME composition Enter (isComposing) neither moves nor prevents the default action", !composingEnter192.defaultPrevented && scrolled192.length === scrollsBeforeIme192 && currentGovernanceGroup().join(",") === "0" && matchStatus().startsWith("Match 1 of " + treasurerHits192 + " · ") && member.document.activeElement === governanceSearch);
   const safariCommit192 = key192("Enter", false, { keyCode: 229, isComposing: false });
-  check(".192 Safari's composition-commit Enter (keyCode 229) neither moves nor prevents the default action", !safariCommit192.defaultPrevented && scrolled192.length === scrollsBeforeIme192 && currentGovernanceGroup().join(",") === "0" && matchStatus().startsWith("Match 1 of 50 · ") && member.document.activeElement === governanceSearch);
+  check(".192 Safari's composition-commit Enter (keyCode 229) neither moves nor prevents the default action", !safariCommit192.defaultPrevented && scrolled192.length === scrollsBeforeIme192 && currentGovernanceGroup().join(",") === "0" && matchStatus().startsWith("Match 1 of " + treasurerHits192 + " · ") && member.document.activeElement === governanceSearch);
   const afterIme192 = key192("Enter");
-  check(".192 after IME Enters the first real Enter still reveals match 1", afterIme192.defaultPrevented && scrolled192.length === scrollsBeforeIme192 + 1 && groupOf192(scrolled192.at(-1).node) === "0" && currentGovernanceGroup().join(",") === "0" && matchStatus().startsWith("Showing match 1 of 50 · "));
+  check(".192 after IME Enters the first real Enter still reveals match 1", afterIme192.defaultPrevented && scrolled192.length === scrollsBeforeIme192 + 1 && groupOf192(scrolled192.at(-1).node) === "0" && currentGovernanceGroup().join(",") === "0" && matchStatus().startsWith("Showing match 1 of " + treasurerHits192 + " · "));
   searchGovernance("zzqx no such governance text");
   const emptyEnter192 = key192("Enter");
   check(".192 Enter without matches moves nothing and keeps focus in the field", emptyEnter192.defaultPrevented && governanceMarks().length === 0 && nextMatch.disabled && /No matches/.test(matchStatus()) && member.document.activeElement === governanceSearch);
@@ -369,7 +371,7 @@ const directoryCoverage203 = page => {
   try { byText(member.app, "button", "Clear search").click(); } catch (error) { copyError192 = error; }
   check(".192 Clear search after another script deep-copied a highlighted element leaves no stale highlight and exact text", copiedMark192 && copyError192 === null && governanceMarks().length === 0 && !strongCopy192.querySelector("mark") && strongCopy192.textContent === "Federal Treasurer." && JSON.stringify(governanceSourceText()) === unmarkedGovernanceText, String(copyError192));
   searchGovernance("Treasurer");
-  check(".192 the next search after a deep copy keeps the exact count and nests no highlight", governanceGroups().length === 50 && !member.app.querySelector("mark mark") && !!strongCopy192.querySelector("mark.governance-search-match") && JSON.stringify(governanceSourceText()) === unmarkedGovernanceText);
+  check(".192 the next search after a deep copy keeps the exact count and nests no highlight", governanceGroups().length === treasurerHits192 && !member.app.querySelector("mark mark") && !!strongCopy192.querySelector("mark.governance-search-match") && JSON.stringify(governanceSourceText()) === unmarkedGovernanceText);
   byText(member.app, "button", "Clear search").click();
 
   // A block another script shortened after indexing yields no mark for its match.
@@ -518,7 +520,7 @@ const directoryCoverage203 = page => {
   await waitFor(() => accessibility178.app.querySelectorAll("button.row-detail-open").length === 2, ".178 application board destination");
   check(".178 detail navigation retains the two admitted native voting actions and performs no writes", accessibility178.app.querySelectorAll("button.row-detail-open").length === 2 && reads178.length > 8 && reads178.every(r => r.method === "GET") && one("SELECT vote FROM site_board_votes WHERE voter_id=? AND candidate_id=? AND role_key='officer'", MEMBER, OTHER).vote === 1);
   const attribution178 = accessibility178.app.querySelector("footer").textContent;
-  check(".178 footer distinguishes client-derived portal animation and guild crest while retaining game and font notices", attribution178.includes("login portal animation is a guild-rendered derivative of the original World of Warcraft client model and textures") && attribution178.includes("static reduced-motion poster") && attribution178.includes("not a publisher-issued movie or endorsement") && attribution178.includes("Olympus crest is the guild's own logo") && attribution178.includes("remaining game interface artwork and icons") && attribution178.includes("International Typeface Corporation") && attribution178.includes("Kiwi Media/Design") && !attribution178.includes("All other interface artwork and icons"));
+  check("the footer credits the default stills, optional client-derived animation, guild crest and game assets separately", attribution178.includes("default login backgrounds are custom AI-generated stills") && attribution178.includes("optional portal animation is a guild render of the World of Warcraft Classic Era client model and textures") && attribution178.includes("Olympus crest is the guild's own logo") && attribution178.includes("game interface artwork and icons come from the World of Warcraft game client") && attribution178.includes("International Typeface Corporation") && attribution178.includes("Kiwi Media/Design"));
 
 
   // .218: actual App/Worker fixture; only the completed read response is substituted.
@@ -575,8 +577,9 @@ const directoryCoverage203 = page => {
     const session218 = await openPage(MEMBER);
     session218.answer(pathname => isBoardRole218(pathname) ? new Response('{"error":"signed_out"}', { status: 401, headers: { "Content-Type": "application/json" } }) : null);
     await session218.go("#/vote/officer");
-    await waitFor(() => !session218.app.querySelector(".board-results"), ".218 unchanged API401 retirement");
-    check(".218 a role401 retains the original sign-out path rather than a rate-refusal state", !session218.app.querySelector(".board-results") && !byText(session218.app.querySelector("header"), "button", "Sign out") && !session218.app.textContent.includes("Applications could not be checked"));
+    await waitFor(() => session218.location.replaced, ".218 API401 document replacement", 8000);
+    check(".218 a role401 clears the board and private header before returning to sign-in", session218.location.navigated === '/?entry=session-ended'
+      && !!session218.app.querySelector('[data-session-ending]') && !session218.app.querySelector(".board-results, header") && !session218.app.textContent.includes("Applications could not be checked"));
     const denied218 = await openPage(MEMBER);
     denied218.answer(pathname => pathname === "/api/board" ? new Response('{"error":"site_forbidden"}', { status: 403, headers: { "Content-Type": "application/json" } }) : null);
     denied218.hold(pathname => isBoardRole218(pathname) ? 100 : 0);
@@ -586,6 +589,96 @@ const directoryCoverage203 = page => {
     check(".218 original summary403 still disables controls and fences its late admitted role response", denied218.app.querySelector(".role-pick")?.disabled === true && denied218.app.querySelector(".board-results")?.getAttribute("aria-busy") === "false" && !denied218.app.querySelector(".board-results .cand") && !denied218.app.textContent.includes("Applications could not be checked"));
   }
 
+
+  {
+    const board066 = page => page.app.querySelector(".board-results");
+    const counts066 = page => page.app.querySelector(".board-summary-status");
+    const roleRead066 = path => path.startsWith("/api/board/") && path.includes("?");
+    const alert066 = node => node?.querySelector('[role="alert"]');
+    const retry066 = node => node?.querySelector("button");
+    const fail066 = status => Response.json({ message: "INTERNAL_DIAGNOSTIC_066" }, { status });
+    const recovering066 = await openPage(MEMBER), requests066 = [];
+    let failRole066 = true, failSummary066 = true;
+    recovering066.intercept((pathname, init) => {
+      if (pathname !== "/api/board" && !roleRead066(pathname)) return null;
+      requests066.push([pathname, init.method]);
+      return pathname === "/api/board" ? failSummary066 && fail066(503) : failRole066 && fail066(500);
+    });
+    await recovering066.go("#/vote/officer");
+    await waitFor(() => alert066(board066(recovering066)) && alert066(counts066(recovering066)), "CC066 two section-local read failures");
+    const badRole066 = board066(recovering066), badSummary066 = counts066(recovering066);
+    check("CC066 failed role and counts reads stop loading and give separate explicit recovery without raw diagnostics",
+      badRole066.getAttribute("aria-busy") === "false" && alert066(badRole066)?.textContent === "Applications could not be checked."
+      && alert066(badSummary066)?.textContent === "Role counts could not be checked."
+      && retry066(badRole066)?.textContent === "Retry applications" && retry066(badSummary066)?.textContent === "Retry role counts"
+      && recovering066.app.querySelector("#role-applicants").textContent === "Applicant count unavailable"
+      && !recovering066.app.textContent.includes("Checking applications") && !recovering066.app.textContent.includes("INTERNAL_DIAGNOSTIC_066")
+      && !recovering066.app.textContent.includes("Something went wrong") && requests066.length === 2);
+    const oldRoleRetry066 = retry066(badRole066);
+    failRole066 = false;
+    oldRoleRetry066?.click(); oldRoleRetry066?.click();
+    await waitFor(() => board066(recovering066)?.dataset.boardFresh === "officer", "CC066 explicit selected-role recovery");
+    check("CC066 clicking role retry twice performs one current GET and leaves failed summary independent",
+      board066(recovering066)?.dataset.boardFresh === "officer" && alert066(badSummary066)
+      && requests066.filter(([path]) => roleRead066(path)).length === 2 && requests066.filter(([path]) => path === "/api/board").length === 1);
+    failSummary066 = false;
+    const oldCountsRetry066 = retry066(badSummary066);
+    oldCountsRetry066?.click(); oldCountsRetry066?.click();
+    await waitFor(() => badSummary066.textContent === "", "CC066 explicit counts recovery");
+    check("CC066 clicking counts retry twice performs one summary GET without refetching role or writing",
+      badSummary066.textContent === "" && requests066.length === 4 && requests066.every(([, method]) => method === "GET"));
+
+    const malformed066 = await openPage(MEMBER);
+    malformed066.intercept(path => path === "/api/board" ? Response.json({ roles: [{ key: "officer", applicants: -1, votable: 0, voted: 0 }] })
+      : roleRead066(path) ? Response.json({ role: { key: "raid_leader_eu" }, total: 0, votable: 0, voted: 0, matching: 0, offset: 0, pageSize: 20, candidates: [], votingOpen: true }) : null);
+    await malformed066.go("#/vote/officer");
+    await waitFor(() => alert066(board066(malformed066)) && alert066(counts066(malformed066)), "CC066 malformed success refused");
+    check("CC066 malformed summary and a mismatched role200 cannot become an empty or admitted board",
+      !!retry066(board066(malformed066)) && !!retry066(counts066(malformed066)) && !board066(malformed066).dataset.boardFresh
+      && !malformed066.app.textContent.includes("No historical applications") && !malformed066.app.textContent.includes("Something went wrong"));
+
+    const draft066 = await openPage(MEMBER), filters066 = [];
+    let failFilter066 = false;
+    draft066.intercept(path => {
+      if (!roleRead066(path)) return null;
+      filters066.push(path);
+      return failFilter066 ? fail066(502) : null;
+    });
+    await draft066.go("#/vote/officer");
+    await waitFor(() => !!board066(draft066)?.querySelector("select"), "CC066 filter board");
+    const nomination066 = draft066.app.querySelector('input[placeholder="Why them? (optional)"]');
+    nomination066.value = "KEEP_NOMINATION_066"; fire(nomination066, "input");
+    failFilter066 = true;
+    const classFilter066 = board066(draft066).querySelector("select");
+    classFilter066.value = "mage"; fire(classFilter066, "change");
+    await waitFor(() => !!retry066(board066(draft066)), "CC066 filter failure");
+    failFilter066 = false;
+    retry066(board066(draft066))?.click();
+    await waitFor(() => board066(draft066)?.dataset.boardFresh === "officer", "CC066 filtered retry admitted");
+    check("CC066 retry reuses the failed filter and preserves the exact unsaved nomination node",
+      filters066.length === 3 && filters066[1] === filters066[2] && filters066[2].includes("class=mage")
+      && draft066.app.querySelector('input[placeholder="Why them? (optional)"]') === nomination066 && nomination066.value === "KEEP_NOMINATION_066");
+    await draft066.go("#/roles");
+    check("CC066 read recovery leaves the nomination's unsaved-navigation guard in place",
+      !!draft066.document.body.querySelector("dialog") && nomination066.isConnected);
+
+    const deadline066 = await openPage(MEMBER);
+    let release066, attempts066 = 0;
+    deadline066.intercept(path => {
+      if (!roleRead066(path) || ++attempts066 !== 1) return null;
+      return new Promise(resolve => { release066 = resolve; });
+    });
+    await deadline066.go("#/vote/officer");
+    await waitFor(() => !!retry066(board066(deadline066)), "CC066 board read deadline", 12000);
+    check("CC066 an unanswered read becomes a timed-out alert without an automatic second request",
+      attempts066 === 1 && board066(deadline066)?.getAttribute("aria-busy") === "false" && alert066(board066(deadline066))?.textContent.endsWith("The read took too long."));
+    retry066(board066(deadline066))?.click();
+    await waitFor(() => board066(deadline066)?.dataset.boardFresh === "officer", "CC066 manual retry after deadline");
+    release066(Response.json({ error: "signed_out" }, { status: 401 }));
+    await settle(); await settle();
+    check("CC066 a timed-out reply cannot sign out or overwrite the successfully retried role",
+      attempts066 === 2 && board066(deadline066)?.dataset.boardFresh === "officer" && !!byText(deadline066.app, "button", "Sign out"));
+  }
 
   // .218: pin the minimal DOM's dataset deletion contract independently of board rendering.
   {

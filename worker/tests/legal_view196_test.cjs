@@ -10,7 +10,7 @@ function load(name) {
   name = name.replace(/^\.\//, '');
   if (name === 'site-core') return { securityHeaders: headers => { headers.set('Cache-Control','no-store, no-transform'); return headers; }, SESSION_COOKIE: '__Host-olg', currentUser: async () => { navigationReads++; if (!allowNavigationRead) throw Error('Public legal reader may not authenticate'); if (navigationFailure) throw Error('Fixture privacy hold'); return navigationUser; } };
   if (name === 'site-brand') return { olympusSocialMetadata: () => '' };
-  assert.ok(['policies', 'policy-content', 'policy-render', 'member-legal-navigation'].includes(name), name);
+  assert.ok(['policies', 'policy-content', 'policy-render', 'policy-asset-cache', 'member-legal-navigation'].includes(name), name);
   if (cache.has(name)) return cache.get(name).exports;
   const module = { exports: {} }; cache.set(name, module);
   const compiled = ts.transpileModule(read(path.join(worker, 'src', name + '.ts')), { reportDiagnostics: true, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } });
@@ -94,6 +94,13 @@ const reply = text => new Response(text, { headers: { 'Content-Type': 'text/html
       let selected=privacy.slice(privacy.indexOf(start),privacy.indexOf(end));
       if(start==='<h2>Getting rid of it</h2>'){
         const explicitSafetyPurpose="Its purpose is to recognize the same account if it tries to evade that original guild-application or membership rejection after erasure. It is a keyed, pseudonymous safety record, not anonymous data or a guarantee of complete account unlinking. ";
+        const previousRetention="For your own rejected guild application or membership, erasure retains a keyed, minimized account marker with the fixed reason and original decision date for up to 365 days from that decision. ";
+        const currentRetention="When a verified original guild rejection qualifies for retention, erasure can retain a keyed, minimized account marker with the fixed reason and original decision date for up to 365 days from that decision. ";
+        const staffReview="Ordinary application declines are handled separately. An older denial flag without trustworthy proof of the original decision requires private staff review before erasure proceeds. ";
+        assert.equal(sha(selected),'425bf6e5908dc859341ed8d2fe59dd51f43fd26b8683b53b287df4c371053bac');
+        assert.equal(selected.split(currentRetention).length,2);
+        assert.equal(selected.split(staffReview).length,2);
+        selected=selected.replace(currentRetention,previousRetention).replace(staffReview,'');
         assert.equal(sha(selected),'dd77ba14c9db0883863a3c3d5d9e0052807d9b449ba39ad7f5a47dd1a5fca7c6');
         assert.equal(selected.split(explicitSafetyPurpose).length,2);
         selected=selected.replace(explicitSafetyPurpose,'');
@@ -120,7 +127,7 @@ const reply = text => new Response(text, { headers: { 'Content-Type': 'text/html
   });
   await check('new disclosures distinguish Olympus-only default directory, opt-out, opt-in details and private talent code', () => {
     const privacy = read(path.join(repo, 'policies/privacy.html'));
-    for (const phrase of ['configured Olympus membership or rank role', 'may opt out of the listing', 'extra self-published profile details remain opt-in', 'does not create a new stored Discord roster or picture archive', 'For supported native-rank listings and extended-office appointments', 'not published on the voting board or member directory', 'current appointment proof, an admitted account session']) assert.ok(privacy.toLowerCase().includes(phrase.toLowerCase()), phrase);
+    for (const phrase of ['Member profiles and crafting offers.', 'Discord member list.', 'Unlisting hides these details and your Workshop offers', 'configured Olympus membership or rank role', 'may opt out of the listing', 'extra self-published profile details remain opt-in', 'does not create a new stored Discord roster or picture archive', 'For supported native-rank listings and extended-office appointments', 'The voting board, Member profiles and the Discord member list omit this single legacy attachment.', 'current appointment proof, an admitted account session']) assert.ok(privacy.toLowerCase().includes(phrase.toLowerCase()), phrase);
     assert.ok(!privacy.includes('For the Co-Guild Master and Treasurer only')); assert.ok(!privacy.includes('sent to Fernmelder')); assert.ok(privacy.includes('including if you never registered here')); assert.ok(privacy.includes('without creating an account or changing a Discord role')); assert.ok(!privacy.includes('An appointment gives no powers in the bot, the site or Discord.'));
     assert.ok(!/never your\s+Discord picture/.test(privacy)); assert.ok(!privacy.includes("Voting-board cards continue to use the game's icons."));
     for (const phrase of ['Administrator application views may show the applicant’s stored Discord picture', 'Voting-board cards show that picture only after the applicant separately opts in', 'beside the game’s class icon', 'explicitly confirm that one revision', 'no blind resend', 'no extra notice-body copy or webhook token', '366 days', 'Tithe Payer (25 gold)', 'Patron of the Treasury (100 gold)', 'Benefactor of Olympus (500 gold)', 'actual current Discord role']) assert.ok(privacy.includes(phrase), phrase);

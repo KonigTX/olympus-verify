@@ -14,12 +14,15 @@ const business=events=>events.filter(e=>e.k==='sql'&&!['WITH business','SELECT C
 const parse=value=>{try{return JSON.parse(value);}catch{return null;}};
 // SEN-01 (30 Oct 2026): interactions.ts is the accepted .212 source plus the reviewed SEN-01 hunks
 // (and its follow-up). The pinned helper reverses exactly those; the seal below stays the .212 source.
-if(sha(fs.readFileSync(path.join(__dirname,'source212-sen01-projection.cjs')))!=='bc188bbb52b63425005ccece0d2cf93fab87444133ab7f77d0088489f8679b14')throw Error('reviewed212 SEN-01 helper differs');
+if(sha(fs.readFileSync(path.join(__dirname,'source212-sen01-projection.cjs')))!=='dfd877df07e403f42bd71f1f3987c3b8e3a25a1a1fded453116c9e03dcc203ed')throw Error('reviewed212 SEN-01 helper differs');
 const sen01=require('./source212-sen01-projection.cjs');
+if(sha(fs.readFileSync(path.join(__dirname,'source228-guide-copy-projection.cjs')))!=='bc6acf0c91b7e5bd2c0d3d816eb1ac7a38d285e50824dfe96f29e12fa96e246e')throw Error('reviewed228 guide copy helper differs');
+const {originalGuideInteractions}=require('./source228-guide-copy-projection.cjs');
 function sourceChecks(src,pins){
- const raw=fs.readFileSync(path.join(src,'interactions.ts'),'utf8'),original=sen01.original212Interactions(raw);
+ const raw=fs.readFileSync(path.join(src,'interactions.ts'),'utf8'),beforeGuide=originalGuideInteractions(raw);
+ const original=sen01.original212Interactions(beforeGuide);
  return {source:original!==null&&sha(original)===expected.interactionsSHA256,
-  sen01Drift:original!==null&&sen01.driftControls(raw).every(row=>row.refused),
+  sen01Drift:original!==null&&sen01.driftControls(beforeGuide).every(row=>row.refused)&&originalGuideInteractions(raw+'\n// unreviewed guide source\n')===null,
   fixture:sha(fs.readFileSync(path.join(__dirname,'fixtures/ban210-identity-successor.json')))==='79924df1ce3ad1b6d61c0d376d8654f2415c1bc7d758d8f89ed7bccce708cfaa',
   historicalPins:sha(pins)===expected.historicalPINSSHA256};
 }

@@ -54,13 +54,14 @@ export function buildAllianceOverview205(data, directory) {
   }
   if (sourceKeys.size !== directory.sourceKeyCount || directory.ranks.length !== 10 || directory.ranks.some((rank, slot) => rank.nativeSlot !== slot || rank.nativeRankOrdinal !== slot + 1)) throw new Error("Incomplete canonical role or rank coverage.");
   const councilSeats = data.councilComposition?.currentSeats;
-  const seatIds = ["gm-chair", "co-gm", "treasurer", "head-trading", "main-raid-lead", "main-pvp-lead", "head-justice", "artisanry", "heraldry", "intake", "propaganda", "internal-security", "concordat"];
+  const seatIds = ["gm-chair", "co-gm", "treasurer", "head-trading", "main-raid-lead", "main-pvp-lead", "head-justice", "artisanry", "heraldry", "intake", "propaganda", "internal-security", "concordat", "systems-heraldry"];
   const canonicalFamilies = new Map(directory.families.map(family => [family.key, family]));
   if (!Array.isArray(councilSeats) || councilSeats.length !== seatIds.length || new Set(councilSeats.map(seat => seat.id)).size !== seatIds.length || seatIds.some(id => !councilSeats.some(seat => seat.id === id)) || councilSeats.some(seat => {
     const family = canonicalFamilies.get(seat.familyKey);
     return !family || family.tier !== (seat.id === "gm-chair" ? "leader" : "high_council") || !nodes.has(seat.nodeId) || seat.scope !== "alliance" || !seat.label || !seat.description || !Array.isArray(seat.officeKeys) || !seat.officeKeys.length || seat.officeKeys.some(key => !family.sourceKeys.includes(key));
   })) throw new Error("The complete current High Council roster is unavailable.");
   const seatOrder = councilSeats.map(seat => seat.familyKey);
+  if (!Array.isArray(directory.councilOrder) || directory.councilOrder.join("|") !== seatOrder.slice(1).join("|")) throw new Error("The Council order differs from the office register.");
   groupByKey.get("council").families.sort((a, b) => {
     const order = key => seatOrder.includes(key) ? seatOrder.indexOf(key) : seatOrder.length;
     return order(a.family.key) - order(b.family.key);
@@ -70,6 +71,7 @@ export function buildAllianceOverview205(data, directory) {
 
 export function renderAllianceOverview205(data, ui, onSelectNode) {
   const { h, posIcon } = ui;
+  const nativeRankDisplayName = (slot, name) => slot === 0 ? "Leader (Guild Master)" : name;
   const root = h("section", { class: "org-alliance frame", id: "alliance-overview", "aria-label": "Olympus Alliance organization overview" });
   let model;
   try { model = buildAllianceOverview205(data, ui.roleDirectory203); }
@@ -77,16 +79,13 @@ export function renderAllianceOverview205(data, ui, onSelectNode) {
   const nodes = new Map(data.nodes.map(node => [node.id, node]));
   const status = h("p", { class: "org-alliance-status small", role: "status", "aria-live": "polite" });
   const search = h("input", { id: "org-alliance-search205", type: "search", maxlength: "160", placeholder: "Raid Lead NA, Treasurer, recipes…", "aria-label": "Search the Alliance role families" });
-  const rank = h("select", { id: "org-alliance-rank205", "aria-label": "Filter by native rank association" }, h("option", { value: "", text: "All ranks" }), model.ranks.map(row => h("option", { value: String(row.nativeSlot), text: "Rank " + row.nativeRankOrdinal + " · " + row.label })));
+  const rank = h("select", { id: "org-alliance-rank205", "aria-label": "Filter by native rank association" }, h("option", { value: "", text: "All ranks" }), model.ranks.map(row => h("option", { value: String(row.nativeSlot), text: "Rank " + row.nativeRankOrdinal + " · " + nativeRankDisplayName(row.nativeSlot, row.label) })));
   const guild = h("select", { id: "org-alliance-guild205", "aria-label": "Explore a guild branch context" }, h("option", { value: "", text: "All Olympus branches" }), data.guildPlaceholders.map(row => h("option", { value: row.name, text: row.name })));
   const branchTitle = h("h3", { text: "Olympus I–X · local guild management" });
   const branchDescription = h("p");
   const families = [], familyCounts = [], seatReferences = [], referenceGroups = [];
   function nodeButton(id, text) {
     return h("button", { type: "button", class: "btn small", text, onclick: () => onSelectNode?.(id) });
-  }
-  function guide(key, options) {
-    return ui.roleGuide201 ? ui.roleGuide201(key, options) : h("a", { href: "#/roles/" + encodeURIComponent(ui.roleDirectory203.keyToFamily[key] || "rosetta-stone"), text: "Read the complete role guide" });
   }
   function familyCard(row) {
     const family = row.family, node = nodes.get(row.nodeId), institution = family.kind === "institution", reserved = family.kind === "role" && family.tier !== "member_specialist";
@@ -95,7 +94,7 @@ export function renderAllianceOverview205(data, ui, onSelectNode) {
     const card = h("details", { class: "org-alliance-family" + (institution ? " org-alliance-institution218" : ""), "data-alliance-family": family.key },
       h("summary", { class: "org-alliance-card-heading" }, posIcon(node.icon), h("span", null, h("strong", { text: family.label }), h("small", { text: institution ? "Collective institution or historical mandate" : TIERS205[family.tier] + (reserved ? " · Reserved appointment" : " · " + (family.kind === "status" ? "Standing or recognition" : "Role or voluntary activity")) }))),
       h("p", { class: "org-alliance-badges" }, h("span", { class: "org-alliance-tier", "data-tier": family.tier, text: institution ? "Governance institution" : TIERS205[family.tier] }),
-        institution ? null : h("span", { class: "small", text: rankRow219?.nativeRankOrdinal ? "Rank " + rankRow219.nativeRankOrdinal + " " + rankRow219.nativeRankName + " (Slot " + rankRow219.nativeSlot + ") · Title " + rankRow219.codexTitles.join(" / ") : "No native rank assigned" })),
+        institution ? null : h("span", { class: "small", text: rankRow219?.nativeRankOrdinal ? "Rank " + rankRow219.nativeRankOrdinal + " " + nativeRankDisplayName(rankRow219.nativeSlot, rankRow219.nativeRankName) + " (Slot " + rankRow219.nativeSlot + ") · Title " + rankRow219.codexTitles.join(" / ") : "No native rank assigned" })),
       body,
       h("a", { class: "btn small", href: "#/roles/" + encodeURIComponent(family.key), text: "Open this complete role family" }),
       nodeButton(row.nodeId, "Trace responsibilities"));
@@ -103,18 +102,13 @@ export function renderAllianceOverview205(data, ui, onSelectNode) {
     card.addEventListener("toggle", () => {
       if (!card.open || loaded) return;
       loaded = true;
-      body.append(guide(family.primaryKey, { canonical:true, familyKey:family.key }));
+      body.append(h("p", { text: ui.roleGuides201?.[family.primaryKey]?.definition || node.remit }));
       for (const [groupKey,title,kinds] of [["offices","Separate offices & remits",["office"]], ["specialisms","Regional & class duties",["region","class"]]]) {
         const variants = family.variants.filter(variant => kinds.includes(variant.presentation || (["region","class"].includes(variant.kind) ? variant.kind : "office")));
         if (!variants.length) continue;
-        const group = h("section", { class:"org-alliance-guide-group218", "data-alliance-guide-group218":groupKey }, h("h4", {text:title}));
-        for (const variant of variants) {
-          const variantBody = h("div"), disclosure = h("details", { "data-alliance-variant": variant.key }, h("summary", { text: variant.label }), variantBody);
-          let variantLoaded = false;
-          disclosure.addEventListener("toggle", () => { if (disclosure.open && !variantLoaded) { variantLoaded = true; variantBody.append(guide(variant.key, { association:groupKey === "associations", sharedWith:family.primaryKey, familyKey:family.key })); } });
-          group.append(disclosure);
-        }
-        body.append(group);
+        body.append(h("section", { class:"org-alliance-guide-group218", "data-alliance-guide-group218":groupKey }, h("h4", {text:title}),
+          h("ul", null, variants.map(variant => h("li", { "data-alliance-variant": variant.key },
+            h("a", { href: "#/roles/" + encodeURIComponent(variant.key), text: variant.label }))))));
       }
     });
     const searchable = row.searchText + " " + family.sourceKeys.map(key => JSON.stringify(ui.roleGuides201?.[key] || "")).join(" ").toLowerCase();
@@ -130,14 +124,15 @@ export function renderAllianceOverview205(data, ui, onSelectNode) {
   }
   const groupSection = (key, className, text) => h("section", { class: className }, h("h3", { text: model.groups.find(row => row.key === key).title }), h("p", { text }), groupCards(key));
   function seatReference(seat, detailed) {
+    const order = model.councilSeats.indexOf(seat);
     const row = h("li", { "data-council-seat206": detailed ? seat.id : null }, h("a", { href: "#/roles/" + encodeURIComponent(seat.familyKey), class: detailed ? "org-alliance-seat-link" : null, "data-council-reference206": seat.id, title: seat.description },
       detailed ? posIcon(nodes.get(seat.nodeId).icon) : null, detailed ? h("strong", { text: seat.label }) : seat.label),
-      detailed ? h("small", { text: seat.id === "gm-chair" ? "Council chair · Rank 1 Leader" : "Alliance portfolio · Rank 2 High Council" }) : null);
+      detailed ? h("small", { text: order === 0 ? "Council chair · Rank 1 Leader" : order === 1 ? "Co-Guild Master · Rank 2 High Council" : "Portfolio " + (order - 1) + " · Rank 2 High Council" }) : null);
     seatReferences.push({ element: row, familyKey: seat.familyKey });
     return row;
   }
   const councilRoster = h("section", { class: "org-alliance-current-council", "aria-label": "Current High Council composition" }, h("h4", { text: "The current Council seats and portfolios" }),
-    h("p", { text: "The Guild Master chairs the Council. The Co-GM, Treasurer, Head of Trading & Markets, main Raid Lead, main PvP Lead and head of Justice sit alongside the other alliance portfolio heads below. These are alliance-wide responsibilities; regional and branch activity leaders have separate remits." }),
+    h("p", { text: data.councilComposition.summary }),
     h("ul", { class: "org-alliance-council-seats" }, model.councilSeats.map(seat => seatReference(seat, true))),
     h("p", { class: "small muted", text: "Council composition identifies the remit, not a named holder. Leadership seats remain reserved appointments. Regional Raid Leaders and PvP Leads do not acquire a Council seat through an event assignment." }),
     h("a", { href: data.councilComposition.sourcePath, text: "Read the current Council portfolios & reporting lines" }));
@@ -183,21 +178,21 @@ export function renderAllianceOverview205(data, ui, onSelectNode) {
   }
   const reset = h("button", { type: "button", class: "btn small", text: "Reset overview filters", onclick: () => { search.value = ""; rank.value = ""; guild.value = ""; describeBranch(); filter(); } });
   search.addEventListener("input", filter); rank.addEventListener("change", filter); guild.addEventListener("change", () => { describeBranch(); filter(); });
-  root.append(h("header", { class: "org-alliance-heading" }, h("p", { class: "eyebrow", text: "Command · portfolios · guilds · membership" }), h("h2", { text: "The Olympus Alliance at a glance" }), h("p", { text: "Explore the same organization from its leadership, departments and local guilds. Expand an individual role for its full definition, responsibilities, expectations and regional or class specialisms." })),
+  root.append(h("header", { class: "org-alliance-heading" }, h("p", { class: "eyebrow", text: "Command · portfolios · guilds · membership" }), h("h2", { text: "The Olympus Alliance at a glance" }), h("p", { text: "Explore leadership, departments and local guilds. Open a role family for its summary, reporting context and links to the complete guides in Roles." })),
     h("div", { class: "org-alliance-toolbar" }, h("label", { for: "org-alliance-search205", text: "Find a role" }), search, h("label", { for: "org-alliance-rank205", text: "Native rank" }), rank, h("label", { for: "org-alliance-guild205", text: "Guild context" }), guild, reset), status,
     h("p", { class: "org-alliance-legend small", text: "Leadership sets the common charter. Department columns organize work; horizontal placement gives no command authority. Justice and Audit retain independent review. Open the relationship map below for the exact reporting and coordination lines." }),
     groupSection("leadership", "org-alliance-sovereign", "The Leader / Guild Master holds the sovereign office. Founder recognition and patronage are distinct from an issued command or permission."),
     h("section", { class: "org-alliance-council" }, h("h3", { text: model.groups.find(row => row.key === "council").title }), councilRoster,
-      h("p", { text: "Every High Council role family is collected here, including its departmental heads. Expand a guide for the full mandate and expectations. Council appointments do not add native rank slots." }), groupCards("council")),
+      h("p", { text: "Every High Council role family is collected here, including its departmental heads. Follow its guide link for the full mandate and expectations. Council appointments do not add native rank slots." }), groupCards("council")),
     h("div", { class: "org-alliance-support" }, h("section", { class: "org-alliance-independent" }, h("h3", { text: "Justice & independent review" }),
-      h("p", { text: "The head of Justice is a High Council portfolio holder. Judicial case panels and the Bank Auditor retain unconflicted, independent review; they are not subordinate to the officer or Treasury custodian whose work is under review." }), councilReferences("justice"), groupCards("independent"))),
+      h("p", { text: "The Lord High Justiciar holds the individual High Council portfolio. Judicial case panels and the Bank Auditor conduct unconflicted reviews independently of the officer or Treasury custodian whose work is under review." }), councilReferences("justice"), groupCards("independent"))),
     groupSection("institutions", "org-alliance-institutions", "These are institutions and collective mandates, not extra Council seats or individual jobs. Their members, hearing panels and delegated powers require their own accepted appointments."),
     departments,
     h("section", { class: "org-alliance-branches" }, branchTitle, branchDescription,
       h("div", { class: "org-alliance-branch-guides" }, ["guilds", "officers", "emissaries"].map(id => h("article", { class: "org-alliance-card" }, h("h4", null, posIcon(nodes.get(id).icon), h("span", { text: nodes.get(id).title })), h("p", { text: nodes.get(id).remit }), nodeButton(id, "Read the local mandate")))),
       h("p", { class: "small muted", text: "Each branch's five emissary remits cover PvP, Raiding, Finance, Artisanry and Heraldry. They carry local needs and agreed guidance; liaison does not replace local command." })),
     groupSection("officers", "org-alliance-officers", "Officer, Officer Alt and regional Raid Leader occupy native Ranks 3–5. The alliance-wide main Raid and PvP portfolio leads are on the High Council above. Branch, activity and NA/EU time-zone remits remain distinct; all leadership seats are reserved appointments, with no public application route."),
-    h("section", { class: "org-alliance-rank-guide" }, h("h3", { text: "The ten in-game ranks · exact order" }), h("ol", { class: "org-alliance-ranks" }, model.ranks.map(row => h("li", { "data-alliance-rank": String(row.nativeSlot) }, h("a", { href: "#/roles/" + encodeURIComponent(row.familyKey), text: row.nativeRankOrdinal + ". " + row.label }), h("small", { text: "Native slot " + row.nativeSlot })))), h("p", { class: "small muted", text: "This ladder is separate from the lines of responsibility above. Class Heads, Treasury, regional duties and courtesy titles do not add native rank slots; actual game configuration remains separately verified." })),
+    h("section", { class: "org-alliance-rank-guide" }, h("h3", { text: "The ten in-game ranks · exact order" }), h("ol", { class: "org-alliance-ranks" }, model.ranks.map(row => h("li", { "data-alliance-rank": String(row.nativeSlot) }, h("a", { href: "#/roles/" + encodeURIComponent(row.familyKey), text: row.nativeRankOrdinal + ". " + nativeRankDisplayName(row.nativeSlot, row.label) }), h("small", { text: "Native slot " + row.nativeSlot })))), h("p", { class: "small muted", text: "The in-game name for slot 0 is Guild Master. This ladder is separate from the lines of responsibility above. Class Heads, Treasury, regional duties and courtesy titles do not add native rank slots. Actual game configuration remains separately verified." })),
     groupSection("members", "org-alliance-members", "Members, raiders, artisans, mentors and voluntary activities share the guild without acquiring officer powers. Status, verified alts and cosmetic recognition remain distinct from appointments."), empty,
     h("details", { class: "org-alliance-history" }, h("summary", { text: "From the early Olympus organization design" }), h("p", { text: "The earlier poster supplies useful context for the departments and their working relationships. Its named holders, shorter membership ladder and older scope do not establish today's appointments or native configuration." }), ORGANIZATION_HISTORY205.map(row => h("section", null, h("h3", { text: row.title }), h("p", { text: row.text })))),
     h("nav", { class: "governance-quicklinks", "aria-label": "Continue exploring the Alliance" }, h("a", { class: "btn small", href: "#/roles/rosetta-stone", text: "Role & Rank Rosetta Stone" }), h("a", { class: "btn small", href: "#/governance/operational-charter-the-work-of-olympus", text: "Complete operational charter" })));

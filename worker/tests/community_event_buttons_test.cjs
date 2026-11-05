@@ -155,7 +155,7 @@ const ephemeral = (r) => r.status === 200 && r.body.type === 4 && r.body.data.fl
   let p = await preview();
   const ids = p.payload.components[0].components.map((c) => c.custom_id ?? c.url).join("|");
   check("the preview payload carries one action row: three sign-up buttons bound to the event and its revision, the Remind me toggle (stage 2) and the site link",
-    Array.isArray(p.payload.components) && p.payload.components.length === 1 && p.payload.components[0].type === 1 && ids === `raid:rsvp:${EVENT}:1:yes|raid:rsvp:${EVENT}:1:tentative|raid:rsvp:${EVENT}:1:no|raid:remind:${EVENT}:1|https://guild.example/#/community/calendar/${EVENT}`
+    Array.isArray(p.payload.components) && p.payload.components.length === 1 && p.payload.components[0].type === 1 && ids === `raid:rsvp:${EVENT}:1:yes|raid:rsvp:${EVENT}:1:tentative|raid:rsvp:${EVENT}:1:no|raid:remind:${EVENT}:1|https://guild.example/?to=${encodeURIComponent("community/calendar/" + EVENT)}`
     && p.payload.components[0].components.every((c) => c.type === 2 && typeof c.label === "string") && p.payload.components[0].components[4].style === 5 && p.payload.allowed_mentions.parse.length === 0 && !JSON.stringify(p).includes("PRIVATE_"), JSON.stringify(p.payload));
   const hash1 = p.payloadHash;
   let r = await publish();
@@ -164,7 +164,7 @@ const ephemeral = (r) => r.status === 200 && r.body.type === 4 && r.body.data.fl
   // one click by a seeded member with a site account
   r = await click(MEMBER, EVENT, 1, "yes");
   check("a verified member signs up with one click: ephemeral answer, one row, generation moved, ref and audit written, nothing private echoed",
-    ephemeral(r) && /Signed up/.test(r.text) && r.text.includes(`https://guild.example/#/community/calendar/${EVENT}`) && signup(MEMBER)?.status === "yes" && signup(MEMBER).revision === 1 && signup(MEMBER).character_name === null
+    ephemeral(r) && /Signed up/.test(r.text) && r.text.includes("https://guild.example/?to=" + encodeURIComponent("community/calendar/" + EVENT)) && signup(MEMBER)?.status === "yes" && signup(MEMBER).revision === 1 && signup(MEMBER).character_name === null
     && one("SELECT signup_generation AS g FROM community_events WHERE id=?", EVENT).g === 1 && one("SELECT COUNT(*) AS n FROM community_refs WHERE discord_id=?", MEMBER).n === 1 && audits(MEMBER) === 1 && !JSON.stringify(r.body).includes("PRIVATE_"), JSON.stringify(r));
   const first = r;
   r = await click(MEMBER, EVENT, 1, "tentative");

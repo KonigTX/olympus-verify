@@ -73,7 +73,11 @@
   }
   function ownerDirectory(value) {
     const section = el("section", undefined, "resources169-owner-directory"); section.setAttribute("aria-label", value.title);
-    section.append(el("h2", value.title), el("p", `Reviewed: ${value.sourceCheckedAt}. Source checks: ${value.reconciledAt.slice(0, 10)}.`, "resources169-meta"), el("p", value.scopeNote, "resources169-note"));
+    const evidence = el("details", undefined, "resources169-provenance");
+    evidence.append(el("summary", "How these sources were checked"),
+      el("p", `Review dated ${value.sourceCheckedAt}. Follow-up dated ${value.reconciledAt.slice(0, 10)}.`, "resources169-meta"),
+      el("p", value.scopeNote, "resources169-note"));
+    section.append(el("h2", value.title), evidence);
     const sourceLinks = rows => { const list = el("ul"); for (const row of rows) { const li = el("li"); li.append(link(row.label, row.url)); list.append(li); } return list; };
     for (const item of value.sections) {
       const part = el("section", undefined, "resources169-directory-section"); part.setAttribute("data-directory-section", item.id);
@@ -83,7 +87,13 @@
     }
     if (value.corrections.length) {
       const corrections = el("section", undefined, "resources169-directory-corrections"); corrections.append(el("h3", "Corrections and limits"));
-      for (const row of value.corrections) { const entry = el("div", undefined, "resources169-directory-block"); entry.append(el("h4", row.claim), el("p", row.treatment)); if (row.links.length) entry.append(sourceLinks(row.links)); corrections.append(entry); }
+      for (const row of value.corrections) {
+        const entry = el("div", undefined, "resources169-directory-block"), comparison = el("dl");
+        comparison.append(el("dt", "Claim"), el("dd", row.claim), el("dt", "What the sources show"), el("dd", row.treatment));
+        entry.append(comparison);
+        if (row.links.length) entry.append(sourceLinks(row.links));
+        corrections.append(entry);
+      }
       section.append(corrections);
     }
     return section;
@@ -112,7 +122,7 @@
     }
     const controls = el("div", undefined, "resources169-controls"), results = el("div", undefined, "resources169-grid");
     const heading = el("header", undefined, "resources169-heading");
-    const titles = { addons: "Addons for Forever", guides: "The adventurer's library", updates: "Game updates" };
+    const titles = { addons: "Addons for Forever", guides: "Publisher library", updates: "Game updates" };
     const introductions = { addons: "Choose tools for the way you play. Check the Forever file, its date and any overlap before installing.", guides: "Class, profession and leveling references from named publishers. Scope and beta limits stay beside each source.", updates: "Follow original publisher headlines and official changes. These sources are separate from Olympus decisions." };
     heading.append(el("h1", titles[view]), el("p", introductions[view], "resources169-intro"));
     if (view === "updates") {

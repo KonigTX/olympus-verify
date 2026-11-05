@@ -14,7 +14,7 @@ import { SNAPSHOT_WRITE_GRACE_S, syncFromLatest } from "./roster";
 import { explainRefusal } from "./ingest";
 import { guildSeats, seatsStaffLine, seatsText } from "./guild-seats";
 import { approvePending, denyPending } from "./review";
-import { GUIDE_FIELD, GUIDE_MODAL, GUIDE_STATUS, GUIDE_VERIFY, guideMessage, verifyModal, visitorChat } from "./guide";
+import { GUIDE_FIELD, GUIDE_MODAL, GUIDE_STATUS, GUIDE_VERIFY, guideMessage, usesLegacyInviteQueue, verifyModal, visitorChat } from "./guide";
 import { activeRulesetSnapshot } from "./ruleset-profile";
 import { unverifiedReport } from "./unverified";
 import { restoreMemberRole, restoreNote } from "./restore";
@@ -53,7 +53,7 @@ async function refreshPinnedGuide(env: Env, channel: string, lane?: LaneCapture)
   if (mine.length > 1) return { error: `${mine.length} pinned bot messages in that channel — unpin the old ones so there is only one guide to edit` };
   const snapshot = await activeRulesetSnapshot(env); // item 7: a held identity edits nothing
   if (!snapshot.profile) return { error: `the game identity is held (${snapshot.held}); no guide was edited` };
-  await editMessage(env, channel, mine[0].id, guideMessage(env, snapshot.profile, freshGrantText(lane)));
+  await editMessage(env, channel, mine[0].id, guideMessage(env, snapshot.profile, freshGrantText(lane), await usesLegacyInviteQueue(env)));
   return { edited: mine[0].id };
 }
 
@@ -93,8 +93,8 @@ export async function handleInteraction(env: Env, i: Interaction, defer?: Defer,
         if (!host || !/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i.test(host)) return reply("The account-controls website is not configured. Ask an officer for the current privacy page.");
         const base = `https://${host}`;
         return reply(i.data.name === "olympus-privacy"
-          ? `Open [Account data](${base}/#/data) for your own export and self-service erasure controls. [Privacy policy](${base}/legal/privacy). You will authenticate on the website; this command copies or erases nothing.`
-          : `Open [Account data](${base}/#/data) to review account-removal controls. For a linked game character, ask an authorized officer to use the guarded unbind workflow. An optional Discord connection is removed in Discord Settings → Connections. Nothing was unlinked or erased by this command.`);
+          ? `Open the [privacy account connection](${base}/privacy/access) to authenticate with Discord and see your export and erasure options. [Privacy policy](${base}/legal/privacy). This command copies or erases nothing.`
+          : `Open the [privacy account connection](${base}/privacy/access) to review account-removal options. For a linked game character, ask an authorized officer to use the guarded unbind workflow. Remove an optional Discord connection in Discord Settings → Connections. This command unlinks or erases nothing.`);
       }
       case "olympus-admin":
         return cmdAdmin(env, i, lane, defer,roleDispatch);
@@ -851,7 +851,7 @@ async function cmdAdmin(env: Env, i: Interaction, lane?: LaneCapture, defer?: De
       try {
         const snapshot = await activeRulesetSnapshot(env); // item 7: a held identity posts nothing
         if (!snapshot.profile) return reply(`The game identity is held (${snapshot.held}); no guide was posted.`);
-        const msg = await postMessage(env, channel, guideMessage(env, snapshot.profile, freshGrantText(lane)));
+        const msg = await postMessage(env, channel, guideMessage(env, snapshot.profile, freshGrantText(lane), await usesLegacyInviteQueue(env)));
         await audit(env, actor, "admin.post_guide", channel, { message: msg.id });
         return reply(`Guide posted in <#${channel}>. Pin it from the message menu; after a later redeploy use \`refresh-guide\` to update it in place rather than posting a second copy.`);
       } catch (e) {

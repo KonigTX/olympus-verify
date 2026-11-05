@@ -7,16 +7,18 @@ function freeze<T>(value: T): Readonly<T> {
   return value;
 }
 
+const recipient = "Fern Melder";
+
 export const ROYAL_WRIT_POLICY = freeze({
   revision: "218",
-  recipient: "Fernmelder",
+  recipient,
   currency: "World of Warcraft: Forever in-game gold",
-  banner: "100% World of Warcraft: Forever in-game gold only, by in-game mail or trade to Fernmelder. Zero real-world money: no USD, Twitch subscriptions or crypto. All addons remain free, with zero paid addon gating. Every writ remains subject to Blizzard policy, officer review, actual eligibility and capacity, and Discord Trust & Safety rules.",
+  banner: `100% World of Warcraft: Forever in-game gold only, by in-game mail or trade to ${recipient}. Zero real-world money: no USD, Twitch subscriptions or crypto. All addons remain free, with zero paid addon gating. Every writ remains subject to Blizzard policy, officer review, actual eligibility and capacity, and Discord Trust & Safety rules.`,
   review: "A price lists a request for an attended service or cosmetic recognition, never an automatic grant, guaranteed pardon, seat, rank, vote, access or bank permission. Ordinary membership applications, appeals and account privacy controls remain available without buying a writ.",
   dispatch: "TREASURY_COSMETIC_ENABLED, ARMY_SITE_AGGREGATE_ENABLED and Olympus Link remain OFF. This catalogue sends no gold, messages, roles, unbans, invites or keyed rejection-marker changes.",
   consent: "A cosmetic role targeting another member requires that recipient's prior, specific, revocable opt-in and unconflicted officer review. A fee cannot authorize harassment, humiliation, threats, ban evasion or an unwanted role. Withdrawal of consent ends the display without a fee.",
   compliance: "Gold-only terms and free addons do not guarantee compliance or zero risk. GDKP is excluded under the official Forever Q&A. Lottery and duel wagers remain disabled pending wagering authorization and current platform-policy review. A display switch cannot approve a prohibited activity.",
-  stockadesStatus: "Proposed external Stockades appeal venue; legacy server repurposing and an approved appeal invite are not confirmed by this publication. Main-server membership and the website login gate remain enforced.",
+  stockadesStatus: "Open a private MEE6 ticket in Olympus: The Stockades & Court of Appeals. Ordinary appeals are free. Eligible cases can be reviewed for 100g standard bail. This appeal operates separately from the website Royal Writs schedule.",
   stockadesUrl: null,
   crosswalk: "#/roles/rosetta-stone",
   governance: "#/governance/title-iii-the-imperial-treasury-guild-bank-tithe-ledger"
@@ -34,8 +36,8 @@ export const ROYAL_WRITS = freeze([
   { key: "tithe_payer", category: "seasonal", label: "Tithe Payer", goldMin: 25, goldMax: 25, term: "90-day season", outcome: "Cosmetic Tithe Tier", limits: "Voluntary, consented cosmetic recognition only; highest qualified seasonal tier, no permissions.", titles: ["III"], pages: ["roles", "governance", "admin"] },
   { key: "treasury_patron", category: "seasonal", label: "Patron of the Treasury", goldMin: 100, goldMax: 100, term: "90-day season", outcome: "Cosmetic Tithe Tier", limits: "No native rank, voting weight, admission preference, loot priority or bank right.", titles: ["III"], pages: ["roles", "governance", "admin"] },
   { key: "olympus_benefactor", category: "seasonal", label: "Benefactor of Olympus", goldMin: 500, goldMax: 500, term: "90-day season", outcome: "Cosmetic Tithe Tier", limits: "Actual in-game receipt and the recipient's publication consent are required.", titles: ["III"], pages: ["roles", "governance", "admin"] },
-  { key: "arch_financier", category: "seasonal", label: "Arch-Financier of Olympus", goldMin: 1000, goldMax: 1000, term: "90-day season", outcome: "Apex Patron Tier", limits: "Ceremonial recognition; no governing, moderation, bank or addon capability.", titles: ["III"], pages: ["roles", "governance", "admin"] },
-  { key: "imperial_treasury_hand", category: "seasonal", label: "Hand of the Imperial Treasury", goldMin: 2500, goldMax: 2500, term: "90-day season", outcome: "Capped Apex Patron Tier", limits: "2,500g is the highest published Patron tier, not a purchasable Treasury appointment.", titles: ["III"], pages: ["roles", "governance", "admin"] },
+  { key: "arch_financier", category: "seasonal", label: "Arch-Financier of Olympus", goldMin: 1000, goldMax: 1000, term: "90-day season", outcome: "Attended ceremonial Apex recognition", limits: "An officer verifies the additional in-game gold and the member consents to recognition. Discord colour roles are capped at Benefactor of Olympus. This title grants no authority or addon access.", titles: ["III"], pages: ["roles", "governance", "admin"] },
+  { key: "imperial_treasury_hand", category: "seasonal", label: "Hand of the Imperial Treasury", goldMin: 2500, goldMax: 2500, term: "90-day season", outcome: "Highest attended ceremonial Apex recognition", limits: "2,500g is the highest seasonal recognition tier. An officer verifies the additional gold and the member consents. Discord colour roles are capped at Benefactor of Olympus. The title grants no Treasury office or permissions.", titles: ["III"], pages: ["roles", "governance", "admin"] },
   { key: "royal_clemency", category: "court", label: "Writ of Royal Clemency (Standard Unban Bail)", goldMin: 100, goldMax: 100, term: "One eligible case", outcome: "Attended review of a minor / RP / community-infraction pardon", limits: "Appellant or consenting active-guild Bondsman supplies the Case ID in the mail subject. No automatic unban or login admission; severe Discord ToS / Trust & Safety offenses are non-bailable.", titles: ["II", "III"], pages: ["roles", "governance", "admin"] },
   { key: "privy_court_high_bail", category: "court", label: "High Bail of the Privy Court", goldMin: 250, goldMax: 500, term: "One eligible repeat / escalated case", outcome: "Individually reasoned bail request", limits: "An unconflicted panel sets the amount within the range before payment; recurrence never makes a severe safety offense bailable. Free ordinary appeal remains available.", titles: ["II", "III"], pages: ["roles", "governance", "admin"] },
   { key: "writ_translation", category: "flagship", label: "Writ of Translation (Olympus II–X → Flagship Olympus I Transfer)", goldMin: 250, goldMax: 500, term: "One eligible transfer", outcome: "Priority attended transfer consideration when verified inactivity-sweep slots open", limits: "Requires a real current vacancy, receiving-branch agreement and ordinary character eligibility. No invented capacity or automatic invite.", titles: ["III", "IV"], pages: ["army", "roles", "governance", "admin"] },
@@ -61,11 +63,11 @@ export const ROYAL_WRITS = freeze([
 ]);
 
 export const STOCKADES_CHECKLIST = freeze([
-  "Confirm that an external Stockades appeal venue and its approved invite actually exist; this publication does not repurpose the Beta server or admit a banned user through the main-site login gate.",
+  "Use the existing private MEE6 appeal venue. Verify the destination before sharing any case details. Normal main-server and website eligibility checks apply.",
   "Open a private Case ID, identify the original main-server ban or removal and keyed login rejection, and preserve the original decision. Use only the minimum case evidence under the existing privacy policy.",
   "Have an unconflicted authorized reviewer check eligibility. Severe Discord ToS / Trust & Safety violations are non-bailable; gold cannot authorize ban evasion or override Discord enforcement. Offer the ordinary free appeal route.",
   "Record the exact proposed remedy and amount before requesting gold: 100g standard; 250–500g only for an individually reasoned eligible repeat / escalated case. Confirm the Bondsman's consent if another active guild member pays.",
-  "Verify actual in-game mail or trade to Fernmelder and the Case ID in the mail subject. A screenshot, typed receipt or promised transfer alone does not prove arrival. Do not publish the private payment evidence.",
+  `Verify actual in-game mail or trade to ${recipient} and the Case ID in the mail subject. A screenshot, typed receipt or promised transfer alone does not prove arrival. Keep payment evidence private.`,
   "Only after the competent independent pardon decision, an authorized main-server moderator attends the exact unban and verifies its actual result. Gold, a ledger entry and a website checklist perform no unban; an unknown provider result stays unknown and is not blindly retried.",
   "Separately authorize the exact keyed login-rejection correction through the supported operator procedure, preserving the case, privacy, retention and original-operation safeguards. If that procedure is unavailable, stop and escalate; do not improvise a raw database deletion or bypass the gate.",
   "Verify normal fresh login eligibility and any ordinary in-game verification independently. Record observed results, residual holds and the next review date; a pardon grants no membership, rank, office, bank permission or immunity from future conduct rules."

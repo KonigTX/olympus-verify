@@ -1,8 +1,11 @@
 # Olympus guides and tools (.218)
 
-The site's own class, spec and profession guides and three raid-preparation tools. They live at `#/resources` (the hub),
-`#/guides/class/<class>[/<spec>]`, `#/guides/profession/<key>` and `#/guides/tools/<attunements|buffs|changes>`. `#/guides`
+The site's own class, spec and profession guides and raid preparation tools. They live at `#/resources` (the hub),
+`#/guides/class/<class>[/<spec>]`, `#/guides/profession/<key>` and `#/guides/tools/<attunements|buffs|raid-structure|changes>`. `#/guides`
 itself is unchanged: it is still the reviewed publisher library (`resources169`).
+
+The raid structure tool adapts Fox’s guild leadership guidelines into a planning reference for roster grouping,
+progression stability and farm rotations. It links to the standing raid and loot rules.
 
 ## Files
 - `worker/public/static/guides218.js`: the renderer (`window.OlympusGuides.mount(box, options)`). It validates the whole catalogue
@@ -10,8 +13,7 @@ itself is unchanged: it is still the reviewed publisher library (`resources169`)
   and `textContent` only: no HTML strings, inline styles, storage, eval or randomness.
 - `worker/public/static/guides218.css`: scoped `.guides218-*` styles, no `url()`, reduced-motion and forced-colors rules,
   restacking at 560 px.
-- `worker/public/static/guides218.json`: the catalogue, member-gated like every `/static` file. It is generated, never edited by
-  hand (see Authoring).
+- `worker/public/static/guides218.json` is the maintained catalogue. Member access is required to load it on the site.
 
 ## Honesty rules
 Every fact carries a grade, and the page explains the grades once:
@@ -41,10 +43,17 @@ Every fact carries a grade, and the page explains the grades once:
   lives in page memory for five minutes and is used once.
 
 ## Authoring
-The catalogue is built from schema-checked authoring files in `perfection-2026-10-31/claude/l2/`:
-`SCHEMA.md`, `validate_content.py` and `build_guides.py`. Each authoring file was written from the dated research record and
-then adversarially checked for grounding, grades, policy and originality. The talent-change counts come from `talents/data.json`
-itself.
+The October 31 release was built from the archived `perfection-2026-10-31/claude/l2/` authoring files. Since November 4,
+maintain copy and references in the tracked `guides218.json` catalogue. The October generator reproduces the historical
+catalogue. For current updates, preserve existing source indices and preset codes, add dated references for changed claims,
+and check the catalogue through `guides218_test.cjs` and the asset projection checks. The talent-change counts come from
+`talents/data.json`, which remains the source for the frozen build snapshot.
+
+The buff tool uses Classic Era client build `1.15.9.69722` for the grade-E Songflower, Dire Maul and flask corrections.
+The linked Spell, SpellEffect, SpellMisc and SpellDuration exports identify the precise effects and durations.
+The three flask rows use a unique `classicFlaskSpellId`, grade E and a recorded duration. The tool compares one flask
+at a time outside both encounter previews, following the client tooltip's one-flask rule. These rows carry no additive
+`stats`. An encounter preview reports how many selections lack a recorded duration.
 
 ## Tests
 - `worker/tests/guides218_test.cjs`: source policy, closed validation and refusals, preset round trips, talent-count parity,

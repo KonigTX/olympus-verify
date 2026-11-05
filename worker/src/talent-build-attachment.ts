@@ -67,14 +67,19 @@ function collectionRows(input: unknown, context: TalentCollectionContext, parseC
   const rows: (ApplicationTalentCharacter & { key: string })[] = [], seen = new Set<string>();
   for (const value of envelope.characters) {
     const row = closedData(value, ['character', 'class', 'build30', 'build60']);
-    if (!row || typeof row.character !== 'string' || row.character.length > 40 || /[\u0000-\u001f\u007f]/.test(row.character) || typeof row.class !== 'string' || !Object.hasOwn(TALENT_ATTACHMENT_CLASSES, row.class)) return null;
+    if (!row || typeof row.character !== 'string' || row.character.length > 40 || /[\u0000-\u001f\u007f]/.test(row.character) || typeof row.class !== 'string') return null;
+    const main = rows.length === 0;
+    const undecidedMain = main && context.className === 'undecided' && row.class === 'undecided';
+    if (!undecidedMain && !Object.hasOwn(TALENT_ATTACHMENT_CLASSES, row.class)) return null;
     const name = parseCharacter(row.character);
     if ('error' in name || seen.has(name.key)) return null;
     const build30 = row.build30 === undefined ? '' : row.build30, build60 = row.build60 === undefined ? '' : row.build60;
     if (typeof build30 !== 'string' || typeof build60 !== 'string' || build30.length > 512 || build60.length > 512) return null;
+    // A named, class-undecided main can anchor declared alts, but cannot carry a build.
+    if (undecidedMain && (build30 || build60)) return null;
     // .219: named/classed alts are declarations even without optional builds.
     // They retain the same three-character/2 KiB bound and imply no verification.
-    if (!rows.length && (name.name !== context.character || row.class !== context.className)) return null;
+    if (main && (name.name !== context.character || row.class !== context.className)) return null;
     seen.add(name.key); rows.push({ character: name.name, class: row.class, build30, build60, key: name.key });
   }
   return rows;

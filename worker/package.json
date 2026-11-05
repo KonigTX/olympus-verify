@@ -46,8 +46,8 @@
     "test:beta-source-closure": "node tests/beta_source_closure_test.cjs",
     "test:beta-source-grants": "node tests/beta_source_grant_fence_test.cjs",
     "test:beta-source-entry": "node tests/beta_source_epoch_entry_test.cjs",
-    "test:native-erasure": "node tests/privacy_native_erasure_mode_test.cjs && node tests/privacy_native_erasure_roles_test.cjs && node tests/privacy_native_erasure_cleanup_test.cjs && node tests/privacy_native_erasure_custody_test.cjs",
-    "test:native-erasure-mode": "node tests/privacy_native_erasure_mode_test.cjs",
+    "test:native-erasure": "npm run test:native-erasure-mode && node tests/privacy_native_erasure_roles_test.cjs && node tests/privacy_native_erasure_cleanup_test.cjs && node tests/privacy_native_erasure_custody_test.cjs",
+    "test:native-erasure-mode": "node tests/privacy_native_erasure_mode_test.cjs && node tests/privacy_native_erasure_c09_test.cjs && node tests/privacy_erasure_status_form_test.cjs && node tests/site_oauth_negative_membership_test.cjs",
     "test:native-erasure-roles": "node tests/privacy_native_erasure_roles_test.cjs",
     "test:native-erasure-cleanup": "node tests/privacy_native_erasure_cleanup_test.cjs",
     "test:native-erasure-custody": "node tests/privacy_native_erasure_custody_test.cjs",
@@ -61,13 +61,13 @@
     "test:owner207": "node tests/treasury_plan207_test.cjs",
     "test:qa210": "node tests/qa210_regressions_test.cjs && node tests/privacy_rejection_decision_test.cjs",
     "test:qa211": "node tests/treasury_dispatch_restriction211_test.cjs",
-    "test:qa217": "node tests/officer_queue217_test.cjs",
-    "test:perf218": "node tests/talents_compare218_test.cjs && node tests/treasury_read_gate218_test.cjs && node tests/guides218_test.cjs && node tests/frontend218_guides_test.cjs && node tests/page_heading_launch218_test.cjs",
+    "test:qa217": "node tests/officer_queue217_test.cjs && node tests/profile_recovery065_test.cjs",
+    "test:perf218": "node tests/talents_compare218_test.cjs && node tests/treasury_read_gate218_test.cjs && node tests/guides218_test.cjs && node tests/frontend218_guides_test.cjs && node tests/page_heading_launch218_test.cjs && node tests/guides_launch_transition228_test.cjs",
     "test:feed-relay-v1": "node tests/site_relay_feed_v1_test.cjs",
     "test:product219": "node tests/application_edit219_test.cjs && node tests/guild_commands219_test.cjs && node tests/guild_command_plan219_test.cjs",
     "test:evergreen221": "node tests/frontend_evergreen221_test.cjs && node tests/guild_workflows221_test.cjs && node tests/guild_command_plan221_test.cjs && node tests/guild_registration221_test.cjs",
     "test:evergreen222": "node tests/raid_hub222_test.cjs && node tests/guild_registration222_test.cjs",
-    "test:launch227": "node tests/launch_verification227_test.cjs && node tests/launch_membership_mode227_test.cjs && node tests/site_relay_launch227_test.cjs && node tests/launch_qr227_test.cjs && node tests/launch_scoped_rank_budget227_test.cjs && node tests/launch_health_capability227_test.cjs"
+    "test:launch227": "node tests/launch_verification227_test.cjs && node tests/launch_membership_mode227_test.cjs && node tests/site_relay_launch227_test.cjs && node tests/launch_qr227_test.cjs && node tests/launch_scoped_rank_budget227_test.cjs && node tests/launch_health_capability227_test.cjs && node tests/launch_transition228_test.cjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261023.1",

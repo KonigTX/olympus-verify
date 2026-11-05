@@ -4,6 +4,8 @@ Published planning reference, 28 October 2026. Website content source: `worker/p
 
 ## Status and scope
 
+The plan and calculator source are public in the Olympus Verify repository. The guild website serves its interactive presentation only to eligible officers. Keep private bank records and case details in their authorized systems.
+
 The owner reported a **0g opening balance on 28 October 2026**. This is a dated owner statement, not a live bank feed. Weekly active unique players, operating realm, accessible bank/custody limits, provider capacity, market demand, margins and the programme's actual Day 1 remain unconfirmed.
 
 This programme publishes an officer plan and a member explanation. It does not collect donations, activate fees or provider dispatch, change permissions, create appointments, authorise purchases or turn on the paused Royal Writs. Existing Royal Writs remain **paused/OFF**. A calculator result is an illustration, never a measured bank balance.
@@ -158,16 +160,16 @@ Use existing offices and current High Council remits; no appointment or permissi
 
 | Office/function | Accountability |
 | --- | --- |
-| Guild Master / Co-GM | Sponsorship, budget priorities and target/deadline decisions |
-| Treasurer, High Council | Forecast, authorised custody records, reconciliation, obligations and reserves |
-| Head of Trading & Markets, High Council | Sole focus: auction-house and direct-item trading, market research, funded execution and inventory optimisation; report realised net profit, sell-through, capital exposure, stock age and time to cash within separately approved capital and loss limits |
-| Independent Bank Auditor | Independent review, discrepancy reporting, no revenue quota and no self-review |
-| Minister of Artisanry / Workshop leads | Demand, funded production, complete costs, quality and provider backups |
-| Main Raid Lead / Main PvP Lead, High Council remits | Useful activity needs, capacity and costed spending requests |
-| Minister of Heraldry | Accurate campaigns, aggregate reporting and consent-based recognition |
-| Chief of Intake | Free ordinary membership and accurate active-person estimates |
-| Head of Justice, High Council | Independent complaints and discipline; no sanction commission or fundraising quota |
-| Systems/reporting support | Aggregate assistance within existing access, privacy, retention and erasure boundaries |
+| Guild Master (GM) / Hand of the Sovereign · Co-Guild Master | Sponsorship, budget priorities and target/deadline decisions |
+| Lord High Treasurer · Minister of the Imperial Exchequer | Forecast, authorised custody records, reconciliation, obligations and reserves |
+| Lord High Factor · Minister of Trading & Markets | Sole focus: auction-house and direct-item trading, market research, funded execution and inventory optimisation; report realised net profit, sell-through, capital exposure, stock age and time to cash within separately approved capital and loss limits |
+| Bank Auditor | Independent review, discrepancy reporting, no revenue quota and no self-review |
+| Lord High Artificer · Minister of Artisanry & The Guild Workshop | Demand, funded production, complete costs, quality and provider backups |
+| Lord High Marshal of PvE · Minister of Raid Campaigns / Lord High Marshal of PvP · Minister of Battlegrounds & Honor | Useful activity needs, capacity and costed spending requests |
+| Lord High Herald · Minister of Propaganda | Accurate campaigns, aggregate reporting and consent-based recognition |
+| Lord High Chancellor · Minister of the Chancery & Imperial Census | Free ordinary membership and accurate active-person estimates |
+| Lord High Justiciar · Minister of Justice & The Privy Court | Independent complaints and discipline; no sanction commission or fundraising quota |
+| Addon / Discord Architect | Aggregate assistance within existing access, privacy, retention and erasure boundaries |
 
 Daily: inspect orders, stock, overdue work and payment exceptions. Weekly: reconcile, settle authorised payments and publish the aggregate scorecard. Fortnightly: reconsider forecast, feedback, workload and channel profitability. Monthly: independent review and Council budget decisions. Quarterly: reassess benefits, reserves and succession.
 

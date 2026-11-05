@@ -78,7 +78,9 @@ check('leading decimals preserve whole-number fields and reject incomplete or no
 let badDays = 0;
 for (const day of [-1, 91, Infinity, NaN]) { try { model.treasuryRampWeeks207(day); } catch (error) { if (error instanceof Error || error.name === 'RangeError') badDays++; } }
 check('ramp refuses invalid day ranges', badDays === 4);
-const dispose = env.load('treasury-plan207.js').renderTreasuryPlan207(env.main, { h: env.h, clear: node => node.replaceChildren(), parts: ['officers'] });
+const catalogue = JSON.parse(fs.readFileSync(path.join(staticRoot, 'governance/organization.json'), 'utf8'));
+const officeLabel = key => catalogue.appointments.find(row => row.key === key)?.label;
+const dispose = env.load('treasury-plan207.js').renderTreasuryPlan207(env.main, { h: env.h, clear: node => node.replaceChildren(), parts: ['officers'], officeLabel });
 const all = predicate => env.main.all(predicate), byId = id => all(node => node.getAttribute('id') === id)[0];
 const input = key => byId('tp207-' + key), button = text => all(node => node.tagName === 'BUTTON' && node.textContent === text)[0];
 const result = key => all(node => node.getAttribute('data-result207') === key)[0];
@@ -97,7 +99,17 @@ check('.218 proposal chapter preserves distinct fee schedules and suspends both 
 check('.218 proposal publication leaves the original cash model and assumptions unchanged', close(base.weeklyNet, 95000) && close(base.spendableCash, 1028928.5714285714) && JSON.stringify(model.TREASURY_DEFAULTS207) === JSON.stringify(defaults) && result('spendableCash').textContent.includes('1,028,928.57g') && env.effects.length === 0);
 check('officer deep link opens the matching chapter without issuing an action', chapters.find(node => node.getAttribute('data-plan-chapter207') === 'officers').open && chapters.find(node => node.getAttribute('data-plan-chapter207') === 'officers').scrolled && chapters.filter(node => node.open).length === 1);
 check('programme publication does not invent a campaign start or live bank feed', env.main.textContent.includes('Start date not set') && env.main.textContent.includes('not a live bank feed') && env.main.textContent.includes('Royal Writs') && env.main.textContent.includes('paused or OFF') && env.main.textContent.includes('Fixed costs or a slower ramp'));
-check('.208 complete officer chapter includes a dedicated Council trading role without merging custody or promising returns', env.main.textContent.includes('Head of Trading & Markets') && env.main.textContent.includes('auction-house trading, direct item trades') && env.main.textContent.includes('Do not administer donations, dues, appeals, discipline or Workshop commissions') && env.main.textContent.includes('custody, budgets, reconciliation and independent audit stay with their separate officers'));
+const officers = chapters.find(node => node.getAttribute('data-plan-chapter207') === 'officers');
+const roleLinks = officers.all(node => node.tagName === 'A' && node.getAttribute('href').startsWith('#/roles/'));
+const expectedOffices = ['office_43', 'office_19', 'office_86', 'office_96', 'office_08', 'office_58', 'office_97', 'office_98', 'office_102', 'office_14', 'office_101', 'office_03'];
+check('CC081 every Treasury responsibility uses a canonical office label and role link',
+  roleLinks.length === expectedOffices.length && expectedOffices.every((key, index) => roleLinks[index].getAttribute('href') === '#/roles/' + key && roleLinks[index].textContent === officeLabel(key)));
+const herald = roleLinks.find(node => node.getAttribute('href') === '#/roles/office_102');
+check('CC081 campaign communications and consent belong to the Herald',
+  herald?.parentNode.parentNode.textContent.includes('Communicate accurate campaign terms and aggregate results')
+  && herald.parentNode.parentNode.textContent.includes('Obtain consent for recognition')
+  && !officers.textContent.includes('Minister of Heraldry'));
+check('.208 complete officer chapter includes a dedicated Council trading role without merging custody or promising returns', officers.textContent.includes(officeLabel('office_96')) && officers.textContent.includes('auction-house trading, direct item trades') && officers.textContent.includes('Do not administer donations, dues, appeals, discipline or Workshop commissions') && officers.textContent.includes('custody, budgets, reconciliation and independent audit stay with their separate officers'));
 check('.208 trading scorecard counts actual costs, cash conversion and risk without changing the million-gold assumptions', env.main.textContent.includes('Trading performance and capital risk') && env.main.textContent.includes('lost deposits') && env.main.textContent.includes('time to cash') && result('spendableCash').textContent.includes('1,028,928.57g') && env.effects.length===0);
 input('weeklyGift').value = '0'; input('weeklyGift').dispatch('input');
 check('real form input changes recompute the forecast rather than changing labels only', result('weeklyNet').textContent.includes('50,000g') && result('spendableCash').textContent.includes('517,857.14g') && result('goalGap').textContent.includes('482,142.86g'));
@@ -129,8 +141,12 @@ check('submitting the model form is prevented rather than making an HTTP request
 env.event('beforeprint'); dispose();
 check('route disposal removes global print handlers and restores disclosures', [...env.events.values()].every(set => set.size === 0) && chapters.every((node, index) => node.open === originalOpen[index]));
 const style = () => env.document.head.all(node => node.tagName === 'LINK' && node.getAttribute('id') === 'treasury-plan-style207');
-const disposeAgain = env.load('treasury-plan207.js').renderTreasuryPlan207(env.main, { h: env.h, clear: node => node.replaceChildren(), parts: [], isCurrent: () => true });
+const disposeAgain = env.load('treasury-plan207.js').renderTreasuryPlan207(env.main, { h: env.h, clear: node => node.replaceChildren(), parts: [], isCurrent: () => true, officeLabel: key => key === 'office_102' ? 'Fixture current Herald label' : key === 'office_08' ? undefined : officeLabel(key) });
 check('the same-origin stylesheet is attached exactly once across route rerenders', style().length === 1 && style()[0].getAttribute('rel') === 'stylesheet' && style()[0].getAttribute('href') === '/static/treasury-plan207.css');
+check('CC081 fresh catalogue labels render and a missing office has no broken role link',
+  all(node => node.getAttribute('href') === '#/roles/office_102')[0]?.textContent === 'Fixture current Herald label'
+  && all(node => node.getAttribute('href') === '#/roles/office_08').length === 0
+  && env.main.textContent.includes('Office reference unavailable'));
 disposeAgain();
 const rendered = env.main.textContent;
 env.load('treasury-plan207.js').renderTreasuryPlan207(env.main, { h: env.h, clear: node => node.replaceChildren(), parts: [], isCurrent: () => false })();

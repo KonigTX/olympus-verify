@@ -170,6 +170,44 @@ const recordTool169 = (page, namespace, calls) => {
   await waitFor(() => coRow175.querySelector('[data-appointment-status="co_gm"]').textContent.includes("Hand of the Sovereign · Co-Guild Master: The selected account is not currently eligible"), "role-specific real save refusal");
   check(".175 a changed selected account is named by office at its field and the real Worker refuses the whole save", one("SELECT value FROM site_settings WHERE key='appointed'")?.value === appointedBefore175 && !publication175.checked && coInput175.focusCalls === 1 && !coRow175.querySelector('[data-appointment-status="co_gm"]').textContent.includes(OTHER));
   await fixtureRun("UPDATE site_users SET denied=0 WHERE discord_id=?", OTHER);
+  const storedAppointment = one("SELECT value,updated_at,updated_by FROM site_settings WHERE key='appointed'");
+  const storedAutoQueue = one("SELECT value,updated_at,updated_by FROM site_settings WHERE key='autoQueue'");
+  const storedNotice = one("SELECT value,updated_at,updated_by FROM site_settings WHERE key='notice'");
+  const existingAppointment = JSON.stringify({co_gm: '<@' + OTHER + '>'});
+  const seedSetting = (key, row) => !row
+    ? fixtureRun("DELETE FROM site_settings WHERE key=?", key)
+    : fixtureRun("INSERT INTO site_settings(key,value,updated_at,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at,updated_by=excluded.updated_by", key, row.value, row.updated_at, row.updated_by);
+  try {
+    const fixtureTime = Math.floor(Date.now()/1000);
+    await seedSetting("appointed", {value:existingAppointment,updated_at:fixtureTime,updated_by:null});
+    await seedSetting("autoQueue", {value:"1",updated_at:fixtureTime,updated_by:null});
+    const queuePage = await openPage(STAFF);
+    const queueWrites = [];
+    queuePage.before((path, init) => {
+      if (path === '/api/admin/settings' && init.method === 'PUT') queueWrites.push(JSON.parse(init.body));
+      return false;
+    });
+    await queuePage.go("#/admin/settings");
+    await waitFor(() => !!queuePage.app.querySelector('#appointed-characters-ok'), "unrelated queue settings");
+    await seedSetting("notice", {value:"Notice saved by another admin",updated_at:fixtureTime,updated_by:null});
+    const queueLabel = Array.from(queuePage.app.querySelectorAll('label')).find(label => label.textContent.includes('automatically queue approved reserved names'));
+    const queue = queueLabel.querySelector('input');
+    const saveQueue = byText(queuePage.app, "button", "Save settings");
+    queue.checked = false;
+    saveQueue.click();
+    await waitFor(() => !saveQueue.disabled, "unrelated settings save completed");
+    check("saving the queue setting preserves an existing account association without requesting publication consent",
+      one("SELECT value FROM site_settings WHERE key='autoQueue'")?.value === '0'
+      && one("SELECT value FROM site_settings WHERE key='appointed'")?.value === existingAppointment
+      && !queuePage.app.querySelector('#appointed-characters-ok').checked);
+    check("the queue edit sends only its changed field and preserves a notice saved after the page loaded",
+      JSON.stringify(queueWrites) === JSON.stringify([{autoQueue:false}])
+      && one("SELECT value FROM site_settings WHERE key='notice'")?.value === "Notice saved by another admin");
+  } finally {
+    await seedSetting("appointed", storedAppointment);
+    await seedSetting("autoQueue", storedAutoQueue);
+    await seedSetting("notice", storedNotice);
+  }
   const lookup175 = await openPage(STAFF);
   await lookup175.go("#/admin/lookup/" + absent175);
   await waitFor(() => lookup175.app.textContent.includes("no current site profile"), "current-profile lookup wording");
@@ -180,14 +218,23 @@ const recordTool169 = (page, namespace, calls) => {
   check(".169 native Guild and Resources menus contain the actual routes", !!group169(member, "Guild") && !!group169(member, "Resources") && ["#/roles", "#/governance", "#/organization", "#/talents", "#/addons", "#/guides", "#/guide/member", "#/guide/officer"].every(href => !!link169(member, href)));
   check(".169 a member has no Staff menu or Admin route link", !group169(member, "Staff") && !link169(member, "#/admin"));
   check(".196 Community dropdown exposes its hub while News OFF stays hidden and Game updates remain in Resources", !!group169(member, "Community") && !!link169(member, "#/community") && !link169(member, "#/news") && !!group169(member, "Resources").querySelector('a[href="#/updates"]'));
-  const newsMember = await openPage(MEMBER, {}, { bootTransform: boot => { boot.settings.newsOn = true; } });
+  const newsMember = await openPage(MEMBER, {}, { bootTransform: boot => { boot.settings.newsOn = true; boot.community.features.census = true; } });
   await newsMember.go("#/community");
-  check(".196 News ON exposes Town Crier in the Community dropdown and preserves the current Community section", !!link169(newsMember, "#/community") && !!group169(newsMember, "Community") && !!link169(newsMember, "#/news") && !!newsMember.app.querySelector('nav[aria-label="Community sections"] a[href="#/community/news"]') && !!link169(newsMember, "#/updates"));
+  check(".196 News ON exposes Town Crier in the Community dropdown and preserves the current Community section", !!link169(newsMember, "#/community") && !!group169(newsMember, "Community") && !!link169(newsMember, "#/news") && !!newsMember.app.querySelector('nav[aria-label="Community sections"] a[href="#/news"]') && !!link169(newsMember, "#/updates"));
+  const expectedCommunity169 = [
+    ["#/community", "Overview"], ["#/community/profile", "My profile"], ["#/community/trial", "My trial"], ["#/community/dues", "My dues"],
+    ["#/community/directory", "Discord member list"], ["#/community/workshop", "Crafters & Artisans"], ["#/community/calendar", "Calendar"],
+    ["#/community/leadership", "Leadership"], ["#/news", "Town Crier"], ["#/community/army", "Army"], ["#/community/census", "Census preview"],
+  ];
+  const labels169 = root => root.querySelectorAll("a").map(link => [link.getAttribute("href"), link.textContent.trim()]);
+  const menu169 = labels169(group169(newsMember, "Community")), tabs169 = labels169(newsMember.app.querySelector('nav[aria-label="Community sections"]'));
+  const cards169 = newsMember.app.querySelectorAll("a.card").map(card => [card.getAttribute("href"), card.querySelector("h3").textContent]);
+  check("Community navigation uses the same complete order, labels and canonical links in header, tabs and cards", JSON.stringify(menu169)===JSON.stringify(expectedCommunity169) && JSON.stringify(tabs169)===JSON.stringify(expectedCommunity169) && JSON.stringify(cards169)===JSON.stringify(expectedCommunity169.slice(1)), {menu169,tabs169,cards169});
   const heldCommunity = await openPage(MEMBER, {}, { bootTransform: boot => { boot.settings.newsOn = true; boot.community.capabilities.applicantWrite = false; } });
-  check(".170 missing private Community capability removes its menu and Guild news link without removing public Game updates", !group169(heldCommunity, "Community") && !link169(heldCommunity, "#/community") && !link169(heldCommunity, "#/community/news") && !!group169(heldCommunity, "Resources").querySelector('a[href="#/updates"]'));
+  check(".170 missing private Community capability removes its menu and Guild news link without removing public Game updates", !group169(heldCommunity, "Community") && !link169(heldCommunity, "#/community") && !link169(heldCommunity, "#/news") && !!group169(heldCommunity, "Resources").querySelector('a[href="#/updates"]'));
   const noCommunity = await openPage(MEMBER, { COMMUNITY_FEATURES: "" });
   check(".196 legacy Community features OFF keeps the eligible Army dropdown and signed-in Game updates", !!group169(noCommunity, "Community") && !!link169(noCommunity, "#/community") && !!group169(noCommunity, "Resources").querySelector('a[href="#/updates"]'));
-  check(".196 Army remains in the guarded Community dropdown with legacy features OFF without private Census routes", noCommunity.boot.community.capabilities.armyRead === true && !!link169(noCommunity, "#/community/army") && !!link169(noCommunity, "#/community") && !link169(noCommunity, "#/community/news") && !link169(noCommunity, "#/community/census") && !!group169(noCommunity, "Resources").querySelector('a[href="#/updates"]'));
+  check(".196 Army remains in the guarded Community dropdown with legacy features OFF without private Census routes", noCommunity.boot.community.capabilities.armyRead === true && !!link169(noCommunity, "#/community/army") && !!link169(noCommunity, "#/community") && !link169(noCommunity, "#/news") && !link169(noCommunity, "#/community/census") && !!group169(noCommunity, "Resources").querySelector('a[href="#/updates"]'));
   const staff = await openPage(STAFF);
   check(".169 only the actual staff boot receives the Staff group and Admin link", !!group169(staff, "Staff") && !!link169(staff, "#/admin") && staff.boot.user.isAdmin === true);
   const canonicalStaff169=group169(staff,"Staff"),canonicalResources169=group169(staff,"Resources");
@@ -277,7 +324,7 @@ const recordTool169 = (page, namespace, calls) => {
   check(".169 reopening talents reuses its loaded script and stylesheet but creates a fresh renderer", talentCalls.length === 2 && head.querySelectorAll("script").length === 3 && head.querySelectorAll('link[data-olympus-tool="OlympusTalents"]').length === 1);
   await tools.go("#/roles");
   check(".169 a second tool instance also disposes exactly once", talentCalls[1].destroyed === 1);
-  check(".203 leaving the tool mounts the consolidated role families and ten linked native ranks without changing the original catalogue", tools.app.querySelectorAll("details.role-family203").length === tools.boot.meta.roleDirectory203.families.length && tools.app.querySelectorAll(".role-ranks203 [data-rank-family203]").length === 10 && Object.keys(tools.boot.meta.roleDirectory203.keyToFamily).length === 141 && tools.app.querySelectorAll("[data-role-key201]").length === tools.boot.meta.roleDirectory203.families.reduce((n,f)=>n+1+f.variants.filter(v=>["office","region","class"].includes(v.presentation)).length,0));
+  check(".203 leaving the tool mounts the consolidated role families and ten linked native ranks without changing the original catalogue", tools.app.querySelectorAll("details.role-family203").length === tools.boot.meta.roleDirectory203.families.length && tools.app.querySelectorAll(".role-ranks203 [data-rank-family203]").length === 10 && Object.keys(tools.boot.meta.roleDirectory203.keyToFamily).length === 142 && tools.app.querySelectorAll("[data-role-key201]").length === tools.boot.meta.roleDirectory203.families.reduce((n,f)=>n+1+f.variants.filter(v=>["office","region","class"].includes(v.presentation)).length,0));
   const abandoned = await openPage(MEMBER), abandonedHead = head169(abandoned), abandonedCalls = [];
   await abandoned.go("#/talents/rogue"); await abandoned.go("#/guide/member");
   recordTool169(abandoned, "OlympusTalents", abandonedCalls); abandonedHead.querySelector("script").dispatchEvent(new Event("load")); await settle();

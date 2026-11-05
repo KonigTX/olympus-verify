@@ -3,8 +3,10 @@
 // then invert only that pair for unchanged historical PINS. Raw observations are never mutated.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const sha=v=>crypto.createHash('sha256').update(typeof v==='string'||Buffer.isBuffer(v)?v:JSON.stringify(v)).digest('hex');
+if(sha(fs.readFileSync(path.join(__dirname,'source228-guide-copy-projection.cjs')))!=='bc6acf0c91b7e5bd2c0d3d816eb1ac7a38d285e50824dfe96f29e12fa96e246e')throw Error('reviewed228 guide copy helper differs');
+const {originalGuideInteractions}=require('./source228-guide-copy-projection.cjs');
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
-const SOURCE_SHA='bc4ab0d1b9bafa757317050d64f4f699b8c57aca93b88740761f275f864a0180';
+const SOURCE_SHA='06e66e9eaa284b6fb29b9e73f164d96ee2dc9fe01ef1d8dbf5d638f238f0b953';
 const RECOVERY="For verification, **Get my code** uses a request code while those are available. A same-day character-code request can keep by-name `/verify` closed until 00:00 UTC.";
 const CACHE='UPDATE seen_interactions SET response = ?2 WHERE id = ?1',INTERACTION='810000000000000902';
 const LEGACY='The Guild Member role is left as it is; remove it in Discord by hand if they should lose it.';
@@ -15,7 +17,11 @@ function pair(masked){
  const oldPromise='They can run '+String.fromCharCode(96)+'/verify'+String.fromCharCode(96)+' again.';
  return{current:envelope(prefix+RECOVERY+' '+tail),old:envelope(prefix+oldPromise+' '+tail)};
 }
-function sourceChecks(src){return{exact_current:sha(fs.readFileSync(path.join(src,'interactions.ts')))===SOURCE_SHA};}
+function sourceChecks(src){
+ const raw=fs.readFileSync(path.join(src,'interactions.ts')),beforeGuide=originalGuideInteractions(raw);
+ return {exact_current:beforeGuide!==null&&sha(beforeGuide)===SOURCE_SHA,
+  guide_drift:originalGuideInteractions(Buffer.concat([raw,Buffer.from('\n')]))===null};
+}
 function inspect(r,{pin,digestOf,masked}){
  const p=pair(masked),cache=r.trace.map((event,index)=>({event,index})).filter(x=>x.event.sql===CACHE);
  const expected={k:'sql',tag:'legacy',sql:CACHE,params:[INTERACTION,JSON.stringify(p.current)]};

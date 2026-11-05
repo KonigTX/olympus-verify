@@ -28,9 +28,11 @@ const body183 = String.raw`
   check('existing character details remain on the separate supported Roles slot',page183.app.querySelector('[data-office-assignment="treasurer"]').textContent.includes('Verified characters: Private Treasury Fixture'));
   check('current directory appointment names remain exact-key punctuated spans inline in their canonical family',['co_gm','treasurer'].every(key=>{const holder=page183.app.querySelector('[data-appointment-scope203="'+key+'"][data-office-assignment="'+key+'"]'),label=holder?.querySelector('[data-appointment-label="'+key+'"]');return holderFamily183(page183,key)?.getAttribute('data-role-family203')===page183.boot.meta.roleDirectory203.keyToFamily[key]&&label?.tagName==='SPAN'&&label.parentNode.tagName==='P'&&label.textContent.endsWith('.')&&!label.textContent.includes('..');}));
   const rolesReads183=reads183;
-  await page183.go('#/apply'); await awaitNames183(page183.app,'fresh application names');
+  await page183.go('#/apply');
   const radio183=key=>page183.app.querySelectorAll('input[name="position"]').find(node=>node.value===key);
-  check('current application directory keeps fresh holder labels while both reserved seats have no selection controls',hasNames183(page183.app)&&['co_gm','treasurer'].every(key=>{const family=holderFamily183(page183,key);return !radio183(key)&&family?.querySelector('.reserved-seat201')?.textContent === 'Reserved seat — no applications'&&!family.querySelector('[data-apply-role201]');})&&reads183===rolesReads183+1);
+  check('compact application chooser links to the canonical holder details without reading identities or offering either reserved seat',
+    !!page183.app.querySelector('#application-track-chooser228 a[href="#/roles"]')&&!hasNames183(page183.app)
+    &&['co_gm','treasurer'].every(key=>!radio183(key)&&!holderFamily183(page183,key)&&!page183.app.querySelector('[data-family-apply203="'+key+'"]'))&&reads183===rolesReads183);
   check('application labels do not copy the private character list or raw account association',!page183.app.textContent.includes('Private Treasury Fixture')&&!page183.app.textContent.includes(discordOnly183));
   // The leadership-radio Details entrance was retired; invoke the actual production dialog through the bounded local VM exposure below.
   const details183={click:()=>page183.window.__roleDialog201('co_gm')};details183.click();
@@ -109,8 +111,8 @@ const body183 = String.raw`
     const remaining183=[...catalogRows183].sort((a,b)=>a.role<b.role?-1:a.role>b.role?1:0).filter(row=>row.role>after183),page183=remaining183.slice(0,32);
     return {scope:'qualified_community_readers',revision:'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',identities:page183,nextCursor:remaining183.length>32?page183[page183.length-1].role:null,complete:remaining183.length<=32};
   });
-  await catalogPage183.go('#/roles');await waitFor(()=>hasNames183(catalogPage183.app)&&catalogPage183.app.querySelector('[data-office-assignment="officer"]')?.textContent.includes('Office officer'),'all138 appointed identity projection');
-  check('all138 admitted appointment keys retain CoGM Treasurer and a further supported Roles identity',catalogRows183.length===138&&hasNames183(catalogPage183.app)&&catalogPage183.app.querySelector('[data-office-assignment="officer"]').textContent.includes('Office officer'));
+  await catalogPage183.go('#/roles');await waitFor(()=>hasNames183(catalogPage183.app)&&catalogPage183.app.querySelector('[data-office-assignment="officer"]')?.textContent.includes('Office officer'),'all139 appointed identity projection');
+  check('all139 admitted appointment keys retain CoGM Treasurer and a further supported Roles identity',catalogRows183.length===139&&hasNames183(catalogPage183.app)&&catalogPage183.app.querySelector('[data-office-assignment="officer"]').textContent.includes('Office officer'));
   catalogPage183.answer(path=>path==='/api/appointed-identities'?{scope:'qualified_community_readers', revision:'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',nextCursor:null,complete:true,identities:[...catalogRows183,{...co183,role:'unregistered_office'}]}:null);
   await catalogPage183.go('#/');await catalogPage183.go('#/roles');await settle();
   check('a response above the actual137-key appointment catalogue fails closed without private labels',!hasNames183(catalogPage183.app)&&!catalogPage183.app.textContent.includes('Office officer'));

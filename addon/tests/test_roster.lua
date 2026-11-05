@@ -49,13 +49,14 @@ OlympusVerifyDB = nil
 
 local okLoad, err = pcall(function()
   assert(loadfile("../OlympusVerify/Libs/OlympusHmac.lua"))("OlympusVerify", {})
+  dofile("../OlympusVerify/OlympusVerifyLists.lua")
   assert(loadfile("../OlympusVerify/OlympusVerify.lua"))("OlympusVerify", {})
   assert(loadfile("../OlympusVerify/OlympusVerifyUI.lua"))("OlympusVerify", {})
   assert(loadfile("../OlympusVerify/OlympusVerifyPreview.lua"))("OlympusVerify", {})
   assert(loadfile("../OlympusVerify/OlympusVerifyRoster.lua"))("OlympusVerify", {})
   assert(loadfile("../OlympusVerify/OlympusVerifyGuild.lua"))("OlympusVerify", {})
 end)
-check("all six files including the guild column load in TOC order", okLoad, true)
+check("display placeholder and actual roster files load in TOC order", okLoad, true)
 if not okLoad then print(err) os.exit(1) end
 local onEvent = OlympusVerifyFrame:GetScript("OnEvent")
 check("ADDON_LOADED + PLAYER_LOGIN run", pcall(function() onEvent(OlympusVerifyFrame, "ADDON_LOADED", "OlympusVerify"); onEvent(OlympusVerifyFrame, "PLAYER_LOGIN") end), true)
@@ -209,6 +210,76 @@ list, info = API.Roster.Members()
 check("no Discord names, and the window says so", info.hasNames, false)
 W.Show()
 check("  footer explains where names come from", plain(W.frame and select(1, (function() for _, fs in ipairs(FONTS) do if fs._parent == W.frame and plain(fs._text):find("No Discord names yet", 1, true) then return true end end return false end)())), "true")
+
+print("\n== strict read-only roster display ==")
+OlympusVerifyConfig.membershipOnly = true
+ROSTER[5].online = true
+OlympusQueue.verified = { fetchedAt = NOW, members = {
+  { name = "Plain Paul", guid = "Player-1-E", status = "member", username = "legacy-name" },
+} }
+OlympusQueue.unverified.fetchedAt, OlympusQueue.unverified.snapshotAt = NOW, NOW
+check("strict guild status ignores the fresh legacy queue", API.Roster.Verification("Plain Paul-Forever", "Player-1-E").status, "unknown")
+local edit = {
+  text = "", GetText = function(self) return self.text end, SetText = function(self, text) self.text = text end,
+  SetTellTarget = function(self, name) self.target = name end, GetTellTarget = function(self) return self.target end,
+  SetChatType = function(self, kind) self.kind = kind end, GetChatType = function(self) return self.kind end,
+}
+ChatFrameUtil = {
+  ChooseBoxForSend = function() return edit end, GetActiveWindow = function() return edit end, OpenChat = function() end,
+}
+local function remind()
+  return API.Roster.OpenWhisper("Plain Paul-Forever", "Player-1-E")
+end
+check("no strict sidecar means no reminder", (remind()), false)
+local nativeGuild, nativeRealm = GetGuildInfo(), GetRealmName()
+OlympusVerifyLists = {
+  version = 1, guild = nativeGuild, realm = nativeRealm,
+  verified = { fetchedAt = NOW, snapshotAt = NOW, members = {
+    { name = "Old Rita", guid = "Player-1-C", status = "member", username = "current-link" },
+  } },
+  unverified = { fetchedAt = NOW, snapshotAt = NOW, members = {
+    { name = "Plain Paul", guid = "Player-1-E", pending = false },
+  } },
+}
+local strict = OlympusVerifyLists
+local paul = strict.unverified.members[1]
+check("strict scope and exact native GUID show an unverified row", API.Roster.Verification("Plain Paul-Forever", "Player-1-E").status, "unverified")
+check("the same list verifies a renamed character by GUID", API.Roster.Verification("Renamed Rita-Forever", "Player-1-C").status, "verified")
+local strictMembers = {}
+for _, row in ipairs((API.Roster.Members())) do strictMembers[row.name] = row end
+check("Members reads the strict Discord username for the admitted GUID", strictMembers["Renamed Rita"].discord, "current-link")
+check("Members shows no older Discord username for the unlinked character", strictMembers["Plain Paul"].discord == nil, true)
+check("the strict row opens an editable reminder", (remind()), true)
+check("the native recipient retains both words and realm", edit.target, "Plain Paul-Forever")
+check("the strict reminder gives the Discord code and in-game whisper steps", edit.text,
+  "Hi! In Asmongold's Discord, use Get my code in #⚡olympus-verify. Follow the bot's instructions to whisper the code from this character in game.")
+check("no whisper was sent", #WHISPERS, 0)
+edit.text = ""
+paul.pending = true
+check("no reminder while verification is in progress", (remind()), false)
+paul.pending = false
+paul.guid = "Player-1-F"
+check("a reused name with another GUID stays unknown", API.Roster.Verification("Plain Paul-Forever", "Player-1-E").status, "unknown")
+check("wrong GUID cannot open a draft", (remind()), false)
+paul.guid = "Player-1-E"
+strict.guild = "Different Guild"
+check("wrong native guild cannot open a draft", (remind()), false)
+strict.guild, strict.realm = nativeGuild, "Different Realm"
+check("wrong native realm cannot open a draft", (remind()), false)
+strict.realm = nativeRealm
+strict.verified.snapshotAt, strict.unverified.snapshotAt = NOW - 3601, NOW - 3601
+check("an expired underlying snapshot is stale even when the fetch date is fresh", API.Roster.Verification("Plain Paul-Forever", "Player-1-E").status, "stale")
+check("an expired sidecar cannot open a draft", (remind()), false)
+strict.verified.snapshotAt, strict.unverified.snapshotAt = NOW, NOW
+strict.verified.fetchedAt, strict.unverified.fetchedAt = NOW + 1, NOW + 1
+check("a future sidecar cannot open a draft", (remind()), false)
+strict.verified.fetchedAt, strict.unverified.fetchedAt = NOW, NOW
+OlympusQueue.unverified = nil
+local candidates = API.UnverifiedList(100)
+check("strict display rows are absent from the legacy removal candidates", type(candidates) ~= "table" or #candidates == 0, true)
+SlashCmdList.OLYMPUSVERIFY("aim")
+check("strict display rows cannot arm a removal macro", not MACROS[1] or not MACROS[1].body:find("/guildremove", 1, true), true)
+check("the strict display leaves existing invitation entries in place", #OlympusQueue.entries, 3)
 
 print(string.format("\n%d/%d passed", tests - fails, tests))
 os.exit(fails == 0 and 0 or 1)

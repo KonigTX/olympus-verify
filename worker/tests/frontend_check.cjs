@@ -388,6 +388,73 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     await out210.go("#/admin");
     await waitFor(() => !/Staff/.test(header210()), ".210 the signed-out header after a 401", 8000);
     check(".210 after a mid-session 401 the header drops the Staff menu and the Stream Shield toggle", before210 && !/Staff/.test(header210()) && !out210.app.querySelector(".stream-shield-toggle"));
+    check("CC074 current API 401 replaces the document with the canonical gate and leaves an asset-free transition",
+      out210.location.replaced && out210.location.navigated === '/?entry=session-ended' && !!out210.app.querySelector('[data-session-ending]')
+      && !out210.app.querySelector('img, header, nav') && !out210.app.textContent.includes('Something went wrong'));
+    const expiredEntry = await indexMod.default.fetch(new Request('https://guild.example/?entry=session-ended'), env({ ASSETS: governanceAssets }), ctx);
+    const entryHtml = await expiredEntry.text();
+    check("CC074 the real Worker serves the normal script-free portal with one finite session-ended message",
+      expiredEntry.status === 200 && entryHtml.includes('Enter Olympus') && entryHtml.includes('Your session ended. Sign in with Discord again.')
+      && !/<script\b|id="boot"/i.test(entryHtml) && !entryHtml.includes('entry=session-ended'));
+    const tool210 = await openPage(MEMBER);
+    let confirmations210 = 0;
+    tool210.intercept(async pathname => {
+      if (pathname !== '/api/me') return;
+      confirmations210++;
+      return new Response('{"error":"signed_out"}', { status: 401 });
+    });
+    await tool210.go('#/talents');
+    const deniedScript = tool210.document.querySelector('script[src="/static/talents/calculator.js"]');
+    deniedScript?.dispatchEvent(new Event('error'));
+    await waitFor(() => tool210.location.replaced, 'CC074 current tool session confirmation', 4000);
+    check("CC074 a failed protected script only returns to the gate after the current session is checked",
+      !!deniedScript && confirmations210 === 1 && tool210.location.navigated === '/?entry=session-ended'
+      && !tool210.app.textContent.includes('Something went wrong'));
+    const admittedTool = await openPage(MEMBER);
+    let admittedChecks = 0;
+    admittedTool.before(pathname => { if (pathname === '/api/me') admittedChecks++; return false; });
+    await admittedTool.go('#/talents');
+    admittedTool.document.querySelector('script[src="/static/talents/calculator.js"]')?.dispatchEvent(new Event('error'));
+    const showsLoadError = await waitFor(() => admittedTool.app.textContent.includes('The tool could not be loaded.'), 'CC074 admitted tool remains a load failure', 8000);
+    check("CC074 an admitted session with a failed asset keeps its site shell and can reopen the tool",
+      showsLoadError && admittedChecks === 1 && !admittedTool.location.replaced && !!byText(admittedTool.app,'button','Sign out'));
+    const staleTool = await openPage(MEMBER);
+    let staleChecks = 0;
+    staleTool.before(pathname => { if (pathname === '/api/me') staleChecks++; return false; });
+    await staleTool.go('#/talents');
+    const staleScript = staleTool.document.querySelector('script[src="/static/talents/calculator.js"]');
+    await staleTool.go('#/roles');
+    staleScript?.dispatchEvent(new Event('error'));
+    await settle(); await settle();
+    check("CC074 a failed asset on a departed view cannot check or change the newer session",
+      !!staleScript && staleChecks === 0 && !staleTool.location.replaced && !!byText(staleTool.app,'button','Sign out'));
+    const slowTool = await openPage(MEMBER);
+    let releaseAssetCheck, assetCheckSignal;
+    const heldAssetCheck = new Promise(resolve => { releaseAssetCheck = resolve; });
+    slowTool.intercept(async (pathname, init) => {
+      if (pathname !== '/api/me') return;
+      assetCheckSignal = init.signal;
+      return heldAssetCheck;
+    });
+    await slowTool.go('#/talents');
+    slowTool.document.querySelector('script[src="/static/talents/calculator.js"]')?.dispatchEvent(new Event('error'));
+    const boundedLoadFailure = await waitFor(() => slowTool.app.textContent.includes('The tool could not be loaded.'), 'CC074 a stalled confirmation shows the original load error', 8000);
+    releaseAssetCheck(new Response('{"error":"signed_out"}', { status: 401 }));
+    await settle(); await settle();
+    check("CC074 a stalled confirmation is bounded and its late reply cannot sign out the tab",
+      boundedLoadFailure && assetCheckSignal?.aborted === true && !slowTool.location.replaced && !!byText(slowTool.app,'button','Sign out'));
+    const departedTool = await openPage(OTHER);
+    await fixtureRun("UPDATE site_users SET in_server=0 WHERE discord_id=?", OTHER);
+    try {
+      await departedTool.go('#/talents');
+      departedTool.document.querySelector('script[src="/static/talents/calculator.js"]')?.dispatchEvent(new Event('error'));
+      const returned = await waitFor(() => departedTool.location.replaced, 'CC074 departed identity returns to the portal', 8000);
+      const departedGate = await indexMod.default.fetch(new Request('https://guild.example/?entry=session-ended', { headers: { Cookie: departedTool.cookie } }), env({ ASSETS: governanceAssets }), ctx);
+      const departedHtml = await departedGate.text();
+      check("CC074 departed membership returns to the existing account-help gate after a failed asset",
+        returned && departedGate.status === 200 && departedHtml.includes('Join the Asmongold Discord server')
+        && departedHtml.includes('href="/privacy/access"') && !/<script\b|id="boot"/i.test(departedHtml));
+    } finally { await fixtureRun("UPDATE site_users SET in_server=1 WHERE discord_id=?", OTHER); }
   }
   {
     // .210 QA: a second navigation while "Leave without saving?" is open must not stack a second confirmation.
@@ -446,7 +513,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     await waitFor(() => recoveredBoard.app.textContent.includes("No historical applications are listed for this role"), ".177 admitted replacement role");
     check(".177 sidebar navigation plus a fresh admitted role200 restores only the persistent mobile navigation chooser", recoveredBoard.app.querySelector(".role-pick") === refusedPicker && !refusedPicker.disabled && refusedPicker.value === "raid_leader_na" && recoveredBoard.app.querySelector(".board-results").getAttribute("aria-busy") === "false");
     const titled = await openPage(STAFF);
-    const titleCases = [["#/", "Home — Olympus"], ["#/roles", "Roles — Olympus"], ["#/vote/officer", "Officer · Vote — Olympus"], ["#/community/directory", "Community · Member directory — Olympus"], ["#/admin/settings", "Admin · Settings — Olympus"], ["#/admin/community/claims", "Admin · Character claims — Olympus"], ["#/guide/officer", "Officer guide — Olympus"], ["#/talents/mage", "Mage talents — Olympus"], ["#/updates", "Game updates — Olympus"]];
+    const titleCases = [["#/", "Home — Olympus"], ["#/roles", "Roles — Olympus"], ["#/vote/officer", "Officer · Vote — Olympus"], ["#/community/directory", "Community · Discord member list — Olympus"], ["#/admin/settings", "Admin · Settings — Olympus"], ["#/admin/community/claims", "Admin · Character claims — Olympus"], ["#/guide/officer", "Officer guide — Olympus"], ["#/talents/mage", "Mage talents — Olympus"], ["#/updates", "Game updates — Olympus"]];
     for (const [hash, title] of titleCases) { await titled.go(hash); check(".177 section title: " + hash, titled.document.title === title, titled.document.title); }
     let titleBuild, titleOptions;
     // Title/lifecycle-only fixture: the real renderer's focused suites exercise these dependencies.
@@ -467,6 +534,9 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     staff.answer(pathname => pathname.startsWith("/api/admin/availability?") && unavailable ? new Response(JSON.stringify({ error: "site_access_unavailable" }), { status: 503, headers: { "Content-Type": "application/json" } }) : null);
     await staff.go("#/admin");
     await waitFor(() => !!byText(staff.app, "button", "Try reading availability again"), ".177 availability refusal");
+    const classChoices = staff.app.querySelector('select[aria-label="Which applications"]').querySelectorAll("option").map(option => option.value).filter(key => key.startsWith("class_lead:"));
+    const alphabeticalClassKeys = ["druid", "hunter", "mage", "paladin", "priest", "rogue", "shaman", "warlock", "warrior"].map(key => "class_lead:" + key);
+    check("the admin availability picker displays all nine Class Leads alphabetically with original keys", JSON.stringify(classChoices) === JSON.stringify(alphabeticalClassKeys));
     const retry = byText(staff.app, "button", "Try reading availability again"), reads = () => requests.filter(([p]) => p.startsWith("/api/admin/availability?"));
     check(".177 a partial availability503 keeps overview and explains the access check without an automatic retry", !!byText(staff.app, "h2", "Applications by first choice") && staff.app.textContent.includes("Your current access could not be checked") && !staff.app.textContent.includes("Request failed (503)") && reads().length === 1);
     unavailable = false; retry.click(); retry.click();
@@ -599,7 +669,9 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
       return !/^\/(?:legal\/)?(?:privacy|terms)(?:\.html)?(?:\/|$)/i.test(target.pathname) && !/^#\/(?:legal\/)?(?:privacy|terms)(?:[/?#]|$)/i.test(target.hash);
     } catch { return false; }
   });
-  check(".197 attribution ends at the licence notice and footer contains no Terms/Privacy link", page.app.querySelector("footer").textContent.endsWith("the site\'s code licence does not extend to any of this.") && !page.app.querySelector("footer").textContent.includes("See the Terms of Service.") && footerHasNoPolicyTargets197(page.app.querySelector("footer")));
+  const footerAttribution228 = page.app.querySelector("footer").textContent;
+  check(".197 attribution ends at the licence notice and footer contains no Terms/Privacy link", footerAttribution228.endsWith("The site's code licence does not cover the artwork, icons or fonts.") && !footerAttribution228.includes("See the Terms of Service.") && footerHasNoPolicyTargets197(page.app.querySelector("footer")));
+  check(".228 footer credits the approved stills separately from the optional game-client render", footerAttribution228.includes("default login backgrounds are custom AI-generated stills") && footerAttribution228.includes("optional portal animation is a guild render"));
   check(".197 footer policy-target check rejects old and current legal routes while accepting the actual brand anchor", ["/legal/privacy", "/legal/terms", "#/legal/privacy", "#/legal/terms", "/privacy", "/terms", "privacy.html", "./terms.html", "https://guild.example/legal/privacy?view=1"].every((href) => {
     const detached = page.document.createElement("footer"), link = page.document.createElement("a");
     link.setAttribute("href", href); detached.appendChild(link);
@@ -641,13 +713,13 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   page = await openPage(MEMBER);
   check("a confirmed member sees the admitted Community hub and its directory dropdown, and the boot says confirmedGuildData", !!page.app.querySelector('nav.nav a[href="#/community"]') && page.app.querySelectorAll("details.nav-group").some(group => group.querySelector("summary").textContent === "Community" && group.querySelector('a[href="#/community/directory"]')) && page.boot.community.capabilities.confirmedGuildData === true);
   await page.go("#/community");
-  await waitFor(() => !!byText(page.app, "h3", "Member directory"), "the overview");
-  check("the overview keeps directory, profile and member badge, without a footer link row or old Your-data card", !!byText(page.app, "h3", "Member directory") && !!byText(page.app, "h3", "My profile") && !byText(page.app, "h3", "Your data") && page.app.textContent.includes("confirmed guild member") && !page.app.querySelector(".footer-links"));
+  await waitFor(() => !!byText(page.app, "h3", "Discord member list"), "the overview");
+  check("the overview keeps directory, profile and member badge, without a footer link row or old Your-data card", !!byText(page.app, "h3", "Discord member list") && !!byText(page.app, "h3", "My profile") && !byText(page.app, "h3", "Your data") && page.app.textContent.includes("confirmed guild member") && !page.app.querySelector(".footer-links"));
   await page.go("#/community/directory");
-  check(".196 default member directory leaves optional guild profiles and crafting closed until requested", !!byText(page.app, "h2", "Discord member directory") && !!byText(page.app, "button", "Show opt-in guild profiles and crafting offers") && !byText(page.app, "h2", "Crafting offers"));
-  byText(page.app, "button", "Show opt-in guild profiles and crafting offers").click();
-  await waitFor(() => page.app.textContent.includes("Nobody is listed yet"), "the empty directory");
-  check("the empty directory says so and invites the member to list themselves", page.app.textContent.includes("Nobody is listed yet"));
+  check(".196 default member directory leaves optional guild profiles and crafting closed until requested", !!byText(page.app, "h2", "Discord member list") && !!byText(page.app, "button", "Show Member profiles and crafting offers") && !byText(page.app, "h2", "Crafting offers"));
+  byText(page.app, "button", "Show Member profiles and crafting offers").click();
+  await waitFor(() => page.app.textContent.includes("No profiles are listed yet"), "the empty directory");
+  check("Member profiles identifies the separate opt-in list and invites the member to list themselves", !!byText(page.app, "h2", "Member profiles") && page.app.textContent.includes("No profiles are listed yet"));
   await page.go("#/community/profile");
   await waitFor(() => !!byText(page.app, "button", "Save"), "the profile form");
   let form = byText(page.app, "button", "Save").closest("form");
@@ -668,10 +740,10 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   const saved = one("SELECT listed, main_name, main_source, raid_role FROM community_profiles WHERE discord_id = ?", MEMBER);
   check("Save goes through PUT /api/community/profile: listed, the main confirmed by the keeper's own binding, the profession, the alt and the offer stored", !!saved && saved.listed === 1 && saved.main_name === "Mia One" && saved.main_source === "keeper" && one("SELECT skill FROM community_professions WHERE discord_id = ?", MEMBER).skill === 300 && one("SELECT name, proof FROM community_alt_claims WHERE discord_id = ?", MEMBER).proof === "self" && one("SELECT recipe_name FROM community_craft_offers WHERE discord_id = ?", MEMBER).recipe_name === "Flask of the Titans", JSON.stringify(saved));
   await waitFor(() => page.app.textContent.includes("listed") && !!byText(page.app, "span", "confirmed"), "the redrawn form");
-  check("  the form is redrawn from the saved profile: listed badge, the main marked confirmed", !!byText(page.app, "span", "listed") && !!byText(page.app, "span", "confirmed"));
+  check("  the form is redrawn from the saved profile: listed badge, the main marked confirmed", !!byText(page.app, "span", "Shown in Member profiles") && !!byText(page.app, "span", "confirmed"));
   const other = await openPage(OTHER);
   await other.go("#/community/directory");
-  byText(other.app, "button", "Show opt-in guild profiles and crafting offers").click();
+  byText(other.app, "button", "Show Member profiles and crafting offers").click();
   await waitFor(() => !!byText(other.app, "h3", "Mia"), "the listed member");
   const card = byText(other.app, "h3", "Mia").closest(".card");
   check("another confirmed member sees the listed profile: display name, the main with the confirmed badge, the alt as claimed, the profession with its skill, the offer; never a Discord id", !!card && card.textContent.includes("Mia One") && !!byText(card, "span", "confirmed") && card.textContent.includes("Mia Three") && !!byText(card, "span", "claimed") && card.textContent.includes("Alchemy") && card.textContent.includes("300") && card.textContent.includes("Flask of the Titans") && !other.app.textContent.includes(MEMBER));
@@ -813,11 +885,25 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   await waitFor(() => picks().length === 2 && saves().length === 2, "two rows with roster controls");
   check("fixture: two rows with roster controls", rows() === 2);
   (await fixtureRun("UPDATE community_event_signups SET decision_revision = decision_revision + 1 WHERE event_id = ?", EVENT)); // both commands below are definite refusals (stale)
-  const holds = [400, 50]; o2.hold((p) => p.startsWith("/api/community/event?id=") ? (holds.shift() ?? 0) : 0);
-  picks()[0].value = "accepted"; saves()[0].click(); picks()[1].value = "bench"; saves()[1].click();
-  await new Promise((resolve) => setTimeout(resolve, 900));
-  check("F4b: two overlapping row commands with reversed readbacks: the late readback is discarded, the list holds each row once and the latest readback's state", rows() === 2 && picks().length === 2 && JSON.stringify(picks().map((p) => p.value).sort()) === JSON.stringify(db.prepare("SELECT COALESCE(decision, '') AS d FROM community_event_signups WHERE event_id = ? ORDER BY d").all(EVENT).map((r) => r.d)) && (seen().match(/Not decided\./g) || []).length === 1 && holds.length === 0, JSON.stringify([rows(), picks().map((p) => p.value), (seen().match(/Not decided\./g) || []).length, holds]));
-  o2.hold(null);
+  const realRosterReply = (pathname, init) => indexMod.default.fetch(new Request("https://guild.example" + pathname, {
+    method: init.method || "GET", headers: { Origin: "https://guild.example", ...(init.headers || {}), Cookie: o2.cookie }, body: init.body,
+  }), env({ ASSETS: governanceAssets }), ctx);
+  let releaseFirstReadback, readbacks = 0;
+  const firstReadback = new Promise(resolve => { releaseFirstReadback = resolve; });
+  o2.intercept(async (pathname, init) => {
+    if (!pathname.startsWith("/api/community/event?id=")) return;
+    const reply = await realRosterReply(pathname, init);
+    if (++readbacks === 1) await firstReadback;
+    return reply;
+  });
+  picks()[0].value = "accepted"; saves()[0].click();
+  const firstReadbackHeld = await waitFor(() => readbacks === 1, "the first completed roster readback waits at the gate", 8000);
+  picks()[1].value = "bench"; saves()[1].click();
+  const newerReadbackPainted = await waitFor(() => readbacks === 2 && seen().includes("Not decided."), "the newer roster readback paints first", 8000);
+  releaseFirstReadback();
+  await settle(); await settle();
+  check("F4b: two overlapping row commands with reversed readbacks: the late readback is discarded, the list holds each row once and the latest readback's state", firstReadbackHeld && newerReadbackPainted && rows() === 2 && picks().length === 2 && JSON.stringify(picks().map((p) => p.value).sort()) === JSON.stringify(db.prepare("SELECT COALESCE(decision, '') AS d FROM community_event_signups WHERE event_id = ? ORDER BY d").all(EVENT).map((r) => r.d)) && (seen().match(/Not decided\./g) || []).length === 1, JSON.stringify([rows(), picks().map((p) => p.value), (seen().match(/Not decided\./g) || []).length, readbacks]));
+  o2.intercept(null);
   // a failed readback says so, never that the list was re-read
   (await fixtureRun("UPDATE community_event_signups SET decision_revision = decision_revision + 1 WHERE event_id = ?", EVENT));
   o2.before((p) => p.startsWith("/api/community/event?id="));
@@ -843,20 +929,30 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   const acceptedCount = () => db.prepare("SELECT COUNT(*) AS n FROM community_event_signups WHERE event_id = ? AND decision = 'accepted'").get(EVENT).n;
   // F4b.2 (a): an older successful command whose reply is held while the rows are replaced and the replacement row is acknowledged anew
   await reload2();
-  const holdDecide = [500]; o2.hold((p) => p === "/api/community/events/decide" ? (holdDecide.shift() ?? 0) : 0);
-  picks()[0].value = "declined"; saves()[0].click(); // held 500 ms; the Worker commits row 0's decline now
-  await new Promise((resolve) => setTimeout(resolve, 60));
-  check("fixture: row 0's command is committed by the Worker while its reply is held", dbDecisions().includes("declined"));
+  let releaseOlderReply, ownsOlderCommand = false, olderReplyHeld = false;
+  const olderReplyGate = new Promise(resolve => { releaseOlderReply = resolve; });
+  o2.intercept(async (pathname, init) => {
+    if (pathname !== "/api/community/events/decide" || ownsOlderCommand) return;
+    ownsOlderCommand = true;
+    const reply = await realRosterReply(pathname, init);
+    olderReplyHeld = true;
+    await olderReplyGate;
+    return reply;
+  });
+  picks()[0].value = "declined"; saves()[0].click();
+  const commandReplyHeld = await waitFor(() => olderReplyHeld, "the Worker reply waiting at the explicit gate", 8000);
+  check("fixture: row 0's command is committed by the Worker while its reply is held", commandReplyHeld && dbDecisions().includes("declined"));
   (await fixtureRun("UPDATE community_event_signups SET decision_revision = decision_revision + 1 WHERE event_id = ? AND decision IS NULL", EVENT)); // row 1's next command is stale
   picks()[1].value = "bench"; saves()[1].click();
-  await waitFor(() => seen().includes("Not decided."), "row 1's refusal and the readback that replaces the rows");
+  await waitFor(() => seen().includes("Not decided."), "row 1's refusal and the readback that replaces the rows", 8000);
   const fresh0 = picks().findIndex((p) => p.value === "declined");
   check("fixture: the readback replaced the rows and shows row 0's committed decision", picks().length === 2 && fresh0 >= 0);
   picks()[fresh0].value = "bench"; saves()[fresh0].click();
-  await waitFor(() => dbDecisions().filter((d) => d === "bench").length === 1 && seen().includes("Roster: on the bench."), "the replacement row's newer acknowledgement");
-  await new Promise((resolve) => setTimeout(resolve, 650)); // the older reply arrives now
-  check("F4b.2: the older command's reply, arriving after the rows were replaced and the replacement row acknowledged, says nothing and changes nothing (no 'declined' toast, the newest decision shown, the counts current)", !seen().includes("Roster: declined.") && picks()[fresh0].value === "bench" && !dbDecisions().includes("declined") && counts2().includes(`${acceptedCount()} accepted`));
-  o2.hold(null);
+  const newerReplyPainted = await waitFor(() => dbDecisions().filter((d) => d === "bench").length === 1 && seen().includes("Roster: on the bench."), "the replacement row's newer acknowledgement", 8000);
+  releaseOlderReply();
+  await settle(); await settle();
+  check("F4b.2: the older command's reply, arriving after the rows were replaced and the replacement row acknowledged, says nothing and changes nothing (no 'declined' toast, the newest decision shown, the counts current)", newerReplyPainted && !seen().includes("Roster: declined.") && picks()[fresh0].value === "bench" && !dbDecisions().includes("declined") && counts2().includes(`${acceptedCount()} accepted`));
+  o2.intercept(null);
   // F4b.2 (b): a pagination response held across a readback that replaced the table is discarded; the cursor stays the readback's
   const extra = Array.from({ length: 100 }, (_, i) => "31000000000000" + String(100 + i));
   for (const who of extra) { await siteUser(who, { global_name: "Page " + who.slice(-3) }); await character(who, "Page " + who.slice(-3), "Player-9-" + who.slice(-4)); }
@@ -922,17 +1018,32 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   o2.answer(null); o2.hold(null);
   // (b) the same after a readback replaced the rows: the controls stay, nothing adopted
   await reloadEvent();
-  fakeContexts = 1; heldContexts = 1; let refusals = 0;
-  o2.answer((p) => p === "/api/community/events/decide" && refusals++ === 0 ? status403() : (p === "/api/community/context" && fakeContexts-- > 0 ? contextChanged : null));
-  o2.hold((p) => p === "/api/community/context" && heldContexts-- > 0 ? 300 : 0);
+  const originalPickers = picks();
+  let releaseContext, contextHeld = false, contextDelivered = false, refusals = 0;
+  const contextGate = new Promise(resolve => { releaseContext = resolve; });
+  o2.answer((p) => p === "/api/community/events/decide" && refusals++ === 0 ? status403() : null);
+  o2.intercept(async (pathname, init) => {
+    if (pathname !== "/api/community/context" || contextHeld) return;
+    const response = await realRosterReply(pathname, init);
+    if (!response.ok) return response;
+    contextHeld = true;
+    await contextGate;
+    contextDelivered = true;
+    return Response.json(contextChanged);
+  });
   picks()[0].value = "accepted"; saves()[0].click(); // the refused command starts the held context refresh
-  await waitFor(() => heldContexts === 0, "the held context refresh", 1500);
+  const staleContextHeld = await waitFor(() => contextHeld, "the held context refresh", 8000);
   (await fixtureRun("UPDATE community_event_signups SET decision_revision = decision_revision + 1 WHERE event_id = ?", EVENT));
   picks()[1].value = "bench"; saves()[1].click(); // a definite refusal: its readback replaces the rows
-  await waitFor(() => seen().includes("Not decided."), "the readback that replaces the rows");
-  await new Promise((resolve) => setTimeout(resolve, 600)); // the held context reply arrives now
-  check("F4b.1 follow-up: a changed context reply arriving after the rows were replaced adopts nothing: the controls stay and the Calendar tab stays", calendarTab() && picks().length >= 2 && saves().length >= 2);
-  o2.answer(null); o2.hold(null);
+  const contextRowsReplaced = await waitFor(() => {
+    const currentPickers = picks();
+    return currentPickers.length === originalPickers.length && currentPickers[1] !== originalPickers[1]
+      && seen().includes("Not decided.");
+  }, "the readback that replaces the rows", 8000);
+  releaseContext();
+  await settle(); await settle();
+  check("F4b.1 follow-up: a changed context reply arriving after the rows were replaced adopts nothing: the controls stay and the Calendar tab stays", staleContextHeld && contextRowsReplaced && contextDelivered && calendarTab() && picks().length >= 2 && saves().length >= 2);
+  o2.answer(null); o2.intercept(null);
   // (c) the positive: a current refresh adopts the changed context and redraws
   await reloadEvent();
   fakeContexts = 1;
@@ -1008,11 +1119,25 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   await org.go("#/community/calendar/new");
   await waitFor(() => !!byText(org.app, "button", "Schedule"), "the event form");
   let evForm = byText(org.app, "button", "Schedule").closest("form");
+  const eventTitleControl = evForm.querySelector('#f-ev-title');
+  const eventDurationControl = evForm.querySelector('#f-ev-duration');
+  byText(evForm, "button", "Schedule").click();
+  check("CC065 empty event title focuses and describes the invalid field",
+    org.document.activeElement === eventTitleControl && eventTitleControl.getAttribute('aria-invalid') === 'true'
+    && eventTitleControl.getAttribute('aria-describedby').includes('err-ev-title') && !evForm.querySelector('#err-ev-title').hidden);
   const startLocal = (() => { const d = new Date((now + 4 * DAY) * 1000); const p = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; })();
-  evForm.querySelector('input[type="text"]').value = "Onyxia";
+  eventTitleControl.value = "Onyxia";
   evForm.querySelector("textarea").value = "Cloaks on.";
   evForm.querySelector('input[type="datetime-local"]').value = startLocal;
-  evForm.querySelectorAll('input[type="number"]')[0].value = "90";
+  eventDurationControl.value = "1";
+  byText(evForm, "button", "Schedule").click();
+  await waitFor(() => eventDurationControl.getAttribute('aria-invalid') === 'true', "the Worker duration refusal and focus");
+  check("CC065 the real duration refusal moves focus, clears the old error and preserves the unsent draft",
+    org.document.activeElement === eventDurationControl && !evForm.querySelector('#err-ev-duration').hidden
+    && eventTitleControl.getAttribute('aria-invalid') === 'false' && evForm.querySelector('#err-ev-title').hidden
+    && eventTitleControl.value === 'Onyxia' && evForm.querySelector('textarea').value === 'Cloaks on.'
+    && !one("SELECT 1 FROM community_events WHERE title = 'Onyxia'"));
+  eventDurationControl.value = "90";
   evForm.querySelectorAll('input[type="number"]')[1].value = "40";
   evForm.querySelector('input[data-role="tank"]').value = "2";
   byText(evForm, "button", "Schedule").click();
@@ -1176,7 +1301,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   pf.before((pathname) => { if (pathname === "/api/community/directory" || pathname === "/api/community/context") accessRefreshRequests.push(pathname); return false; });
   (await fixtureRun("UPDATE site_users SET denied = 1 WHERE discord_id = ?",MEMBER));
   await pf.go("#/community/directory");
-  byText(pf.app, "button", "Show opt-in guild profiles and crafting offers").click();
+  byText(pf.app, "button", "Show Member profiles and crafting offers").click();
   await waitFor(() => pf.app.textContent.includes("no longer have access"), "the fresh shell");
   check("F5: a 403 re-reads the context once and the shell follows it: the Community tab gone, the page says the access ended", pf.app.textContent.includes("no longer have access") && !texts(pf.app, "nav.nav a").includes("Community") && accessRefreshRequests.filter((pathname) => pathname === "/api/community/directory").length === 1 && accessRefreshRequests.filter((pathname) => pathname === "/api/community/context").length === 1);
   pf.before(null);
@@ -1291,7 +1416,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   // F100-3: a late crafting reply under a new query
   const cr = await openPage(MEMBER);
   await cr.go("#/community/directory");
-  byText(cr.app, "button", "Show opt-in guild profiles and crafting offers").click();
+  byText(cr.app, "button", "Show Member profiles and crafting offers").click();
   await waitFor(() => !!byText(cr.app, "h2", "Crafting offers"), "the crafting panel");
   const craft3 = byText(cr.app, "h2", "Crafting offers").closest("section");
   const craftingMore104 = byText(craft3, "button", "Show more");
@@ -1451,7 +1576,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   // group 5: the crafting generation advances before the empty-query return
   const cr7 = await openPage(OTHER);
   await cr7.go("#/community/directory");
-  byText(cr7.app, "button", "Show opt-in guild profiles and crafting offers").click();
+  byText(cr7.app, "button", "Show Member profiles and crafting offers").click();
   await waitFor(() => !!byText(cr7.app, "h2", "Crafting offers"), "the directory");
   const craft7 = byText(cr7.app, "h2", "Crafting offers").closest("section");
   let slow7 = false;
@@ -1796,6 +1921,10 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     const adm = await openPage(STAFF);
     await adm.go("#/admin/settings");
     await waitFor(() => !!adm.app.querySelector("#lead-gm-0") && !!byText(adm.app, "button", "Refresh reset status"), "the .114 settings blocks");
+    const sortedClassKeys = ["druid", "hunter", "mage", "paladin", "priest", "rogue", "shaman", "warlock", "warrior"];
+    const appointmentClassKeys = adm.app.querySelectorAll(".appointed-row").map(row => row.getAttribute("data-appointment-field203")).filter(key => key.startsWith("class_lead:")).map(key => key.slice("class_lead:".length));
+    const quietClassLabels = adm.app.querySelectorAll(".quiet-row input").map(input => input.getAttribute("aria-label")).filter(label => label.includes(" Class Lead:")).map(label => label.split(" ")[0].toLowerCase());
+    check("admin class appointments and no-vote controls keep all nine keys in alphabetical display order", JSON.stringify(appointmentClassKeys) === JSON.stringify(sortedClassKeys) && JSON.stringify(quietClassLabels) === JSON.stringify(sortedClassKeys));
     const dormantBnet = await indexMod.default.fetch(new Request("https://guild.example/api/admin/bnet-switch", {headers:{Cookie:adm.cookie}}), env(), ctx), dormantBnetState = await dormantBnet.json();
     check(".196 dormant Battle.net collection is actually OFF and exposes no enable control in Admin", dormantBnet.status === 200 && dormantBnetState.effective === false && !adm.app.querySelector("#bnet-switch") && !adm.app.textContent.includes("Request future enablement") && !byText(adm.app, "h2", "Battle.net sign-in"));
     const namesOk = adm.app.querySelector("#appointed-names-ok"), leadOk = adm.app.querySelector("#lead-names-ok");
@@ -1922,17 +2051,17 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     off5.delay((p) => { calls.push(p); return 0; });
     await off5.go("#/community");
     await waitFor(() => !!byText(off5.app, "h3", "Leadership"), "the community overview");
-    check("(.115) News is off by default: no News tab and no News card for a confirmed member", !texts(off5.app, 'nav[aria-label="Community sections"] a').includes("News") && !byText(off5.app, "h3", "News"));
+    check("(.115) News is off by default: no News tab and no News card for a confirmed member", !texts(off5.app, 'nav[aria-label="Community sections"] a').includes("Town Crier") && !byText(off5.app, "h3", "Town Crier"));
     await off5.go("#/community/news");
     await settle();
-    check("  and #/community/news is no page while it is off: the page asks the Worker nothing", off5.app.textContent.includes("There is no such community page") && !calls.some((p) => p.startsWith("/api/news")));
+    check("  the legacy News link opens the canonical off state without reading the Worker", off5.location.hash === "#/news" && off5.app.textContent.includes("Town Crier dispatches are switched off.") && !calls.some((p) => p.startsWith("/api/news")));
     const adm6 = await openPage(STAFF);
     await adm6.go("#/admin/news");
     await waitFor(() => !!byText(adm6.app, "h2", "New notice"), "Admin → News");
     check("  Admin → News while off: the tab, the switch's state, that nothing can be posted, the form locked", texts(adm6.app, 'nav[aria-label="Admin sections"] a').includes("News") && adm6.app.textContent.includes("News is switched off (Admin → Settings); notices cannot be posted while it is off.") && byText(adm6.app, "button", "Post notice").disabled === true && adm6.app.querySelector("#f-news-title").disabled === true);
     await adm6.go("#/admin/settings");
     await waitFor(() => !!adm6.app.querySelector("#news-on"), "the News switch");
-    check("  Admin → Settings has the News switch beside the others, unticked", adm6.app.querySelector("#news-on").checked === false && adm6.app.textContent.includes("News page: guild members and site administrators can read Community → News"));
+    check("  Admin → Settings has the Town Crier switch beside the others, unticked", adm6.app.querySelector("#news-on").checked === false && adm6.app.textContent.includes("Town Crier: guild members and site administrators can read the dispatches"));
     adm6.app.querySelector("#news-on").checked = true;
     byText(adm6.app, "button", "Save settings").click();
     await waitFor(() => (one("SELECT value FROM site_settings WHERE key = 'newsOn'") || {}).value === "1", "the switch saved");
@@ -1964,12 +2093,12 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     (await fixtureRun("INSERT INTO community_events (id, op_id, title, starts_at, duration_min, ends_at, created_by, created_at, updated_at, retain_until) VALUES (?, ?, ?, ?, 120, ?, ?, ?, ?, ?)",EV, EV, "Zul'Gurub", now + 900, now + 900 + 7200, OTHER, now, now, now + 900 + 7200 + 30 * 86400));
     const news = await openPage(MEMBER);
     await news.go("#/community");
-    await waitFor(() => !!byText(news.app, "h3", "News"), "the News card");
-    const card = byText(news.app, "h3", "News").closest("a");
-    check("  switched on: the News tab and the overview card with the official launch icon", texts(news.app, 'nav[aria-label="Community sections"] a').includes("News") && card.getAttribute("href") === "#/community/news" && !!card.querySelector('img[src="/static/wow/icon-launch.png"]'));
+    await waitFor(() => !!byText(news.app, "h3", "Town Crier"), "the News card");
+    const card = byText(news.app, "h3", "Town Crier").closest("a");
+    check("  switched on: the News tab and the overview card with the official launch icon", texts(news.app, 'nav[aria-label="Community sections"] a').includes("Town Crier") && card.getAttribute("href") === "#/news" && !!card.querySelector('img[src="/static/wow/icon-launch.png"]'));
     await news.go("#/community/news");
     await waitFor(() => !!byText(news.app, "h2", "Notices"), "the News page");
-    check("  the News page: no notices yet; Olympus I full by the export of about the hour; no figures yet; the directory link; the later announced beta shutdown plan and the launch", frameOf(news, "Notices").textContent.includes("No notices right now.") && frameOf(news, "Olympus I").textContent.includes("Olympus I is full: the officers' roster export of about") && frameOf(news, "Olympus I").textContent.includes("counts 1000 of 1000 members") && frameOf(news, "The guild in figures").textContent.includes("No figures yet") && !!frameOf(news, "Leadership directory").querySelector('a[href="#/community/leadership"]') && /October/.test(frameOf(news, "The road to launch").textContent) && frameOf(news, "The road to launch").textContent.includes("23") && frameOf(news, "The road to launch").textContent.includes("scheduled the final beta shutdown") && frameOf(news, "The road to launch").textContent.includes("actual server closure was not observed") && !!frameOf(news, "The road to launch").querySelector('a[href="https://us.forums.blizzard.com/en/wow/t/heads-up-wow-forever-stress-test-on-october-21/2387920"]') && !!frameOf(news, "The road to launch").querySelector('[role="timer"]'));
+    check("  the News page: no notices yet; Olympus I full by the export of about the hour; no figures yet; the directory link; the later announced beta shutdown plan and the launch", frameOf(news, "Notices").textContent.includes("No notices right now.") && frameOf(news, "Olympus I").textContent.includes("Olympus I is full: the officers' roster export of about") && frameOf(news, "Olympus I").textContent.includes("counts 1000 of 1000 members") && frameOf(news, "The guild in figures").textContent.includes("No figures yet") && !!frameOf(news, "Leadership directory").querySelector('a[href="#/community/leadership"]') && /October/.test(frameOf(news, "Forever milestones").textContent) && frameOf(news, "Forever milestones").textContent.includes("23") && frameOf(news, "Forever milestones").textContent.includes("scheduled the final beta shutdown") && frameOf(news, "Forever milestones").textContent.includes("actual server closure was not observed") && !!frameOf(news, "Forever milestones").querySelector('a[href="https://us.forums.blizzard.com/en/wow/t/heads-up-wow-forever-stress-test-on-october-21/2387920"]') && (Date.now() < 1793833200000 ? !!frameOf(news, "Forever milestones").querySelector('.launch-notice218 [role="timer"]') : Date.now() < 1796889600000 ? !!frameOf(news, "Forever milestones").querySelector('.launch-notice218') && frameOf(news, "Forever milestones").textContent.includes("Barrow Deeps, Hyjal Summit and Onyxia’s Lair open on 9 December 2026") && !frameOf(news, "Forever milestones").querySelector('[role="timer"]') : !frameOf(news, "Forever milestones").querySelector('.launch-notice218')));
     const rel = load("./site-news").RELEASE_NOTES[0];
     check(".222 ordinary members cannot see Site updates or its release-note payload", !frameOf(news,"Site updates")&&!news.app.textContent.includes(rel.lines[0]));
     const owner222=STAFF; // Existing synthetic owner fixture; never recreate its account.
@@ -2228,16 +2357,16 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     (await fixtureRun("INSERT INTO site_settings (key, value, updated_at, updated_by) VALUES ('launchAt', ?, ?, NULL) ON CONFLICT(key) DO UPDATE SET value = excluded.value",String(now - 60), now));
     const live5 = await openPage(MEMBER, {}, { clockNow: 1793836800000 });
     await live5.go("#/community/news");
-    await waitFor(() => !!byText(live5.app, "h2", "The road to launch"), "the road to launch");
-    const announcedRoad218=frameOf(live5, "The road to launch");
-    check("  one hour after the announced global launch News states the announcement passed and directs readers to service notices without claiming observed service", announcedRoad218.textContent.includes("First raids are announced for 9 December 2026") && announcedRoad218.textContent.includes("regional opening hour is not confirmed here")&&!announcedRoad218.querySelector('[role="timer"]')&&!announcedRoad218.textContent.includes("Live now"));
+    await waitFor(() => !!byText(live5.app, "h2", "Forever milestones"), "the Forever milestones");
+    const announcedRoad218=frameOf(live5, "Forever milestones");
+    check("  one hour after the announced global launch News states the announcement passed and directs readers to service notices without claiming observed service", announcedRoad218.textContent.includes("Barrow Deeps, Hyjal Summit and Onyxia’s Lair open on 9 December 2026") && announcedRoad218.textContent.includes("Check Blizzard for the opening time")&&!announcedRoad218.querySelector('[role="timer"]')&&!announcedRoad218.textContent.includes("Live now"));
     // .218: the official launch announcement must not silently inherit the editable guild admission date.
     for (const [label, clock, arrived] of [["one hour before", 1793829600000, false], ["one hour after", 1793836800000, true]]) {
       const launch218 = await openPage(MEMBER, {}, { clockNow: clock, bootTransform(boot) { boot.settings.launchAt = 1793919600; } });
       await launch218.go("#/apply");
       const announcement218 = launch218.app.querySelector('.launch-notice218');
       check(".218 " + label + " official launch uses4Nov even if guild schedule is5Nov", !!announcement218 && announcement218.textContent.includes(arrived ? "9 December · first Forever raids" : "4 November 2026 · 23:00 UTC")
-        && (arrived ? announcement218.textContent.includes("regional opening hour is not confirmed here") && !announcement218.querySelector('[role="timer"]')
+        && (arrived ? announcement218.textContent.includes("Check Blizzard for the opening time") && !announcement218.querySelector('[role="timer"]')
           : Array.from(announcement218.querySelector('[role="timer"]')?.querySelectorAll('.num') || [], node => node.textContent).join(':') === '0:01:00:00'));
     }
     if (launchRow) (await fixtureRun("UPDATE site_settings SET value = ? WHERE key = 'launchAt'",launchRow.value)); else (await fixtureRun("DELETE FROM site_settings WHERE key = 'launchAt'"));
@@ -2392,7 +2521,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   const unconfirmed = await openPage(STAFF, { SITE_ADMINS: "" });
   await unconfirmed.go("#/community/directory");
   await settle();
-  check(".176 a signed-in ordinary account without roster or role proof gets the standing notice instead of the directory", !unconfirmed.boot.user.isAdmin && !unconfirmed.boot.community.capabilities.communityRead && unconfirmed.app.textContent.includes("Guild Member role") && !byText(unconfirmed.app, "h2", "Member directory"));
+  check(".176 a signed-in ordinary account without roster or role proof gets the standing notice instead of the directory", !unconfirmed.boot.user.isAdmin && !unconfirmed.boot.community.capabilities.communityRead && unconfirmed.app.textContent.includes("Guild Member role") && !byText(unconfirmed.app, "h2", "Discord member list") && !byText(unconfirmed.app, "h2", "Member profiles"));
   const denied = await openPage(DENIED);
   check(".154 denied identity receives no app boot while account controls remain separately reachable", denied.boot === null && denied.app === null && denied.html.includes('href="/auth/login"') && !denied.html.includes("/static/app.js"));
   const deniedControls = await policyHTML("/privacy/account", { who: DENIED, client: "account" });
@@ -2710,7 +2839,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
     // Do not import a substitute module in this miniDOM. Actual SVG layout, the current39-group model/96-term search (with original38/95 preserved),
     // pan/zoom, list view, keyboard and pointer interaction require Root's separate real-browser check.
     check(".218 an ordinary member no longer discovers the officer-only treasury plan, and the Royal Writs switch stays off", !p.app.querySelector('a[href="#/treasury-plan"]') && !p.app.querySelector('[data-royal-writ-page="governance"]'));
-    check(".207 treasury planning route retains the current-session/view fence and no bank writer", APP_JS.includes('ROUTES["treasury-plan"] = async (main, parts) => {') && APP_JS.includes('await import("/static/treasury-plan207.js")') && APP_JS.includes('currentRoute() === route && S.signedIn && !S.denied') && APP_JS.includes('if (!current()) return;\n      const dispose = renderTreasuryPlan207(main, { h, add, clear, posIcon, parts, scrollToSection, isCurrent: current });') && !/PUBLIC_ROUTES = new Set\([^\n]*treasury-plan/.test(APP_JS));
+    check(".207 treasury planning route retains the current-session/view fence and no bank writer", APP_JS.includes('ROUTES["treasury-plan"] = async (main, parts) => {') && APP_JS.includes('await import("/static/treasury-plan207.js")') && APP_JS.includes('currentRoute() === route && S.signedIn && !S.denied') && APP_JS.includes('if (!current()) return;\n      const dispose = renderTreasuryPlan207(main, { h, add, clear, posIcon, parts, scrollToSection, isCurrent: current,\n        officeLabel: key => offices199().find(office => office.key === key)?.label });') && !/PUBLIC_ROUTES = new Set\([^\n]*treasury-plan/.test(APP_JS));
     const organizationSource = fs.readFileSync(path.join(root, "public/static/organization-view.js"), "utf8");
     const modelResponse = await indexMod.default.fetch(new Request("https://guild.example/static/governance/organization.json", { headers: { Cookie: p.cookie } }), env({ ASSETS: governanceAssets }), ctx);
     const model = await modelResponse.json(), nodes = new Map(model.nodes.map((node) => [node.id, node]));
@@ -2748,7 +2877,7 @@ const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
 function originalTerms218(terms) {
  terms=require('../../scripts/governance-cabinet224-inverse.cjs').restoreCabinet224(terms,'terms');
  terms=require('../../scripts/governance-role-inverse222.cjs').originalTerms222(terms);
- const specs={office_26:{ordinal:26,label:'Council of Justice',applicationLabel:'Council of Justice',acquisition:'Case-designated judicial institution; chaired by the Lord High Chancellor, with accepted unconflicted members.'},office_94:{ordinal:94,label:'War Head',applicationLabel:'War Directorate (historical shared template)',acquisition:'Historical shared War Head reference; current PvE and PvP portfolios have their own separate appointments.'}};
+ const specs={office_26:{ordinal:26,label:'Council of Justice',applicationLabel:'Council of Justice',acquisition:'Case-designated judicial institution. The Lord High Justiciar directs procedure. Panel members must be designated and unconflicted.'},office_94:{ordinal:94,label:'War Head',applicationLabel:'War Directorate (historical shared template)',acquisition:'Historical shared War Head reference; current PvE and PvP portfolios have their own separate appointments.'}};
  const keys=['label','applicationLabel','applicationAliases','applicationEligible','applicationRoleKeys','acquisition'];
  return terms.map(current=>{
   const term=JSON.parse(JSON.stringify(current)),spec=specs[term.officeKey];
@@ -2765,16 +2894,19 @@ function originalTerms218(terms) {
  });
 }
       const digest = value => require("node:crypto").createHash("sha256").update(JSON.stringify(value)).digest("hex"), trading = model.terms[95];
+      const readerNodes = require("./governance_reader_nodes228_fixture.cjs").originalReaderNodes228(model.nodes);
+      if (!readerNodes) return false;
       return modelResponse.status === 200 && modelResponse.headers.get("Cache-Control") === "private, no-store, no-transform" && model.revision === "R7" && model.draft === false && model.ratified === true && model.appointmentsIssued === false
-        && model.nodes.length === 42 && nodes.size === 42 && model.terms.length === 102 && new Set(model.terms.map(term => term.label)).size === 102 && model.nativeRanks.length === 10 && model.officeMandates.length === 42
-        && digest(require("../../scripts/governance-cabinet224-inverse.cjs").restoreCabinet224(model.nodes,"nodes").filter(node => !["trading","security","concordat","propaganda"].includes(node.id)).map(node=>node.id==="intake"?{...node,parent:"heraldry"}:node.id==="systems"?JSON.parse(fs.readFileSync(path.join(root,"../docs/governance-nodes222.json"),"utf8")).systemsBefore:node)) === "62fd12faf62b8529a8679a80a1ee278e2422048502c01738ac2fe7286c677ddf"
-        && digest(require("../../scripts/governance-cabinet224-inverse.cjs").restoreCabinet224(model.officeMandates,"officeMandates").filter(office => !["trading","security","concordat","propaganda"].includes(office.nodeId))) === "ae968c007def93478c0bfac5e51169f9a3f4bd62d7abddaaa624210aa267ae2c"
+        && model.nodes.length === 43 && nodes.size === 43 && model.terms.length === 103 && new Set(model.terms.map(term => term.label)).size === 103 && model.nativeRanks.length === 10 && model.officeMandates.length === 43
+        && digest(require("../../scripts/governance-cabinet224-inverse.cjs").restoreCabinet224(readerNodes,"nodes").filter(node => !["trading","security","concordat","propaganda","systems-heraldry"].includes(node.id)).map(node=>node.id==="intake"?{...node,parent:"heraldry"}:node.id==="systems"?JSON.parse(fs.readFileSync(path.join(root,"../docs/governance-nodes222.json"),"utf8")).systemsBefore:node)) === "62fd12faf62b8529a8679a80a1ee278e2422048502c01738ac2fe7286c677ddf"
+        && digest(require("../../scripts/governance-cabinet224-inverse.cjs").restoreCabinet224(model.officeMandates,"officeMandates").filter(office => !["trading","security","concordat","propaganda","systems-heraldry"].includes(office.nodeId))) === "ae968c007def93478c0bfac5e51169f9a3f4bd62d7abddaaa624210aa267ae2c"
         && digest(originalTerms218(model.terms.slice(0, 95))) === "74fb4f44153a550b7b306789763e73932393e96124d781572c6d2db5c9b87d3b"
-        && model.book.bytes === 272700 && model.book.sha256 === "947093b9f1bdaf787c63d875b895821f2ac63d51ca4be240992713f9d346d683"
-        && model.appointments.length === 138 && new Set(model.appointments.map(row => row.key)).size === 138 && model.councilComposition.currentSeats.length === 13
+        && model.book.bytes === 273507 && model.book.sha256 === "fb6816b77507c2855f45511a32d1b46fbdcab804965e78a3650eb6f071684cac"
+        && model.appointments.length === 139 && new Set(model.appointments.map(row => row.key)).size === 139 && model.councilComposition.currentSeats.length === 14
+        && nodes.get("systems-heraldry").parent === "council" && model.appointments.some(office => office.key === "office_103" && office.nativeSlot === 1 && office.applicationEligible === false && office.mappingApplies === false)
         && trading.officeKey === "office_96" && trading.ordinal === 96 && trading.label === "Lord High Factor · Minister of Trading & Markets" && trading.tier === "high_council" && trading.nativeSlot === 1 && trading.applicationEligible === false && trading.mappingApplies === false;
     })());
-    check(".154 actual model keeps hierarchy, independent review and the five liaison remits", nodes.get("council").parent === "founder" && nodes.get("council").relation === "accountability" && nodes.get("war").parent === "council" && nodes.get("officers").parent === "guilds" && nodes.get("justice").relation === "independence" && nodes.get("auditor").relation === "independence" && model.nodes.filter((node) => node.parent === "emissaries").length === 5 && nodes.get("emissary-heraldry").coordinates.includes("heraldry"));
+    check(".154 actual model keeps hierarchy, independent review and the five liaison remits", nodes.get("council").parent === "founder" && nodes.get("council").relation === "accountability" && nodes.get("war").parent === "council" && nodes.get("officers").parent === "guilds" && nodes.get("justice").relation === "independence" && nodes.get("auditor").relation === "independence" && model.nodes.filter((node) => node.parent === "emissaries").length === 5 && nodes.get("emissary-heraldry").coordinates.includes("propaganda"));
     const marshal = model.terms.find((term) => term.label === "Marshall");
     check(".154 actual model keeps I-X unappointed and Marshall as a bounded event alias, not a native slot", model.guildPlaceholders.length === 10 && model.guildPlaceholders.every((guild) => guild.state === "Unappointed placeholder") && marshal.classification === "local" && marshal.nodeId === "tactical" && marshal.note.includes("Marshal is the book") && nodes.get(marshal.nodeId).kind === "event assignments" && nodes.get(marshal.nodeId).limits.includes("event command is separately assigned and gives no general guild or bank authority") && !model.nativeRanks.some((rank) => rank.name === "Marshall"));
     check(".154 member reader makes only its fixed credentialed book GET, no directory API or write", requests.length === 1 && requests[0].pathname === "/static/governance/reconciled-book.md" && requests[0].method === "GET" && requests[0].credentials === "same-origin");
@@ -2846,9 +2978,46 @@ function originalTerms218(terms) {
       await p.go(route(id)); await loaded(p);
       check(".130 preview renders safe title text without script markup or private event details", p.app.querySelector("pre").textContent.includes("script") && !p.app.querySelector("script") && !p.app.querySelector("pre").textContent.includes("PRIVATE_SIGNUP_DETAILS") && !byText(p.app, "button", "Publish announcement").disabled);
       const readable = p.app.querySelector("[data-announcement-preview]");
-      check(".130 primary preview shows readable local time and title without Discord markup", readable.textContent.includes("Raid <script>alert(1)</script>") && readable.textContent.includes("Duration: 120 minutes") && !readable.textContent.includes("<t:") && !readable.textContent.includes("**") && readable.querySelector("a").getAttribute("href").endsWith("/" + id));
+      const eventPath = "community/calendar/" + id;
+      const calendarUrl = "https://guild.example/?to=" + encodeURIComponent(eventPath);
+      check(".130 primary preview shows readable local time and title without Discord markup", readable.textContent.includes("Raid <script>alert(1)</script>") && readable.textContent.includes("Duration: 120 minutes") && !readable.textContent.includes("<t:") && !readable.textContent.includes("**") && readable.querySelector("a")?.getAttribute("href") === calendarUrl);
       const exactMessageDetail = p.app.querySelector("main.shell pre.details").closest("details");
-      check(".130 collapsed exact-message detail preserves the complete frozen payload", exactMessageDetail.querySelector("pre").textContent === (await apiAs(ORG, "GET", `/api/community/events/discord?eventId=${id}`, undefined, over)).body.payload.content && !exactMessageDetail.hasAttribute("open"));
+      const previewPath = `/api/community/events/discord?eventId=${id}`;
+      const livePreview = (await apiAs(ORG, "GET", previewPath, undefined, over)).body;
+      check(".130 collapsed exact-message detail preserves the complete frozen payload", exactMessageDetail.querySelector("pre").textContent === livePreview.payload.content && !exactMessageDetail.hasAttribute("open"));
+      const variant = await openPage(ORG, over);
+      await variant.go(route(id)); await loaded(variant);
+      const showLinkVariant = async (url) => {
+        const content = livePreview.payload.content.replace(calendarUrl, url);
+        variant.answer(pathname => pathname === previewPath ? { ...livePreview, payload: { ...livePreview.payload, content } } : null);
+        byText(variant.app, "button", "Refresh announcement status").click(); await loaded(variant);
+        const panel = variant.app.querySelector("[data-announcement-preview]");
+        return { panel, content, exact: variant.app.querySelector("pre").textContent };
+      };
+      const historicalUrl = "https://guild.example/#/" + eventPath;
+      const historical = await showLinkVariant(historicalUrl);
+      check(".130 the exact historical fragment remains readable with its raw text intact", historical.panel.querySelector("a")?.getAttribute("href") === historicalUrl && !historical.panel.textContent.includes("<t:") && historical.exact === historical.content);
+      const wrongId = (id[0] === "A" ? "B" : "A") + id.slice(1);
+      const disallowed = [
+        calendarUrl.replace("guild.example", "outside.example"),
+        calendarUrl.replace(id, wrongId),
+        calendarUrl + "&to=vote",
+        historicalUrl + "/edit",
+      ];
+      let allPlain = true;
+      for (const url of disallowed) {
+        const rejected = await showLinkVariant(url);
+        allPlain = allPlain && !rejected.panel.querySelector("a") && rejected.panel.textContent === rejected.content && rejected.exact === rejected.content;
+      }
+      check(".130 foreign, wrong-event, duplicate-return and historical subpath variants render only as exact text", allPlain);
+      const href = readable.querySelector("a")?.getAttribute("href");
+      const landing = href ? await indexMod.default.fetch(new Request(href, { headers: { Cookie: p.cookie } }), env(over), ctx) : null;
+      const destination = landing?.headers.get("Location");
+      if (landing?.status === 303 && destination === "/#/" + eventPath) {
+        await variant.go(new URL(destination, href).hash);
+        await waitFor(() => !!byText(variant.app, "a", "Discord announcement"), "event opened from the preview");
+      }
+      check(".130 the preview link returns an admitted organizer to the original event", landing?.status === 303 && destination === "/#/" + eventPath && variant.app.textContent.includes("Raid <script>alert(1)</script>") && !!byText(variant.app, "a", "Discord announcement"));
       p.drop((pathname, init) => pathname.endsWith("/discord/publish") && init.method === "POST");
       byText(p.app, "button", "Publish announcement").click();
       await waitFor(() => p.app.textContent.includes("published and matches"), "lost browser answer reconciles durable publication");
@@ -3207,15 +3376,18 @@ function originalTerms218(terms) {
     await waitFor(() => !!dialog210() && !!dialog210().querySelector("textarea"), ".210 the deny prompt");
     if (dialog210()?.querySelector("textarea")) { dialog210().querySelector("textarea").value = "QA check"; byText(dialog210(), "button", "Deny permanently")?.click(); }
     await waitFor(() => denied210() === 1, ".210 the denial");
-    check(".210 Deny permanently on the admin page records the denial", denied210() === 1);
+    check("Deny permanently records its explicit rejection and prevents a business-only downgrade",
+      denied210() === 1 && one("SELECT source FROM privacy_rejection_decisions").source === "explicit_membership_deny"
+      && sent210.some(([m, p, action, target]) => m === "POST" && p === `/api/admin/users/${APP210}/deny` && action === "membership_rejection_v1" && target));
     await waitFor(() => !!byText(adm210.app, "button", "Lift the denial"), ".210 the lift control");
     const wasDenied210 = denied210() === 1;
     byText(adm210.app, "button", "Lift the denial")?.click();
     await waitFor(() => !!dialog210() && !!byText(dialog210(), "button", "Lift it"), ".210 the lift confirmation");
     if (dialog210()) byText(dialog210(), "button", "Lift it")?.click();
     await waitFor(() => denied210() === 0, ".210 the lifted denial");
-    check(".210 Lift the denial on the admin page clears a recorded denial through an admitted decision",
-      wasDenied210 && denied210() === 0 && sent210.some(([m, p, action, target]) => m === "POST" && p === `/api/admin/users/${APP210}/undeny` && action === "business_only" && target));
+    check("Lift the denial clears the recorded rejection through explicit reconsideration",
+      wasDenied210 && denied210() === 0 && !one("SELECT 1 FROM privacy_rejection_decisions")
+      && sent210.some(([m, p, action, target]) => m === "POST" && p === `/api/admin/users/${APP210}/undeny` && action === "membership_reconsideration_v1" && target));
     await adm210.go(`#/admin/applications/${DEL210}`);
     await waitFor(() => !!byText(adm210.app, "button", "Delete their site data"), ".210 the second application page");
     byText(adm210.app, "button", "Delete their site data")?.click();
@@ -3233,7 +3405,7 @@ function originalTerms218(terms) {
 
   {
     // RT16 successor proposal: actual UI + Native Worker unless explicitly labelled early-response transport fixture.
-    // No product/test clock override. Tokens are never read/decoded by these UI assertions.
+    // Optional synthetic browser clock only. Tokens are never read/decoded by these UI assertions.
     let next210 = 220;
     const seed210 = async () => {
       const id = "300000000000000" + String(next210++);
@@ -3244,8 +3416,8 @@ function originalTerms218(terms) {
     const status210 = id => one("SELECT status, admin_note, updated_at, reviewed_at FROM site_applications WHERE discord_id = ?", id);
     const preparations210 = rows => rows.filter(r => r.method === "GET" && r.path.includes("/decision-target?"));
     const posts210 = rows => rows.filter(r => r.method === "POST");
-    const open210 = async (id, intercept = null) => {
-      const p = await openPage(STAFF), rows = [];
+    const open210 = async (id, intercept = null, clockNow) => {
+      const p = await openPage(STAFF, {}, { clockNow }), rows = [];
       p.intercept(async (pathname, init) => {
         if (pathname.startsWith("/api/admin/")) rows.push({ path: pathname, method: init.method || "GET", target: typeof init.headers?.["X-Olympus-Decision-Target"] === "string" });
         return intercept ? await intercept(pathname, init) : null;
@@ -3256,9 +3428,73 @@ function originalTerms218(terms) {
     const ready210 = async p => await waitFor(() => !!byText(p.app, "button", "Save note"), "RT16 prepared actual application controls", 8000);
     const refused210 = async p => await waitFor(() => p.app.textContent.includes("The decision result could not be confirmed."), "RT16 spent refused application view", 8000);
 
+    {
+      const id = await seed210();
+      const key = await load("./privacy-serving-authority").privacySubjectKey(env(), id);
+      await fixtureRun("UPDATE site_users SET denied=1, denied_at=?, denied_reason='Local legacy denial fixture' WHERE discord_id=?", now - 5, id);
+      await fixtureRun("UPDATE site_applications SET rejection_subject_key=?, rejection_scope='pure_member_including_fallback0', rejection_window_expired=1 WHERE discord_id=?", key, id);
+      const holdCopy = "Lifting this denial is on hold. Staff need to verify the original decision.";
+      const finishedReview = ({ p }) => waitFor(() => !!byText(p.app, "button", "Save note") || p.app.textContent.includes("Application could not be opened"), "C09 review preparation", 8000);
+      const deniedState = () => JSON.stringify(one("SELECT denied, denied_at, denied_reason FROM site_users WHERE discord_id=?", id));
+      const before = deniedState();
+      const held = await open210(id); await finishedReview(held);
+      check("C09 an unavailable Lift keeps the denied account review and its other controls available",
+        held.p.app.textContent.includes(holdCopy) && held.p.app.textContent.includes("Local legacy denial fixture")
+        && !!byText(held.p.app, "button", "Save note") && !!byText(held.p.app, "button", "Delete their site data")
+        && !byText(held.p.app, "button", "Lift the denial") && preparations210(held.rows).length === 4
+        && held.rows.some(r => r.path === "/api/admin/applications/" + id) && posts210(held.rows).length === 0 && deniedState() === before);
+
+      const cleanId = await seed210();
+      await fixtureRun("UPDATE site_users SET denied=1, denied_at=? WHERE discord_id=?", now - 5, cleanId);
+      const clean = await open210(cleanId); await finishedReview(clean);
+      check("C09 an available legacy Lift still shows the original action", !!byText(clean.p.app, "button", "Lift the denial")
+        && !clean.p.app.textContent.includes(holdCopy) && preparations210(clean.rows).length === 4 && posts210(clean.rows).length === 0);
+
+      const staffCookie = await cookieFor(STAFF);
+      for (const malformed of ["wrong unavailable action", "false availability with an issued token"]) {
+        const broken = await open210(cleanId, async (path, init) => {
+          if (!path.includes("decision-target?route=undeny")) return null;
+          const response = await indexMod.default.fetch(new Request("https://guild.example" + path, {
+            headers: { ...init.headers, Cookie: staffCookie, Origin: "https://guild.example" },
+          }), env(), ctx);
+          if (response.status !== 200) throw Error("C09 ordinary Lift fixture preparation failed");
+          const actual = await response.json();
+          const body = malformed === "wrong unavailable action"
+            ? { decisionAvailable: false, decisionAction: "membership_reconsideration_v1", targetToken: null, preparedAt: null, expiresAt: null, reviewKey: null }
+            : { ...actual, decisionAvailable: false };
+          return new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } });
+        });
+        await finishedReview(broken);
+        check("C09 malformed Lift preparation is held as a review failure (" + malformed + ")",
+          broken.p.app.textContent.includes("Application could not be opened") && !broken.p.app.textContent.includes(holdCopy)
+          && !byText(broken.p.app, "button", "Lift the denial") && !byText(broken.p.app, "button", "Save note")
+          && !broken.rows.some(r => r.path === "/api/admin/applications/" + cleanId) && posts210(broken.rows).length === 0);
+      }
+    }
+
+    {
+      const id = await seed210(), start = Date.now();
+      const { p, rows } = await open210(id, null, start); await ready210(p);
+      const announced = /Decision window [0-5]:\d{2}/.test(p.app.textContent);
+      p.app.querySelector("textarea").value = "Unsaved note after expiry";
+      p.clock(start + 310000);
+      const recheck = await waitFor(() => !!byText(p.app, "button", "Reload to decide"), "RT16 original deadline disables decisions", 3000);
+      const save = byText(p.app, "button", "Save note");
+      const disabled = save.disabled;
+      save.click();
+      byText(p.app, "button", "Reload to decide")?.click();
+      p.clock(start);
+      await ready210(p);
+      check("RT16 original deadline blocks stale dispatch and manual refresh keeps the unsaved note", announced && recheck && disabled
+        && preparations210(rows).length === 8 && posts210(rows).length === 0
+        && p.app.querySelector("textarea").value === "Unsaved note after expiry"
+        && p.app.textContent.includes("Your unsaved note was kept.")
+        && status210(id).admin_note === "Original reviewed note");
+    }
+
     { const id = await seed210(), { p, rows } = await open210(id); await ready210(p);
       const detail = rows.findIndex(r => r.path === `/api/admin/applications/${id}`);
-      check("RT16 all four route/action preparations precede the displayed detail GET", detail === 4 && preparations210(rows).length === 4 && ["status", "deny", "undeny", "delete"].every((route, i) => rows[i]?.path === `/api/admin/users/${id}/decision-target?route=${route}&decisionAction=${route === "delete" ? "partial_delete" : "business_only"}`));
+      check("RT16 all four route/action preparations precede the displayed detail GET", detail === 4 && preparations210(rows).length === 4 && ["status", "deny", "undeny", "delete"].every((route, i) => rows[i]?.path === `/api/admin/users/${id}/decision-target?route=${route}&decisionAction=${route === "delete" ? "partial_delete" : "business_only"}${route === "deny" || route === "undeny" ? "&decisionPolicy=permanent_denial" : ""}`));
       await fixtureRun("UPDATE site_applications SET status = 'reviewing', admin_note = 'Separate reviewed state', updated_at = updated_at + 1 WHERE discord_id = ?", id);
       byText(p.app, "button", "Save note")?.click(); await refused210(p);
       const first = posts210(rows).length; byText(p.app, "button", "Save note")?.click(); await settle();
@@ -3266,6 +3502,7 @@ function originalTerms218(terms) {
     }
 
     { const id = await seed210(), { p, rows } = await open210(id); await ready210(p);
+      p.app.querySelector("textarea").value = "Unsent note for the earlier account";
       byText(p.app, "button", "Delete their site data")?.click();
       await waitFor(() => !!p.document.body.querySelector("dialog input[type=text]"), "RT16 old incarnation delete confirmation");
       const oldBirth = one("SELECT account_incarnation FROM site_users WHERE discord_id = ?", id).account_incarnation;
@@ -3278,6 +3515,9 @@ function originalTerms218(terms) {
       if (typed) { typed.value = "DELETE"; fire(typed, "input"); byText(dialog, "button", "Delete their data")?.click(); }
       await refused210(p);
       check("RT16 an old confirmed delete cannot silently rebase onto a recreated account", oldBirth !== replacementBirth && one("SELECT account_incarnation FROM site_users WHERE discord_id = ?", id)?.account_incarnation === replacementBirth && status210(id)?.admin_note === "Replacement remains" && posts210(rows).length === 1 && preparations210(rows).length === 4);
+      byText(p.app, "button", "Reload application")?.click(); await ready210(p);
+      check("RT16 manual refresh keeps the replacement account's own note", p.app.querySelector("textarea")?.value === "Replacement remains"
+        && p.app.textContent.includes("This view shows the current record.") && posts210(rows).length === 1 && preparations210(rows).length === 8);
     }
 
     { const id = await seed210(); let replaced = false;
@@ -3290,6 +3530,32 @@ function originalTerms218(terms) {
       const displayed = p.app.querySelector("textarea")?.value;
       byText(p.app, "button", "Save note")?.click(); await refused210(p);
       check("RT16 application replacement between preparation and final detail fails closed for covered proof fields", replaced && displayed === "New displayed application" && status210(id).status === "reviewing" && status210(id).admin_note === "New displayed application" && posts210(rows).length === 1 && preparations210(rows).length === 4);
+    }
+
+    {
+      const id = await seed210();
+      let replaceBeforeDetail = false;
+      const { p, rows } = await open210(id, async pathname => {
+        if (replaceBeforeDetail && pathname === `/api/admin/applications/${id}`) {
+          replaceBeforeDetail = false;
+          await fixtureRun("DELETE FROM site_applications WHERE discord_id = ?", id);
+          await fixtureRun("DELETE FROM site_users WHERE discord_id = ?", id);
+          await siteUser(id, { global_name: "Replacement at detail read" });
+          await fixtureRun("INSERT INTO site_applications (discord_id, position, answers, status, admin_note, created_at, updated_at) VALUES (?, 'member', '{}', 'submitted', 'New birth stored note', ?, ?)", id, now, now);
+        }
+        return null;
+      });
+      await ready210(p);
+      p.app.querySelector("textarea").value = "Original account unsaved draft";
+      replaceBeforeDetail = true;
+      byText(p.app, "button", "Reload application")?.click();
+      const blocked = await waitFor(() => !!byText(p.app, "button", "Open the current account"), "RT16 detail birth mismatch", 8000);
+      const hidden = !p.app.querySelector("textarea") && !byText(p.app, "button", "Save note") && preparations210(rows).length === 8;
+      byText(p.app, "button", "Open the current account")?.click();
+      await ready210(p);
+      check("RT16 a birth change between the last preparation and detail exposes no draft or decision controls until a fresh review", blocked && hidden
+        && p.app.querySelector("textarea")?.value === "New birth stored note" && status210(id).admin_note === "New birth stored note"
+        && preparations210(rows).length === 12 && posts210(rows).length === 0);
     }
 
     for (const interruption of ["navigation", "session-revocation", "sign-out"]) {

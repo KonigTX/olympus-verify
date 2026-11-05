@@ -1,7 +1,7 @@
 import {privacyAccountIncarnation,privacyAccountIncarnationLiteralFenceSql,privacyGenerationLiteralFenceSql} from './privacy-serving-authority';
 import {assertOriginalSiteSessionRead,type OriginalSiteSession} from './privacy-site-session-incarnation';
 import { admittedPrivacyOAuthWrite, admittedPrivacySubjectWrite, readPrivacySubject, type PrivacySubject } from './privacy-serving-authority';
-import {captureSiteOAuthAccount,dispatchSiteOAuthProfile,siteOAuthCallbackInput,assertSiteOAuthCallbackCustody,verifySiteOAuthState,signSiteOAuthCookie,type SiteOAuthOrigin} from './privacy-serving-site-oauth';
+import {captureSiteOAuthAccount,confirmSiteOAuthNoLocalAccount,dispatchSiteOAuthProfile,siteOAuthCallbackInput,assertSiteOAuthCallbackCustody,verifySiteOAuthState,signSiteOAuthCookie,type SiteOAuthOrigin} from './privacy-serving-site-oauth';
 import {RecoveryFloorHeld} from './privacy-recovery-floor';
 /**
  * The Olympus guild site (build .41, 29 Sep 2026; .43, 30 Sep: the game's own art, the voting board): registration,
@@ -44,6 +44,7 @@ import { attendedBetaWindowPage } from "./site-beta-window";
 import { communityContext, contextDto } from "./community-context";
 import { siteSignInWithMedia } from './site-access';
 import { olympusSocialMetadata } from './site-brand';
+import { siteEntryReturn, siteLoginLocation, siteLoginReturn, siteReturnFromVerifiedState, siteReturnLocation } from './site-return';
 
 export { siteHost } from "./site-core";
 
@@ -90,6 +91,8 @@ export async function handleSite(
   const m = request.method;
   if ((m === "GET" || m === "HEAD") && (path === "/" || path === "/index.html")) {
     if (!schemaReady) return page(env, request, build, { flash: { kind: "updating" } }, 503);
+    const returnTo = siteEntryReturn(url);
+    if (returnTo) return new Response(null, { status: 303, headers: securityHeaders(new Headers({ Location: siteReturnLocation(returnTo) })) });
     return page(env, request, build);
   }
   if (m === "GET" && path === "/auth/login") return login(env, url, url.searchParams.get("consent") === "1");
@@ -191,7 +194,8 @@ async function login(env: Env, url: URL, consent = false): Promise<Response> {
   const missing = missingConfig(env);
   if (missing) return simple(`Sign-in is not set up yet: the Worker has no ${missing}.`, 503);
   // The last character records which prompt this attempt used, so the callback can retry once with "consent".
-  const state = b64u(new TextEncoder().encode(JSON.stringify({random:b64u(crypto.getRandomValues(new Uint8Array(18))),issuedAt:now()}))) + (consent ? "c" : "n");
+  const returnTo = siteLoginReturn(url);
+  const state = b64u(new TextEncoder().encode(JSON.stringify({random:b64u(crypto.getRandomValues(new Uint8Array(18))),issuedAt:now(), ...(returnTo ? { returnTo } : {})}))) + (consent ? "c" : "n");
   const mac = await sign(env.COOKIE_SECRET, "state", state);
   const to = new URL("https://discord.com/oauth2/authorize");
   to.searchParams.set("client_id", env.DISCORD_APP_ID);
@@ -230,7 +234,7 @@ async function callback(env: Env, request: Request, url: URL, build: string, wai
   if (error) {
     // The person pressed Cancel: say so. Anything else on a silent (prompt=none) attempt: once more, with consent.
     if (error !== "access_denied" && stateOk && state.endsWith("n")) {
-      const h = securityHeaders(new Headers({ Location: "/auth/login?consent=1" }));
+      const h = securityHeaders(new Headers({ Location: siteLoginLocation(siteReturnFromVerifiedState(state, now()), true) }));
       h.append("Set-Cookie", clear[0]);
       return new Response(null, { status: 302, headers: h });
     }
@@ -274,13 +278,19 @@ async function callback(env: Env, request: Request, url: URL, build: string, wai
   // The one thing this site needs to know about someone's servers: are they in this one. guilds.members.read answers
   // for this server only, with 404 for "not a member".
   const memRes = await step(()=>credentialFetch(`${API}/users/@me/guilds/${env.SITE_GUILD_ID}/member`, { headers: auth }));
-  if (memRes.status === 404) {
+  const membershipRefusal = async (kind: 'not_member'|'pending', exact: boolean) => {
+    const render = (status: number, reason: string) => siteSignInWithMedia(request, env, status, reason, [...clear, clearCookie(SESSION_COOKIE)]);
     try {
+      if (exact && (!privacyCapture || privacyCapture.state === 'retired')
+          && await step(()=>confirmSiteOAuthNoLocalAccount(original))) {
+        return await step(()=>render(403, kind));
+      }
       await step(()=>admittedPrivacySubjectWrite(env, me.id, privacyCapture, [env.DB.prepare('UPDATE site_users SET in_server=0,checked_at=?2,session_version=session_version+1 WHERE discord_id=?1').bind(me.id, now())]));
-    } catch { return siteSignInWithMedia(request, env, 503, 'privacy_held', [...clear, clearCookie(SESSION_COOKIE)]); }
-    await step(()=>audit(env, 'site', "site.login_not_member"));
-    return siteSignInWithMedia(request, env, 403, 'not_member', [...clear, clearCookie(SESSION_COOKIE)]);
-  }
+    } catch { return render(503, 'privacy_held'); }
+    if (kind === 'not_member') await step(()=>audit(env, 'site', "site.login_not_member"));
+    return render(403, kind);
+  };
+  if (memRes.status === 404) return membershipRefusal('not_member', true);
   if (memRes.status === 429) return flash("busy", 429);
   if (!memRes.ok) {
     await step(()=>audit(env, 'site', "site.login_failed", undefined, { step: "member", status: memRes.status }));
@@ -288,12 +298,7 @@ async function callback(env: Env, request: Request, url: URL, build: string, wai
   }
   const member = (await step(()=>memRes.json())) as DiscordMember;
   // Membership screening not finished (the server's rules not accepted yet): not a member in any useful sense.
-  if (member.pending) {
-    try {
-      await step(()=>admittedPrivacySubjectWrite(env, me.id, privacyCapture, [env.DB.prepare('UPDATE site_users SET in_server=0,checked_at=?2,session_version=session_version+1 WHERE discord_id=?1').bind(me.id, now())]));
-    } catch { return siteSignInWithMedia(request, env, 503, 'privacy_held', [...clear, clearCookie(SESSION_COOKIE)]); }
-    return siteSignInWithMedia(request, env, 403, 'pending', [...clear, clearCookie(SESSION_COOKIE)]);
-  }
+  if (member.pending) return membershipRefusal('pending', member.pending === true);
 
   const t = now();
   const avatar = member.avatar ? `g:${member.avatar}` : me.avatar ? `u:${me.avatar}` : null;
@@ -313,7 +318,7 @@ async function callback(env: Env, request: Request, url: URL, build: string, wai
   try { nativeReply=await step(()=>dispatchSiteOAuthProfile(original,privacyWrite));admittedSubject=nativeReply.privacySubject; } catch { return flash('privacy_held',409); }
   waitUntil(()=>recordNames(env, me,false,admittedSubject).catch(() => {}));
   try { await step(()=>admittedPrivacySubjectWrite(env,me.id,admittedSubject,[env.DB.prepare('INSERT INTO audit(ts,actor,action)VALUES(?1,?2,?3)').bind(t,me.id,'site.login')])); } catch { return flash('privacy_held',409); }
-  const h = securityHeaders(new Headers({ Location: "/" }));
+  const h = securityHeaders(new Headers({ Location: siteReturnLocation(siteReturnFromVerifiedState(state, now())) }));
   h.append("Set-Cookie", clear[0]);
   try{h.append("Set-Cookie",await step(()=>signSiteOAuthCookie(original,nativeReply)));}catch{return flash('privacy_held',409);}
   return new Response(null, { status: 303, headers: h });

@@ -30,7 +30,7 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html { -webkit-text-size-adjust: 100%; scrollbar-gutter: stable; }
+html { -webkit-text-size-adjust: 100%; scrollbar-gutter: stable; scroll-padding-block: var(--olympus-focus-top, 0px) var(--olympus-focus-bottom, 0px); }
 @supports not (scrollbar-gutter: stable) { html { overflow-y: scroll; } }
 body {
   margin: 0;
@@ -152,10 +152,11 @@ a.card:hover { filter: brightness(1.2); }
 
 /* The quest log's parchment, for text meant to be read. */
 .parchment {
-  background: #e3cc98 url("/static/wow/parchment.jpg") center / cover;
+  background: linear-gradient(rgba(239, 223, 184, 0.74), rgba(239, 223, 184, 0.74)),
+    #e3cc98 url("/static/wow/parchment.jpg") center / cover;
   color: var(--ink);
   border: 1px solid #4a3718;
-  box-shadow: inset 0 0 22px rgba(90, 58, 16, 0.5), 0 4px 16px rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 22px rgba(90, 58, 16, 0.12), 0 4px 16px rgba(0, 0, 0, 0.55);
   padding: 16px 22px 16px 24px;
   text-shadow: none;
 }
@@ -163,7 +164,7 @@ a.card:hover { filter: brightness(1.2); }
 .parchment h4 { font-family: var(--font); font-size: 0.78rem; line-height: 1.35; letter-spacing: 0.06em; text-transform: uppercase; color: #4a1204; margin-top: 1em; }
 .parchment b, .parchment strong { color: #000; }
 .parchment a { color: #5a1a08; }
-.parchment .muted { color: #5b4526; }
+.parchment .muted { color: #3b2816; }
 .parchment ul { margin: 0 0 0.6em; padding-left: 22px; list-style: none; }
 .parchment li { position: relative; margin: 0 0 0.3em; }
 .parchment li::before { content: ""; position: absolute; left: -20px; top: 0.35em; width: 12px; height: 12px; background: url("/static/wow/bullet.png") center / 12px 12px no-repeat; }
@@ -478,7 +479,7 @@ a.lookup-result:hover, a.lookup-result:focus-visible { border-image-source: url(
   display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;
   box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
 }
-.savebar.static { position: static; box-shadow: none; }
+.savebar.static, .savebar.savebar-in-flow { position: static; box-shadow: none; }
 /* The full application action stays in document flow: no role card, consent or schedule cell sits behind it. */
 .savebar.apply-savebar { position: static; bottom: auto; box-shadow: none; scroll-margin-top: 110px; }
 .application-sections { padding: 10px 12px; margin: 0 0 18px; border: 1px solid var(--line); background: rgba(0,0,0,.25); }
@@ -500,6 +501,17 @@ table.data td.wrap { white-space: normal; min-width: 160px; }
 table.data th { font-weight: 400; color: var(--gold); background: rgba(25, 22, 14, 0.95); position: sticky; top: 0; white-space: nowrap; font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase; }
 table.data tr:hover td { background: rgba(255, 209, 0, 0.06); }
 table.data tr.clickable { cursor: pointer; }
+.organizer-cell-label { display: none; }
+@media (max-width: 480px) {
+  .organizer-action-table { position: relative; }
+  .organizer-action-table, .organizer-action-table tbody, .organizer-action-table tbody tr, .organizer-action-table td { display: block; }
+  .organizer-action-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  table.data.organizer-action-table td { padding: 6px 10px; white-space: normal; overflow-wrap: anywhere; }
+  .organizer-action-table tbody tr + tr { border-top: 1px solid var(--line); }
+  .organizer-action-table .organizer-cell-label { display: block; color: var(--muted); font-size: 0.75rem; }
+  .organizer-action-table .organizer-cell-label::before { content: attr(data-label); }
+  .organizer-action-table td select { max-width: 100%; }
+}
 /* Native dialog openers retain the table's typography and visible keyboard focus. */
 .row-detail-open { appearance: none; border: 0; background: none; padding: 2px 0; font: inherit; color: var(--gold-soft); text-align: left; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; max-width: 100%; overflow-wrap: anywhere; }
 .row-detail-open:hover { color: var(--white); }
@@ -510,10 +522,13 @@ table.data td.num, table.data th.num { text-align: right; font-variant-numeric: 
 .filters .check { padding-bottom: 8px; }
 .admin-section-picker { display: none; }
 .admin-section-nav { margin-bottom: 14px; }
-.admin-section-links { display: flex; flex-wrap: wrap; gap: 6px; }
+.admin-section-links { display: grid; gap: 12px; }
+.admin-section-group228 h2 { margin: 0 0 4px; font-size: .9rem; color: var(--gold); }
+.role-reference-links228, .governance-article-links228 { display: flex; flex-wrap: wrap; gap: .35rem .75rem; margin: .5rem 0; font-size: .9em; }
+.governance-article-links228 { margin-top: -.4rem; }
 /* .176: section links use the same stationary pressed texture as the top navigation.
    The general button press adds four pixels to a small button and moves the rail below it. */
-.admin-section-links > .btn:active,
+.admin-section-links .btn:active,
 nav[aria-label="Community sections"] > .btn:active,
 nav[aria-label="Community admin sections"] > .btn:active { padding: 1px 11px; }
 .community-admin-scroll-hint { display: none; }
@@ -877,6 +892,8 @@ table.data select, table.data input { max-width: 180px; }
 .organization-legend .relation-independence { border-left: 3px double var(--green-soft); }
 .organization-legend .relation-classification { border-left-style: dotted; border-left-color: var(--muted); }
 .organization-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(250px, 1fr); gap: 24px; align-items: start; margin-bottom: 24px; }
+/* Contain the chart while its route stylesheet loads. */
+.org-viewport { overflow: hidden; }
 .organization-tree { min-width: 0; }
 .organization-branch { min-width: 0; margin-bottom: 12px; border: 1px solid var(--line); background: rgba(0, 0, 0, 0.5); }
 .organization-branch > summary { padding: 12px; cursor: pointer; color: var(--gold-soft); overflow-wrap: anywhere; }
@@ -985,6 +1002,9 @@ html[data-stream-shield="on"] main.shell,html[data-stream-shield="on"] #app>.not
 .beta-epoch-figures{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px 12px}
 .beta-epoch-figures dd{margin:0;color:var(--gold-soft);overflow-wrap:anywhere}
 @media(max-width:370px){.topbar-in{gap:8px}.topbar-actions{gap:6px}.beta-epoch-figures{grid-template-columns:1fr}.beta-epoch-figures dd{margin-bottom:8px}}
+@media (max-width: 180px) {
+  .brand { gap: 6px; }
+}
 @media(forced-colors:active){.stream-shield-toggle[aria-pressed="true"]{outline:3px solid Highlight;box-shadow:none}.stream-shield-toggle[aria-pressed="true"] .ico{filter:none}}
 
 /* .199: one rank guide and a five-column crosswalk; long office names remain readable at 320px. */
@@ -1133,10 +1153,6 @@ html[data-stream-shield="on"] main.shell,html[data-stream-shield="on"] #app>.not
 .role-entry-body201 .btn { min-height: 44px; white-space: normal; max-width: 100%; }
 .reserved-seat201 { color: #d7c8a5; background: #332b20; }
 .reserved-explanation201 { border-left: 3px solid #bda259; padding-left: 10px; }
-.org-role-guide201 { min-width: 0; overflow-wrap: anywhere; }
-.org-role-guide201 summary { cursor: pointer; min-height: 44px; padding: 8px 0; }
-.org-role-guide201 .role-facts { display: block; }
-.org-role-guide201 .role-facts dd { margin-left: 0; }
 @media (max-width: 700px) {
   .role-directory-grid201 { grid-template-columns: minmax(0,1fr); padding: 8px; gap: 8px; }
   .role-section201 > summary { font-size: 17px; padding: 10px; }
@@ -1224,3 +1240,17 @@ html[data-stream-shield="on"] main.shell,html[data-stream-shield="on"] #app>.not
 
 /* Rank badges stay readable on the narrowest supported application view. */
 .rank-office199{white-space:normal;max-width:100%;overflow-wrap:anywhere}
+
+/* At high zoom the layout viewport can be narrower than a 320px phone. */
+@media (max-width: 319px) {
+  main { overflow-wrap: anywhere; }
+  main :is(.badge, .btn, .prof, .nowrap) { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+  main :is(.field, fieldset, .check > span, .btn-row > *, .governance-hero > div) { min-width: 0; max-width: 100%; }
+  main :is(input, select, textarea) { max-width: 100%; }
+  .notice-box, .governance-hero { flex-direction: column; gap: .5rem; }
+  .notice-box > div { width: 100%; }
+  .admin-section-picker { grid-template-columns: minmax(0, 1fr); }
+  .filters > .field { min-width: 0; flex: 1 1 100%; }
+  .olympus-rank-planner .filter-row > label { min-width: 0; flex-wrap: wrap; }
+  .olympus-rank-planner .filter-row select { max-width: 100%; }
+}

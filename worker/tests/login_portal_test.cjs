@@ -15,6 +15,7 @@ function load(name) {
 function check(label, value) { total++; if (value) passed++; console.log((value ? 'PASS ' : 'FAIL ') + label); }
 (async () => {
   const access = load('./site-access'), policies = load('./policies'), render = load('./policy-render');
+  const digestUrl = load('./policy-asset-cache').immutablePolicyAssetUrl;
   const css = fs.readFileSync(path.join(root, 'public/static/policies.css'), 'utf8');
   const cssStart = css.indexOf("/* Owner's .173 entry:");
   const portalCss = css.slice(cssStart);
@@ -28,7 +29,7 @@ function check(label, value) { total++; if (value) passed++; console.log((value 
   const words = main.replace(/<details\b[^]*?<\/details>/g, "").replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   check('shared title retains the original Unicode separator', html.includes('<title>Olympus '+String.fromCharCode(0x2014)+' Enter Olympus</title>'));
   check('default entry contains exactly the owner-requested sign-in copy and no Army link', words === 'Enter Olympus The gates of Olympus Sign in with Discord to enter the guild hall. Membership of the Asmongold Discord server is required. Sign in with Discord' && !main.includes('href="/army"'));
-  check('login card uses the owner tabard crest', main.includes('class="login-card-crest" src="/static/olympus-icon.png" alt="Olympus guild tabard"'));
+  check('login card uses the owner tabard crest', main.includes(`class="login-card-crest" src="${digestUrl('/static/olympus-icon.png')}" alt="Olympus guild tabard"`));
   check('the removed entry-only sentence is absent', !html.includes('Only the sign-in and privacy pages are available before entry.'));
   check('the real sign-in remains a normal Discord-login link', response.status === 200 && /<a class="policy-button" href="\/auth\/login">Sign in with Discord<\/a>/.test(html));
   check("client portal is decorative, muted, inline and cannot capture interaction", html.includes('class="login-portal" aria-hidden="true"') && /<video[^>]+autoplay loop muted playsinline/.test(main) && !/<(?:button|input|canvas|iframe)\b/.test(main) && portalCss.includes("object-position:center;pointer-events:none"));
@@ -39,7 +40,12 @@ function check(label, value) { total++; if (value) passed++; console.log((value 
   const head = access.siteSignIn(new Request('https://guild.example/', { method: 'HEAD' }), 200, undefined, [], true);
   check('HEAD preserves status/security and has no body', head.status === 200 && (await head.text()) === '' && head.headers.get('Content-Security-Policy') === response.headers.get('Content-Security-Policy'));
   const denied = access.siteSignIn(request, 403, 'denied'), deniedText = await denied.text();
-  check('an actual entry refusal preserves its status and account-control explanation', denied.status === 403 && deniedText.includes('This account cannot enter the guild site. Your privacy account connection remains available.') && deniedText.includes('href="/auth/login"'));
+  check('a denied account can follow its privacy connection without entering the guild site', denied.status === 403
+    && deniedText.includes('This account cannot enter the guild site.') && deniedText.includes('href="/privacy/access"') && deniedText.includes('href="/auth/login"'));
+  const departed = access.siteSignIn(request, 403, 'not_member'), departedText = await departed.text();
+  check('a membership refusal links the same direct privacy connection while normal entry stays link-free', departed.status === 403
+    && departedText.includes('Join the Asmongold Discord server') && departedText.includes('href="/privacy/access"')
+    && !main.includes('href="/privacy/access"') && !stillMain.includes('href="/privacy/access"'));
   const privacy = policies.policyResponse(new Request('https://guild.example/legal/privacy'), '/legal/privacy');
   const terms = policies.policyResponse(new Request('https://guild.example/legal/terms'), '/legal/terms');
   check('direct privacy and terms remain public and do not acquire portal markup', privacy.status === 200 && terms.status === 200 && !(await privacy.text()).includes('portal-login') && !(await terms.text()).includes('portal-login'));
@@ -67,7 +73,7 @@ function check(label, value) { total++; if (value) passed++; console.log((value 
   check('forced-colors restores system card and focus contrast', portalCss.includes('@media(forced-colors:active)') && portalCss.includes('border:2px solid CanvasText;background:Canvas;box-shadow:none') && portalCss.includes('color:CanvasText;text-shadow:none') && portalCss.includes('outline-color:Highlight'));
   check('portal media uses no remote source or CSS animation imitation', !/https?:|<script|@import|@keyframes|repeating-conic-gradient/i.test(portalCss) && !html.includes('login-portal-stone'));
   check('optional motion has a keyboard-operable native hide control while the decorative stills remain available', [...main.matchAll(/<video\b/g)].length === 1 && !/<(?:audio|iframe)\b/i.test(main) && /<details class="login-motion" open><summary>/.test(main) && main.includes('Hide animated background') && main.includes('Show animated background') && main.includes('<picture class="login-portal-art">') && portalCss.includes('.login-motion[open] .motion-hide{display:inline}'));
-  check('optional motion and fallback use only the exact approved client-derived resources', !main.includes('dark-portal-poster.jpg') && main.includes('src="/static/wow/login/dark-portal.webm" type="video/webm" media="(prefers-reduced-motion: no-preference)"') && main.includes('olympus-dark-portal-wide.png') && main.includes('olympus-dark-portal-portrait.png'));
+  check('optional motion and fallback use only the exact approved client-derived resources', !main.includes('dark-portal-poster.jpg') && main.includes(`src="${digestUrl('/static/wow/login/dark-portal.webm')}" type="video/webm" media="(prefers-reduced-motion: no-preference)"`) && main.includes('olympus-dark-portal-wide.png') && main.includes('olympus-dark-portal-portrait.png'));
   const art = [['dark-portal.webm',3405603,'930ca8937c601245c7893cdc46750de3eca729c5fa9b91ef11dc08d87687521c'],['dark-portal-poster.jpg',132023,'c2c0820f50c6cf1944e88e5fd54f2b421df1955ebe7842cb976ac5599f191050']];
   const actualArt = art.every(([name,size,hash]) => { const b=fs.readFileSync(path.join(root,'public/static/wow/login',name)); return b.length===size && crypto.createHash('sha256').update(b).digest('hex')===hash; });
   const provenance = JSON.parse(fs.readFileSync(path.join(root,'public/static/wow/login/dark-portal-provenance.json')));
@@ -91,7 +97,7 @@ function check(label, value) { total++; if (value) passed++; console.log((value 
   const staticCsp = "default-src 'none'; script-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'";
   check("only login adds same-origin media while preserving every static denial", response.headers.get("Content-Security-Policy") === staticCsp + "; media-src 'self'" && render.LOGIN_POLICY_CSP === staticCsp + "; media-src 'self'");
   check('policy and form CSPs retain all their original exact directives', render.STATIC_POLICY_CSP === staticCsp && render.FORM_POLICY_CSP === staticCsp.replace("form-action 'none'", "form-action 'self'") && render.policyHeaders().get('Content-Security-Policy') === staticCsp && render.policyHeaders(true).get('Content-Security-Policy') === render.FORM_POLICY_CSP && privacy.headers.get('Content-Security-Policy') === staticCsp && terms.headers.get('Content-Security-Policy') === staticCsp);
-  check('direct owner choice keeps the approved .173 still pair as the default, without a video', stillResponse.status === 200 && !/<video\b/.test(stillMain) && stillMain.includes('class="login-portal-art"') && stillMain.includes('srcset="/static/wow/login/olympus-dark-portal-portrait.png" width="852" height="1847"') && stillMain.includes('src="/static/wow/login/olympus-dark-portal-wide.png" alt="" aria-hidden="true" width="1916" height="821"'));
+  check('direct owner choice keeps the approved .173 still pair as the default, without a video', stillResponse.status === 200 && !/<video\b/.test(stillMain) && stillMain.includes('class="login-portal-art"') && stillMain.includes(`srcset="${digestUrl('/static/wow/login/olympus-dark-portal-portrait.png')}" width="852" height="1847"`) && stillMain.includes(`src="${digestUrl('/static/wow/login/olympus-dark-portal-wide.png')}" alt="" aria-hidden="true" width="1916" height="821"`));
   check('still and explicit animation retain identical sign-in copy, no script, no private boot and original protected headers', signInWords(stillMain) === words && !/<script\b|\son[a-z]+\s*=|id="boot"|\/static\/app\.(?:js|css)/i.test(stillHtml) && stillResponse.headers.get('Content-Security-Policy') === render.LOGIN_POLICY_CSP && stillResponse.headers.get('Cache-Control') === response.headers.get('Cache-Control') && stillResponse.headers.get('Vary') === 'Cookie, Save-Data');
   for (const value of ['on', 'ON', ' On ']) {
     const saved = access.siteSignIn(new Request('https://guild.example/', { headers: { 'Save-Data': value } }), 200, undefined, [], true);

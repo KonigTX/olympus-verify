@@ -9,13 +9,24 @@ import { contributionRetentionDays, contributionsWritable, contributionScope, ma
 import { privacyGenerationLiteralFenceSql } from './privacy-serving-authority';
 import { captureTreasuryReservedRoles } from './treasury-reserved-roles';
 import { parseNativeRoleMap } from './native-rank-adapter';
+import { ROYAL_WRIT_POLICY } from './royal-writs199';
 
 export const TREASURY_PURPOSE = 'treasury_cosmetic';
 export const TREASURY_EXTRA_PREFIX = 'treasury-extra-v1:';
 export const TREASURY_WINDOW_SECONDS = 90 * 86400;
 const ROLE_KEYS = ['tithePayer', 'patron', 'benefactor'] as const;
 type RoleKey = typeof ROLE_KEYS[number];
-export const TREASURY_TIERS: readonly Readonly<{ key: RoleKey; label: string; copper: number }>[] = Object.freeze([{ key: 'tithePayer', label: 'Tithe Payer', copper: 250000 }, { key: 'patron', label: 'Patron of the Treasury', copper: 1000000 }, { key: 'benefactor', label: 'Benefactor of Olympus', copper: 5000000 }].map(t => Object.freeze(t as { key: RoleKey; label: string; copper: number })));
+type TierKey = RoleKey | 'archFinancier' | 'imperialTreasuryHand';
+type TreasuryTier = Readonly<{ key: RoleKey; label: string; copper: number; ceremonial: false }
+  | { key: Exclude<TierKey, RoleKey>; label: string; copper: number; ceremonial: true }>;
+export const TREASURY_TIERS: readonly TreasuryTier[] = Object.freeze(([
+  { key: 'tithePayer', label: 'Tithe Payer', copper: 250000, ceremonial: false },
+  { key: 'patron', label: 'Patron of the Treasury', copper: 1000000, ceremonial: false },
+  { key: 'benefactor', label: 'Benefactor of Olympus', copper: 5000000, ceremonial: false },
+  { key: 'archFinancier', label: 'Arch-Financier of Olympus', copper: 10000000, ceremonial: true },
+  { key: 'imperialTreasuryHand', label: 'Hand of the Imperial Treasury', copper: 25000000, ceremonial: true },
+] satisfies TreasuryTier[]).map(tier => Object.freeze(tier)));
+const ROLE_TIERS = TREASURY_TIERS.filter(tier => !tier.ceremonial);
 export type TreasuryConfig = Readonly<{ raw: string; guildId: string; applicationId: string; seasonStartsAt: number; roles: Readonly<Record<RoleKey, string>> }>;
 type TreasuryEnv = Env & { TREASURY_COSMETIC_ROLES?: string; TREASURY_COSMETIC_ENABLED?: string };
 const ID = /^[1-9][0-9]{16,19}$/, HEX = /^[0-9a-f]{32}$/;
@@ -90,7 +101,7 @@ async function capture(env: TreasuryEnv, request: Request, user: SiteUser, targe
   const out = authority({ actor, env, guildScope, config: e.config, target: Object.freeze({ ...target }), ctx, check, baseSQL, sql: `${baseSQL} AND ${receiptSetSql(target.id, guildScope, e.config.seasonStartsAt)}=${literal(json)}`, receiptJSON: json, total, expires });
   if (!await treasuryAuthorityCurrent(env, out)) return fail('treasury_facts_changed'); return out;
 }
-export function treasuryTier(totalCopper: number): RoleKey | null { if (!Number.isSafeInteger(totalCopper) || totalCopper < 0) return fail('treasury_amount'); return [...TREASURY_TIERS].reverse().find(t => totalCopper >= t.copper)?.key ?? null; }
+export function treasuryTier(totalCopper: number): TierKey | null { if (!Number.isSafeInteger(totalCopper) || totalCopper < 0) return fail('treasury_amount'); return [...TREASURY_TIERS].reverse().find(t => totalCopper >= t.copper)?.key ?? null; }
 /** Public role labels only; no ledger, amount or receipt read. Caller still
  * requires actual current Discord role membership and ordinary directory
  * eligibility. At season end the website label lapses independently of cleanup. */
@@ -102,7 +113,7 @@ export function treasuryDirectoryRoles(env: Env): readonly (readonly [string,str
     if (!slot || !Object.hasOwn(slot, 'value') || !slot.value) return [];
     const config = environment(env).config;
     if (now() < config.seasonStartsAt || now() >= config.seasonStartsAt + TREASURY_WINDOW_SECONDS) return [];
-    return TREASURY_TIERS.map(t => [config.roles[t.key], t.label] as const);
+    return ROLE_TIERS.map(t => [config.roles[t.key], t.label] as const);
   } catch { return []; }
 }
 /** This fresh provider check supplements the original keeper member/standing
@@ -175,7 +186,7 @@ export async function handleTreasuryCosmeticAdmin(request: Request, env: Treasur
       if (!keys(body,['discordId']) || typeof body.discordId !== 'string') return fail('treasury_invalid_target',400);
       const auth = await capture(env,request,user,body.discordId,ctx,e), a = treasuryAuthorityFacts(env,auth), reference = await mailReference(env,a.guildScope,a.target.id); a.check();
       if (!await treasuryAuthorityCurrent(env,auth)) return fail('treasury_facts_changed');
-      return apiJson({discordId:a.target.id,mailReference:reference,recipient:'Fernmelder',seasonStartsAt:a.config.seasonStartsAt,seasonEndsAt:a.config.seasonStartsAt+TREASURY_WINDOW_SECONDS,tiers:TREASURY_TIERS.map(t=>({key:t.key,label:t.label,gold:t.copper/10000})),note:'The mail reference is a lookup aid, never proof that extra gold was received.'});
+      return apiJson({discordId:a.target.id,mailReference:reference,recipient:ROYAL_WRIT_POLICY.recipient,seasonStartsAt:a.config.seasonStartsAt,seasonEndsAt:a.config.seasonStartsAt+TREASURY_WINDOW_SECONDS,tiers:TREASURY_TIERS.map(t=>({key:t.key,label:t.label,gold:t.copper/10000,ceremonial:t.ceremonial})),note:'The mail reference is a lookup aid, never proof that extra gold was received.'});
     }
     if (sub === 'record') return await record(env, request, user, body, ctx, e);
     if (sub === 'preview') {
@@ -183,9 +194,14 @@ export async function handleTreasuryCosmeticAdmin(request: Request, env: Treasur
       const auth = await capture(env, request, user, body.discordId, ctx, e), a = treasuryAuthorityFacts(env, auth), central = await import('./role-settlements');
       const held = await central.inspectTreasuryCosmeticRoles(env, auth); a.check(); if (!await treasuryAuthorityCurrent(env, auth)) return fail('treasury_facts_changed');
       const recognitionConsent = body.recognitionConsent as boolean, recognitionMode = recognitionConsent ? 'recognize' : 'decline';
-      const seasonOpen = now() >= a.config.seasonStartsAt && now() < a.config.seasonStartsAt + TREASURY_WINDOW_SECONDS, tier = recognitionConsent && seasonOpen ? treasuryTier(a.total) : null, desired = new Set(tier ? [a.config.roles[tier]] : []);
+      const seasonOpen = now() >= a.config.seasonStartsAt && now() < a.config.seasonStartsAt + TREASURY_WINDOW_SECONDS;
+      const tier = recognitionConsent && seasonOpen ? treasuryTier(a.total) : null;
+      const tierInfo = TREASURY_TIERS.find(t => t.key === tier);
+      // Apex eligibility is ceremonial. The highest configured Discord colour still applies.
+      const discordColourTier = tierInfo?.ceremonial ? 'benefactor' : tierInfo?.key ?? null;
+      const desired = discordColourTier ? a.config.roles[discordColourTier] : null;
       if (seasonOpen) a.expires = Math.min(a.expires, a.config.seasonStartsAt + TREASURY_WINDOW_SECONDS);
-      const nonce = randomToken(), changes = await Promise.all(ROLE_KEYS.filter(k => held.includes(a.config.roles[k]) !== desired.has(a.config.roles[k])).map(async k => ({ operationId: (await hash(JSON.stringify([TREASURY_PURPOSE, nonce, a.config.roles[k]]))).slice(0, 32), roleId: a.config.roles[k], label: TREASURY_TIERS.find(t => t.key === k)!.label, desired: desired.has(a.config.roles[k]) ? 1 : 0 })));
+      const nonce = randomToken(), changes = await Promise.all(ROLE_TIERS.filter(t => held.includes(a.config.roles[t.key]) !== (a.config.roles[t.key] === desired)).map(async t => ({ operationId: (await hash(JSON.stringify([TREASURY_PURPOSE, nonce, a.config.roles[t.key]]))).slice(0, 32), roleId: a.config.roles[t.key], label: t.label, desired: a.config.roles[t.key] === desired ? 1 : 0 })));
       const s = a.ctx.subject!, token = await seal(env.COOKIE_SECRET, { v: 1, actor: [s.discordId, s.sessionVersion, s.expiresAt, s.accountIncarnation, s.privacyGeneration], target: a.target, receipts: a.receiptJSON, config: a.config.raw, expires: a.expires, nonce, recognitionConsent, changes }); a.check();
       const previewAudit=treasuryAuditValues(env,auth,{version:1,previewDigest:await hash(token),operationIds:changes.map(c=>c.operationId),roleIds:changes.map(c=>c.roleId),tier,seasonStartsAt:a.config.seasonStartsAt,seasonEndsAt:a.config.seasonStartsAt+TREASURY_WINDOW_SECONDS,recognitionConsent,recognitionMode,recognitionConsentAttestedByAdmin:recognitionConsent,recognitionDeclinedAttestedByAdmin:!recognitionConsent,liveEffectClaimed:false});
       await env.DB.batch([
@@ -193,7 +209,7 @@ export async function handleTreasuryCosmeticAdmin(request: Request, env: Treasur
         env.DB.prepare(`INSERT INTO audit(ts,actor,action,subject,details) SELECT ${DB_NOW},?1,'treasury.cosmetic_previewed',?2,?3 WHERE ${a.sql}`).bind(previewAudit.actor,a.target.id,previewAudit.details),
         env.DB.prepare(`SELECT CASE WHEN ${a.sql} AND EXISTS(SELECT 1 FROM audit WHERE actor=?1 AND action='treasury.cosmetic_previewed' AND subject=?2 AND details=?3) THEN 1 ELSE json_extract('treasury_preview_audit_held','$') END AS preview_with_audit`).bind(previewAudit.actor,a.target.id,previewAudit.details),
       ]);a.check();
-      return apiJson({ token, recognitionConsent, recognitionMode, expiresAt: a.expires, tier, qualifyingGold: a.total / 10000, seasonStartsAt: a.config.seasonStartsAt, seasonEndsAt: a.config.seasonStartsAt + TREASURY_WINDOW_SECONDS, changes, liveEffectClaimed: false, dispatchEnabled: env.TREASURY_COSMETIC_ENABLED === 'true' });
+      return apiJson({ token, recognitionConsent, recognitionMode, expiresAt: a.expires, tier, tierLabel: tierInfo?.label ?? null, ceremonial: tierInfo?.ceremonial ?? false, discordColourTier, qualifyingGold: a.total / 10000, seasonStartsAt: a.config.seasonStartsAt, seasonEndsAt: a.config.seasonStartsAt + TREASURY_WINDOW_SECONDS, changes, liveEffectClaimed: false, dispatchEnabled: env.TREASURY_COSMETIC_ENABLED === 'true' });
     }
     if (sub === 'confirm') {
       if (!keys(body, ['token', 'operationId', 'confirmed']) || body.confirmed !== true || typeof body.operationId !== 'string' || !HEX.test(body.operationId)) return fail('treasury_confirmation_required', 400);

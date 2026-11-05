@@ -74,10 +74,69 @@ async function guildCommands219(){
  const memberRef=one('SELECT ref FROM community_refs WHERE discord_id=?',MEMBER).ref;
  let webAttendance=await call('POST','/api/community/attendance/record',{eventId:event219.id,entries:[{ref:memberRef,state:'absent',revision:1}]},ORG,over219);
  check('same lock also prevents website attendance mutation',webAttendance.status===409&&one('SELECT state FROM community_event_attendance WHERE event_id=? AND discord_id=?',event219.id,MEMBER).state==='present');
- for(const [name,sub,v] of [['guide','class',{class:'warrior',spec:'arms'}],['guide','talent',{build:JSON.parse(fs.readFileSync(path.join(root,'public/static/guides218.json'))).presets[0].code}],['guide','consumes',{}],['guide','buffs',{}],['guide','attunement',{raid:'onyxia'}],['guide','attunement',{raid:'mc'}],['workshop',null,{}],['treasury',null,{}],['stockades',null,{}],['council',null,{}],['branches',null,{}],['launch',null,{}]]){
+ const guide219=JSON.parse(fs.readFileSync(path.join(root,'public/static/guides218.json'))),org219=JSON.parse(fs.readFileSync(path.join(root,'public/static/governance/organization.json')));
+ const utilities219=load('./guild-utilities219'),clean219=utilities219.safeDiscordText219;
+ for(const [name,sub,v] of [['guide','class',{class:'warrior',spec:'arms'}],['guide','talent',{build:guide219.presets[0].code}],['guide','consumes',{}],['guide','buffs',{}],['guide','attunement',{raid:'onyxia'}],['guide','attunement',{raid:'mc'}],['workshop',null,{}],['treasury',null,{}],['stockades',null,{}],['council',null,{}],['branches',null,{}],['launch',null,{}]]){
   r=await send219(name,sub,v,MEMBER);check(name+' '+(sub??'reference')+' uses current source and a private no-mention response',r.initial.type===5&&r.answer?.embeds?.length===1&&r.answer.allowed_mentions.parse.length===0,r.answer?.content);
+  const embed=r.answer?.embeds?.[0];
+  if(sub==='class'){
+   const arms=guide219.classes.find(c=>c.id==='warrior').specs.find(s=>s.id==='arms');
+   check('CC-015 guide paragraphs preserve their trusted blank line',embed?.description===arms.beginner.summary.slice(0,2).map(p=>clean219(p)).join('\n\n'));
+   check('CC-005 class preset links share one dated beta notice and current Blizzard reference',
+    embed?.fields?.filter(row=>row.name==='16 October beta builds').length===1
+    &&embed.fields.some(row=>row.value.includes('https://us.forums.blizzard.com/en/wow/t/2360696/9'))
+    &&embed.fields.some(row=>row.value.includes('/#/talents/warrior/ot1.')));
+  }
+  if(sub==='talent')check('CC-005 signed talent preview shows its beta snapshot date and newer Blizzard notes',
+   embed?.description.includes('16 October beta talent snapshot')
+   &&embed.fields?.some(row=>row.name==='Blizzard’s 2 November notes'&&row.value==='https://us.forums.blizzard.com/en/wow/t/2360696/9'));
+  if(sub==='attunement'&&v.raid==='onyxia'){
+   const raid=guide219.tools.attunements.find(a=>a.id==='onyxias-lair');
+   check('CC-015 Onyxia opening and requirement retain one separate line',embed?.description===[raid.opens,raid.requirement.value].map(p=>clean219(p)).join('\n'));
+  }
+  if(sub==='consumes'||sub==='buffs'){
+   const topics=sub==='buffs'?['World buffs','Raid auras']:['Consumable rules','New recipes','Alchemy and First Aid'];
+   check('CC-015 '+sub+' preserves all current pinned paragraphs and trusted breaks',
+    embed?.description===guide219.tools.whatChanged.filter(row=>topics.includes(row.topic)).map(row=>clean219(row.text)).join('\n\n'));
+  }
+  if(name==='council'){
+   const expectedSeats=org219.councilComposition.currentSeats.filter(seat=>seat.id!=='gm-chair').map((seat,index)=>clean219(index===0?seat.label:index+'. '+seat.label));
+   const actualSeats=embed?.fields?.find(row=>row.name==='Current Council portfolios')?.value;
+   check('CC-015 Council lists the Co-GM and twelve numbered portfolios on 13 separate lines',
+    expectedSeats.length===13&&actualSeats===expectedSeats.join('\n')&&actualSeats.length<=1024);
+   check('CC-118 Council gives Rank 1 its display name and exact native slot name without changing the ten-rank order',
+    embed?.fields?.find(row=>row.name==='Exact in-game ladder')?.value==='1 Leader (Guild Master) · 2 High Council · 3 Officer · 4 Officer Alt · 5 Raid Leader · 6 Veteran · 7 Raider · 8 Member · 9 Alt · 10 Initiate'
+    &&embed.description.includes('The in-game name for slot 0 is Guild Master.')&&org219.nativeRanks[0].name==='Leader');
+  }
+  if(name==='branches')check('CC-018 no Army snapshots gives one plain empty state and retains capacity, history and authority boundaries',
+   embed?.description.includes('No published capacity snapshot for Olympus I–X yet. Live capacity is unknown.')&&
+   embed.description.includes('October Beta 1000/1000 +247 queued is historical only.')&&
+   !embed.fields?.length&&embed.footer?.text.includes('No automatic invitation, transfer, ranking or Link action.'));
+  if(name==='treasury')check('Treasury identifies the Discord treasurer and the exact separate game recipient',r.answer.embeds[0].title.includes('Fernmelder')&&r.answer.embeds[0].description.includes('mail or trade to Fern Melder')&&r.answer.embeds[0].fields.some(f=>f.value.includes('100g standard bail remain available')));
+  if(name==='stockades')check('Stockades offers the private MEE6 appeal while preserving the conditional bail and exact mail recipient',r.answer.embeds[0].description.includes('Ordinary appeals are free')&&r.answer.embeds[0].description.includes('private MEE6 ticket')&&r.answer.embeds[0].fields.some(f=>f.value.includes('100g standard')&&f.value.includes('Fern Melder')&&f.value.includes('Payment never guarantees an unban')));
   if(name==='guide'&&['consumes','buffs'].includes(sub))check(sub+' links to the actual registered combined checklist',r.answer.embeds[0].url.endsWith('/#/guides/tools/buffs'));
  }
+ const snapshot219={format:'olympus-stat-observation-v2',scope:'own-guild',source:'volunteer-client',sourceVerified:false,membershipProof:false,addonVersion:'1.3.2-site.1',
+  realmGroup:'World of Warcraft: Forever PvE',faction:'Alliance',observedAt:at(),guilds:[{name:'Olympus I',receivedAt:at(),reportedCharacters:'few',online:null,classes:null,levels:null,ranks:null}]};
+ const armyKey219=load('./army-census').armyKey(snapshot219);
+ await fixtureRun('INSERT INTO site_settings(key,value,updated_at,updated_by) VALUES(?,?,?,NULL)',armyKey219,JSON.stringify(snapshot219),at());
+ r=await send219('branches',null,{},MEMBER);
+ check('CC-018 validated snapshots retain dated branch rows, low-count suppression and unknown-capacity context',
+  r.answer.embeds?.[0]?.fields?.length===10&&r.answer.embeds[0].fields[0].value.includes('fewer than 5')&&
+  r.answer.embeds[0].fields[0].value.includes('not current free-slot proof')&&!r.answer.embeds[0].description.includes('No published capacity snapshot'));
+ await fixtureRun('UPDATE site_settings SET value=? WHERE key=?','{}',armyKey219);
+ r=await send219('branches',null,{},MEMBER);
+ check('CC-018 invalid stored snapshots retain validation-held disclosure without claiming no published snapshot',
+  r.answer.embeds?.[0]?.fields?.every(row=>row.value.includes('stored aggregate validation is held.'))&&
+  !r.answer.embeds[0].description.includes('No published capacity snapshot'));
+ await fixtureRun('DELETE FROM site_settings WHERE key=?',armyKey219);
+ const warrior219=guide219.classes.find(c=>c.id==='warrior');
+ warrior219.overview=['Sample\n@everyone <@1234>\u001b*bold*','Next\r\nparagraph'];
+ const escapedEnv219=directEnv({...over219,ASSETS:{fetch:async()=>Response.json(guide219)}});
+ const escapedActor219=await authority219.captureGuildActor219(escapedEnv219,{guild_id:GUILD,member:{user:{id:MEMBER}}},at(),at());
+ const escaped219=await utilities219.guideLookup219(escapedEnv219,escapedActor219,'class',{class:'warrior'});
+ check('CC-015 trusted separators coexist with control, mention and formatting escaping of input',
+  escaped219.description==='Sample \\@everyone \\<\\@1234\\> \\*bold\\*\n\nNext  paragraph'&&!escaped219.description.includes('\u001b'));
  const envOther219=directEnv(over219),otherActor219=await load('./guild-command-authority219').captureGuildActor219(envOther219,{guild_id:GUILD,member:{user:{id:OTHER}}},at(),at());
  const otherRoster219=await load('./guild-calendar219').calendarRoster219(envOther219,otherActor219,event219.id);
  check('general roster reader cannot see another member’s attendance',otherRoster219[0].attendance===null&&otherRoster219[0].attendance_visible===0);

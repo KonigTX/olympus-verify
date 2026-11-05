@@ -1,5 +1,11 @@
 # Olympus Link in olympus-verify
 
+## Current launch readiness (4 November 2026)
+
+Olympus Guild 1.3.3 contains the individual `/oly discord <code>` command. Its Link producer still carries a backend public-key placeholder. The public Link page also has placeholder Proof URL and Discord client ID values. The signed `OLB5` proof carries character Name-Realm, guild and faction. It needs a native `Player-…` GUID bound into the signed request before the strict Forever membership flow can use it. See the [published producer](https://github.com/dnl-gentile/olympus-addon/blob/v1.3.3/Olympus/Link.lua) and [public Link configuration](https://dnl-gentile.github.io/olympus-addon/config.js).
+
+Individual Link remains off pending reviewed key enrollment, replay and revocation checks, a native membership proof and live client acceptance. The `OlympusSiteAggregate` export is a separate masked report for the guild. The release history and Phase 2 requirements below continue to apply.
+
 Build .186, 21 October 2026. **Phase 1a: the source ships OFF.** Nothing in `worker/wrangler.toml` turns it on, no
 binding, variable or secret is added, and with Link off every route and every `/verify` reply is byte-identical to
 .185. Activation is Phase 2, an owner step after Phase 1b (section 8).

@@ -3,7 +3,7 @@
  * Every original key and its full .201 guide remain addressable underneath it;
  * the ten native ranks link to these cards instead of becoming ten extra jobs.
  * Backend admission, holders, ballots, scopes and historical identities stay separate. */
-import { OFFICE_APPOINTMENTS, NATIVE_RANKS_199 } from './governance-offices';
+import { COUNCIL_FAMILY_ORDER, OFFICE_APPOINTMENTS, NATIVE_RANKS_199 } from './governance-offices';
 
 export type RoleDirectoryKind203 = 'role' | 'activity' | 'status' | 'institution';
 export type RoleDirectoryTier203 = 'leader' | 'high_council' | 'officer_corps' | 'member_specialist';
@@ -31,7 +31,8 @@ export interface RoleDirectory203 {
   readonly families: readonly RoleDirectoryFamily203[];
   readonly ranks: readonly Readonly<{ nativeSlot: number; nativeRankOrdinal: number; label: string; familyKey: string }>[];
   readonly keyToFamily: Readonly<Record<string, string>>;
-  readonly sourceKeyCount: 141;
+  readonly sourceKeyCount: 142;
+  readonly councilOrder: readonly string[];
 }
 
 interface FamilySeed203 {
@@ -49,6 +50,7 @@ interface FamilySeed203 {
 // In particular, a Council portfolio is never folded into its officer service,
 // and independent audit remains outside both Treasury and stock custody.
 const seeds203: readonly FamilySeed203[] = [
+  { key: 'systems_heraldry', label: "Systems & Heraldry", kind: 'role', tier: 'high_council', primaryKey: 'office_103', sourceKeys: ['office_103'] },
   { key: 'propaganda', label: "Lord High Herald · Minister of Propaganda", kind: 'role', tier: 'high_council', primaryKey: 'office_102', sourceKeys: ['office_102'] },
   { key: 'leader', label: 'Leader / Guild Master', kind: 'role', tier: 'leader', primaryKey: 'office_43', sourceKeys: ['office_43', 'office_81', 'office_41'], contexts: { office_81: 'Sovereign (The King) — alliance executive and royal decrees', office_41: 'Final Authority — the sovereign responsibility, not an additional office', guild_master: 'Guild Master — retained Olympus II–X branch guide' } },
   { key: 'founder', label: 'Founder Recognition', kind: 'status', tier: 'leader', primaryKey: 'office_42', sourceKeys: ['office_42'] },
@@ -149,7 +151,7 @@ function directory203(): RoleDirectory203 {
     add(familyKey, row.key);
   }
   const expected = [...OFFICE_APPOINTMENTS.map(row => row.key), 'member', 'raider', 'pvp_team'].sort();
-  if (expected.length !== 141 || new Set(expected).size !== 141 || JSON.stringify(Object.keys(keyToFamily).sort()) !== JSON.stringify(expected)) throw new Error('Incomplete .203 directory source coverage');
+  if (expected.length !== 142 || new Set(expected).size !== 142 || JSON.stringify(Object.keys(keyToFamily).sort()) !== JSON.stringify(expected)) throw new Error('Incomplete .203 directory source coverage');
 
   const families = seeds203.map(seed => {
     const sourceKeys = sources.get(seed.key)!;
@@ -174,7 +176,7 @@ function directory203(): RoleDirectory203 {
     return Object.freeze({ key: seed.key, label: seed.label, kind: seed.kind, tier: seed.tier, primaryKey: seed.primaryKey, sourceKeys: Object.freeze([...sourceKeys]), alternateTitles: Object.freeze(alternateTitles), variants: Object.freeze(variants), ...(seed.application ? { application: Object.freeze({ ...seed.application }) } : {}) });
   });
   const ranks = NATIVE_RANKS_199.map(rank => Object.freeze({ nativeSlot: rank.nativeSlot, nativeRankOrdinal: rank.nativeRankOrdinal, label: rank.name, familyKey: rankFamilies203[rank.nativeSlot] }));
-  return Object.freeze({ version: 1, families: Object.freeze(families), ranks: Object.freeze(ranks), keyToFamily: Object.freeze(keyToFamily), sourceKeyCount: 141 });
+  return Object.freeze({ version: 1, families: Object.freeze(families), ranks: Object.freeze(ranks), keyToFamily: Object.freeze(keyToFamily), sourceKeyCount: 142, councilOrder: COUNCIL_FAMILY_ORDER });
 }
 
 /** Plain serializable display metadata. It is not read by backend admission. */

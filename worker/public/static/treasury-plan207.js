@@ -24,7 +24,8 @@ export function renderTreasuryPlan207(main, ui) {
     h("p", { class: "tp207-eyebrow", text: "Many guilds. One sustainable treasury." }),
     h("h1", { id: "treasury-plan-title207", text: TREASURY_PLAN207.title || "Olympus Treasury Programme" }),
     h("p", { class: "tp207-intro", text: TREASURY_PLAN207.subtitle || "A shared aim, an honest economic model and a practical officer roadmap." }),
-    h("p", { class: "tp207-state", text: "Planning programme · Start date not set · No fundraising campaign or paid service activated" }));
+    h("p", { class: "tp207-state", text: "Planning programme · Start date not set · No fundraising campaign or paid service activated" }),
+    h("p", { class: "tp207-intro", text: "The plan and calculator source are public in the Olympus Verify repository. This interactive guild-site view is for eligible officers." }));
   root.append(header);
   root.append(h("div", { class: "tp207-metrics", "aria-label": "Programme baseline and proposed target" },
     h("section", { class: "tp207-metric" }, h("span", { text: "Owner-reported opening balance" }), h("strong", { text: "0g" }), h("small", { text: "Reported 28 October 2026. A dated owner statement, not a live bank feed.", "data-owner-balance207": "0" })),
@@ -106,7 +107,15 @@ export function renderTreasuryPlan207(main, ui) {
   const links = h("div", { class: "tp207-chapter-links" });
   const body = h("div", { class: "tp207-chapters" });
   function renderSection207(section) {
-    return h("section", { class: "tp207-chapter-section" }, section.heading ? h("h3", { text: section.heading }) : null,
+    const heading = section.officeKeys
+      ? h("h3", null, section.officeKeys.flatMap((key, index) => {
+        const label = ui.officeLabel?.(key);
+        const reference = label ? h("a", { href: "#/roles/" + encodeURIComponent(key), text: label })
+          : h("span", { text: "Office reference unavailable" });
+        return index ? [" and ", reference] : [reference];
+      }))
+      : section.heading ? h("h3", { text: section.heading }) : null;
+    return h("section", { class: "tp207-chapter-section" }, heading,
       (section.paragraphs || []).map(text => h("p", { text })),
       section.bullets?.length ? h("ul", null, section.bullets.map(text => h("li", { text }))) : null,
       section.table ? table207(section.table.headers, section.table.rows, section.table.caption || section.heading || "Programme reference") : null,

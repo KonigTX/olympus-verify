@@ -15,7 +15,7 @@ const historicalScope218='Historical application and ballot compatibility only; 
 function originalTerms218(terms) {
  terms=require('../../scripts/governance-cabinet224-inverse.cjs').restoreCabinet224(terms,'terms');
  terms=require('../../scripts/governance-role-inverse222.cjs').originalTerms222(terms);
- const specs={office_26:{ordinal:26,label:'Council of Justice',applicationLabel:'Council of Justice',acquisition:'Case-designated judicial institution; chaired by the Lord High Chancellor, with accepted unconflicted members.'},office_94:{ordinal:94,label:'War Head',applicationLabel:'War Directorate (historical shared template)',acquisition:'Historical shared War Head reference; current PvE and PvP portfolios have their own separate appointments.'}};
+ const specs={office_26:{ordinal:26,label:'Council of Justice',applicationLabel:'Council of Justice',acquisition:'Case-designated judicial institution. The Lord High Justiciar directs procedure. Panel members must be designated and unconflicted.'},office_94:{ordinal:94,label:'War Head',applicationLabel:'War Directorate (historical shared template)',acquisition:'Historical shared War Head reference; current PvE and PvP portfolios have their own separate appointments.'}};
  const keys=['label','applicationLabel','applicationAliases','applicationEligible','applicationRoleKeys','acquisition'];
  return terms.map(current=>{
   const term=JSON.parse(JSON.stringify(current)),spec=specs[term.officeKey];
@@ -34,8 +34,8 @@ function originalTerms218(terms) {
 check('all three .199 rank projections agree on exact order and zero-based slots',()=>{
  for(const rows of [organization.nativeRanks,browser.ranks,server.NATIVE_RANKS_199]){assert.deepEqual(rows.map(r=>r.name),names);assert.deepEqual(rows.map(r=>r.nativeSlot),[0,1,2,3,4,5,6,7,8,9]);assert.ok(rows.every((r,i)=>r.nativeRankOrdinal===i+1&&r.mappingApplies===false));}
 });
-check('all 102 stable offices and all 138 assignable keys have explicit individual classifications',()=>{
- assert.equal(organization.terms.length,102);assert.equal(server.OFFICE_APPOINTMENTS.length,138);assert.equal(new Set(server.OFFICE_APPOINTMENT_KEYS).size,138);
+check('all 103 stable offices and all 139 assignable keys have explicit individual classifications',()=>{
+ assert.equal(organization.terms.length,103);assert.equal(server.OFFICE_APPOINTMENTS.length,139);assert.equal(new Set(server.OFFICE_APPOINTMENT_KEYS).size,139);
  assert.deepEqual(server.OFFICE_APPOINTMENTS,organization.appointments);assert.deepEqual(browser.offices,organization.appointments);
  const stable=JSON.parse(fs.readFileSync(path.join(repo,'docs/governance-office-keys.json'),'utf8'));
  assert.deepEqual(server.OFFICE_APPOINTMENTS.filter(o=>o.termOrdinal).map(o=>({key:o.key,label:o.label})),stable);
@@ -89,13 +89,13 @@ check('the finite two-institution inverse preserves all96 originals and rejects 
  const label=copy();label[25].applicationLabel='Head of Justice';assert.throws(()=>originalTerms218(label));
  const other=copy();other[25].note+=' unapproved change';assert.notEqual(digest(other),'edf51ea2b8b757b359fa77b676e56644a641264df3bd06d7393390221e54a5de');
 });
-check('Master218 has twelve independent Council portfolios plus the existing Leader chair',()=>{
+check('The Co-Guild Master and twelve portfolios serve under the existing Leader chair',()=>{
  const seats=organization.councilComposition.currentSeats;
- assert.equal(organization.councilComposition.cabinetSeatCount,12);
- assert.equal(seats.length,13);
- assert.equal(new Set(seats.map(s=>s.id)).size,13);
- assert.equal(new Set(seats.map(s=>s.familyKey)).size,13);
- for(const [id,key] of [['main-raid-lead','office_97'],['main-pvp-lead','office_98'],['internal-security','office_99'],['concordat','office_100'],['head-justice','office_101'],['head-trading','office_96'],['heraldry','office_59']]){
+ assert.equal(organization.councilComposition.cabinetSeatCount,13);
+ assert.equal(seats.length,14);
+ assert.equal(new Set(seats.map(s=>s.id)).size,14);
+ assert.equal(new Set(seats.map(s=>s.familyKey)).size,14);
+ for(const [id,key] of [['main-raid-lead','office_97'],['main-pvp-lead','office_98'],['internal-security','office_99'],['concordat','office_100'],['head-justice','office_101'],['head-trading','office_96'],['heraldry','office_59'],['systems-heraldry','office_103']]){
   const seat=seats.find(s=>s.id===id);assert.deepEqual(seat.officeKeys,[key]);
   const office=server.OFFICE_APPOINTMENTS.find(o=>o.key===key);
   assert.equal(office.nativeSlot,1);assert.equal(office.tier,'high_council');
@@ -107,14 +107,14 @@ check('Master218 has twelve independent Council portfolios plus the existing Lea
 });
 check('every office has its current ministry and a real Council portfolio or explicit technical-support classification',()=>{
  const seats=new Map(organization.councilComposition.currentSeats.map(s=>[s.id,s]));
- assert.equal(Object.keys(organization.cabinet218.offices).length,102);
+ assert.equal(Object.keys(organization.cabinet218.offices).length,103);
  for(const office of server.OFFICE_APPOINTMENTS){
   if(office.cabinetSeatId==='technical-support'){assert.equal(office.councilSeat,'');assert.notEqual(office.tier,'high_council');}else{assert.ok(seats.has(office.cabinetSeatId));assert.equal(office.councilSeat,seats.get(office.cabinetSeatId).label);}
   assert.ok(organization.nodes.some(node=>node.title===office.ministry));
  }
  assert.notEqual(organization.cabinet218.offices.office_08.seatId,'treasurer');
  assert.equal(organization.cabinet218.offices.office_08.independentReview,true);
- assert.equal(organization.roleRank199.officeCount,102);assert.equal(organization.roleRank199.assignableKeyCount,138);
+ assert.equal(organization.roleRank199.officeCount,103);assert.equal(organization.roleRank199.assignableKeyCount,139);
  assert.deepEqual(organization.cabinet218.reportingChanges,[{nodeId:'intake',field:'parent',before:'heraldry',after:'council',reason:'Chancery is now a distinct reserved Council portfolio; Heraldry remains a coordinating communications partner.'}]);
  assert.equal(organization.nodes.find(n=>n.id==='intake').parent,'council');
 });

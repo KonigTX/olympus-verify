@@ -40,7 +40,7 @@ const checks227 = String.raw`
     throw Error('unexpected scoped verification fixture provider '+method+' '+p);
   };
   const fresh = async () => {
-    db=freshDb();reset();nativeBefore227=null;nativeAfter227=null;memberHook227=null;putHook227=null;putAfter227=null;
+    db=freshDb();reset();nativeBefore227=null;nativeAfter227=null;nativeRead227=null;memberHook227=null;putHook227=null;putAfter227=null;
     env=directEnv({DB:d1(db),PUBLIC_BASE_URL:'https://verify.example',VERIFY_SECRET:SECRET,ROLE_GUILD_MEMBER:ROLE,ADMISSION_MODE:'auto',OFFICER_CHARACTERS:'Fern Melder',ROSTER_MAX_SHRINK_PCT:'10',ROSTER_MIN_MEMBERS:'0',GUILD_ID:'1549537348516188200',REQUEST_CODES:'on',...SELECTED227,MEMBERSHIP_ROLE_SETTLEMENT_ENABLED:'true',DISCORD_APP_ID:BOT227,DISCORD_BOT_TOKEN:'fixture-only'});
     await env.DB.prepare('INSERT INTO pending(discord_id,name_key,name,created_at,expires_at,nonce) VALUES(?1,\'\',\'\',?2,?3,\'M2X\')').bind(A,T,T+86400).run();
     return codes.ticketFor(SECRET,'M2X',day());
@@ -56,6 +56,78 @@ const checks227 = String.raw`
   const noAdmission = () => db.prepare('SELECT COUNT(*) n FROM characters').get().n===0&&db.prepare('SELECT COUNT(*) n FROM invite_queue').get().n===0&&ROLE_ADDS.length===0&&VERIFIED.length===0;
   const unchanged = () => db.prepare('SELECT consumed_at FROM pending').get().consumed_at===null&&noAdmission();
   const closedRefusal = reply => reply.status===409&&reply.body.result==='membership_not_confirmed'&&reply.body.pendingConsumed===true&&reply.body.requestRefused===true&&reply.body.roleGranted===false&&reply.body.inviteQueued===false&&db.prepare('SELECT consumed_at,consumed_source FROM pending').get().consumed_at!==null&&db.prepare('SELECT consumed_source FROM pending').get().consumed_source==='membership_refused'&&noAdmission();
+  const displayPath227 = '/queue/unverified?keyVersion=launch-roster-display-v1';
+  const watcherKey227 = 'synthetic-watcher-display-only-fixture-token';
+  const displayFetch227 = (path=displayPath227, auth=true, runtime=env) => load('./index').default.fetch(
+    new Request('https://verify.example' + path, { headers: auth ? {Authorization:'Bearer '+watcherKey227} : {} }),
+    {...runtime,WATCHER_TOKEN:watcherKey227}, {waitUntil(){throw Error('strict display started background work');}}
+  );
+  const displayWrite227 = (statement, ...params) => env.DB.prepare(statement).bind(...params).run();
+  await fresh();
+  let display227 = await displayFetch227();
+  check('strict display stays unavailable without an admitted native snapshot',display227.status===409);
+  check('strict display needs Watcher bearer before returning any lists',(await displayFetch227(displayPath227,false)).status===401);
+  for(const path of ['/queue?keyVersion=launch-roster-display-v1',displayPath227+'&officer=other',displayPath227+'&keyVersion=launch-roster-display-v1','/queue/unverified?keyVersion=launch-membership-v1']){
+    check('strict display protocol rejects the other route or query '+path,(await displayFetch227(path)).status===400);
+  }
+  await snapshot();
+  const beforeRead227=db.prepare('SELECT total_changes() AS n').get().n;
+  display227=await displayFetch227();
+  let lists227=await display227.json();
+  check('exact scoped snapshot lists only display fields and no queue or removal authority',display227.status===200&&JSON.stringify(lists227)===JSON.stringify({
+    protocol:'launch-roster-display-v1',fetchedAt:T,snapshotAt:T,guild:'Olympus',realm:'Fixture Live Realm',verified:[],
+    unverified:nativeMembers227.map(({name,guid})=>({name,guid,pending:false}))
+  }));
+  check('strict display names cannot be stored in a shared HTTP cache',display227.headers.get('Cache-Control')==='private, no-store, no-transform');
+  check('strict display read never changes a row or settles role, pending or invite custody',db.prepare('SELECT total_changes() AS n').get().n===beforeRead227&&unchanged());
+  check('legacy mode cannot obtain strict reports',(await displayFetch227(displayPath227,true,{...env,VERIFY_MEMBERSHIP_ONLY:'false'})).status===409);
+  check('held scope cannot obtain strict reports',(await displayFetch227(displayPath227,true,{...env,VERIFY_NATIVE_SCOPE:undefined})).status===409);
+  check('strict display refuses an underlying snapshot from before the admission cutoff',(await displayFetch227(displayPath227,true,{...env,LINKS_NOT_BEFORE:String(T+1)})).status===409);
+  const displayClock227=T;
+  nativeRead227=sql=>{if(sql.includes('linked_guids AS MATERIALIZED'))T=displayClock227+1;};
+  display227=await displayFetch227(displayPath227,true,{...env,LINKS_NOT_BEFORE:String(T+1),LINKS_NOT_BEFORE_CLOCK_GATED:'true'});
+  check('cutoff activating during the real Native display read holds the pre-launch snapshot',T===displayClock227+1&&display227.status===409);
+  nativeRead227=null;T=displayClock227;
+  for(const [label,change]of[
+    ['unversioned provenance',"source='addon'"],['unfinished','complete=0'],['distrusted','trusted=0'],['wrong count','member_count=3'],
+    ['stale','exported_at='+(T-3601)],['future','exported_at='+(T+1)]
+  ]){
+    await displayWrite227('UPDATE roster_snapshots SET '+change);
+    check(label+' latest snapshot is withheld on the real read path',(await displayFetch227()).status===409);
+    await displayWrite227('UPDATE roster_snapshots SET source=?1,complete=1,trusted=1,member_count=2,exported_at=?2',selected.scope.provenance,T);
+  }
+  await roster.ingestRoster(env,T+1,nativeMembers227,'addon');
+  check('new unscoped snapshot cannot fall back to the earlier valid scoped roster',(await displayFetch227()).status===409);
+  db.close();
+
+  const withDisplayLink227 = async () => {
+    await fresh();await snapshot();
+    await displayWrite227("INSERT INTO members(discord_id,username,global_name) VALUES(?1,'example-member','Example Member')",A);
+    await displayWrite227("INSERT INTO characters(name_key,name,discord_id,status,bound_at,verified_at,guid) VALUES('fern melder','Fern Melder',?1,'member',?2,?2,?3)",A,T,nativeMembers227[0].guid);
+    await displayWrite227("UPDATE pending SET name_key='other member',name='Other Member'");
+  };
+  await withDisplayLink227();
+  lists227=await (await displayFetch227()).json();
+  check('current exact GUID returns display names only and named pending prevents a reminder',JSON.stringify(lists227.verified)===JSON.stringify([
+    {name:'Fern Melder',guid:nativeMembers227[0].guid,status:'member',username:'example-member',displayName:'Example Member'}
+  ])&&lists227.unverified[0]?.pending===true&&!JSON.stringify(lists227).includes(A));
+  db.close();
+  for(const [label,statement]of[
+    ['same name with the wrong current GUID',"UPDATE characters SET guid='Player-4613-00000000'"],
+    ['rename still settling under a prior name',"UPDATE characters SET name_key='old name',name='Old Name'"],
+    ['prior non-member state',"UPDATE characters SET status='left_pending'"],
+    ['banned link','UPDATE members SET banned=1'],
+    ['prior permanent denial',"UPDATE characters SET status='denied'"],
+    ['retiring privacy subject',"INSERT INTO privacy_subjects(subject_id,generation,state,revision,created_at,updated_at) VALUES('"+A+"','"+'a'.repeat(32)+"','retiring',0,"+T+","+T+")"]
+  ]){
+    await withDisplayLink227();
+    await displayWrite227(statement);
+    lists227=await (await displayFetch227()).json();
+    check(label+' gives neither a displayed Discord name nor a reminder target',lists227.verified?.length===0&&!lists227.unverified?.some(row=>row.name==='Fern Melder'));
+    if(label==='retiring privacy subject')check('retiring subject does not expose a named pending request or reminder',lists227.unverified?.length===0);
+    db.close();
+  }
+
   const savedVectorTime=T;T=1793720000;
   const vectorEnv={VERIFY_MEMBERSHIP_ONLY:'true',VERIFY_NATIVE_SCOPE:JSON.stringify({version:1,guild:'Olympus',realm:'Native Live Realm'}),VERIFY_SECRET:'synthetic-per-whisper-only'};
   const vectorProof=gate.captureNativeMembershipProof({version:1,member:true,observedAt:T,scopeHash:'a32080270acf8d2f',mac:'a386604f5049ee4c67b2518c302c1b48'});
@@ -200,5 +272,5 @@ const checks227 = String.raw`
 const module227 = new Module227(__filename, module);
 module227.filename = __filename;
 module227.paths = module.paths;
-const fixture227=parent227.slice(0,cuts227[0].index).replace(native227,"  return entry.originalNativePort(db,{beforeBatch:plan=>nativeBefore227?.(plan),afterBatch:plan=>nativeAfter227?.(plan)});");
-module227._compile('let nativeBefore227=null,nativeAfter227=null;\n'+fixture227 + checks227, __filename);
+const fixture227=parent227.slice(0,cuts227[0].index).replace(native227,"  return entry.originalNativePort(db,{beforeBatch:plan=>nativeBefore227?.(plan),afterBatch:plan=>nativeAfter227?.(plan),beforeRead:sql=>nativeRead227?.(sql)});");
+module227._compile('let nativeBefore227=null,nativeAfter227=null,nativeRead227=null;\n'+fixture227 + checks227, __filename);

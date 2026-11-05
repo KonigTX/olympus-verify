@@ -47,8 +47,9 @@ import { handleTreasuryCosmeticAdmin } from "./treasury-cosmetic";
 import { discordDirectoryAttendedVisibility } from "./community-discord-directory";
 import { handleRulesetPublication } from './ruleset-publication';
 import { handleMembershipRetirement } from './membership-retirement-route';
-import {prepareMembershipDecision,membershipDecisionTargetToken,applyMembershipDecision,membershipDecisionPartialGuard,membershipDecisionAuthRequest,membershipDecisionBodyRequest,assertMembershipDecisionOrigin,type MembershipDecisionOrigin} from './privacy-rejection-decision';
+import {prepareMembershipDecision,membershipDecisionTargetToken,membershipDecisionDetailKey,applyMembershipDecision,membershipDecisionPartialGuard,membershipDecisionAuthRequest,membershipDecisionBodyRequest,assertMembershipDecisionOrigin,type MembershipDecisionOrigin} from './privacy-rejection-decision';
 import { handleBetaRoleReset } from './beta-reset-route';
+import { APPLICATION_OPENING_ANSWER_KEY, ORDINARY_DECLINE_ANSWER_KEY } from './application-edit219';
 import { appointmentPublicationConfirmation, containsInternalAppointmentProof, prepareAppointmentPublication, appointmentPublicationTargetsCurrentSql, appointmentPublicationTargetFailure, type AppointmentPublicationFailure } from './site-appointed-identities';
 
 const PAGE = 50;
@@ -123,8 +124,8 @@ export async function handleAdmin(request: Request, env: Env, path: string, admi
     }
   }
   if (m === "GET" && parts[0] === "applications" && !parts[1]) return listApplications(env, q);
-  if(m==='GET'&&parts[0]==='users'&&parts[2]==='decision-target'){if(!decisionOrigin)return apiJson({error:'original_membership_decision_held'},409);const route=q.get('route');if(!['status','deny','undeny','delete'].includes(route??''))return apiJson({error:'bad_request'},400);return apiJson({targetToken:await membershipDecisionTargetToken(decisionOrigin,env,route as 'status'|'deny'|'undeny'|'delete')});}
-  if (m === "GET" && parts[0] === "applications" && parts[1]) return applicationDetail(env, parts[1]);
+  if(m==='GET'&&parts[0]==='users'&&parts[2]==='decision-target'){if(!decisionOrigin)return apiJson({error:'original_membership_decision_held'},409);const route=q.get('route');if(!['status','deny','undeny','delete'].includes(route??''))return apiJson({error:'bad_request'},400);return apiJson(await membershipDecisionTargetToken(decisionOrigin,env,route as 'status'|'deny'|'undeny'|'delete'));}
+  if (m === "GET" && parts[0] === "applications" && parts[1]) return applicationDetail(env, parts[1], decisionOrigin);
   if (m === "POST" && parts[0] === "applications" && parts[2] === "status") return setStatus(env, actor, parts[1], body,decisionOrigin);
   if (m === "POST" && parts[0] === "users" && parts[2] === "deny") return deny(env, actor, parts[1], body,decisionOrigin);
   if (m === "POST" && parts[0] === "users" && parts[2] === "undeny") return undeny(env, actor, parts[1],decisionOrigin);
@@ -392,10 +393,17 @@ async function listApplications(env: Env, q: URLSearchParams): Promise<Response>
   const text = cleanText(q.get("q"), 40);
   if (text) {
     // Names: plain LIKE, which ignores case for A-Z (SQLite's LOWER() would not touch É either, so it adds nothing).
-    // Character keys: the same normalisation they were stored with.
+    // Linked keys use the lookup's normalization and status fence. Declared names are already cleaned on save.
     args.push(likeArg(text), likeArg(normalizeCharacter(text)));
-    const n = args.length - 1;
-    where.push(`(u.username LIKE ?${n} ESCAPE '\\' OR u.global_name LIKE ?${n} ESCAPE '\\' OR u.nick LIKE ?${n} ESCAPE '\\' OR a.char_key LIKE ?${n + 1} ESCAPE '\\')`);
+    const name = `?${args.length - 1}`, character = `?${args.length}`;
+    where.push(`(u.username LIKE ${name} ESCAPE '\\' OR u.global_name LIKE ${name} ESCAPE '\\' OR u.nick LIKE ${name} ESCAPE '\\'
+      OR a.char_key LIKE ${character} ESCAPE '\\'
+      OR EXISTS (SELECT 1 FROM characters c WHERE c.discord_id = a.discord_id AND c.status NOT IN ('unbound','denied')
+        AND c.name_key LIKE ${character} ESCAPE '\\')
+      OR EXISTS (SELECT 1 FROM json_each(CASE WHEN json_valid(a.answers) THEN a.answers ELSE '{}' END, '$.talentBuilds.characters') alt
+        WHERE typeof(alt.key) = 'integer' AND alt.key BETWEEN 1 AND 2
+        AND CASE WHEN alt.type = 'object' THEN json_type(alt.value, '$.character') = 'text'
+          AND json_extract(alt.value, '$.character') LIKE ${character} ESCAPE '\\' ELSE 0 END))`);
   }
   const sql = `FROM site_applications a JOIN site_users u ON u.discord_id = a.discord_id ${where.length ? "WHERE " + where.join(" AND ") : ""}`;
   const offset = intParam(q.get("offset"), 0, 1_000_000, 0);
@@ -412,14 +420,15 @@ async function listApplications(env: Env, q: URLSearchParams): Promise<Response>
   });
 }
 
-async function applicationDetail(env: Env, id: string): Promise<Response> {
+async function applicationDetail(env: Env, id: string, origin?: MembershipDecisionOrigin): Promise<Response> {
   if (!isId(id)) return apiJson({ error: "bad_request" }, 400);
   const row = await env.DB.prepare(
-    "SELECT a.*, u.username, u.global_name, u.nick, u.avatar, u.account_created, u.server_joined, u.in_server, u.denied, u.denied_reason FROM site_users u LEFT JOIN site_applications a ON a.discord_id = u.discord_id WHERE u.discord_id = ?1",
+    "SELECT a.*, u.username, u.global_name, u.nick, u.avatar, u.account_created, u.server_joined, u.in_server, u.denied, u.denied_reason, u.account_incarnation AS detail_account_incarnation FROM site_users u LEFT JOIN site_applications a ON a.discord_id = u.discord_id WHERE u.discord_id = ?1",
   )
     .bind(id)
     .first<Record<string, unknown>>();
   if (!row) return apiJson({ error: "not_found" }, 404);
+  const reviewKey = origin ? await membershipDecisionDetailKey(origin, env, id, row.detail_account_incarnation) : null;
   const friendsOf = await env.DB.prepare("SELECT friend_kind AS kind, friend_key AS key, friend_label AS label, note FROM site_friends WHERE owner_id = ?1 ORDER BY created_at")
     .bind(id)
     .all();
@@ -450,6 +459,7 @@ async function applicationDetail(env: Env, id: string): Promise<Response> {
   const tally = new Map(board.results.map((r) => [r.role, r]));
   const roles = app ? choicesOf(row as never as AppRow).filter((r) => ballotOf(r)) : []; // Raider and Member are not voted on
   return apiJson({
+    ...(reviewKey ? { reviewKey } : {}),
     user: { ...userOut(env, { ...row, discord_id: id } as never), deniedReason: row.denied_reason ?? null },
     application: app,
     // Every role they are (or were) listed under, their own choices first, with the board's counts.
@@ -1095,13 +1105,57 @@ async function lookup(env: Env, q: URLSearchParams): Promise<Response> {
  * single request building the whole file took 15-45 ms of CPU for a few hundred voters in testing, and the free plan
  * allows 10. Pages are small enough to stay well under that; applications carry their answers, so theirs are smaller.
  */
+const DECLINE_ANSWER_PATH = '$.' + ORDINARY_DECLINE_ANSWER_KEY;
+const OPENING_ANSWER_PATH = '$.' + APPLICATION_OPENING_ANSWER_KEY;
+const APPLICATION_EXPORT_REDACT = `CASE WHEN json_valid(a.answers)
+  THEN json_type(a.answers,'${DECLINE_ANSWER_PATH}') IS NOT NULL OR json_type(a.answers,'${OPENING_ANSWER_PATH}') IS NOT NULL ELSE 0 END`;
+
+/** SQLite has already validated this object and found an exact internal key. Scan each
+ * member once so duplicate keys cannot force repeated full-JSON rewrites. Keep the original
+ * slices of retained members, including numeric lexemes and escaped or nested values. */
+function redactApplicationExportAnswers(value: unknown): string {
+  if (typeof value !== 'string') throw new Error('application_export_answers_invalid');
+  const open = value.indexOf('{');
+  if (open < 0) throw new Error('application_export_answers_invalid');
+  const members: string[] = [];
+  let start = open + 1;
+  let depth = 0;
+  let quoted = false;
+
+  const retain = (end: number) => {
+    const member = value.slice(start, end);
+    const key = /^\s*("(?:[^"\\]|\\.)*")\s*:/.exec(member)?.[1];
+    if (!key) throw new Error('application_export_answers_invalid');
+    const name = JSON.parse(key);
+    if (name !== ORDINARY_DECLINE_ANSWER_KEY && name !== APPLICATION_OPENING_ANSWER_KEY) members.push(member);
+    start = end + 1;
+  };
+
+  for (let i = start; i < value.length; i++) {
+    const char = value[i];
+    if (quoted) {
+      if (char === '\\') i++;
+      else if (char === '"') quoted = false;
+    } else if (char === '"') quoted = true;
+    else if (char === '{' || char === '[') depth++;
+    else if (char === '}' && depth === 0) {
+      retain(i);
+      return value.slice(0, open + 1) + members.join(',') + value.slice(i);
+    } else if (char === '}' || char === ']') depth--;
+    else if (char === ',' && depth === 0) retain(i);
+  }
+  throw new Error('application_export_answers_invalid');
+}
+
+
 const EXPORTS: Record<string, { sql: string; page: number; columns: readonly string[] }> = {
   applications: {
     page: 150,
     columns: ['discord_id','username','global_name','nick','position','class_lead','backup1','backup2','fallback','character','class','role','region','professions','avail_tz','avail','status','admin_note','created_at','updated_at','account_created','server_joined','denied','answers'],
     sql: `SELECT a.discord_id, u.username, u.global_name, u.nick, a.position, a.class_lead, a.backup1, a.backup2, a.fallback, a.character, a.class, a.role, a.region,
                  (SELECT group_concat(j.value, ' ') FROM ${PROFESSIONS_OF_A} j) AS professions,
-                 a.avail_tz, a.avail, a.status, a.admin_note, a.created_at, a.updated_at, u.account_created, u.server_joined, u.denied, a.answers
+                 a.avail_tz, a.avail, a.status, a.admin_note, a.created_at, a.updated_at, u.account_created, u.server_joined, u.denied, a.answers,
+                 ${APPLICATION_EXPORT_REDACT} AS redact_decline
             FROM site_applications a JOIN site_users u ON u.discord_id = a.discord_id ORDER BY a.created_at, a.discord_id`,
   },
   board: {
@@ -1147,7 +1201,13 @@ async function exportPage(env: Env, kind: string, q: URLSearchParams): Promise<R
   const offset = intParam(q.get("offset"), 0, 10_000_000, 0);
   const res = await env.DB.prepare(`${e.sql} LIMIT ${e.page + 1} OFFSET ${offset}`).all<Record<string, unknown>>();
   const more = res.results.length > e.page;
-  const rows = res.results.slice(0,e.page).map(row=>e.columns.map(column=>row[column]));
+  const rows = res.results.slice(0, e.page).map(row => {
+    if (key === 'applications' && row.redact_decline !== 0 && row.redact_decline !== 1) {
+      throw new Error('application_export_answers_invalid');
+    }
+    return e.columns.map(column => column === 'answers' && row.redact_decline === 1
+      ? redactApplicationExportAnswers(row.answers) : row[column]);
+  });
   return apiJson({ columns: e.columns, rows, next: more ? offset + e.page : null });
 }
 

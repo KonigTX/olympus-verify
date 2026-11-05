@@ -39,7 +39,7 @@ if (!APP || !TOKEN) {
   process.exit(1);
 }
 if (APP === '1550176895671341076') {
-  console.error('Use the current reviewed guild-command-plan224 and single-purpose registration operator; this legacy broad script must not replace the production command inventory.');
+  console.error('Use the current reviewed guild-command-plan228 and single-purpose registration operator; this legacy broad script must not replace the production command inventory.');
   process.exit(1);
 }
 const API = "https://discord.com/api/v10";

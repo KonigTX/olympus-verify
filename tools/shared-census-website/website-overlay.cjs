@@ -2,7 +2,7 @@
 
 // Served only by the separate synthetic local server. Production app.js stays byte-identical.
 const { createHash } = require('node:crypto');
-const EXPECTED_SOURCE_SHA256 = '14853fb44150418929e184b9de5ceee35c97db9daeba8cb4621ef6bb5e453191';
+const EXPECTED_SOURCE_SHA256 = '597f19e5b744cf5d09553aee1d4717b24c2c2514c734a780ff0ca033714c4290';
 const LOCAL_LABEL = 'Shared census · local preview';
 
 function transformApp(source) {
@@ -27,10 +27,11 @@ function transformApp(source) {
   }
 `);
   once('  async function signOut() {\n', '  async function signOut() {\n    if (disposeSharedCensusLocal) disposeSharedCensusLocal();\n');
-  once('news: "Guild news", army: "Army", leadership: "Leadership"', 'news: "Guild news", army: "Army", "shared-census": "Shared census · local preview", leadership: "Leadership"');
-  once('    if (anyCommunity()) tabs.push(["leadership", "Leadership"]); // .114:', '    if (anyCommunity() && can("applicantWrite") && communityReader()) tabs.push(["shared-census", "Shared census · local preview"]);\n    if (anyCommunity()) tabs.push(["leadership", "Leadership"]); // .114:');
-  once('    if (sub === "news" && newsOn()) return communityNews(body);', '    if (sub === "shared-census") return communitySharedCensusLocal(body);\n    if (sub === "news" && newsOn()) return communityNews(body);');
-  once('  async function communityOverview(body) {\n    const cards = [];', '  async function communityOverview(body) {\n    const cards = [];\n    if (anyCommunity() && can("applicantWrite") && communityReader()) cards.push(h("a", { class: "card", href: "#/community/shared-census" }, h("div", { class: "card-head" }, icon("icon-friends"), h("h3", { text: "Shared census · local preview" })), h("p", { class: "muted small", text: "Synthetic reports in this local process only. No production connection or real guild data." })));');
+  // Current Community descriptors own the tab, title and overview card. Keep the
+  // preview out of the original top navigation and behind both original guards.
+  once('visibleCommunitySections().map(({ href, label }) => [href, label])', 'visibleCommunitySections().filter(section => !section.localOnly).map(({ href, label }) => [href, label])');
+  once('    { key: "leadership", label: "Leadership",', '    { key: "shared-census", label: "Shared census · local preview", href: "#/community/shared-census", localOnly: true, visible: () => anyCommunity() && can("applicantWrite") && communityReader(), icon: "icon-friends",\n      description: "Synthetic reports in this local process only. No production connection or real guild data." },\n    { key: "leadership", label: "Leadership",');
+  once('    if (sub === "leadership") return communityLeadership(body); // .114', '    if (sub === "shared-census") return communitySharedCensusLocal(body);\n    if (sub === "leadership") return communityLeadership(body); // .114');
   once('  function communityCensus(body) {', String.raw`  async function communitySharedCensusLocal(body) {
     const context = COM(), subject = context.subject, user = S.user, route = currentRoute();
     let disposed = false, instance = null, resumeAllowed = false;

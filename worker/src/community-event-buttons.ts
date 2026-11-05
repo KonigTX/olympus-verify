@@ -22,6 +22,7 @@ import { destination } from "./community-event-delivery";
 import { rsvpRefusalState, rsvpStatements, type RsvpStatus } from "./community-events";
 import { privacyAccountIncarnation, readPrivacySubject } from "./privacy-serving-authority";
 import { captureLaneConfig } from "./full-release-roles";
+import { siteMemberLink } from "./site-return";
 
 const BUTTON = /^raid:(rsvp|remind):([A-Za-z0-9_-]{22}):([1-9]\d{0,8})(?::(yes|tentative|no))?$/; // stage 2: raid:remind:<event>:<revision> has no status
 const SNOWFLAKE = /^\d{17,20}$/;
@@ -41,7 +42,7 @@ export async function handleRaidComponent(env: Env, i: Interaction): Promise<Res
   const kind = m[1] as "rsvp" | "remind", eventId = m[2]!, revision = Number(m[3]), status = (m[4] ?? "yes") as RsvpStatus;
   const d = destination(env);
   if (env.EVENT_DISCORD_DELIVERY !== "on" || !communityFeatures(env).has("events") || !d) return reply("Raid sign-ups by button are switched off. Use the calendar on the guild site.");
-  const site = `https://${d.host}/#/community/calendar/${eventId}`;
+  const site = siteMemberLink(d.host, `community/calendar/${eventId}`);
   if (i.guild_id !== d.guild || (typeof i.channel_id === "string" && i.channel_id !== d.channel)) return reply("These buttons only work under a raid notice in the #📅raid-schedule channel of the Olympus server.");
   const user = userOf(i);
   if (!user || !SNOWFLAKE.test(user.id)) return reply("Unknown member.");

@@ -114,17 +114,27 @@ function open() {
 const originalModel = JSON.stringify(model), originalDirectory = JSON.stringify(directory), page = open();
 const overview = page.buildAllianceOverview205(model, directory), groups = overview.groups, entries = groups.flatMap(group => group.families);
 const expectedKeys = sorted([...catalogue.map(row => row.key), 'member', 'raider', 'pvp_team']);
-check('real canonical fixture contains exactly71 role families and141 registered keys', directory.families.length === 71 && directory.sourceKeyCount === 141 && expectedKeys.length === 141);
+check('real canonical fixture contains exactly72 role families and142 registered keys', directory.families.length === 72 && directory.sourceKeyCount === 142 && expectedKeys.length === 142);
 check('thirteen overview groups preserve seven portfolio lanes and distinguish institutions from individual offices', same(groups.map(group => group.key), ['leadership', 'council', 'independent', 'institutions', 'war', 'treasury', 'trading', 'artisanry', 'heraldry', 'propaganda', 'systems', 'officers', 'members']));
-check('all71 canonical families occur exactly once without a new presentation identity', entries.length === 71 && new Set(entries.map(row => row.family.key)).size === 71 && same(sorted(entries.map(row => row.family.key)), sorted(directory.families.map(row => row.key))));
-check('every family keeps its complete original primary, variants and source keys', entries.every(row => same(row.family, directory.families.find(family => family.key === row.family.key))) && same(sorted(entries.flatMap(row => row.family.sourceKeys)), expectedKeys) && overview.sourceKeyCount === 141);
+check('all72 canonical families occur exactly once without a new presentation identity', entries.length === 72 && new Set(entries.map(row => row.family.key)).size === 72 && same(sorted(entries.map(row => row.family.key)), sorted(directory.families.map(row => row.key))));
+check('every family keeps its complete original primary, variants and source keys', entries.every(row => same(row.family, directory.families.find(family => family.key === row.family.key))) && same(sorted(entries.flatMap(row => row.family.sourceKeys)), expectedKeys) && overview.sourceKeyCount === 142);
 const expectedRelationships = model.nodes.filter(node => node.parent && node.relation !== 'classification').map(node => ({ from: node.id, to: node.parent, kind: node.relation }));
 check('relationship context preserves every original reporting and independent-review edge', same(overview.relationships, expectedRelationships) && overview.relationships.some(edge => edge.from === 'auditor' && edge.kind === 'independence') && overview.relationships.some(edge => edge.from === 'justice' && edge.kind === 'independence'));
 check('seven departmental lanes retain their current portfolio context and explicit boundaries', same(page.context.ORGANIZATION_LANES205.map(lane => lane.key), ['war', 'treasury', 'trading', 'artisanry', 'heraldry', 'propaganda', 'systems']) && page.context.ORGANIZATION_LANES205.every(lane => model.nodes.some(node => node.id === lane.rootId) && lane.duties.length === 3 && lane.boundary.length > 50) && page.section.all(node => node.getAttribute('data-lane') !== null).length === 7);
+const protocolLane = page.context.ORGANIZATION_LANES205.find(lane => lane.key === 'heraldry');
+const communicationsLane = page.context.ORGANIZATION_LANES205.find(lane => lane.key === 'propaganda');
+check('the Herald leads official communications and the Seneschal retains court protocol',
+  protocolLane.title === 'Court Protocol & Crown Estates' && protocolLane.summary.includes('court calendar')
+  && communicationsLane.summary.includes('Official communications') && communicationsLane.duties.join(' ').includes('Heraldry Emissaries'));
 const rankNames = ['Leader', 'High Council', 'Officer', 'Officer Alt', 'Raid Leader', 'Veteran', 'Raider', 'Member', 'Alt', 'Initiate'];
 check('the overview preserves the exact ten native ranks and zero-based slots', overview.ranks.length === 10 && overview.ranks.every((rank, slot) => rank.nativeSlot === slot && rank.nativeRankOrdinal === slot + 1 && (rank.label || rank.name) === rankNames[slot]));
 check('rendered native strip has slots0–9 once and creates no eleventh native rank', same(page.section.all(node => node.getAttribute('data-alliance-rank') !== null).map(node => node.getAttribute('data-alliance-rank')), rankNames.map((_, slot) => String(slot))) && !page.section.all(node => node.getAttribute('data-native-rank') !== null).length);
-check('rendered overview contains every canonical family once before filtering', page.families().length === 71 && page.visible().length === 71 && new Set(page.visible()).size === 71 && page.section.classList.contains('org-alliance'));
+check('CC-118 the Alliance rank filter, ladder and rank-one role badge share the display name and retain their original slot',
+  page.document.getElementById('org-alliance-rank205').children[1].textContent === 'Rank 1 · Leader (Guild Master)'
+  && page.section.all(node => node.getAttribute('data-alliance-rank') === '0')[0].children[0].textContent === '1. Leader (Guild Master)'
+  && page.families().find(node => node.getAttribute('data-alliance-family') === 'leader').textContent.includes('Rank 1 Leader (Guild Master) (Slot 0)')
+  && overview.ranks[0].label === 'Leader');
+check('rendered overview contains every canonical family once before filtering', page.families().length === 72 && page.visible().length === 72 && new Set(page.visible()).size === 72 && page.section.classList.contains('org-alliance'));
 
 const sourceRows = new Map([...model.appointments, ...(model.roleRank199.offices || [])].map(row => [row.key, row]));
 check('rank filters use only each family original recommended or native slots', entries.every(row => {
@@ -136,14 +146,16 @@ check('rank filters use only each family original recommended or native slots', 
 check('independent audit families stay outside Treasury delivery and bank custody', groups.find(group => group.key === 'independent').families.some(row => row.family.key === 'bank_auditor' && row.family.sourceKeys.includes('office_08')) && !groups.find(group => group.key === 'treasury').families.some(row => row.family.sourceKeys.includes('office_08')) && directory.keyToFamily.office_08 !== directory.keyToFamily.office_09 && directory.keyToFamily.office_08 !== directory.keyToFamily.office_86);
 
 const councilFamilies = groups.find(group => group.key === 'council').families;
-check('.218 twelve current High Council role families stay together without counting collective bodies as seats', councilFamilies.length === 12 && councilFamilies.every(row=>row.family.kind==='role') && same(sorted(councilFamilies.map(row=>row.family.key)), sorted(directory.families.filter(f=>f.tier==='high_council'&&f.kind==='role').map(f=>f.key))) && groups.filter(g=>g.key!=='council').every(g=>g.families.every(row=>row.family.tier!=='high_council'||row.family.kind!=='role')));
+check('.218 thirteen current High Council role families stay together without counting collective bodies as seats', councilFamilies.length === 13 && councilFamilies.every(row=>row.family.kind==='role') && same(sorted(councilFamilies.map(row=>row.family.key)), sorted(directory.families.filter(f=>f.tier==='high_council'&&f.kind==='role').map(f=>f.key))) && groups.filter(g=>g.key!=='council').every(g=>g.families.every(row=>row.family.tier!=='high_council'||row.family.kind!=='role')));
 const institutionFamilies218=groups.find(group=>group.key==='institutions').families;
 check('.218 all six collective institutions remain fully represented once outside individual Council seats',institutionFamilies218.length===6&&same(sorted(institutionFamilies218.map(row=>row.family.key)),sorted(directory.families.filter(f=>f.kind==='institution').map(f=>f.key)))&&groups.filter(g=>g.key!=='institutions').every(g=>g.families.every(row=>row.family.kind!=='institution')));
-const seatIds206 = ["gm-chair", "co-gm", "treasurer", "head-justice", "main-raid-lead", "main-pvp-lead", "internal-security", "intake", "concordat", "artisanry", "propaganda", "heraldry", "head-trading"];
-check('.218 all thirteen chair and portfolio references resolve to the declared current catalogue', same(overview.councilSeats.map(row=>row.id),seatIds206) && page.section.all(n=>n.getAttribute('data-council-seat206')!==null).length===13 && entries.length===71 && expectedKeys.length===141);
+const seatIds206 = ["gm-chair", "co-gm", "treasurer", "head-justice", "main-raid-lead", "main-pvp-lead", "internal-security", "intake", "concordat", "artisanry", "propaganda", "heraldry", "head-trading", "systems-heraldry"];
+check('.218 all fourteen chair and portfolio references resolve to the declared current catalogue', same(overview.councilSeats.map(row=>row.id),seatIds206) && page.section.all(n=>n.getAttribute('data-council-seat206')!==null).length===14 && entries.length===72 && expectedKeys.length===142);
 const mainWar206=overview.councilSeats.filter(row=>['main_raid','main_pvp'].includes(row.familyKey));
 check('.218 MAIN War portfolios stay distinct from the retained shared template', same(mainWar206.map(row=>row.nodeId),['war-raiding','war-pvp']) && same(mainWar206.map(row=>row.officeKeys[0]),['office_97','office_98']) && mainWar206.every(row=>row.sharedAppointmentTemplate!==true) && ['raid_leader','pvp_leadership'].every(key=>entries.find(row=>row.family.key===key).family.tier==='officer_corps' && same(entries.find(row=>row.family.key===key).slots,[4])));
-check('.206 department and independent references link to complete current Council guides', [['treasurer','treasurer'],['main-raid-lead','main_raid'],['head-justice','head_justice'],['propaganda','propaganda']].every(([id,key])=>page.section.all(n=>n.getAttribute('data-council-reference206')===id && n.getAttribute('href')==='#/roles/'+key).length>=2) && page.section.textContent.includes('The head of Justice is a High Council portfolio holder'));
+check('.206 department and independent references link to complete current Council guides', [['treasurer','treasurer'],['main-raid-lead','main_raid'],['head-justice','head_justice'],['propaganda','propaganda']].every(([id,key])=>page.section.all(n=>n.getAttribute('data-council-reference206')===id && n.getAttribute('href')==='#/roles/'+key).length>=2) && page.section.textContent.includes('The Lord High Justiciar holds the individual High Council portfolio'));
+check('the Council overview uses the same seat-derived sentence as the chart',
+  page.section.all(n => n.classList.contains('org-alliance-current-council'))[0]?.textContent.includes(model.councilComposition.summary));
 
 const marketSeat208 = overview.councilSeats.find(row => row.id === 'head-trading');
 check('the trading Council seat links one reserved office to its own market node', marketSeat208?.familyKey === 'head_trading' && marketSeat208.nodeId === 'trading' && same(marketSeat208.officeKeys, ['office_96']) && entries.find(row => row.family.key === 'head_trading')?.slots.join() === '1' && page.section.all(node => node.getAttribute('data-council-reference206') === 'head-trading' && node.getAttribute('href') === '#/roles/head_trading').length === 2);
@@ -174,7 +186,7 @@ check('.206 unmatched search hides every current remit and contextual reference'
 const reset = page.section.all(node => node.tagName === 'BUTTON' && node.textContent === 'Reset overview filters')[0];
 if (!reset) throw Error('missing overview reset');
 reset.click();
-check('reset clears search and rank and restores all71 current rows', page.document.getElementById('org-alliance-search205').value === '' && page.document.getElementById('org-alliance-rank205').value === '' && page.visible().length === 71 && page.families().length === 71);
+check('reset clears search and rank and restores all72 current rows', page.document.getElementById('org-alliance-search205').value === '' && page.document.getElementById('org-alliance-rank205').value === '' && page.visible().length === 72 && page.families().length === 72);
 page.input('org-alliance-search205', 'Eastern time', 'input');
 check('search reaches the retained full NA regional guide without expanding its family', page.visible().includes(directory.keyToFamily.raid_leader_na) && page.guideCalls.length === 0);
 reset.click();
@@ -190,37 +202,36 @@ const branchField = page.document.getElementById('org-alliance-guild205');
 check('branch selector retains precisely the ten unappointed Olympus I–X directory scopes', branchField.children.filter(node => node.tagName === 'OPTION' && node.value !== '').map(node => node.value).join('|') === model.guildPlaceholders.map(branch => branch.name).join('|') && model.guildPlaceholders.every(branch => branch.state === 'Unappointed placeholder'));
 for (const branch of [model.guildPlaceholders[0], model.guildPlaceholders[9]]) {
   page.input('org-alliance-guild205', branch.name, 'change');
-  check(branch.name + ' changes affiliation context without inventing holders or duplicating jobs', page.section.all(node => node.classList.contains('org-alliance-branches')).some(node => node.textContent.includes(branch.name) && /placeholder|unappointed/i.test(node.textContent)) && page.visible().length === 71 && page.families().length === 71);
+  check(branch.name + ' changes affiliation context without inventing holders or duplicating jobs', page.section.all(node => node.classList.contains('org-alliance-branches')).some(node => node.textContent.includes(branch.name) && /placeholder|unappointed/i.test(node.textContent)) && page.visible().length === 72 && page.families().length === 72);
 }
 reset.click();
-check('reset returns branch context to the all-branch view', branchField.value === '' && page.visible().length === 71);
+check('reset returns branch context to the all-branch view', branchField.value === '' && page.visible().length === 72);
 
 page.input('org-alliance-search205', 'failed auction deposits', 'input');
 check('market search reaches the detailed fee and failure assumptions without becoming a Treasury role', page.visible().includes('head_trading') && page.guideCalls.length === 0);
 reset.click();
-check('complete detailed guides are lazy before opening a family', page.guideCalls.length === 0);
+check('complete detailed guides are absent before opening a family', page.guideCalls.length === 0);
 const raidFamily = directory.keyToFamily.raid_leader_na, raid = page.families().find(node => node.getAttribute('data-alliance-family') === raidFamily);
+const linkTo = (card, key) => card.all(node => node.tagName === 'A' && node.getAttribute('href') === '#/roles/' + encodeURIComponent(key));
+check('a collapsed family does not build its scoped reference links eagerly', linkTo(raid, 'raid_leader_na').length === 0 && linkTo(raid, 'raid_leader_eu').length === 0);
 raid.open = true; raid.dispatch('toggle');
-check('opening Raid Leader requests its original full primary guide', page.guideCalls.includes(directory.families.find(family => family.key === raidFamily).primaryKey));
-for (const detail of raid.all(node => node.tagName === 'DETAILS')) { detail.open = true; detail.dispatch('toggle'); }
-check('NA and EU retain separately reachable complete regional guides', page.guideCalls.includes('raid_leader_na') && page.guideCalls.includes('raid_leader_eu'));
-check('.219 overview retains the canonical job and both regional specifications without a native association stub', page.guideOptions.some(row => row.key === 'office_74' && row.canonical && row.familyKey === 'raid_leader')
-  && ['raid_leader_na','raid_leader_eu'].every(key => page.guideOptions.some(row => row.key === key && row.association === false && row.sharedWith === 'office_74'))
-  && !page.guideCalls.includes('rank_raid_leader') && !raid.all(node => node.getAttribute('data-alliance-guide-group218') === 'associations').length
+check('opening Raid Leader retains its lead definition and complete canonical link without constructing another guide', page.guideCalls.length === 0
+  && raid.textContent.includes(guides.office_74.definition) && linkTo(raid, raidFamily)[0]?.textContent === 'Open this complete role family'
+  && !raid.textContent.includes(guides.office_74.expectations[0]));
+check('NA and EU link directly to their exact regional specifications and no native association stub appears',
+  ['raid_leader_na','raid_leader_eu'].every(key => linkTo(raid,key).length===1 && linkTo(raid,key)[0].textContent===directory.families.find(f=>f.key===raidFamily).variants.find(v=>v.key===key).label)
+  && !linkTo(raid,'rank_raid_leader').length && !raid.all(node => node.getAttribute('data-alliance-guide-group218') === 'associations').length
   && raid.textContent.includes('Rank 5 Raid Leader (Slot 4)') && directory.keyToFamily.rank_raid_leader === raidFamily);
-check('expanded regional guides retain their complete definitions duties expectations and boundaries', ['raid_leader_na', 'raid_leader_eu'].every(key => {
-  const rendered = raid.all(node => node.getAttribute('data-real-guide-fixture') === key)[0], guide = guides[key];
-  return rendered && [guide.definition, ...guide.responsibilities, ...guide.expectations, guide.commitment, guide.boundaries].every(text => rendered.textContent.includes(text));
-}));
 const marketCard208 = page.families().find(node => node.getAttribute('data-alliance-family') === 'head_trading');
 marketCard208.open = true; marketCard208.dispatch('toggle');
-check('opening Trading renders the complete real guide rather than a generic portfolio description', page.guideCalls.includes('office_96') && [guides.office_96.definition, ...guides.office_96.responsibilities, ...guides.office_96.expectations, guides.office_96.boundaries].every(text => marketCard208.textContent.includes(text)) && !marketCard208.all(node => node.getAttribute('data-office-application') !== null).length);
-const guideCount = page.guideCalls.length; raid.open = false; raid.dispatch('toggle'); raid.open = true; raid.dispatch('toggle');
-check('reopening family details retains guides without duplicate work', page.guideCalls.length === guideCount);
+check('opening Trading preserves the original definition and canonical destination without an application action', page.guideCalls.length === 0
+  && marketCard208.textContent.includes(guides.office_96.definition) && linkTo(marketCard208,'head_trading').length===1
+  && !marketCard208.all(node => node.getAttribute('data-office-application') !== null).length);
+const priorLinks = linkTo(raid,'raid_leader_na'); raid.open = false; raid.dispatch('toggle'); raid.open = true; raid.dispatch('toggle');
+check('reopening family details keeps the same scoped links without duplicate work', page.guideCalls.length===0 && priorLinks.length===1 && linkTo(raid,'raid_leader_na').length===1 && linkTo(raid,'raid_leader_na')[0]===priorLinks[0]);
 const custody218 = page.families().find(node => node.getAttribute('data-alliance-family') === 'bank_custody');
 custody218.open = true; custody218.dispatch('toggle');
-for (const detail of custody218.all(node => node.tagName === 'DETAILS')) { detail.open = true; detail.dispatch('toggle'); }
-check('.218 custody sub-offices keep separately labelled complete guide requests', ['office_10','office_72'].every(key => page.guideOptions.some(row => row.key === key && row.association === false && row.sharedWith === 'office_09'))
+check('.218 custody sub-offices keep separately labelled canonical destinations', ['office_10','office_72'].every(key => linkTo(custody218,key).length===1)
   && custody218.all(node => node.getAttribute('data-alliance-guide-group218') === 'offices').length === 1);
 check('all interactions preserve canonical inputs and issue no network request', JSON.stringify(model) === originalModel && JSON.stringify(directory) === originalDirectory && page.requests.length === 0);
 function refuses(change) {
@@ -265,6 +276,8 @@ async function routeLoading214() {
   check('.214 a single completed renderer cannot render an incomplete organization', live.rendered.length === 0);
   live.resolve(second); await completed;
   check('.214 the current route renders once with both exports and retains its disposer', live.rendered.length === 1 && live.rendered[0][2].allianceOverview205 === 'actual-overview-export' && live.sandbox.disposeOrganization === 'original-disposer');
+  check('CC056 the Organization bridge forwards the source catalogue without injecting a full role renderer or duplicate family directory',
+    Object.hasOwn(live.rendered[0][2],'roleDirectory203') && !Object.hasOwn(live.rendered[0][2],'roleGuide201') && !Object.hasOwn(live.rendered[0][2],'roleFamilyDirectory203'));
   check('.218 actual route forwards the source-captured reserved and standing declarations',live.rendered[0][2].reservedNotice201==="Leader, High Council and Officer Corps seats are reserved appointments. You cannot apply for them, including when no holder is listed."&&live.rendered[0][2].standingIntro218==="These labels record a member’s current guild standing; they are not open positions. Ask the responsible officer to review a change in status.");
   const departed = fixture(), late = departed.run(); await next(); departed.stale(); departed.resolve(first); departed.resolve(second); await late;
   check('.214 completed imports from a departed view cannot render or replace its disposer', departed.rendered.length === 0 && departed.sandbox.disposeOrganization === null);

@@ -4,10 +4,20 @@ import re, sqlite3, pathlib, datetime, sys
 root = pathlib.Path(__file__).resolve().parent.parent
 ts_src = (root / "src/unverified.ts").read_text(encoding="utf-8")
 COUNTS = re.search(r'const COUNTS_AS_VERIFIED = "([^"]+)"', ts_src).group(1)
-tpls = [t for t in re.findall(r"`([^`]*)`", ts_src) if "SELECT" in t]
-ranks_tpl, members_tpl = tpls[0], tpls[1]
+STRICT_AGE = re.search(r"const STRICT_ROSTER_DISPLAY_AGE = (\d+);", ts_src).group(1)
+templates = re.findall(r"`([^`]*)`", ts_src)
+
+def select_template(projection):
+    matches = [template for template in templates if template.startswith(projection)]
+    assert len(matches) == 1, f"expected one SQL template for {projection!r}, got {len(matches)}"
+    return matches[0]
+
+ranks_tpl = select_template("SELECT rm.rank AS rank, rm.rank_index AS rankIndex, COUNT(*) AS total,")
+members_tpl = select_template("SELECT rm.name AS name, rm.rank AS rank, rm.rank_index AS rankIndex, rm.level AS level,")
+strict_tpl = select_template("WITH snapshot AS MATERIALIZED (")
+
 def render(tpl, with_fs):
-    tpl = tpl.replace("${COUNTS_AS_VERIFIED}", COUNTS)
+    tpl = tpl.replace("${COUNTS_AS_VERIFIED}", COUNTS).replace("${STRICT_ROSTER_DISPLAY_AGE}", STRICT_AGE)
     out = re.sub(r'\$\{withFirstSeen \? "([^"]*)" : "([^"]*)"\}', lambda m: m.group(1) if with_fs else m.group(2), tpl)
     assert "${" not in out, "unrendered interpolation left in: " + out
     return out
@@ -68,5 +78,40 @@ for k, n in (("a", "A"), ("f", "F")):
 db.execute(up, (4, NOW))
 fs2 = dict(db.execute("SELECT name_key, first_seen FROM roster_first_seen").fetchall())
 check("ingest upkeep: new name F gets this export's time; A keeps its original", fs2["f"] == NOW and fs2["a"] == D(2026,9,20))
+
+# The strict display statement is distinct from both legacy reports. Its
+# qualification and statuses use one exact latest admitted snapshot.
+scope, cutoff = "strict-fixture", NOW - 300
+db.execute("INSERT INTO roster_snapshots (id, exported_at, received_at, source, member_count, complete, trusted) VALUES (5,?,?,?,5,1,1)",
+           (NOW, NOW, scope))
+for key, guid in zip("abcde", ("Player-1-AA", "Player-1-BB", "Player-1-CC", "Player-1-DD", "Player-1-EE")):
+    name, rank, index = R[key]
+    db.execute("INSERT INTO roster_members (snapshot_id, name_key, name, guid, rank, rank_index) VALUES (5,?,?,?,?,?)",
+               (key, name, guid, rank, index))
+db.execute("UPDATE characters SET guid='Player-1-AA', bound_at=? WHERE name_key='a'", (cutoff,))
+db.execute("UPDATE members SET username='alice', global_name='Alice' WHERE discord_id='u1'")
+strict_query = render(strict_tpl, False)
+
+def strict_rows(provenance=scope, observed_at=NOW, opened_at=cutoff):
+    return db.execute(strict_query, (provenance, observed_at, opened_at)).fetchall()
+
+rows = strict_rows()
+check("strict display keeps the snapshot tuple and separates verified, unknown, pending and unverified rows",
+      [r[:5] for r in rows] == [
+          (NOW, 5, "A", "Player-1-AA", "verified"),
+          (NOW, 5, "B", "Player-1-BB", "unknown"),
+          (NOW, 5, "C", "Player-1-CC", "unknown"),
+          (NOW, 5, "D", "Player-1-DD", "pending"),
+          (NOW, 5, "E", "Player-1-EE", "unverified"),
+      ] and rows[0][5:] == ("alice", "Alice"))
+check("strict display rejects the wrong provenance, an older-than-hour export and pre-cutoff or future exports",
+      strict_rows(provenance="wrong-fixture") == [] and strict_rows(observed_at=NOW + 3601) == []
+      and strict_rows(opened_at=NOW + 1) == [] and strict_rows(observed_at=NOW - 1) == [])
+db.execute("UPDATE roster_snapshots SET member_count=6 WHERE id=5")
+check("strict display rejects an incomplete row-count witness", strict_rows() == [])
+db.execute("UPDATE roster_snapshots SET member_count=5 WHERE id=5")
+db.execute("INSERT INTO roster_snapshots (id, exported_at, received_at, source, member_count, complete, trusted) VALUES (6,?,?,?,1,0,0)",
+           (NOW, NOW, scope))
+check("strict display does not fall back to an older good export when the newest export is untrusted", strict_rows() == [])
 print(f"\n{sum(results)}/{len(results)} passed")
 sys.exit(0 if all(results) else 1)

@@ -10,9 +10,10 @@
 .guides218-crumbs{font-size:14px}
 .guides218-crumbs a,.guides218-tabs a{min-height:24px}
 .guides218-section{min-width:0;overflow-wrap:anywhere}
-.guides218-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.guides218-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr))}
 .guides218-card{border:1px solid rgba(188,154,82,.35);border-radius:8px;padding:10px 12px;min-width:0}
-.guides218-card h3{margin:0 0 6px;display:flex;align-items:center;gap:8px}
+.guides218-card :is(h3,h4){margin:0 0 6px;display:flex;align-items:center;gap:8px}
+.guides218-card h4{font-family:var(--title);font-weight:400;font-size:16px;line-height:1.2;color:var(--gold);text-shadow:1px 1px 0 #000}
 .guides218-card a{display:inline-block;min-height:24px;min-width:24px;line-height:24px;padding:0 3px;text-align:center}
 .guides218-tabs{display:flex;flex-wrap:wrap;gap:8px}
 .guides218-tabs a{display:inline-flex;align-items:center;gap:6px}
@@ -22,6 +23,7 @@
 .guides218-list li,.guides218-claims li{margin:4px 0}
 .guides218-claims{margin:0;padding-left:0;list-style:none}
 .guides218-claim{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.guides218-claim-label{display:block;font-weight:600}
 .guides218-claim[data-grade="D"],.guides218-claim[data-grade="E"]{opacity:.9}
 .guides218-grade{display:inline-block;min-width:22px;padding:0 6px;border:1px solid currentColor;border-radius:10px;font-size:12px;line-height:18px;text-align:center;text-decoration:none;cursor:help}
 .guides218-grade[data-grade="A"],.guides218-grade[data-grade="B"]{color:#9fd59f}

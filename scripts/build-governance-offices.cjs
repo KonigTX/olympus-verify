@@ -4,9 +4,25 @@ const fs = require('node:fs'), path = require('node:path');
 const root = path.join(__dirname, '..'), jsonPath = path.join(root, 'worker/public/static/governance/organization.json');
 const organization = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
 const aliases = JSON.parse(fs.readFileSync(path.join(root, 'docs/governance-office-aliases.json'), 'utf8'));
-if (organization.terms.length !== 102 || organization.nativeRanks.length !== 10 || organization.terms.some((t, i) => t.ordinal !== i + 1)) throw Error('governance_inventory');
+if (organization.terms.length !== 103 || organization.nativeRanks.length !== 10 || organization.terms.some((t, i) => t.ordinal !== i + 1)) throw Error('governance_inventory');
 const officeKeys = JSON.parse(fs.readFileSync(path.join(root, 'docs/governance-office-keys.json'), 'utf8'));
 require('./governance-office-keys.cjs').assertOfficeKeys(organization.terms, officeKeys);
+const currentLabels = new Map();
+for (const term of organization.terms) {
+  for (const label of [term.label, term.label.split(' · ')[0]]) currentLabels.set(label.toLowerCase(), term.officeKey);
+}
+for (const term of organization.terms) {
+  if (term.applicationMetadataScope) continue; // These aliases are already explicitly historical.
+  for (const alias of term.applicationAliases.flatMap(label => label.split(' / '))) {
+    const currentKey = currentLabels.get(alias.toLowerCase());
+    if (currentKey && currentKey !== term.officeKey) throw Error('current_office_alias_collision: ' + alias);
+  }
+}
+const portfolioCount = organization.councilComposition.currentSeats.filter(seat => seat.id !== 'gm-chair' && seat.id !== 'co-gm').length;
+const councilComposition = {
+  ...organization.councilComposition,
+  summary: `The Guild Master chairs the High Council. The Co-Guild Master serves alongside ${portfolioCount} numbered portfolios, all associated with native High Council rank.`,
+};
 const fields = ['nativeRankOrdinal', 'nativeSlot', 'nativeRankName', 'tier', 'tierLabel', 'codexTitles', 'department', 'applicationTrack', 'applicationEligible', 'applicationLabel', 'applicationAliases', 'applicationRoleKeys', 'statusOverlay', 'acquisition', 'discordPortal', 'cabinetSeatId', 'ministry', 'councilSeat'];
 const metadata = term => ({...Object.fromEntries(fields.map(key => [key, term[key] ?? ({cabinetSeatId:organization.cabinet218.offices[term.officeKey].seatId,ministry:organization.cabinet218.offices[term.officeKey].ministry,councilSeat:organization.cabinet218.offices[term.officeKey].seatLabel})[key]])),...(term.applicationMetadataScope === undefined ? {} : {applicationMetadataScope:term.applicationMetadataScope})});
 const offices = organization.terms.map(t => ({ key: t.officeKey, label: t.label, group: 'office', termOrdinal: t.ordinal, ...metadata(t), cabinetSeatId: organization.cabinet218.offices[t.officeKey].seatId, ministry: organization.cabinet218.offices[t.officeKey].ministry, councilSeat: organization.cabinet218.offices[t.officeKey].seatLabel, recommendedNativeSlots: t.recommendedNativeSlots, nativeMappingNote: t.nativeMappingNote, mappingApplies: false }));
@@ -36,16 +52,18 @@ const tracks = [
   {id:'high_council',label:'High Council Application',rankPath:'Rank 2 High Council',description:'Reserved historical category; not open for applications. '+organization.councilComposition.currentSeats.filter(s=>s.id!=='gm-chair').map(s=>s.label).join('; ')+'. Every appointment and permission requires separate review.'},
   {id:'patron',label:'Royal Patron & Flagship Olympus I Charter',rankPath:'Treasury gold writ track',description:'Voluntary in-game gold only; officer review and real capacity apply. No rank, permission, moderation outcome or place is purchased automatically.'},
 ];
-if (offices.length !== 138 || new Set(offices.map(o => o.key)).size !== 138) throw Error('governance_key_inventory');
+if (offices.length !== 139 || new Set(offices.map(o => o.key)).size !== 139) throw Error('governance_key_inventory');
 for (const o of offices) {
   if (!Number.isInteger(o.nativeSlot) || o.nativeSlot < 0 || o.nativeSlot > 9 || o.nativeRankOrdinal !== o.nativeSlot + 1 || o.nativeRankName !== organization.nativeRanks[o.nativeSlot].name || !['leader','high_council','officer_corps','member_specialist'].includes(o.tier) || !tracks.some(t=>t.id===o.applicationTrack) || !Array.isArray(o.codexTitles) || !o.codexTitles.length || o.codexTitles.some(t=>!['I','II','III','IV','V'].includes(t)) || typeof o.applicationEligible !== 'boolean' || typeof o.applicationLabel !== 'string' || !Array.isArray(o.applicationAliases) || o.applicationAliases.some(a=>typeof a!=='string'||a.length>100) || !Array.isArray(o.applicationRoleKeys) || o.applicationRoleKeys.length>9 || new Set(o.applicationRoleKeys).size!==o.applicationRoleKeys.length || o.applicationRoleKeys.some(key=>typeof key!=='string'||! /^(?:[a-z][a-z_]*|office_[0-9]{2,3}|class_lead:[a-z]+)$/.test(key)) || !o.applicationEligible&&o.applicationRoleKeys.length || !o.department || !o.acquisition || !o.discordPortal) throw Error('governance_classification');
 }
-const source = `/** Generated by scripts/build-governance-offices.cjs from the 102-term register (all 96 prior identities and five distinct owner-directed Council portfolios) and declared aliases.
+const source = `/** Generated by scripts/build-governance-offices.cjs from the current stable office register and declared aliases.
  * Display associations apply no native rank, appointment, ballot, signing key or permission. */
 export type ApplicationTrack199 = 'member'|'raider'|'artisan'|'officer'|'high_council'|'patron';
 export interface OfficeAppointment { readonly key:string; readonly label:string; readonly group:'office'|'leadership'|'class'|'native'; readonly termOrdinal?:number; readonly nativeIndex?:number; readonly aliasOf?:string; readonly nativeRankOrdinal:number; readonly nativeSlot:number; readonly nativeRankName:string; readonly tier:'leader'|'high_council'|'officer_corps'|'member_specialist'; readonly tierLabel:string; readonly codexTitles:readonly string[]; readonly department:string; readonly cabinetSeatId:string; readonly ministry:string; readonly councilSeat:string; readonly applicationTrack:ApplicationTrack199; readonly applicationEligible:boolean; readonly applicationLabel:string; readonly applicationAliases:readonly string[]; readonly applicationRoleKeys:readonly string[]; readonly statusOverlay:boolean; readonly acquisition:string; readonly discordPortal:string; readonly applicationMetadataScope?:string; readonly recommendedNativeSlots:readonly number[]; readonly nativeMappingNote:string; readonly mappingApplies:false }
 export const OFFICE_APPOINTMENTS:readonly Readonly<OfficeAppointment>[] = Object.freeze(${JSON.stringify(offices, null, 2)}.map(entry => Object.freeze({...entry, codexTitles:Object.freeze(entry.codexTitles), applicationAliases:Object.freeze(entry.applicationAliases), applicationRoleKeys:Object.freeze(entry.applicationRoleKeys), recommendedNativeSlots:Object.freeze(entry.recommendedNativeSlots)} as OfficeAppointment)));
 export const OFFICE_APPOINTMENT_KEYS:readonly string[] = Object.freeze(OFFICE_APPOINTMENTS.map(entry => entry.key));
+export const COUNCIL_PORTFOLIOS = Object.freeze(${JSON.stringify(organization.councilComposition.currentSeats.filter(seat=>seat.id!=='gm-chair').map(({familyKey,label,codexTitle})=>({familyKey,label,codexTitle})))}.map(row => Object.freeze(row)));
+export const COUNCIL_FAMILY_ORDER = Object.freeze(COUNCIL_PORTFOLIOS.map(row => row.familyKey));
 export const NATIVE_RANKS_199 = Object.freeze(${JSON.stringify(organization.nativeRanks, null, 2)}.map(entry => Object.freeze(entry)));
 export const APPLICATION_TRACKS_199 = Object.freeze(${JSON.stringify(tracks, null, 2)}.map(entry => Object.freeze(entry)));
 `;
@@ -59,7 +77,7 @@ for(const row of offices){Object.freeze(row.codexTitles);Object.freeze(row.appli
 return Object.freeze({schema:'olympus-role-rank-199/v1',ranks:Object.freeze(ranks),tracks:Object.freeze(tracks),offices:Object.freeze(offices)});
 });
 `;
-const outputOrganization = {...organization, roleRank199:{...organization.roleRank199, officeCount:organization.terms.length, assignableKeyCount:offices.length}, appointments:offices, applicationTracks:tracks};
+const outputOrganization = {...organization, councilComposition, roleRank199:{...organization.roleRank199, officeCount:organization.terms.length, assignableKeyCount:offices.length}, appointments:offices, applicationTracks:tracks};
 const outputs = [[path.join(root,'worker/src/governance-offices.ts'),source],[path.join(root,'worker/public/static/role-rank199.js'),browser],[jsonPath,JSON.stringify(outputOrganization,null,2)+'\n']];
 if (process.argv[2] === '--check') {
   for (const [target, contents] of outputs) if (fs.readFileSync(target,'utf8') !== contents) throw Error('governance_office_projection_drift');

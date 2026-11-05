@@ -78,6 +78,15 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".228", date: "2026-11-04", lines: [
+      "The role directory and governance book link to matching ranks, offices and articles. Admin settings group related tools.",
+      "The guide library includes updated Forever class advice and a raid-team planning reference.",
+      "The Discord command update prepares /raid hub and direct scheduling and roster commands alongside /event.",
+      "Site controls reflow at higher zoom on narrow screens. Login artwork credits identify the stills and the optional portal render.",
+      "Ordinary application declines remain eligible for account erasure. Erasure requests tied to an older denial without verified decision evidence go to private staff review.",
+    ],
+  },
+  {
     build: ".227", date: "2026-11-03", lines: [
       "Verification can require a fresh roster and matching native character identity before an account is linked.",
       "The officer addon records completed gold transfers and collected mail for local reconciliation; transfers never automatically grant benefits.",

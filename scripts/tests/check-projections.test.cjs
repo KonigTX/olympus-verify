@@ -68,17 +68,18 @@ rejects('current login variants cannot be relabeled official', () => verify(fixt
 rejects('current login variants require both exact paths', () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r = JSON.parse(s); r.login_art_variants.assets[0].path = 'worker/public/static/wow/login/alias.png'; return JSON.stringify(r); }), true)), /nonofficial owner login art variants/);
 rejects('current login variant reference digest cannot be repinned', () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r = JSON.parse(s); r.login_art_variants.assets[1].sha256 = '0'.repeat(64); return JSON.stringify(r); }), true)), /nonofficial owner login art variants/);
 rejects('current login variants do not allow a third variant', () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r = JSON.parse(s); r.login_art_variants.assets.push({ ...r.login_art_variants.assets[0] }); return JSON.stringify(r); }), true)), /nonofficial owner login art variants/);
-rejects('current login variants require two separate asset rows', () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r = JSON.parse(s); r.assets = r.assets.filter(row => row.path !== loginVariants[0]); return JSON.stringify(r); }), true)), /two-variant512-asset573-public-path binding/);
+const closedPublicPathBinding = /^closed two-variant 512-asset 574-public-path binding$/;
+rejects('current login variants require two separate asset rows', () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r = JSON.parse(s); r.assets = r.assets.filter(row => row.path !== loginVariants[0]); return JSON.stringify(r); }), true)), closedPublicPathBinding);
 for (const file of ['worker/public/static/talents/analysis.js', 'worker/public/static/talents/guide-builds179.js']) {
   rejects('talent comparison code byte drift is refused: ' + file, () => verify(fixture(changed(file, s => s + '\n'))), /byte pin drift/);
-  rejects('talent comparison code cannot be relabeled official artwork: ' + file, () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r = JSON.parse(s); r.official_paths.push(file); return JSON.stringify(r); }), true)), /two-variant512-asset573-public-path binding/);
+  rejects('talent comparison code cannot be relabeled official artwork: ' + file, () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r = JSON.parse(s); r.official_paths.push(file); return JSON.stringify(r); }), true)), closedPublicPathBinding);
 }
 // .186 optional level-60 sheet: exact bytes, never artwork, never a native exception; only the script is runtime code.
 for (const file of ['worker/public/static/talents/stats60.js', 'worker/public/static/talents/naked60-186.json', 'worker/public/static/talents/stat-effects186.json']) {
   rejects('level-60 sheet byte drift is refused: ' + file, () => verify(fixture(changed(file, s => s + '\n'))), /byte pin drift/);
-  rejects('level-60 sheet resource cannot be relabeled official artwork: ' + file, () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r = JSON.parse(s); r.official_paths.push(file); return JSON.stringify(r); }), true)), /two-variant512-asset573-public-path binding/);
+  rejects('level-60 sheet resource cannot be relabeled official artwork: ' + file, () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r = JSON.parse(s); r.official_paths.push(file); return JSON.stringify(r); }), true)), closedPublicPathBinding);
   rejects('level-60 sheet resource cannot become a native exception: ' + file, () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r = JSON.parse(s); r.native_paths.push(file); return JSON.stringify(r); }), true)), /three exact non-art level-60 sheet resources/);
-  rejects('level-60 sheet resource row is mandatory: ' + file, () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r = JSON.parse(s); r.required_public_resources = r.required_public_resources.filter(row => row.path !== file); return JSON.stringify(r); }), true)), /two-variant512-asset573-public-path binding/);
+  rejects('level-60 sheet resource row is mandatory: ' + file, () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r = JSON.parse(s); r.required_public_resources = r.required_public_resources.filter(row => row.path !== file); return JSON.stringify(r); }), true)), closedPublicPathBinding);
 }
 rejects('the level-60 sheet script remains reviewed runtime code', () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r = JSON.parse(s); r.runtime_paths = r.runtime_paths.filter(p => p !== 'worker/public/static/talents/stats60.js'); return JSON.stringify(r); }), true)), /three exact non-art level-60 sheet resources/);
 for (const file of ['worker/public/static/talents/naked60-186.json', 'worker/public/static/talents/stat-effects186.json'])
@@ -139,7 +140,9 @@ try {
 const talentCalculator218 = 'worker/public/static/talents/calculator.js';
 const talentGenerator218 = 'scripts/build-talent-build-contract.cjs', talentProjection218 = 'worker/src/talent-build-contract.ts';
 const talentPriorSource218 = 'fbed6f34d022cea57a6760d96bd7b04f0419effa25b0f47eaa85d72e92636b14';
-const talentCurrentSource218 = '0830ff6fc69ef3a3430bf1cdf31a272f3a5a84da4bcedfba2ae398748cd131c8';
+const talentRecoverySource218 = '0830ff6fc69ef3a3430bf1cdf31a272f3a5a84da4bcedfba2ae398748cd131c8';
+const talentCurrentSource218 = 'b626de0b68cc93edc0ea45565e463e1fe241666d012e16bd5ee38d7f5d571cb0';
+const talentDisplaySource228 = '259235a2bc371c7f227a486bc39e26064661add952e5dd8c647d9ad75cac684b';
 const talentNewHeading218 = 'h("h1", { class: "talents-eyebrow", text: "Olympus · Forever talents" })';
 const talentOldHeading218 = 'h("p", { class: "talents-eyebrow", text: "Olympus · Forever talents" })';
 const actualCalculator218 = base.get(talentCalculator218).toString('utf8');
@@ -154,12 +157,53 @@ const talentRecoveryEdits218 = [
     "new": "        if (incoming.ok) {\n          build = incoming.build;\n          if (!linkedClass) message = \"That linked class is unavailable. Showing the checked \" + classOf(data, build.className).name + \" shared plan.\";\n        } else message = incoming.error + (!linkedClass ? \" That linked class is unavailable. Showing a blank Warrior plan; choose a supported class below.\" : \"\");"
   }
 ];
-let headingOnlyCalculator218 = actualCalculator218;
+const talentDisplayLines228 = [
+  '      const displayClasses = [...data.classes].sort((a, b) => a.name.localeCompare(b.name, "en"));\n',
+  '        h("p", { class: "talents-diff-note" }, "This calculator uses the 16 October beta talent snapshot. Check shared builds against your current in-game talents and ",\n'
+  + '          h("a", { href: "https://us.forums.blizzard.com/en/wow/t/2360696/9", rel: "noopener noreferrer", text: "Blizzard\'s 2 November notes" }), "."),\n',
+];
+// Only exact reviewed CC075 motion contexts are reversed. No historical Git objects are needed.
+const talentMotionFixture228 = base.get('scripts/tests/calculator-compare-motion-inverse.fixture.json');
+if (hash(talentMotionFixture228) !== '69407525f32407f4cdaf080f7b29f9a48ba12d9228e3199b54eab23c01e5767a')
+  throw Error('reviewed calculator motion contexts differ');
+const talentMotion228 = JSON.parse(talentMotionFixture228.toString('utf8'));
+function restoreCalculatorDisplay228(current) {
+  if (hash(Buffer.from(current)) !== talentCurrentSource218) return null;
+  let previous = current;
+  for (const { from, to } of talentMotion228.contexts) {
+    if (previous.split(from).length !== 2) return null;
+    previous = previous.replace(from, to);
+  }
+  return hash(Buffer.from(previous)) === talentDisplaySource228 ? previous : null;
+}
+const displayCalculator228 = restoreCalculatorDisplay228(actualCalculator218);
+if (displayCalculator228 === null) throw Error('exact reviewed calculator display predecessor required');
+const motionCurve228 = 'Math.min(36 / distance, 0.18)';
+if (actualCalculator218.split(motionCurve228).length !== 2) throw Error('one exact calculator motion control required');
+const unauthorizedMotion228 = actualCalculator218.replace(motionCurve228, 'Math.min(36 / distance, 0.19)');
+let motionPinRefused228 = false;
+try {
+  verify(fixture(changed(talentCalculator218, () => unauthorizedMotion228), true));
+} catch (error) {
+  motionPinRefused228 = /talent calculator source and generated serializer pin/.test(error.message);
+}
+let recoveryCalculator218 = displayCalculator228;
+for (const line of talentDisplayLines228) {
+  if (recoveryCalculator218.split(line).length !== 2) throw Error('one exact calculator display addition required');
+  recoveryCalculator218 = recoveryCalculator218.replace(line, '');
+}
+if (recoveryCalculator218.split('displayClasses.map(').length !== 3) throw Error('both calculator class controls must use display order');
+recoveryCalculator218 = recoveryCalculator218.replaceAll('displayClasses.map(', 'data.classes.map(');
+check('the calculator display changes preserve the complete previous allocation and recovery source',
+  hash(base.get(talentCalculator218)) === talentCurrentSource218 && hash(Buffer.from(displayCalculator228)) === talentDisplaySource228
+  && hash(Buffer.from(recoveryCalculator218)) === talentRecoverySource218
+  && restoreCalculatorDisplay228(unauthorizedMotion228) === null && motionPinRefused228);
+let headingOnlyCalculator218 = recoveryCalculator218;
 for (const edit of talentRecoveryEdits218.slice().reverse()) {
   if (headingOnlyCalculator218.split(edit.new).length !== 2) throw Error("one exact reviewed calculator recovery edit required");
   headingOnlyCalculator218 = headingOnlyCalculator218.replace(edit.new, edit.old);
 }
-check("the exact two reviewed unknown-class recovery edits preserve the entire heading-only calculator", hash(base.get(talentCalculator218)) === talentCurrentSource218
+check("the exact two reviewed unknown-class recovery edits preserve the entire heading-only calculator", hash(Buffer.from(recoveryCalculator218)) === talentRecoverySource218
   && hash(Buffer.from(headingOnlyCalculator218)) === talentHeadingSource218);
 check('the exact reviewed talent heading successor preserves every old calculator byte outside p-to-h1', hash(Buffer.from(headingOnlyCalculator218)) === talentHeadingSource218
   && headingOnlyCalculator218.split(talentNewHeading218).length === 2 && !headingOnlyCalculator218.includes(talentOldHeading218)
@@ -187,7 +231,7 @@ const talentMetadata218 = [
   ['TALENT_SNAPSHOT_REVISION', '260cf99b52db', /talent upstream and revision pins/],
   ['TALENT_SNAPSHOT_DATA_SHA256', '8b174d764836675b2b759050f441e2dfe12c7bad6a5b279ef39b05d8b1288a0c', /talent normalized input and generated data pin/],
   ['TALENT_SNAPSHOT_UPSTREAM_SHA256', '260cf99b52db5fd0085043d4d3c2d5dde1b47dffe88b9696c94caccc9fb03588', /talent upstream and revision pins/],
-  ['TALENT_SERIALIZER_SOURCE_SHA256', '0830ff6fc69ef3a3430bf1cdf31a272f3a5a84da4bcedfba2ae398748cd131c8', /talent calculator source and generated serializer pin/],
+  ['TALENT_SERIALIZER_SOURCE_SHA256', talentCurrentSource218, /talent calculator source and generated serializer pin/],
 ];
 for (const [name, value, error] of talentMetadata218) {
   const declaration = 'export const ' + name + ' = "' + value + '";', stale = '0'.repeat(value.length);
@@ -209,7 +253,7 @@ for (const [name, value, error] of talentMetadata218) {
 const talentGeneratorFields218 = [
   ['INPUT_SHA256', '8b174d764836675b2b759050f441e2dfe12c7bad6a5b279ef39b05d8b1288a0c', /talent normalized input and generated data pin/],
   ['UPSTREAM_SHA256', '260cf99b52db5fd0085043d4d3c2d5dde1b47dffe88b9696c94caccc9fb03588', /talent upstream and revision pins/],
-  ['CALCULATOR_SHA256', '0830ff6fc69ef3a3430bf1cdf31a272f3a5a84da4bcedfba2ae398748cd131c8', /talent calculator source and generated serializer pin/],
+  ['CALCULATOR_SHA256', talentCurrentSource218, /talent calculator source and generated serializer pin/],
   ['REVISION', '260cf99b52db', /talent upstream and revision pins/],
 ];
 for (const [name, value, error] of talentGeneratorFields218) {

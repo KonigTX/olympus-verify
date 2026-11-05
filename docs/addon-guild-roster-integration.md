@@ -10,8 +10,9 @@ local compatibility sidecar is an older reference; upstream's TOC `1.3.3-site.1`
 `1.3.2-site.1`. These labels do not authenticate game origin or activate site features.
 
 Olympus Verify's **Discord verification** column sits beside the native Guild & Communities
-**Roster** view. Current AddOn source is **0.6.13**; the bounded native-layout acceptance below
-belongs to **0.6.9**. The column uses the actual visible member rows, not their screen
+**Roster** view. The current source version is recorded in the
+[Olympus Verify TOC](../addon/OlympusVerify/OlympusVerify.toc). The bounded native-layout
+acceptance below belongs to **0.6.9**. The column uses the actual visible member rows, not their screen
 positions or a separate alphabetical list. It does not replace Blizzard functions, change native columns,
 sort the guild, edit notes, invite, remove members, or send a whisper.
 
@@ -34,12 +35,20 @@ Members window remains available through `/olv members` out of combat.
 
 ## What each status means
 
-The inputs already exist: the live native roster and the watcher's `OlympusQueue.verified`
-and `.unverified` lists. This change does not write the queue, Config.lua or SavedVariables.
-Both fetched dates and the underlying server roster date must be present, not in the future,
-and at most **one hour** old (the watcher normally polls these lists every 30 minutes).
-Refresh the existing watcher exchange and reload to obtain newer lists. Reading the guild
-roster does not refresh the server's verification lists.
+The verification column combines the live native roster with dated Watcher lists.
+In membership-only mode the Watcher separately reads the latest complete, trusted
+export from the configured native guild and realm. It writes the display-only
+`OlympusVerifyLists.lua` file beside the retained invitation queue. The addon checks
+the current native guild, realm, and exact character GUID before showing a result
+or opening a reminder. This file carries no invitation or removal eligibility.
+The legacy Watcher mode continues to read the lists from `OlympusQueue`.
+
+The lists and the underlying server roster must have valid dates at most **one
+hour** old. The Watcher normally polls the lists every 30 minutes. A failed strict
+read leaves any prior display file at its original dates, and the addon holds
+strict results if the file is absent, expired, or from another guild or realm.
+Refresh the Watcher exchange and reload to obtain newer lists. Reading the guild
+roster alone does not refresh the server lists.
 
 - **Verified**: one exact native GUID matches one current `member` link in the loaded list.
   A renamed character can retain its match by GUID. This is a dated display snapshot,
@@ -60,8 +69,11 @@ verification result. The Members window uses these conservative rules too.
 
 Click **Not verified** for an online member in either view. The click rereads that native
 member and the lists, then opens the game's whisper editor addressed to the **complete
-native name**, including Forever's two-part names. It fills an editable reminder linking
-to `https://olympus.roachcouncil.com/`. **The player must press Enter to send it.** There is
+native name**, including Forever's two-part names. The editable reminder points the recipient
+to **Get my code** in Asmongold's **#⚡olympus-verify** channel and asks them to follow the
+bot's whisper instructions from that character in game. In membership-only mode the bot can
+issue a request code to an unbound Discord account. Completing verification still requires the
+current native roster and exact per-whisper membership proof. **The player must press Enter to send it.** There is
 no bulk button, timer, automatic send, retry queue, invite or role action. An existing chat
 draft is preserved. Offline, pending, unknown and stale members cannot be contacted by
 this shortcut. Preview blocks the action without enabling or altering preview mode.
@@ -169,8 +181,7 @@ panel command and member-details placement, as recorded in the
 [member-experience .154 handoff](member-experience154-owner-handoff.md#readback-and-acceptance).
 The editable exact-recipient reminder remained untested because the loaded lists were stale;
 no reminder, roster sync or verification proof was sent during that acceptance. This is
-bounded layout evidence, not whole-client acceptance of current **0.6.13**, a protected invite,
-publisher exporter adoption or activation of Link/B1. This documentation correction adds
-no new test or game observation and leaves the frozen erasure/B1 evidence unchanged.
-The owner has deferred current 0.6.13 native QA until actual world entry is available in the
-selected Forever client; the prepared preview checklist is not an executed acceptance test.
+the bounded **0.6.9** layout observation. The owner deferred the later **0.6.13** native QA
+until actual world entry. Native acceptance of the current source still requires the exact
+selected Forever client and a live session. The prepared preview checklist and the frozen
+erasure/B1 evidence retain their original scopes.

@@ -231,7 +231,7 @@
     const failedArtwork = new Set(), artworkRecords = new WeakMap(), artworkQueue = [], loadingArtwork = new Set();
     let pumpingArtwork = false;
     function cancelDetailLeave() { if (detailLeaveTimer !== null) clearTimeout(detailLeaveTimer); detailLeaveTimer = null; }
-    const controller = { destroy() { active = false; cancelDetailLeave(); analysisView?.destroy(); analysisView = null; statsView?.destroy(); statsView = null; statsPending = null; statsFailed = null; view = null; artworkQueue.length = 0; for (const entry of loadingArtwork) entry.node.removeAttribute("src"); loadingArtwork.clear(); failedArtwork.clear(); reusableArtwork = null; artworkNotice = null; if (mounted.get(container) === controller) mounted.delete(container); } };
+    const controller = { destroy() { active = false; cancelDetailLeave(); view?.cancelMotion(); analysisView?.destroy(); analysisView = null; statsView?.destroy(); statsView = null; statsPending = null; statsFailed = null; view = null; artworkQueue.length = 0; for (const entry of loadingArtwork) entry.node.removeAttribute("src"); loadingArtwork.clear(); failedArtwork.clear(); reusableArtwork = null; artworkNotice = null; if (mounted.get(container) === controller) mounted.delete(container); } };
     mounted.set(container, controller);
     const h = (tag, attrs, ...children) => {
       const node = document.createElement(tag);
@@ -356,6 +356,7 @@
       // .179: one mounted tree per class. A point, level, reset or comparison
       // change paints existing controls; it must not detach focus or a tooltip.
       if (view && view.className === build.className) { view.paint(focus, feedback); return; }
+      view?.cancelMotion();
       analysisView?.destroy(); analysisView = null; statsView?.destroy(); statsView = null; statsPending = null; statsFailed = null;
       reusableArtwork = new Map();
       for (const node of container.querySelectorAll("img")) {
@@ -368,12 +369,13 @@
       let state = validateBuild(data, build), byId = new Map(talents.map((t, i) => [t.id, build.ranks[i]])), detailTalent = null, detailRefs = null;
       const buttons = new Map(), classButtons = new Map(), nodeRefs = new Map(), connectionRefs = [], treePointLabels = [], specPointRefs = [], removedRefs = [];
       // .218: one Classic placement map per tree; the layout in use is painted, never rebuilt, so buttons keep their order.
-      const treeRefs = [], placements = new Map(cls.trees.flatMap(tree => [...classicPlacements(tree)]));
-      let laidOut = "forever", firstPaint = true;
+      const treeRefs = [], linkLayers = [], frameRefs = [], placements = new Map(cls.trees.flatMap(tree => [...classicPlacements(tree)]));
+      let laidOut = "forever", firstPaint = true, motionEffects = [], splitVisual = null;
       if (!talents.some(t => t.id === selected)) selected = talents[0].id;
-      const classSelect = h("select", { id: "olympus-talent-class", "aria-label": "Character class", tabindex: "-1", onchange(event) { chooseClass(event.target.value); } }, data.classes.map(c => h("option", { value: c.id, text: c.name })));
+      const displayClasses = [...data.classes].sort((a, b) => a.name.localeCompare(b.name, "en"));
+      const classSelect = h("select", { id: "olympus-talent-class", "aria-label": "Character class", tabindex: "-1", onchange(event) { chooseClass(event.target.value); } }, displayClasses.map(c => h("option", { value: c.id, text: c.name })));
       classSelect.value = cls.id;
-      const classRow = h("nav", { class: "talents-classes", "aria-label": "Character classes" }, data.classes.map(c => {
+      const classRow = h("nav", { class: "talents-classes", "aria-label": "Character classes" }, displayClasses.map(c => {
         const button = h("button", { type: "button", class: "talents-class-button", "data-class": c.id, "aria-pressed": String(c.id === cls.id), onclick() { chooseClass(c.id); } }, image(art.classIcons[c.id]), h("span", { text: c.name }));
         classButtons.set(c.id, button); return button;
       }));
@@ -474,16 +476,21 @@
         const links = tree.talents.filter(t => t.requires).map(t => {
           const parent = talents.find(p => p.id === t.requires), ready = byId.get(parent.id) === parent.maxRank;
           const baseClass = "talents-link from-r" + parent.row + " to-r" + t.row + " to-c" + t.column + " start-c" + Math.min(parent.column, t.column) + " span-r" + (t.row - parent.row) + " span-c" + Math.abs(t.column - parent.column) + (t.column < parent.column ? " leftward" : " rightward") + (t.row === parent.row ? " same-row" : "");
-          const node = h("span", { class: baseClass + (ready ? " ready" : ""), "aria-hidden": "true" }, h("span", { class: "talents-link-h" }), h("span", { class: "talents-link-v" }), h("span", { class: "talents-link-arrow" }));
-          connectionRefs.push({ node, baseClass, parent }); return node;
+          const horizontal = h("span", { class: "talents-link-h" }), vertical = h("span", { class: "talents-link-v" }), arrow = h("span", { class: "talents-link-arrow" });
+          const node = h("span", { class: baseClass + (ready ? " ready" : ""), "aria-hidden": "true" }, horizontal, vertical, arrow);
+          connectionRefs.push({ node, baseClass, parent, child: t, horizontal, vertical, arrow }); return node;
         });
         const pointLabel = h("strong", { text: String(state.treePoints[treeIndex]) + (state.treePoints[treeIndex] === 1 ? " point" : " points") });
         treePointLabels.push(pointLabel);
         const removed = tree.removedClassic.length ? h("details", { class: "talents-removed", hidden: !compare }, h("summary", { text: "Classic-only references (" + tree.removedClassic.length + ")" }), tree.removedClassic.map(t => h("div", null, h("strong", { text: t.name }), h("p", { text: t.text || "No text supplied." })))) : null;
         if (removed) removedRefs.push(removed);
-        const treeSection = h("section", { class: "talents-tree", "data-tree-index": treeIndex, "aria-label": tree.name },
-          h("header", { class: "talents-tree-header" }, image(art.treeIcons[treeKey]), h("h3", { text: tree.name }), pointLabel),
-          h("div", { class: "talents-tree-body" }, image(art.treeBackgrounds[treeKey], { class: "talents-backdrop", "aria-hidden": "true" }), h("div", { class: "talents-links", "aria-hidden": "true" }, links),
+        const frame = h("span", { class: "talents-tree-frame", "aria-hidden": "true" });
+        const heading = h("header", { class: "talents-tree-header" }, image(art.treeIcons[treeKey]), h("h3", { text: tree.name }), pointLabel);
+        const backdrop = image(art.treeBackgrounds[treeKey], { class: "talents-backdrop", "aria-hidden": "true" });
+        const linkLayer = h("div", { class: "talents-links", "aria-hidden": "true" }, links);
+        frameRefs.push(frame, heading, backdrop); linkLayers.push(linkLayer);
+        const treeSection = h("section", { class: "talents-tree", "data-tree-index": treeIndex, "aria-label": tree.name }, frame, heading,
+          h("div", { class: "talents-tree-body" }, backdrop, linkLayer,
             h("div", { class: "talents-grid" }, tree.talents.map(t => {
               const rank = byId.get(t.id), canAdd = allocate(data, build, t.id, 1).ok, canRemove = allocate(data, build, t.id, -1).ok;
               const treeTabId = tree.talents.some(p => p.id === selected) ? selected : tree.talents[0].id;
@@ -621,6 +628,8 @@
             const meter = h("meter", { min: "0", max: String(state.budget), value: String(state.treePoints[index]), "aria-label": tree.name + " points" }, String(state.treePoints[index])), label = h("b", { text: String(state.treePoints[index]) });
             specPointRefs.push({ meter, label }); return h("div", null, h("span", { text: tree.name }), meter, label);
           }))),
+        h("p", { class: "talents-diff-note" }, "This calculator uses the 16 October beta talent snapshot. Check shared builds against your current in-game talents and ",
+          h("a", { href: "https://us.forums.blizzard.com/en/wow/t/2360696/9", rel: "noopener noreferrer", text: "Blizzard's 2 November notes" }), "."),
         guidePanel, moduleNote, h("div", { class: "talents-summary" }, split, pointsLeft, levelNeeded), legend, layoutNote,
         artworkNotice, h("div", { class: "talents-workspace" }, h("div", { class: "talents-trees" }, treeCards)), status,
         analysisHost, h("div", { class: "talents-insights" }, changesPanel, statsHost),
@@ -631,6 +640,17 @@
           h("p", { class: "talents-keyboard", text: "Keyboard: Tab enters each tree; arrows move across its grid. Enter or + adds; − removes. I enters the full detail panel; Escape closes it. A refund cannot break a tier or prerequisite." })));
       function paint(nextFocus, feedbackKind) {
         if (!active || view?.className !== cls.id) return;
+        const wanted = compare ? "classic" : "forever", layoutChanged = wanted !== laidOut;
+        const motion = layoutChanged && !firstPaint && typeof shell.animate === "function" &&
+          !(typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
+        const visualRefs = motion ? [...frameRefs, ...Array.from(nodeRefs.values(), ref => ref.node)] : [];
+        const measure = (nodes, split) => new Map(nodes.map(node => [node, (node === split?.node ? split.pick : node).getBoundingClientRect()]));
+        const fixedDetail = motion && !detail.hidden && document.defaultView?.getComputedStyle(detail).position === "fixed"
+          ? nodeRefs.get(detailTalent?.id) : null;
+        const first = motion ? measure(visualRefs, splitVisual) : null;
+        const linkOpacity = motion && motionEffects.length && document.defaultView
+          ? Number(document.defaultView.getComputedStyle(linkLayers[0]).opacity) : Number(laidOut === "forever");
+        if (layoutChanged) cancelMotion();
         state = validateBuild(data, build); byId = new Map(talents.map((t, i) => [t.id, build.ranks[i]]));
         level.value = String(build.level); compareInput.checked = compare; legend.hidden = !compare;
         for (const [value, button] of levelPresetButtons) button.setAttribute("aria-pressed", String(build.level === value));
@@ -652,8 +672,7 @@
         for (const removed of removedRefs) removed.hidden = !compare;
         for (const { tagChip } of nodeRefs.values()) tagChip.hidden = !compare || !tagChip.textContent;
         layoutNote.hidden = !compare;
-        const wanted = compare ? "classic" : "forever";
-        if (wanted !== laidOut) placeNodes(wanted, !firstPaint);
+        if (layoutChanged) placeNodes(wanted);
         firstPaint = false;
         const currentCode = serializeBuild(data, build); share.value = currentCode; share.setAttribute("value", currentCode);
         const announcement = message || "Left-click adds a point; right-click or Shift-click refunds. Hover or focus a talent to read every rank.";
@@ -673,13 +692,13 @@
         analysisView?.update(build);
         if (statsOpen) { try { statsView?.update(build); } catch { /* an optional sheet failure must not stop the calculator's paint */ } }
         updateArtworkNotice();
+        if (motion) {
+          // Read every Last rectangle before starting any animation. Link parts remain measurable in Classic at opacity zero.
+          const linkParts = connectionRefs.flatMap(({ horizontal, vertical, arrow }) => [horizontal, vertical, arrow]);
+          playLayout(first, measure([...visualRefs, ...linkParts]), linkOpacity, fixedDetail);
+        }
       }
-      // First, Last, Invert, Play: measure every node, move it to its new cell, then animate from the old place back to
-      // zero. Reduced motion, or a DOM without measurement or animation, moves the nodes at once.
-      function placeNodes(next, animate) {
-        const motion = animate && !(typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
-        const first = new Map();
-        if (motion) for (const [id, ref] of nodeRefs) if (typeof ref.node.getBoundingClientRect === "function") first.set(id, ref.node.getBoundingClientRect());
+      function placeNodes(next) {
         for (const section of treeRefs) section.className = "talents-tree" + (next === "classic" ? " talents-classic-layout" : "");
         for (const t of talents) {
           const node = nodeRefs.get(t.id).node, place = next === "classic" ? placements.get(t.id) : { row: t.row, column: t.column, extra: null };
@@ -687,18 +706,67 @@
           if (place.extra) node.setAttribute("data-classic-extra", place.extra); else node.removeAttribute("data-classic-extra");
         }
         laidOut = next;
-        for (const [id, before] of first) {
-          const node = nodeRefs.get(id).node;
-          if (typeof node.animate !== "function") continue;
-          const after = node.getBoundingClientRect(), dx = before.left - after.left, dy = before.top - after.top, distance = Math.hypot(dx, dy);
-          if (distance < 0.5) continue;
-          // A curved glide: the midpoint bends sideways, at most 36px, so crossing nodes do not travel the same line.
-          const bend = Math.min(36, distance * 0.18), nx = -dy / distance * bend, ny = dx / distance * bend;
-          node.animate([{ transform: "translate3d(" + dx + "px, " + dy + "px, 0)" }, { transform: "translate3d(" + (dx / 2 + nx) + "px, " + (dy / 2 + ny) + "px, 0)", offset: 0.5 }, { transform: "translate3d(0, 0, 0)" }],
-            { duration: COMPARE_DURATION, easing: COMPARE_EASING });
-        }
       }
-      view = { className: cls.id, paint };
+      function cancelMotion() {
+        for (const effect of motionEffects) effect.cancel();
+        motionEffects = [];
+        splitVisual = null;
+      }
+      function playLayout(first, last, linkOpacity, fixedDetail) {
+        const effects = motionEffects;
+        const play = (node, frames) => effects.push(node.animate(frames, { duration: COMPARE_DURATION, easing: COMPARE_EASING }));
+        const translate = (x, y) => x || y ? "translate3d(" + x + "px, " + y + "px, 0)" : "translate3d(0, 0, 0)";
+        const paths = new Map();
+        for (const talent of talents) {
+          const { id } = talent, ref = nodeRefs.get(id), { node, pick, badges, tagChip } = ref, classic = placements.get(id);
+          const before = first.get(node), after = last.get(node), dx = before.left - after.left, dy = before.top - after.top, distance = Math.hypot(dx, dy);
+          // The same three positions drive talent buttons and the geometry of their connecting lines.
+          const movesCell = talent.row !== classic.row || talent.column !== classic.column;
+          const curve = movesCell && distance ? Math.min(36 / distance, 0.18) : 0;
+          const offsets = [[dx, dy], [dx / 2 - dy * curve, dy / 2 + dx * curve], [0, 0]];
+          paths.set(id, offsets.map(([x, y]) => ({ x: after.left + after.width / 2 + x, y: after.top + after.height / 2 + y, halfWidth: after.width / 2, halfHeight: after.height / 2 })));
+          if (distance >= 0.5) {
+            const frames = offsets.map(([x, y], i) => ({ transform: translate(x, y), offset: i / 2 }));
+            // A transformed ancestor would turn the mobile fixed detail sheet into a box anchored to the talent.
+            for (const part of ref === fixedDetail ? [pick, badges, tagChip] : [node]) play(part, frames);
+          }
+        }
+        for (const node of frameRefs) {
+          const a = first.get(node), b = last.get(node);
+          if (!b.width || !b.height || (a.left === b.left && a.top === b.top && a.width === b.width && a.height === b.height)) continue;
+          play(node, [{ transform: translate(a.left - b.left, a.top - b.top) + " scale(" + a.width / b.width + ", " + a.height / b.height + ")" }, { transform: translate(0, 0) + " scale(1, 1)" }]);
+        }
+        for (const { parent, child, horizontal, vertical, arrow } of connectionRefs) {
+          const from = paths.get(parent.id), to = paths.get(child.id), h = last.get(horizontal), v = last.get(vertical), head = last.get(arrow);
+          if (!from || !to || !h.width || !v.height || !head.width) continue;
+          const rightward = child.column >= parent.column, sideArrow = child.row === parent.row;
+          const endpoints = from.map((start, i) => ({ start, end: to[i] }));
+          play(horizontal, endpoints.map(({ start, end }) => {
+            const left = rightward ? start.x : end.x, right = rightward ? end.x : start.x;
+            const y = sideArrow ? end.y : start.y;
+            return { opacity: 1, transform: translate(left - h.left, y - h.top) + " scaleX(" + (right - left) / h.width + ")" };
+          }));
+          play(vertical, endpoints.map(({ start, end }) => {
+            const x = sideArrow ? start.x : end.x;
+            return { opacity: 1, transform: translate(x - v.width / 2 - v.left, start.y - v.top) + " scaleY(" + (end.y - start.y) / v.height + ")" };
+          }));
+          play(arrow, endpoints.map(({ start, end }) => {
+            // The last leg meets the target from the corresponding side. A reversed leg mirrors the tip.
+            const pointsRight = end.x >= start.x, pointsDown = end.y >= start.y;
+            const left = sideArrow ? end.x + (pointsRight ? -end.halfWidth - head.width : end.halfWidth) : end.x - head.width / 2;
+            const top = sideArrow ? end.y - head.height / 2 : end.y + (pointsDown ? -end.halfHeight - head.height : end.halfHeight);
+            const mirrored = sideArrow ? pointsRight !== rightward : !pointsDown;
+            return { transform: translate(left - head.left, top - head.top) + (sideArrow ? " scaleX(" : " scaleY(") + (mirrored ? -1 : 1) + ")" };
+          }));
+        }
+        for (const layer of linkLayers) play(layer, [{ opacity: linkOpacity }, { opacity: Number(!compare) }]);
+        if (compare) for (const node of [legend, layoutNote, ...removedRefs]) play(node, [{ opacity: 0 }, { opacity: 1 }]);
+        splitVisual = fixedDetail;
+        Promise.allSettled(effects.map(effect => effect.finished)).then(() => {
+          if (motionEffects === effects) { motionEffects = []; splitVisual = null; }
+        });
+      }
+      view = { className: cls.id, paint, cancelMotion };
       container.replaceChildren(shell); showDetail(talents.find(t => t.id === selected), buttons.get(selected), false);
       if (analysisHost) analysisView = options.analysis.mount(analysisHost, { data, build });
       if (statsHost && statsOpen) { statsHost.open = true; openStats(); }

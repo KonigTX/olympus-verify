@@ -114,7 +114,7 @@ const check = (name, cond, ...why) => { n++; if (cond) ok++; else if (why.length
   res = await get("https://guild.example/health", env({ PUBLIC_BASE_URL: "http://verify.example" }));
   check("a misconfigured PUBLIC_BASE_URL is 503 on every host", res.status === 503 && (await res.json()).error === "misconfigured");
   res = await get("https://verify.example/health");
-  check("the bot host serves the bot's routes", res.status === 200 && (await res.json()).build === "2026-11-03.227 Launch verification and local receipts");
+  check("the bot host serves the bot's routes", res.status === 200 && (await res.json()).build === "2026-11-04.228 Evergreen guild site and raid tools");
   res = await get("https://guild.example/");
   check('the site host serves only the sign-in gate before entry', res.status === 200 && (await res.text()).includes('Enter Olympus'));
   res = await get("https://guild.example/health");
@@ -176,7 +176,7 @@ const check = (name, cond, ...why) => { n++; if (cond) ok++; else if (why.length
   check("the generated document is the tracked text: `npm run check:policies` agrees (run here)", require("child_process").spawnSync(process.execPath, [path.join(root, "scripts", "build-policy-content.mjs"), "--check"], { encoding: "utf8" }).status === 0);
   check("  the tracked privacy text appears verbatim inside the served page", (await (await get("https://guild.example/legal/privacy")).text()).includes(fs.readFileSync(path.join(root, "..", "policies", "privacy.html"), "utf8").match(/<h2>What it stores<\/h2>\n<p>[^<]{40}/)[0]));
   const picturePolicy = (await (await get("https://guild.example/legal/privacy")).text()).replace(/\s+/g, " ");
-  check("  .196 privacy preserves the single Discord CDN/no-archive disclosure for owner-approved applicant and current directory portraits", picturePolicy.includes("The site's top bar and welcome panel show your own Discord picture.") && picturePolicy.includes("Authenticated recommendation searches also show people's public Discord profile pictures when available.") && picturePolicy.includes("Your browser loads these pictures from Discord's picture server (cdn.discordapp.com), so Discord sees that request.") && picturePolicy.includes("Administrator application views may show the applicant’s stored Discord picture beside the game’s class icon.") && picturePolicy.includes("Voting-board cards show that picture only after the applicant separately opts in as described below.") && picturePolicy.includes("Previous agreement to the voting board does not opt you into a picture.") && picturePolicy.includes("Current Olympus Discord directory.") && picturePolicy.includes("Eligible Olympus members are listed by default after this notice and may opt out of the listing;") && picturePolicy.includes("This listing is separate from the optional detailed member profile and does not create a new stored Discord roster or picture archive.") && picturePolicy.includes("These lookups do not create a separate archive of pictures.") && !picturePolicy.includes("the site shows that picture to no one else"));
+  check("  .196 privacy preserves the single Discord CDN/no-archive disclosure for owner-approved applicant and current directory portraits", picturePolicy.includes("The site's top bar and welcome panel show your own Discord picture.") && picturePolicy.includes("Authenticated recommendation searches also show people's public Discord profile pictures when available.") && picturePolicy.includes("Your browser loads these pictures from Discord's picture server (cdn.discordapp.com), so Discord sees that request.") && picturePolicy.includes("Administrator application views may show the applicant’s stored Discord picture beside the game’s class icon.") && picturePolicy.includes("Voting-board cards show that picture only after the applicant separately opts in as described below.") && picturePolicy.includes("Previous agreement to the voting board does not opt you into a picture.") && picturePolicy.includes("Discord member list.") && picturePolicy.includes("Eligible Olympus members are listed by default after this notice and may opt out of the listing;") && picturePolicy.includes("This list is separate from Member profiles and does not create a new stored Discord roster or picture archive.") && picturePolicy.includes("These lookups do not create a separate archive of pictures.") && !picturePolicy.includes("the site shows that picture to no one else"));
 
   console.log("\n== .196 approved still pair and optional exact animated login media, site host only ==");
   let loginCalls = [], loginTouches = 0;
@@ -225,6 +225,64 @@ const check = (name, cond, ...why) => { n++; if (cond) ok++; else if (why.length
   res = await get('https://guild.example/static/wow/login/dark-portal.webm', env({ ASSETS: { fetch: async () => new Response('missing media', { status: 404 }) } }));
   check('a missing login asset stays an actual asset 404, never a fabricated200', res.status === 404 && await res.text() === 'missing media');
 
+  console.log("\n== exact immutable login and policy asset addresses ==");
+  const cache = load("./policy-asset-cache");
+  const projection = JSON.parse(fs.readFileSync(path.join(root, "..", "scripts", "official_asset_reference.json"), "utf8"));
+  const digest = bytes => require("node:crypto").createHash("sha256").update(bytes).digest("hex");
+  const immutable = "public, max-age=31536000, immutable, no-transform";
+  const files = new Map([...cache.POLICY_ASSETS, ...cache.LOGIN_ASSETS].map(assetPath => [assetPath, fs.readFileSync(path.join(root, "public", assetPath))]));
+  const digestedCalls = [];
+  const exactEnv = env({ DB: d1(db, { trap: () => { throw Error("The public asset closure is database-free"); } }), ASSETS: { fetch: async request => {
+    const url = new URL(request.url), file = files.get(url.pathname);
+    digestedCalls.push({ path: url.pathname, query: url.search, method: request.method, range: request.headers.get("Range"),
+      cookie: request.headers.get("Cookie"), authorization: request.headers.get("Authorization") });
+    const etag = '"' + digest(file) + '"';
+    const headers = { ETag: etag, "Content-Type": "application/octet-stream", "Set-Cookie": "provider-fixture=withheld", Vary: "Cookie", Location: "/private" };
+    if (request.headers.get("If-None-Match") === etag) return new Response(null, { status: 304, headers });
+    if (request.headers.get("Range") === "bytes=0-3") return new Response(file.subarray(0, 4), { status: 206, headers: { ...headers, "Content-Range": "bytes 0-3/" + file.length } });
+    return new Response(request.method === "HEAD" ? null : file, { status: 200, headers });
+  } } });
+  check("the immutable inventory is limited to 13 policy and four login assets", cache.POLICY_ASSETS.length === 13 && cache.LOGIN_ASSETS.length === 4 && files.size === 17);
+  for (const [assetPath, file] of files) {
+    const sha = digest(file), alias = cache.immutablePolicyAssetUrl(assetPath);
+    const pin = projection.assets.find(row => row.path === "worker/public" + assetPath);
+    const served = await get("https://guild.example" + alias, exactEnv, { headers: { Cookie: "session=fixture", Authorization: "Bearer fixture" } });
+    const headers = served.headers;
+    const bytes = Buffer.from(await served.arrayBuffer());
+    const call = digestedCalls.at(-1);
+    check("canonical source, digest URL and delivered bytes agree: " + assetPath,
+      pin?.sha256 === sha && pin.bytes === file.length && alias === cache.POLICY_ASSET_DIGEST_PREFIX + sha + "/" + assetPath.slice("/static/".length)
+        && served.status === 200 && bytes.equals(file) && call.path === assetPath && call.query === "" && call.cookie === null && call.authorization === null
+        && headers.get("Cache-Control") === immutable && headers.get("X-Content-Type-Options") === "nosniff"
+        && !headers.has("Set-Cookie") && !headers.has("Vary") && !headers.has("Location"));
+    const head = await get("https://guild.example" + alias, exactEnv, { method: "HEAD" });
+    const legacy = await get("https://guild.example" + assetPath, exactEnv);
+    check("immutable HEAD is bodyless, and legacy GET retains the no-store bytes: " + assetPath,
+      head.status === 200 && await head.text() === "" && head.headers.get("Cache-Control") === immutable
+        && legacy.status === 200 && Buffer.from(await legacy.arrayBuffer()).equals(file) && legacy.headers.get("Cache-Control") === "private, no-store, no-transform");
+  }
+  const clip = "/static/wow/login/dark-portal.webm", clipPath = cache.immutablePolicyAssetUrl(clip);
+  const partial = await get("https://guild.example" + clipPath, exactEnv, { headers: { Range: "bytes=0-3" } });
+  check("the opted-in video retains byte-range serving on its exact digest address", partial.status === 206 && partial.headers.get("Cache-Control") === immutable
+    && partial.headers.get("Content-Range") === "bytes 0-3/" + files.get(clip).length && Buffer.from(await partial.arrayBuffer()).equals(files.get(clip).subarray(0, 4)));
+  const unchanged = await get("https://guild.example" + clipPath, exactEnv, { headers: { "If-None-Match": '"' + digest(files.get(clip)) + '"' } });
+  check("digest revalidation retains the bodyless ETag response", unchanged.status === 304 && unchanged.headers.get("Cache-Control") === immutable && !await unchanged.text());
+  const callCount = digestedCalls.length;
+  for (const url of [clipPath + "?v=other", clipPath + "/", clipPath.replace(/\/[a-f0-9]{64}\//, "/" + "a".repeat(64) + "/"),
+    cache.POLICY_ASSET_DIGEST_PREFIX + digest(files.get(clip)) + "/app.js"]) {
+    const denied = await get("https://guild.example" + url, exactEnv);
+    check("unrecognized or ambiguous cache address is closed before assets: " + url, denied.status === 404 && /no-store/.test(denied.headers.get("Cache-Control")) && digestedCalls.length === callCount);
+  }
+  const post = await get("https://guild.example" + clipPath, exactEnv, { method: "POST" });
+  const bot = await get("https://verify.example" + clipPath, exactEnv);
+  const missing = await get("https://guild.example" + clipPath, env({ ASSETS: { fetch: async () => new Response("missing", { status: 404 }) } }));
+  check("write methods, the bot's login boundary and asset failures cannot mint public cache entries",
+    post.status === 405 && post.headers.get("Allow") === "GET, HEAD" && bot.status === 404 && digestedCalls.length === callCount
+      && missing.status === 404 && /no-store/.test(missing.headers.get("Cache-Control")));
+  const botPolicy = await get("https://verify.example" + cache.immutablePolicyAssetUrl("/static/policies.css"), exactEnv);
+  check("public policy assets keep their existing host scope at the new digest address",
+    botPolicy.status === 200 && botPolicy.headers.get("Cache-Control") === immutable);
+
   console.log("\n== the site's static files go through the host check (.51) ==");
   res = await get("https://guild.example/static/app.css?v=x");
   check('signed out, the application stylesheet is refused before the asset binding', res.status === 401 && !(await res.text()).includes('/* asset'), res.status);
@@ -234,10 +292,75 @@ const check = (name, cond, ...why) => { n++; if (cond) ok++; else if (why.length
   }
   let assetCalls = 0;
   const assetEnv = env({ ASSETS: { fetch: async () => { assetCalls++; return new Response('protected-source'); } } });
+  const localDataPath = '/static/qr-beta-window-data.html', cameraPath = '/static/qr-phase1.html';
+  const localDataModule = '/static/qr-beta-window.mjs', cameraModule = '/static/qr-phase1.mjs';
+  const qrFiles = new Map([localDataPath, cameraPath, localDataModule, cameraModule].map(file => [file, fs.readFileSync(path.join(root, 'public', file))]));
+  const qrAssetCalls = [];
+  const qrAssets = { fetch: async request => {
+    const url = new URL(request.url), pathname = url.pathname;
+    qrAssetCalls.push({ path: pathname, method: request.method, search: url.search });
+    // Cloudflare's default auto-trailing-slash redirects a physical .html URL
+    // and serves its extensionless key. The browser must stay on the Worker route.
+    if (pathname.endsWith('.html') && qrFiles.has(pathname)) {
+      return new Response(null, { status: 307, headers: { Location: pathname.slice(0, -5) + url.search } });
+    }
+    const html = qrFiles.get(pathname + '.html');
+    const file = html ?? qrFiles.get(pathname);
+    return file ? new Response(request.method === 'HEAD' ? null : file, {
+      headers: { 'Content-Type': html ? 'text/html; charset=utf-8' : 'text/javascript; charset=utf-8' }
+    }) : new Response('asset not found', { status: 404 });
+  } };
+  const localDataEnv = env({ ASSETS: qrAssets, DB: d1(db, { trap: () => { throw Error('public browser data controls must not touch D1'); } }) });
+  const localCsp = "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'";
+  const cameraClosed = 'camera=(), microphone=(), geolocation=(), payment=(), usb=()';
+  const cameraOpen = 'camera=(self), microphone=(), geolocation=(), payment=(), usb=()';
+  const privateAsset = r => r.headers.get('Cache-Control') === 'private, no-store, no-transform' && r.headers.get('Vary') === 'Cookie';
+  const exactFile = async (r, file) => r.status === 200 && !r.headers.has('Location') && Buffer.from(await r.arrayBuffer()).equals(qrFiles.get(file));
+  res = await get('https://guild.example' + localDataPath + '?local=1', localDataEnv);
+  check('CC-063 signed out, exact local-data HTML serves pinned bytes without a redirect, D1 or relaxed headers',
+    /^text\/html/.test(res.headers.get('Content-Type')) && await exactFile(res, localDataPath) &&
+    res.headers.get('Content-Security-Policy') === localCsp && res.headers.get('Permissions-Policy') === cameraClosed && privateAsset(res) &&
+    qrAssetCalls[0]?.path === localDataPath.slice(0, -5) && qrAssetCalls[0]?.search === '?local=1', res.status, res.headers.get('Location'));
+  res = await get('https://guild.example' + localDataPath, localDataEnv, { method: 'HEAD', headers: { Cookie: '__Host-olg=stale-removed-account' } });
+  check('CC-063 local-data HEAD stays public after account loss and has the same CSP with no body',
+    res.status === 200 && !res.headers.has('Location') && res.body === null &&
+    res.headers.get('Content-Security-Policy') === localCsp && qrAssetCalls[1]?.method === 'HEAD', res.status, res.headers.get('Location'));
+  res = await get('https://guild.example' + localDataModule, localDataEnv);
+  check('CC-063 the exact local-data module remains public with its strict headers',
+    await exactFile(res, localDataModule) && res.headers.get('Content-Security-Policy') === localCsp && res.headers.get('Permissions-Policy') === cameraClosed);
+  const beforeRefusals = qrAssetCalls.length;
+  res = await get('https://guild.example' + localDataPath, localDataEnv, { method: 'POST' });
+  check('CC-063 public local-data writes still refuse before the binding', res.status === 405 && res.headers.get('Allow') === 'GET, HEAD');
+  for (const target of ['https://verify.example' + localDataPath, 'https://unknown.example' + localDataPath,
+    'https://guild.example' + localDataPath.slice(0, -5), 'https://guild.example' + cameraPath.slice(0, -5)]) {
+    const reply = await get(target, env({ ASSETS: qrAssets }));
+    check('CC-063 no public HTML exception at ' + target, [401, 404].includes(reply.status) && !reply.headers.has('Location'));
+  }
+  check('CC-063 refusals above never reach the asset binding', qrAssetCalls.length === beforeRefusals);
   const core = load('./site-core'), viewer = '300000000000000091';
   const admittedSetup=load('./privacy-write-admission').createPrivacyWriteAdmissionDatabase(assetEnv.DB,'writer','canonical',entryFixture.ENTRY_EPOCH);
   await admittedSetup.prepare('INSERT INTO site_users(discord_id,username,in_server,first_login,last_login,session_version) VALUES(?1,?2,1,?3,?3,1)').bind(viewer,'member',Math.floor(Date.now()/1000)).run();
   const validCookie=(await entryFixture.issueOriginalEntryCookie(load,db,assetEnv,viewer)).cookie, originalVersion=db.prepare('SELECT session_version FROM site_users WHERE discord_id=?').get(viewer).session_version;
+  const normalizedAssetCalls = [];
+  const normalizingAssets = env({ ASSETS: { fetch: async request => {
+    const key = decodeURIComponent(new URL(request.url).pathname).replace(/\/{2,}/g, '/').replace(/\/+$/, '').toLowerCase();
+    normalizedAssetCalls.push(key);
+    return new Response(request.method === 'HEAD' ? null : 'fixture asset ' + key);
+  } } });
+  for (const alias of [
+    '/static/%74reasury-plan-content207.js', '/static/treasury-plan207%2Ecss', '/static//treasury-plan-model207.js',
+    '/static/TREASURY-PLAN207.JS', '/static/army-live%2Fsource.js', '/static/ARMY-LIVE/report.js',
+    '/static/army-live//report.js', '/static/%71r-phase1.html', '/static/QR-PHASE1.HTML',
+    '/static/qr-beta-window-data.html/',
+  ]) {
+    const before = normalizedAssetCalls.length;
+    const refused = await get('https://guild.example' + alias, normalizingAssets, { headers: { Cookie: validCookie } });
+    check('a signed-in caller cannot use an alternate static spelling: ' + alias,
+      refused.status === 404 && privateAsset(refused) && !await refused.text() && normalizedAssetCalls.length === before);
+  }
+  const license = await get('https://guild.example/static/talents/LICENSE-DATA.txt', normalizingAssets, { headers: { Cookie: validCookie } });
+  check('the ordinary tracked mixed-case licence still uses private asset delivery', license.status === 200 && privateAsset(license)
+    && normalizedAssetCalls.at(-1) === '/static/talents/license-data.txt');
   res = await get('https://guild.example/static/app.js', assetEnv, { headers: { Cookie: validCookie } });
   check('current Discord session receives private assets with cookie-varying no-store delivery', res.status === 200 && await res.text() === 'protected-source' && assetCalls === 1 && res.headers.get('Cache-Control') === 'private, no-store, no-transform' && res.headers.get('Vary') === 'Cookie' && /noindex/.test(res.headers.get('X-Robots-Tag')));
   // .177: reproduce a provider read failure through the real gate, without replacing
@@ -284,17 +407,26 @@ const check = (name, cond, ...why) => { n++; if (cond) ok++; else if (why.length
     res = await get('https://guild.example/static/wow/talents/bg-302.jpg', faultEnv, { headers: { Cookie: faultCookie } });
     check('a fresh request after a membership failure rechecks current Discord membership before private delivery', res.status === 200 && await res.text() === 'protected-fault-source' && faultMemberCalls === 2 && faultAssetCalls === 2 && gateLogs.length === 3 && db.prepare('SELECT checked_at FROM site_users WHERE discord_id=?1').get(faultViewer).checked_at > faultAt-7200);
   } finally { console.error = beforeGateConsole; fetchResponder = null; }
-  // The councillor page is the one response that may use the device camera (owner item 32 fallback); its own counter keeps the deliveries above intact.
-  let cameraAssetCalls = 0;
-  const cameraEnv = env({ ASSETS: { fetch: async () => { cameraAssetCalls++; return new Response('protected-source'); } } });
-  res = await get('https://guild.example/static/qr-phase1.html', cameraEnv, { headers: { Cookie: validCookie } });
-  check('signed in, the councillor page alone allows the same-origin camera and keeps every other private-asset header', res.status === 200 && await res.text() === 'protected-source' && cameraAssetCalls === 1 && res.headers.get('Permissions-Policy') === 'camera=(self), microphone=(), geolocation=(), payment=(), usb=()' && res.headers.get('Cache-Control') === 'private, no-store, no-transform' && res.headers.get('Vary') === 'Cookie' && /noindex/.test(res.headers.get('X-Robots-Tag')) && res.headers.get('X-Frame-Options') === 'DENY');
-  res = await get('https://guild.example/static/qr-phase1.mjs', cameraEnv, { headers: { Cookie: validCookie } });
-  check('every other private asset keeps the camera closed', res.status === 200 && cameraAssetCalls === 2 && res.headers.get('Permissions-Policy') === 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
-  res = await get('https://guild.example/static/qr-phase1.html', cameraEnv);
-  check('signed out, the councillor page carries no camera allowance and reaches no asset', res.status === 401 && cameraAssetCalls === 2 && res.headers.get('Permissions-Policy') === 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
-  res = await get('https://guild.example/static/qr-phase1.html', cameraEnv, { method: 'POST', headers: { Cookie: validCookie } });
-  check('the camera page accepts only GET and HEAD', res.status !== 200 && cameraAssetCalls === 2);
+  // The councillor page is the one response that may use the device camera (owner item 32 fallback).
+  const cameraEnv = env({ ASSETS: qrAssets }), memberHeaders = { Cookie: validCookie };
+  res = await get('https://guild.example' + cameraPath, cameraEnv, { headers: memberHeaders });
+  check('CC-063 signed in, exact camera HTML serves pinned bytes and only that route grants the same-origin camera',
+    /^text\/html/.test(res.headers.get('Content-Type')) && await exactFile(res, cameraPath) &&
+    qrAssetCalls.at(-1)?.path === cameraPath.slice(0, -5) && res.headers.get('Permissions-Policy') === cameraOpen &&
+    privateAsset(res) && /noindex/.test(res.headers.get('X-Robots-Tag')) && res.headers.get('X-Frame-Options') === 'DENY', res.status, res.headers.get('Location'));
+  res = await get('https://guild.example' + cameraPath, cameraEnv, { method: 'HEAD', headers: memberHeaders });
+  check('CC-063 signed-in camera HEAD has no body or redirect and preserves camera and cache headers',
+    res.status === 200 && res.body === null && !res.headers.has('Location') &&
+    res.headers.get('Permissions-Policy') === cameraOpen && privateAsset(res), res.status, res.headers.get('Location'));
+  for (const other of [cameraModule, cameraPath.slice(0, -5)]) {
+    res = await get('https://guild.example' + other, cameraEnv, { headers: memberHeaders });
+    check('CC-063 every other private asset keeps the camera closed: ' + other, res.status === 200 && res.headers.get('Permissions-Policy') === cameraClosed);
+  }
+  const beforeCameraRefusals = qrAssetCalls.length;
+  res = await get('https://guild.example' + cameraPath, cameraEnv);
+  check('signed out, the councillor page carries no camera allowance and reaches no asset', res.status === 401 && qrAssetCalls.length === beforeCameraRefusals && res.headers.get('Permissions-Policy') === cameraClosed);
+  res = await get('https://guild.example' + cameraPath, cameraEnv, { method: 'POST', headers: memberHeaders });
+  check('the camera page accepts only GET and HEAD', res.status !== 200 && qrAssetCalls.length === beforeCameraRefusals);
   await admittedSetup.prepare('UPDATE site_users SET session_version=? WHERE discord_id=?').bind(originalVersion+1,viewer).run();
   res = await get('https://guild.example/static/app.js', assetEnv, { headers: { Cookie: validCookie } });
   check('revoked cookie never reaches the asset binding', res.status === 401 && assetCalls === 1);
@@ -411,6 +543,64 @@ const check = (name, cond, ...why) => { n++; if (cond) ok++; else if (why.length
       for (const body of ["{not json", "null", "[]", "7"]) { const r = await post(path, body); answers.push([r.status, (await r.json()).error]); }
     check(".210 malformed, null, array or scalar watcher bodies get 400 bad_json/bad_body on every POST endpoint",
       answers.length === 16 && answers.every(([status, error], n) => status === 400 && error === (n % 4 === 0 ? "bad_json" : "bad_body")), JSON.stringify(answers));
+  }
+  {
+    const cap = 1024 * 1024, padding = new Uint8Array(64 * 1024).fill(32);
+    const post = (path, body, declared, authorized = true) => get("https://verify.example" + path, env(), {
+      method: "POST", duplex: "half", body, headers: {
+        ...(authorized ? { Authorization: "Bearer " + TOKEN } : {}),
+        ...(declared === undefined ? {} : { "Content-Length": String(declared) }),
+        "Content-Type": "application/json",
+      },
+    });
+    const source = (json, total) => {
+      const first = new TextEncoder().encode(json);
+      const seen = { pulls: 0, bytes: 0, cancelled: false };
+      const body = new ReadableStream({
+        pull(controller) {
+          seen.pulls++;
+          if (seen.bytes === total) { controller.close(); return; }
+          const chunk = seen.bytes === 0 ? first : padding.subarray(0, Math.min(padding.length, total - seen.bytes));
+          seen.bytes += chunk.length;
+          controller.enqueue(chunk);
+        },
+        cancel() { seen.cancelled = true; },
+      }, { highWaterMark: 0 });
+      return { body, seen };
+    };
+    for (const [path, json, declared] of [
+      ["/ingest/roster", '{"members":[]}', undefined],
+      ["/queue/written", '{"ids":[]}', 100],
+    ]) {
+      const streaming = source(json, 2 * cap);
+      const r = await post(path, streaming.body, declared);
+      check("CC-165 stream oversize cancels " + path + " at its first over-cap chunk without reading the tail",
+        r.status === 413 && (await r.json()).error === "body_too_large" &&
+        streaming.seen.cancelled && streaming.seen.bytes === cap + json.length, r.status, streaming.seen);
+      const header = source(json, 2 * cap);
+      const refused = await post(path, header.body, cap + 1);
+      check("CC-165 declared oversize refuses " + path + " before reading any body",
+        refused.status === 413 && (await refused.json()).error === "body_too_large" && header.seen.pulls === 0, refused.status, header.seen);
+    }
+    const unauthorized = source('{"ids":[]}', 2 * cap);
+    const denied = await post("/queue/written", unauthorized.body, cap + 1, false);
+    check("CC-165 bearer refusal precedes the watcher body reader", denied.status === 401 && unauthorized.seen.pulls === 0);
+    const edge = source('{"ids":[]}', cap);
+    const r = await post("/queue/written", edge.body, cap);
+    check("CC-165 watcher accepts exactly the cap and retains the existing queue reply",
+      r.status === 200 && (await r.json()).marked === 0 && edge.seen.bytes === cap && !edge.seen.cancelled);
+    const roster = JSON.stringify({
+      exportedAt: 1793833200, keyVersion: "fixture_only", nativeGuild: "Olympus I", nativeRealm: "Forever",
+      members: Array.from({ length: 1000 }, (_, index) => ({
+        name: "Synthetic Member " + index, rank: "Member", rankIndex: 7, level: 60, class: "Warrior",
+        note: "Synthetic guild roster entry", officerNote: "Fixture only, no member data",
+        guid: "Player-1234-" + index.toString(16).padStart(8, "0"), lastOnline: 1793833200,
+      })),
+    });
+    const rosterResult = await post("/ingest/roster", roster, Buffer.byteLength(roster));
+    check("CC-165 a 1,000-row roster above the Discord limit reaches the unchanged watcher protocol fence",
+      Buffer.byteLength(roster) > discord.MAX_INTERACTION_BYTES && Buffer.byteLength(roster) < cap &&
+      rosterResult.status === 400 && (await rosterResult.json()).error === "unsupported_protocol", Buffer.byteLength(roster));
   }
   res = await get("https://verify.example/admin/guild-map", env({ WATCHER_TOKEN: "" }), { headers: { Authorization: "Bearer " } });
   check("  the admin routes too", res.status === 401);

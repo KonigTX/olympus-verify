@@ -7,7 +7,7 @@ local G = {}
 OlympusVerifyGuild = G
 local MAX_MEMBERS, LIST_AGE, MAX_ROWS = 1000, 3600, 60
 local COLUMN_WIDTH, NAV_GUTTER, SCREEN_MARGIN = 116, 48, 8
-local REMINDER = "Hi! Please verify your Olympus character at https://olympus.roachcouncil.com/ — sign in with Discord and follow the verification steps. Happy to help if you get stuck!"
+local REMINDER = "Hi! In Asmongold's Discord, use Get my code in #⚡olympus-verify. Follow the bot's instructions to whisper the code from this character in game."
 local LABEL = { verified = "Verified", unverified = "Not verified", pending = "Verifying", unknown = "Unknown", stale = "Stale list" }
 local COLOR = { verified = "|cff8ac69a", unverified = "|cffe57572", pending = "|cffe8be65", unknown = "|cff9ea3ad", stale = "|cffe8be65" }
 local nativeNames, nativeGuids, nativeAliases, nativeAt, loadedIdentity, changedGuild = {}, {}, {}, nil, nil, false
@@ -109,7 +109,8 @@ function G.Verification(name, guid)
   if not nativeAt then return { status = "unknown", reason = "The current native guild roster could not be read." } end
   local m = Live(Text(name), Text(guid, 40))
   if not m then return { status = "unknown", reason = "No unique matching character in the current native guild roster." } end
-  local q = type(OlympusQueue) == "table" and OlympusQueue or nil
+  local q, displayError, displayStale = API.Roster.DisplaySource()
+  if displayError then return { status = displayStale and "stale" or "unknown", reason = displayError } end
   local v, u = q and q.verified, q and q.unverified
   if type(v) ~= "table" or type(u) ~= "table" or type(v.members) ~= "table" or type(u.members) ~= "table" then
     return { status = "unknown", reason = "No complete watcher verification lists are loaded. Sync and reload first." }
@@ -129,6 +130,9 @@ function G.Verification(name, guid)
     return { status = "unknown", reason = "Only a name/old account state matched, or the native GUID is unavailable. No current GUID verification is claimed." }
   end
   if unverified then
+    if q == OlympusVerifyLists and Text(unverified.guid, 40) ~= m.guid then
+      return { status = "unknown", reason = "The Watcher display row does not match the current native GUID. No reminder is offered." }
+    end
     if nativeAliases[nk] ~= m or Text(unverified.name):find("-", 2, true) and Key(unverified.name) ~= Key(m.name) then
       return { status = "unknown", reason = "The watcher's plain-name alias is ambiguous in the native guild roster or its explicit realm differs. No reminder is offered." }
     end

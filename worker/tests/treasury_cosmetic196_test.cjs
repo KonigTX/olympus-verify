@@ -34,10 +34,17 @@ async function fixture(){
 async function erasure(f){const account=f.db.prepare('SELECT account_incarnation,session_version FROM site_users WHERE discord_id=?').get(TARGET),subject=f.db.prepare('SELECT generation FROM privacy_subjects WHERE subject_id=?').get(TARGET),operation='e'.repeat(32),digest='f'.repeat(64);await f.write("UPDATE privacy_subjects SET state='retiring',revision=revision+1 WHERE subject_id=?",TARGET);await f.write("INSERT INTO privacy_serving_jobs(operation_id,subject_id,subject_generation,request_digest,original_session_version,original_session_expires,state,created_at,retain_until,original_account_incarnation)VALUES(?,?,?,?,?,?,'waiting_role',?,?,?)",operation,TARGET,subject.generation,digest,account.session_version,T+600,T,T+31622400,account.account_incarnation);return{purpose:'account_erasure',subject:TARGET,subjectGeneration:subject.generation,operationId:operation,requestDigest:digest,accountIncarnation:account.account_incarnation};}
 (async()=>{
  check('exact genuine seasonal thresholds replace the old proposed tiers',treasury.treasuryTier(249999)===null&&treasury.treasuryTier(250000)==='tithePayer'&&treasury.treasuryTier(1000000)==='patron'&&treasury.treasuryTier(5000000)==='benefactor');
+ check('CC-080 exact Apex thresholds and upper cap use verified seasonal copper',
+   treasury.treasuryTier(9999999)==='benefactor'&&treasury.treasuryTier(10000000)==='archFinancier'&&
+   treasury.treasuryTier(24999999)==='archFinancier'&&treasury.treasuryTier(25000000)==='imperialTreasuryHand'&&
+   treasury.treasuryTier(Number.MAX_SAFE_INTEGER)==='imperialTreasuryHand');
  const f=await fixture(),schema=JSON.stringify(f.db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").all());
  let r=await f.preview();check('ordinary member can receive no admin Treasury data or controls',(await f.call('preview',{discordId:TARGET,recognitionConsent:true},OTHER)).status===403);
  const staffOnly=await f.call('status',{operationId:'a'.repeat(32)},OTHER,{SITE_ADMINS:'',ROLE_OFFICER:MEMBER});check('an Officer role label cannot replace site-admin authority for Treasury operation status',staffOnly.status===403&&!staffOnly.body.operation,staffOnly);
- const targetCalls=calls.length,reference=await f.call('target',{discordId:TARGET});check('admin obtains the server-computed TITHE reference without provider work or payment proof',reference.status===200&&/^TITHE-[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(reference.body.mailReference)&&reference.body.recipient==='Fernmelder'&&calls.length===targetCalls);
+ const targetCalls=calls.length,reference=await f.call('target',{discordId:TARGET});check('admin obtains the server-computed TITHE reference without provider work or payment proof',reference.status===200&&/^TITHE-[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(reference.body.mailReference)&&calls.length===targetCalls);
+ check('CC-080 target response distinguishes the game recipient and the five recognition tiers',
+   reference.body.recipient==='Fern Melder'&&JSON.stringify(reference.body.tiers?.map(t=>[t.key,t.gold,t.ceremonial]))===
+   JSON.stringify([['tithePayer',25,false],['patron',100,false],['benefactor',500,false],['archFinancier',1000,true],['imperialTreasuryHand',2500,true]]),reference.body);
  check('empty private ledger creates no cosmetic credit or role effect',r.status===200&&r.body.tier===null&&r.body.qualifyingGold===0&&r.body.changes.length===0,r);
  await f.write("INSERT INTO community_contribution_receipts(id,guild_scope,source,source_id,payload_hash,amount_copper,observed_at,matched_discord_id,status,retain_until,created_at)VALUES(?,?,'officer_manual','ordinary-dues','unclassified',5000000,?,?,'matched',?,?)",'a'.repeat(22),SCOPE,T-20,TARGET,T+100000,T-20);
  r=await f.preview();check('ordinary matched dues do not become additional-gold credit',r.status===200&&r.body.tier===null&&r.body.qualifyingGold===0);
@@ -67,6 +74,29 @@ async function erasure(f){const account=f.db.prepare('SELECT account_incarnation
  check('season end removes only the acknowledged cosmetic award even with grants/config disabled',r.state==='settled'&&!f.held.has(ROLE_IDS.tithePayer)&&calls.filter(c=>c.method==='DELETE').length===1,r);
  const expiryStatements=f.raw.nativeGroups.flat().length-beforeExpiry;check('one expiry slice remains within its conservative Native statement reservation',expiryStatements<=settlements.TREASURY_EXPIRY_SQL_MAX,{expiryStatements});console.log('TREASURY_EXPIRY_BOUND '+JSON.stringify({nativeStatements:expiryStatements,reserved:settlements.TREASURY_EXPIRY_SQL_MAX,httpMax:8}));T=clockBefore;
  f.close();
+ const apex=await fixture();
+ const writesBeforeApex=calls.filter(c=>c.method==='PUT'||c.method==='DELETE').length;
+ await apex.record(10000000,'apex-first');
+ const arch=await apex.preview();
+ check('CC-080 consented 1,000g qualifies for ceremonial Arch-Financier and only the existing Benefactor colour',
+   arch.status===200&&arch.body.tier==='archFinancier'&&arch.body.tierLabel==='Arch-Financier of Olympus'&&
+   arch.body.ceremonial===true&&arch.body.discordColourTier==='benefactor'&&arch.body.changes.length===1&&
+   arch.body.changes[0].roleId===ROLE_IDS.benefactor&&arch.body.changes[0].desired===1&&!arch.body.liveEffectClaimed,arch.body);
+ await apex.record(15000000,'apex-second');
+ const hand=await apex.preview();
+ check('CC-080 aggregated 2,500g qualifies for the capped ceremonial title without a second colour or provider mutation',
+   hand.status===200&&hand.body.tier==='imperialTreasuryHand'&&hand.body.tierLabel==='Hand of the Imperial Treasury'&&
+   hand.body.ceremonial===true&&hand.body.discordColourTier==='benefactor'&&hand.body.changes.length===1&&
+   hand.body.changes[0].roleId===ROLE_IDS.benefactor&&hand.body.qualifyingGold===2500&&
+   calls.filter(c=>c.method==='PUT'||c.method==='DELETE').length===writesBeforeApex,hand.body);
+ const declinedApex=await apex.call('preview',{discordId:TARGET,recognitionConsent:false});
+ check('CC-080 declining recognition retains Apex gold credit without a title or proposed grant',
+   declinedApex.status===200&&declinedApex.body.qualifyingGold===2500&&declinedApex.body.tier===null&&
+   declinedApex.body.tierLabel===null&&declinedApex.body.discordColourTier===null&&declinedApex.body.changes.length===0,declinedApex.body);
+ check('CC-080 public directory still has exactly the three existing Discord role labels',
+   JSON.stringify(treasury.treasuryDirectoryRoles(apex.env))===JSON.stringify([
+     [ROLE_IDS.tithePayer,'Tithe Payer'],[ROLE_IDS.patron,'Patron of the Treasury'],[ROLE_IDS.benefactor,'Benefactor of Olympus']]));
+ apex.close();
  for(const reservedName of ['Olympus Branch GM','Olympus Branch Officer']){const branch=await fixture();await branch.record(250000);branch.roles.find(x=>x.id===ROLE_IDS.tithePayer).name=reservedName;const beforeBranch=calls.filter(x=>x.method==='PUT'||x.method==='DELETE').length,heldBranch=await branch.preview();check('renamed Branch leadership is never a cosmetic role: '+reservedName,heldBranch.status!==200&&calls.filter(x=>x.method==='PUT'||x.method==='DELETE').length===beforeBranch);branch.close();}
  const u=await fixture();await u.record(250000);let p=await u.preview(),c={token:p.body.token,operationId:p.body.changes[0].operationId,confirmed:true};u.setMode('unknown');r=await u.call('confirm',c);check('a lost PUT answer remains unknown despite the role now being present',r.status===409&&r.body.state==='unknown'&&u.held.has(ROLE_IDS.tithePayer),r);const before=calls.filter(x=>x.method==='PUT').length;
  r=await u.call('confirm',c);check('unknown replay retains original custody without retry or GET-based cancellation',r.status===409&&r.body.state==='unknown'&&calls.filter(x=>x.method==='PUT').length===before);

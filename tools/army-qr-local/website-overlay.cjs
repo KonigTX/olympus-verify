@@ -1,6 +1,6 @@
 'use strict';
 const {createHash}=require('node:crypto');
-const EXPECTED_SOURCE_SHA256 = '14853fb44150418929e184b9de5ceee35c97db9daeba8cb4621ef6bb5e453191';
+const EXPECTED_SOURCE_SHA256 = '597f19e5b744cf5d09553aee1d4717b24c2c2514c734a780ff0ca033714c4290';
 function transformApp(source){
   if(typeof source!=='string'||createHash('sha256').update(source).digest('hex')!==EXPECTED_SOURCE_SHA256)throw Error('Exact reviewed production app source is required.');
   const once=(before,after)=>{if(source.split(before).length!==2)throw Error('Local Army source seam is not unique.');source=source.replace(before,after);};
@@ -21,10 +21,11 @@ function transformApp(source){
 `);
   once('    closeNavMenus();\n    if (disposeSeatsNotice) disposeSeatsNotice();\n','    closeNavMenus();\n    if (disposeArmyQrLocal) disposeArmyQrLocal();\n    if (armyQrLocalCleanup) { armyQrRenderQueued = true; return; }\n    if (disposeSeatsNotice) disposeSeatsNotice();\n');
   once('  async function signOut() {\n','  async function signOut() {\n    if (disposeArmyQrLocal) disposeArmyQrLocal();\n');
-  once('news: "Guild news", army: "Army", leadership: "Leadership"','news: "Guild news", army: "Army", "army-qr-local": "Army · local QR preview", leadership: "Leadership"');
-  once('    if (anyCommunity()) tabs.push(["leadership", "Leadership"]); // .114:','    if (anyCommunity() && can("applicantWrite") && communityReader()) tabs.push(["army-qr-local", "Army · local QR preview"]);\n    if (anyCommunity()) tabs.push(["leadership", "Leadership"]); // .114:');
-  once('    if (sub === "news" && newsOn()) return communityNews(body);','    if (sub === "army-qr-local") return communityArmyQrLocal(body);\n    if (sub === "news" && newsOn()) return communityNews(body);');
-  once('  async function communityOverview(body) {\n    const cards = [];','  async function communityOverview(body) {\n    const cards = [];\n    if (anyCommunity() && can("applicantWrite") && communityReader()) cards.push(h("a", { class: "card", href: "#/community/army-qr-local" }, h("div", { class: "card-head" }, icon("icon-friends"), h("h3", { text: "Army · local QR preview" })), h("p", { class: "muted small", text: "Real-addon QR transfer on this computer only. Unsigned own-guild observations stay separate from other site data. No production upload or activation." })));');
+  // Share the current tab/title/card descriptor while preserving the original
+  // top navigation and the existing applicant and Community-reader fences.
+  once('visibleCommunitySections().map(({ href, label }) => [href, label])','visibleCommunitySections().filter(section => !section.localOnly).map(({ href, label }) => [href, label])');
+  once('    { key: "leadership", label: "Leadership",','    { key: "army-qr-local", label: "Army · local QR preview", href: "#/community/army-qr-local", localOnly: true, visible: () => anyCommunity() && can("applicantWrite") && communityReader(), icon: "icon-friends",\n      description: "Real-addon QR transfer on this computer only. Unsigned own-guild observations stay separate from other site data. No production upload or activation." },\n    { key: "leadership", label: "Leadership",');
+  once('    if (sub === "leadership") return communityLeadership(body); // .114','    if (sub === "army-qr-local") return communityArmyQrLocal(body);\n    if (sub === "leadership") return communityLeadership(body); // .114');
   const local = String.raw`  function loadArmyQrLocalScript() {
     if (window.OlympusArmyQrLocal) return Promise.resolve();
     if (!armyQrLocalScript) armyQrLocalScript = new Promise((resolve, reject) => {

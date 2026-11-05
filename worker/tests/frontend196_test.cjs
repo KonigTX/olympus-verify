@@ -9,11 +9,34 @@ const body196=String.raw`
   await siteUser(MEMBER,{global_name:'Mia'}); await character(MEMBER,'Mia One','Player-1-0001');
   await siteUser(OTHER,{global_name:'Oz'}); await character(OTHER,'Oz Two','Player-1-0002');
   await siteUser(STAFF,{global_name:'Vik'});
+  const offNews064=await openPage(MEMBER), offNewsReads064=[];
+  offNews064.before((url,init)=>{if(url==='/api/news')offNewsReads064.push(init.method);return false;});
+  await offNews064.go('#/community/news');
+  check('fresh News off canonicalizes the legacy link and reads no News data',offNews064.location.hash==='#/news'&&offNews064.document.title==='Town Crier — Olympus'&&offNews064.app.textContent.includes('Town Crier dispatches are switched off.')&&offNewsReads064.length===0);
   await fixtureRun("INSERT INTO site_settings(key,value,updated_at) VALUES('newsOn','true',?) ON CONFLICT(key) DO UPDATE SET value='true'",now);
+  const newsNav064=await openPage(MEMBER), newsReads064=[];
+  newsNav064.before((url,init)=>{if(url==='/api/news')newsReads064.push(init.method);return false;});
+  await newsNav064.go('#/community/profile');
+  await waitFor(()=>!!newsNav064.app.querySelector('#f-main'),'own profile before legacy News navigation');
+  const unsaved064=newsNav064.app.querySelector('#f-main');
+  unsaved064.value='Unsaved Member';fire(unsaved064,'input');
+  await newsNav064.go('#/community/news');
+  await waitFor(()=>!!byText(newsNav064.document.body,'button','Cancel'),'normal unsaved navigation prompt');
+  byText(newsNav064.document.body,'button','Cancel')?.click();await settle();
+  check('cancelling a legacy News navigation keeps the original form and makes no read',newsNav064.location.hash==='#/community/profile'&&newsNav064.app.querySelector('#f-main')===unsaved064&&unsaved064.value==='Unsaved Member'&&newsReads064.length===0);
+  await newsNav064.go('#/community/news');
+  await waitFor(()=>!!byText(newsNav064.document.body,'button','Leave anyway'),'normal accepted navigation prompt');
+  byText(newsNav064.document.body,'button','Leave anyway')?.click();
+  await waitFor(()=>newsReads064.length===1,'one original Town Crier read');
+  check('accepting navigation replaces the legacy hash and reads the canonical Town Crier only once',newsNav064.location.hash==='#/news'&&newsNav064.document.title==='Town Crier — Olympus'&&newsReads064.join(',')==='GET');
+  await newsNav064.go('#/community/news?next=/admin');
+  check('an unknown legacy hash suffix is not used to construct a redirect or a News read',newsNav064.location.hash==='#/community/news?next=/admin'&&newsReads064.length===1);
   const member=await openPage(MEMBER), staff=await openPage(STAFF);
   const archive=byText(member.app,'h2','Beta Epoch Archive')?.closest('section');
   check('archive retains the later announced shutdown plan without claiming observed closure',!!archive && archive.textContent.includes('23 October 2026') && archive.textContent.includes('10:00 AM PDT (17:00 UTC)') && archive.textContent.includes("Blizzard's announced plan") && archive.textContent.includes('not a server closure observed') && archive.textContent.includes('no former-member roster') && !archive.textContent.includes('Mia One'));
-  check('name reservation copy separates eligible-account total and local input limits',member.app.textContent.includes('three characters total across all rulesets') && member.app.textContent.includes('Skyborne Heroic Pack') && member.app.textContent.includes('local limits are not a claim'));
+  // Evergreen Stage 2 (4 Nov 2026): Blizzard's reservation closed on 3 November, so Home records it once in the past
+  // tense; the guild form's own input limits are stated plainly beside the boxes, without the earlier hedge.
+  check('name reservation copy records the closed window once and states the local input limits plainly',member.app.textContent.includes("Blizzard's early name reservation ran from 27 October to 3 November 2026.") && member.app.textContent.includes('each a first and last name of 2–12 letters') && !member.app.textContent.includes('local limits are not a claim') && !member.app.textContent.includes('Skyborne Heroic Pack'));
   check('unappointed member has no Stream Shield affordance',!member.app.querySelector(".stream-shield-toggle"));
   const shield=staff.app.querySelector(".stream-shield-toggle"), commands=[];
   staff.before((pathname,init)=>{if((init.method||'GET')!=='GET')commands.push(pathname);return false;});
@@ -32,7 +55,7 @@ const body196=String.raw`
   profile198=(await request198('PUT','/api/community/profile',{revision:profile198.revision,listed:false,main:'Mia One',professions:[{name:'alchemy',skill:275}],crafts:[{profession:'alchemy',recipe:'Fictional Forever Elixir'}]})).profile;
   const workshop198=await openPage(MEMBER);await workshop198.go('#/community/workshop');
   await waitFor(()=>workshop198.app.textContent.includes('No offer matches.'),'unlisted Workshop draft');
-  check('.198 Workshop hides saved drafts and explains voluntary listing',!workshop198.app.textContent.includes('Fictional Forever Elixir')&&workshop198.app.textContent.includes('Untick the listing box'));
+  check('.198 Workshop hides saved drafts and explains voluntary listing',!workshop198.app.textContent.includes('Fictional Forever Elixir')&&workshop198.app.textContent.includes('hides your detailed profile and Workshop offers')&&workshop198.app.textContent.includes('Discord member list has a separate visibility control'));
   profile198=(await request198('PUT','/api/community/profile',{revision:profile198.revision,listed:true})).profile;
   fire(workshop198.app.querySelector('form'),'submit');
   await waitFor(()=>!!workshop198.app.querySelector('.craft'),'listed Workshop recipe');
@@ -40,12 +63,26 @@ const body196=String.raw`
   const mode198=workshop198.app.querySelector('[data-field="craft-mode"] select');mode198.value='professions';fire(mode198,'change');
   await waitFor(()=>workshop198.app.querySelector('.craft')&&!workshop198.app.textContent.includes('Fictional Forever Elixir'),'Workshop profession mode');
   check('.198 profession-only mode disables recipe search and retains the listed artisan',workshop198.app.querySelector('[data-field="craft-q"] input').disabled&&workshop198.app.textContent.includes('Alchemy')&&workshop198.app.textContent.includes('Member-supplied profession listing.'));
-  await request198('PUT','/api/community/profile',{revision:profile198.revision,listed:false});fire(workshop198.app.querySelector('form'),'submit');
+  const ownProfile196=await openPage(MEMBER);await ownProfile196.go('#/community/profile');
+  await waitFor(()=>!!byText(ownProfile196.app,'button','Save'),'own profile listing control');
+  const ownForm196=byText(ownProfile196.app,'button','Save').closest('form');
+  const discordVisibility196=byText(ownForm196,'a','Manage my Discord member list visibility');
+  check('My profile names Member profiles in its listing control and gives a separate route to Discord row visibility',!!byText(ownForm196,'label','Show my detailed profile in Member profiles')&&!!byText(ownProfile196.app,'span','Shown in Member profiles')&&discordVisibility196?.getAttribute('href')==='#/community/directory');
+  const visibilityBefore196=await request198('GET','/api/community/discord-directory/visibility');
+  const profileWrites196=[];
+  ownProfile196.before((path,init)=>{if(init.method==='PUT')profileWrites196.push(path);return false;});
+  const ownListing196=ownForm196.querySelector('input[type="checkbox"]');
+  ownListing196.checked=false;fire(ownListing196,'change');fire(ownForm196,'submit');
+  await waitFor(()=>one('SELECT listed FROM community_profiles WHERE discord_id=?',MEMBER).listed===0,'real profile opt-out');
+  const visibilityAfter196=await request198('GET','/api/community/discord-directory/visibility');
+  const privateProfile196=(await request198('GET','/api/community/profile')).profile;
+  check('unlisting the detailed profile changes only its endpoint and keeps its saved details and the default Discord visibility',profileWrites196.length===1&&profileWrites196[0]==='/api/community/profile'&&privateProfile196.listed===false&&privateProfile196.main.name==='Mia One'&&privateProfile196.crafts[0].recipe==='Fictional Forever Elixir'&&visibilityBefore196.listed===true&&JSON.stringify(visibilityAfter196)===JSON.stringify(visibilityBefore196));
+  fire(workshop198.app.querySelector('form'),'submit');
   await waitFor(()=>workshop198.app.textContent.includes('No profession listing matches.'),'Workshop opt-out');
   check('.198 real profile opt-out removes both profession and recipe cards',!workshop198.app.querySelector('.craft')&&!workshop198.app.querySelector('.workshop-commission'));
   await staff.go('#/admin/settings');
   await waitFor(()=>!!staff.app.querySelector('[data-appointment-status="office_95"]'),'all offices rendered');
-  check('all138 stable office and rank keys have a real Discord picker',staff.boot.meta.appointments.length===138 && staff.app.querySelectorAll('.appointed-row').length===138 && staff.app.querySelectorAll('.appointed-row [role="combobox"]').length===138);
+  check('all139 stable office and rank keys have a real Discord picker',staff.boot.meta.appointments.length===139 && staff.app.querySelectorAll('.appointed-row').length===139 && staff.app.querySelectorAll('.appointed-row [role="combobox"]').length===139);
   check('expanded picker consent does not confer native, bank or signer authority',staff.app.textContent.includes('do not change Discord roles, native ranks, bank access or signing authority'));
   check('annual member intent renewal is visible with exact application and date',staff.app.textContent.includes('1550176895671341076') && staff.app.textContent.includes('2027-10-23'));
   check('dormant Battle.net collection exposes no future enable checkbox',!staff.app.querySelector('#bnet-switch'));
@@ -61,6 +98,8 @@ const body196=String.raw`
   check('a valid build for another selected class is refused',wrong196.field==='talentBuild');
   const hostile196=api196.validateApplication({...application196,answers:{...application196.answers,talentBuild:'https://untrusted.example/#/talents/warrior/'+code196}},MEMBER,{},[],'guild.example');
   check('application validation rejects a foreign URL without fetching it',hostile196.field==='talentBuild');
+  const privacy196=(await policyHTML('/legal/privacy')).text.replace(/\s+/g,' ');
+  check('served privacy copy names both lists and scopes opt-out, default roles and verified characters',privacy196.includes('<strong>Member profiles and crafting offers.</strong>')&&privacy196.includes('<strong>Discord member list.</strong>')&&privacy196.includes('Unlisting hides these details and your Workshop offers from readers.')&&privacy196.includes('Use the Discord member list’s separate visibility control to hide your whole row there.')&&privacy196.includes('configured Olympus membership or rank role')&&privacy196.includes('eligible currently verified character names from existing retained Olympus records only for members with website accounts'));
   const directory=await openPage(MEMBER), avatar='https://cdn.discordapp.com/embed/avatars/3.png';
   let reads196=0;
   directory.answer(pathname=>{
@@ -77,10 +116,12 @@ const body196=String.raw`
   check('directory makes traversal and changing membership explicit',reads196===1 && directory.app.textContent.includes('not an atomic roster snapshot'));
   await waitFor(()=>!!directory.app.querySelector('#discord-directory-listed'),'own visibility control');
   const listed196=directory.app.querySelector('#discord-directory-listed');
-  check('own directory visibility defaults listed with a separate explicit opt-out',listed196.checked===true && directory.app.textContent.includes('additional profile details remain a separate opt-in'));
+  check('own directory visibility defaults listed with a separate explicit opt-out',listed196.checked===true && !!byText(directory.app,'h2','Discord member list') && directory.document.title==='Community · Discord member list — Olympus' && directory.app.textContent.includes('Member profiles use a separate opt-in.'));
   listed196.checked=false; byText(directory.app,'button','Save my listing preference').click();
   await waitFor(()=>directory.app.textContent.includes('Earlier reader copies cannot be recalled.'),'explicit opt-out save');
-  check('explicit directory opt-out commits through the real own-only Worker path',listed196.checked===false && directory.app.textContent.includes('Your whole directory row is hidden.'));
+  check('explicit directory opt-out commits through the real own-only Worker path',listed196.checked===false && directory.app.textContent.includes('Your whole row is hidden from the Discord member list.'));
+  const stillUnlisted196=(await request198('GET','/api/community/profile')).profile;
+  check('hiding the Discord row independently leaves the detailed profile and its stored draft intact',stillUnlisted196.listed===false&&stillUnlisted196.main.name==='Mia One'&&stillUnlisted196.crafts[0].recipe==='Fictional Forever Elixir');
   directory.document.hidden=true; directory.document.dispatchEvent(new Event('visibilitychange'));
   check('hiding the directory clears member cards immediately',directory.app.querySelectorAll('.card.member').length===0);
   const malformed196=await openPage(MEMBER);
@@ -102,8 +143,12 @@ const body196=String.raw`
   await traversal196.go('#/community/directory');await waitFor(()=>traversalReads196===1&&!byText(traversal196.app,'button','Load all eligible Olympus members').hidden,'explicit traversal control');
   check('opening the directory does not automatically enumerate the remaining source',traversalReads196===1);
   byText(traversal196.app,'button','Load all eligible Olympus members').click();
-  await waitFor(()=>traversalReads196===3&&traversal196.app.textContent.includes('End of this traversal.'),'explicit paced continuation completes');
-  check('explicit continuation renders each bounded page and stops at confirmed completion',traversal196.app.querySelectorAll('.card.member').length===3&&byText(traversal196.app,'button','Load all eligible Olympus members').hidden);
+  const traversalComplete196=await waitFor(()=>traversalReads196===3
+    && traversal196.app.querySelectorAll('.card.member').length===3
+    && traversal196.app.textContent.includes('End of this traversal.')
+    && byText(traversal196.app,'button','Load all eligible Olympus members')?.hidden===true,
+  'explicit paced continuation completes and hides its control',8000);
+  check('explicit continuation renders each bounded page and stops at confirmed completion',traversalComplete196);
   await traversal196.go('#/roles');
   for(const boundary196 of ['pause','hidden','route']) {
     const page=await openPage(MEMBER);let readN=0;
@@ -124,10 +169,10 @@ const body196=String.raw`
   const attendedTarget196=attended196.app.querySelector('#attended-directory-id'),attendedSave196=byText(attended196.app,'button','Save requested listing preference');
   check('attended preference page sends no command on entry and requires an exact-ID read',attendedRequests196.length===0&&attendedSave196.disabled);
   attendedTarget196.value=attendedId196;attendedTarget196.dispatchEvent(new Event('input'));byText(attended196.app,'button','Read this member’s preference').click();
-  await waitFor(()=>attended196.app.textContent.includes('The eligible Olympus row can be listed.'),'attended exact-ID status');
+  await waitFor(()=>attended196.app.textContent.includes('The eligible row can appear in the Discord member list.'),'attended exact-ID status');
   check('an attended status read alone cannot enable a listing write',attendedSave196.disabled&&attendedRequests196.length===1&&attendedRequests196[0].path.endsWith('/status'));
   attended196.app.querySelector('#attended-directory-listed').checked=false;const requestConsent196=attended196.app.querySelector('#attended-directory-confirmed');requestConsent196.checked=true;requestConsent196.dispatchEvent(new Event('change'));attendedSave196.click();
-  await waitFor(()=>attended196.app.textContent.includes('no website account was created.'),'explicit attended preference save');
+  await waitFor(()=>attended196.app.textContent.includes('The member’s whole row is hidden from the Discord member list.'),'explicit attended preference save');
   check('attended save carries exact target, requested preference and explicit confirmation once',attendedRequests196.length===2&&attendedRequests196[1].method==='POST'&&JSON.stringify(attendedRequests196[1].body)===JSON.stringify({discordId:attendedId196,listed:false,requestConfirmed:true})&&attendedSave196.disabled&&!requestConsent196.checked);
   await attended196.go('#/roles');
   const attendedLate196=await openPage(STAFF),lateRequests196=[];
@@ -142,8 +187,8 @@ const body196=String.raw`
   // The held response starts its180ms wait only after the real Worker completes.
   // Observe the actual original handler's release before judging a stale reply or starting another read.
   if(!await waitFor(()=>!lateTarget196.disabled&&lateListed196.disabled&&lateConfirmed196.disabled&&!byText(attendedLate196.app,'button','Read this member’s preference').disabled,'stale attended read releases target/read only; unqualified preference controls remain disabled'))throw Error('Original stale attended read did not finish');
-  check('late A read cannot revive an A-to-B-to-A target or overwrite its desired preference',lateRequests196.length===1&&lateSave196.disabled&&lateListed196.checked===false&&!lateConfirmed196.checked&&!attendedLate196.app.textContent.includes('The eligible Olympus row can be listed.'));
-  attendedLate196.hold(null);byText(attendedLate196.app,'button','Read this member’s preference').click();if(!await waitFor(()=>attendedLate196.app.textContent.includes('The eligible Olympus row can be listed.'),'fresh attended read after stale generation'))throw Error('Fresh exact attended read did not return');
+  check('late A read cannot revive an A-to-B-to-A target or overwrite its desired preference',lateRequests196.length===1&&lateSave196.disabled&&lateListed196.checked===false&&!lateConfirmed196.checked&&!attendedLate196.app.textContent.includes('The eligible row can appear in the Discord member list.'));
+  attendedLate196.hold(null);byText(attendedLate196.app,'button','Read this member’s preference').click();if(!await waitFor(()=>attendedLate196.app.textContent.includes('The eligible row can appear in the Discord member list.'),'fresh attended read after stale generation'))throw Error('Fresh exact attended read did not return');
   lateConfirmed196.checked=true;lateConfirmed196.dispatchEvent(new Event('change'));check('fresh confirmation is bound to the exact returned target and preference',!lateSave196.disabled&&lateTarget196.value===attendedId196&&lateListed196.checked===true&&lateConfirmed196.checked&&lateRequests196.length===2&&lateRequests196.every(request=>request.path==='/api/admin/discord-directory/status'&&request.method==='POST'&&JSON.stringify(request.body)===JSON.stringify({discordId:attendedId196})));
   lateListed196.checked=false;lateListed196.dispatchEvent(new Event('change'));check('changing requested preference invalidates the earlier confirmation',lateSave196.disabled&&!lateConfirmed196.checked&&lateRequests196.length===2);
   await attendedLate196.go('#/roles');
@@ -189,19 +234,22 @@ const body196=String.raw`
   const treasuryCommands196=[], op196='1'.repeat(32);
   check('.200 only the historical Treasury fixture captures ON and its temporary local setting is restored exactly',treasury196.boot.settings.royalWritsOn===true&&JSON.stringify(one("SELECT value,updated_at,updated_by FROM site_settings WHERE key='royalWritsOn'"))===JSON.stringify(priorRoyalSetting200));
   treasury196.before((p,init)=>{if(p.startsWith('/api/admin/treasury/'))treasuryCommands196.push({path:p,method:init.method,body:init.body?JSON.parse(init.body):null});return false;});
-  treasury196.answer(p=>p.startsWith('/api/search?')?{results:[{id:OTHER,label:'Oz',shown:'Oz',onSite:true,appointmentStatus:'eligible'}]}:p==='/api/admin/treasury/target'?{discordId:OTHER,mailReference:'TITHE-ABCD-2345'}:p==='/api/admin/treasury/preview'?{token:'synthetic-ui-preview-only',expiresAt:Math.floor(Date.now()/1000)+180,qualifyingGold:25,seasonEndsAt:Math.floor(Date.now()/1000)+86400,dispatchEnabled:true,recognitionConsent:true,recognitionMode:'recognize',changes:[{operationId:op196,roleId:'123456789012345678',label:'Tithe Payer',desired:1}]}:p==='/api/admin/treasury/confirm'?{state:'unknown'}:p==='/api/admin/treasury/status'?{operation:{id:op196,state:'unknown',reason:'synthetic-ui-outcome',attempts:1},noRetry:true}:null);
+  treasury196.answer(p=>p.startsWith('/api/search?')?{results:[{id:OTHER,label:'Oz',shown:'Oz',onSite:true,appointmentStatus:'eligible'}]}:p==='/api/admin/treasury/target'?{discordId:OTHER,recipient:'Fern Melder',mailReference:'TITHE-ABCD-2345'}:p==='/api/admin/treasury/preview'?{token:'synthetic-ui-preview-only',expiresAt:Math.floor(Date.now()/1000)+180,qualifyingGold:2500,seasonEndsAt:Math.floor(Date.now()/1000)+86400,dispatchEnabled:true,recognitionConsent:true,recognitionMode:'recognize',tierLabel:'Hand of the Imperial Treasury',ceremonial:true,changes:[{operationId:op196,roleId:'123456789012345678',label:'Benefactor of Olympus',desired:1}]}:p==='/api/admin/treasury/confirm'?{state:'unknown'}:p==='/api/admin/treasury/status'?{operation:{id:op196,state:'unknown',reason:'synthetic-ui-outcome',attempts:1},noRetry:true}:null);
   await treasury196.go('#/admin/treasury');
-  check('opening Treasury renders the seasonal tiers without issuing a command',treasuryCommands196.length===0 && treasury196.app.textContent.includes('Tithe Payer 25g+') && treasury196.app.textContent.includes('no channel access, votes, office or immunity'));
+  check('opening Treasury renders all five seasonal tiers without issuing a command',treasuryCommands196.length===0 &&
+    ['Tithe Payer (25g)','Patron of the Treasury (100g)','Benefactor of Olympus (500g)','Arch-Financier of Olympus (1,000g)','Hand of the Imperial Treasury (2,500g)'].every(label=>treasury196.app.textContent.includes(label)) &&
+    treasury196.app.textContent.includes('no channel access, votes, office or immunity'));
   const treasurySearch196=treasury196.app.querySelector('.picker input[role="combobox"]'); treasurySearch196.value='Oz'; treasurySearch196.dispatchEvent(new Event('keydown',{key:'ArrowDown',bubbles:true}));
   await waitFor(()=>!!treasury196.app.querySelector('[role="option"]'),'Treasury current member lookup');
   treasury196.app.querySelector('[role="option"]').dispatchEvent(new Event('mousedown',{bubbles:true}));
   byText(treasury196.app,'button',"Read member's TITHE reference").click();
   await waitFor(()=>treasury196.app.querySelector('#treasury-mail').value==='TITHE-ABCD-2345','Treasury read-only reference');
-  check('reading a Treasury reference sends only the selected account to the bound target reader',treasuryCommands196.length===1 && treasuryCommands196[0].path.endsWith('/target') && treasuryCommands196[0].body.discordId===OTHER);
+  check('reading a Treasury reference sends only the selected account and identifies the game recipient',treasuryCommands196.length===1 && treasuryCommands196[0].path.endsWith('/target') && treasuryCommands196[0].body.discordId===OTHER && treasury196.app.textContent.includes('in-game gold to Fern Melder using this TITHE reference'));
   const recognition196=treasury196.app.querySelector('#treasury-recognition');recognition196.checked=true;recognition196.dispatchEvent(new Event('change'));
   byText(treasury196.app,'button','Preview cosmetic role changes').click();
-  await waitFor(()=>!!byText(treasury196.app,'button','Grant Tithe Payer'),'Treasury preview-only renderer');
-  const grant196=byText(treasury196.app,'button','Grant Tithe Payer');
+  await waitFor(()=>!!byText(treasury196.app,'button','Grant Benefactor of Olympus'),'Treasury preview-only renderer');
+  const grant196=byText(treasury196.app,'button','Grant Benefactor of Olympus');
+  check('Apex preview distinguishes the ceremonial title from the only eligible Discord colour',treasury196.app.textContent.includes('Highest qualified seasonal tier: Hand of the Imperial Treasury.') && treasury196.app.textContent.includes('Apex recognition is ceremonial and requires attended review.') && !byText(treasury196.app,'button','Grant Hand of the Imperial Treasury'));
   check('a role preview is inert until its separate exact-change confirmation',grant196.disabled && treasuryCommands196.filter(x=>x.path.endsWith('/confirm')).length===0);
   const exact196=grant196.parentNode.querySelector('input[type="checkbox"]');exact196.checked=true;exact196.dispatchEvent(new Event('change'));grant196.click();grant196.click();
   await waitFor(()=>treasury196.app.textContent.includes('Read its status; do not send it again.'),'Treasury unknown outcome');
@@ -293,6 +341,90 @@ const body196=String.raw`
   await editor.go('#/news/edit');
   await waitFor(()=>!!byText(editor.app,'button','Post notice'),'Town Crier editor');
   check('Town Crier editor opens inside the parent site header',editor.document.title==='Town Crier — Olympus' && !!editor.app.querySelector('header.topbar') && !!byText(editor.app,'button','Post notice'));
+  const draftTitle=editor.app.querySelector('#f-news-title'), editNotice=byText(editor.app,'button','Edit');
+  draftTitle.value='Keep this unsent draft'; draftTitle.dispatchEvent(new Event('input'));
+  editNotice.click();
+  const cancelDraft=byText(editor.document.body,'button','Cancel');
+  check('CC-072 editing another notice asks before replacing a dirty draft',!!cancelDraft&&draftTitle.value==='Keep this unsent draft');
+  cancelDraft?.click(); await settle();
+  if (cancelDraft) {
+    editNotice.click(); byText(editor.document.body,'button','Replace draft')?.click(); await settle();
+  }
+  check('CC-072 editing announces the notice and focuses its title',editor.document.activeElement===draftTitle
+    && draftTitle.value==='Synthetic revised notice'&&editor.app.querySelector('[data-news-edit-status]')?.textContent==='Editing Synthetic revised notice.');
+  byText(editor.app,'button','Cancel editing')?.click();
+  await waitFor(()=>editor.document.activeElement?.getAttribute('data-news-edit-id')===webhookNotice196,'focus returns to the same notice');
+  check('CC-072 cancel editing returns to the same notice action',editor.document.activeElement?.getAttribute('data-news-edit-id')===webhookNotice196
+    && !!byText(editor.app,'button','Post notice'));
+  for (const [route, endpoint] of [['#/news/edit','/api/news/editor'], ['#/admin/news','/api/admin/news']]) {
+    const page = await openPage(STAFF), writes = [];
+    await page.go(route);
+    await waitFor(() => !!byText(page.app,'button','Post notice'),'CC-065 Town Crier form');
+    page.before((p, init) => {
+      if (init.method === 'POST' && (p === endpoint || p === endpoint + '/update')) writes.push({p, payload:JSON.parse(init.body)});
+      return false;
+    });
+    const title = page.app.querySelector('#f-news-title'), body = page.app.querySelector('#f-news-body'), days = page.app.querySelector('#f-news-days');
+    const draft = () => [title.value, body.value, days.value];
+    const setDraft = (t, b, d) => { title.value = t; body.value = b; days.value = d; };
+    const submit = byText(page.app,'button','Post notice');
+    // Simulate an obsolete option. The minimal DOM otherwise resets unknown values to its first valid choice.
+    const unsupportedDay = page.document.createElement('option');
+    unsupportedDay.value = '0'; days.appendChild(unsupportedDay);
+    const waitForRefusal = message => waitFor(() => [...page.app.querySelectorAll('.err')].some(el => !el.hidden && el.textContent.includes(message)), 'CC-065 ' + message);
+    const fieldRefusal = (field, control, message) => {
+      const id = 'err-news-' + field, error = page.app.querySelector('#' + id);
+      return page.document.activeElement === control && control.getAttribute('aria-invalid') === 'true'
+        && control.getAttribute('aria-describedby').split(' ').includes(id) && !error.hidden && error.textContent.includes(message)
+        && [title,body,days].filter(el => el.getAttribute('aria-invalid') === 'true').length === 1;
+    };
+    for (const [field, control, values, message] of [
+      ['title',title,['','Keep these words.','7'],'The title needs 1 to 80 characters.'],
+      ['body',body,['Keep this title','','7'],'The text needs 1 to 2000 characters.'],
+      ['days',days,['Keep this title','Keep these words.','0'],'A notice is shown for'],
+    ]) {
+      setDraft(...values); submit.focus(); submit.click();
+      await waitForRefusal(message);
+      check('CC-065 '+route+' real Worker refusal focuses and describes '+field+' and preserves the draft',
+        fieldRefusal(field, control, message) && JSON.stringify(draft()) === JSON.stringify(values));
+    }
+    unsupportedDay.remove();
+    const kept = ['Keep this title','Keep these words.','7'];
+    setDraft(...kept);
+    await fixtureRun("UPDATE site_settings SET value='false' WHERE key='newsOn'");
+    try {
+      submit.focus(); submit.click();
+      await waitForRefusal('News is switched off');
+      const alert = page.app.querySelector('.savebar [role="alert"]');
+      check('CC-065 '+route+' real fieldless refusal focuses the sticky action alert and keeps the draft',
+        alert && page.document.activeElement === alert && !alert.hidden && alert.textContent.includes('News is switched off')
+          && [title,body,days].every(el => el.getAttribute('aria-invalid') === 'false')
+          && JSON.stringify(draft()) === JSON.stringify(kept) && !submit.disabled);
+    } finally { await fixtureRun("UPDATE site_settings SET value='true' WHERE key='newsOn'"); }
+    check('CC-065 '+route+' refused creates preserve the one operation and exact request shape',
+      writes.length === 4 && writes.every(({p,payload}) => p === endpoint && payload.id === writes[0].payload.id
+        && typeof payload.id === 'string' && Object.keys(payload).sort().join(',') === 'body,days,id,title')
+      && !one('SELECT id FROM site_news_notices WHERE id=?',writes[0]?.payload.id || 'missing'));
+
+    fire(title,'input');
+    byText(page.app,'button','Edit').click();
+    byText(page.document.body,'button','Replace draft')?.click();
+    await waitFor(() => !!byText(page.app,'button','Save changes'),'CC-065 opened saved notice');
+    const save = byText(page.app,'button','Save changes');
+    check('CC-065 '+route+' opening a saved notice clears the previous general refusal',
+      page.app.querySelector('.savebar [role="alert"]')?.hidden === true && title.value === 'Synthetic revised notice');
+    const revised = ['Unsaved revised title','','7'];
+    setDraft(...revised);
+    save.click();
+    const confirm = [...page.document.body.querySelectorAll('button')].find(el => el !== save && el.textContent === 'Save changes');
+    check('CC-065 '+route+' editing still requires a separate confirmation', !!confirm && writes.length === 4);
+    confirm?.click();
+    await waitForRefusal('The text needs 1 to 2000 characters.');
+    check('CC-065 '+route+' real edit refusal focuses its body and retains the revision and draft',
+      fieldRefusal('body', body, 'The text needs 1 to 2000 characters.') && JSON.stringify(draft()) === JSON.stringify(revised)
+      && writes.length === 5 && writes[4].p === endpoint + '/update' && writes[4].payload.id === webhookNotice196
+      && writes[4].payload.revision === 2 && one('SELECT revision FROM site_news_notices WHERE id=?',webhookNotice196).revision === 2);
+  }
   byText(editor.app,'button','Review optional Discord cross-post').click();
   await waitFor(()=>!!byText(editor.app,'button','Continue requested removal'),'retained cleanup revision UI');
   if(!byText(editor.app,'button','Continue requested removal'))throw Error('Retained cleanup UI diagnosis: '+editor.app.querySelector('.news-webhook196')?.textContent);

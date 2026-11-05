@@ -103,13 +103,23 @@ class El {
     // A talent node sits in its tree column; its cell comes from the data attributes, as the CSS grid does.
     let tree = 0; for (let p = this.parentNode; p; p = p.parentNode) if (p.getAttribute && p.getAttribute('data-tree-index') !== null) { tree = Number(p.getAttribute('data-tree-index')); break; }
     const row = Number(this.getAttribute('data-row')) || 0, column = Number(this.getAttribute('data-column')) || 0;
-    return { left: tree * 400 + column * 90, top: row * 66, width: 48, height: 48 };
+    const legend = this.ownerDocument.root.all(node => node.className === 'talents-comparison-legend')[0];
+    const classic = legend?.hidden === false;
+    this.ownerDocument.layoutEvents.push({ kind: 'read', classic });
+    const frame = this.className === 'talents-tree-frame' || this.className === 'talents-backdrop';
+    return { left: tree * 400 + column * 90, top: row * 66 + (classic ? 70 : 0), width: frame ? 400 : 48, height: frame ? (classic ? 610 : 478) : 48 };
   }
-  animate(keyframes, options) { this.ownerDocument.animations.push({ node: this, keyframes, options }); return { finished: Promise.resolve() }; }
+  animate(keyframes, options) {
+    this.ownerDocument.layoutEvents.push({ kind: 'play' });
+    const animation = { node: this, keyframes, options, cancel() { this.cancelled = true; }, finished: Promise.resolve() };
+    this.ownerDocument.animations.push(animation);
+    return animation;
+  }
 }
 async function mountWith({ reduced = false, className = 'warrior' } = {}) {
-  const document = { createElement(tag) { return new El(tag, this); }, createTextNode(value) { return new Text(value); }, activeElement: null, animations: [] };
+  const document = { createElement(tag) { return new El(tag, this); }, createTextNode(value) { return new Text(value); }, activeElement: null, animations: [], layoutEvents: [] };
   const container = document.createElement('main'), module = { exports: {} };
+  document.root = container;
   vm.runInNewContext(source, {
     module, setTimeout: () => 0, clearTimeout() {}, location: { origin: 'https://guild.example', pathname: '/' }, navigator: {},
     matchMedia: query => ({ matches: reduced && query === '(prefers-reduced-motion: reduce)' }),
@@ -126,15 +136,22 @@ async function mountWith({ reduced = false, className = 'warrior' } = {}) {
   const nodeOf = id => m.byClass('talents-node')[talents.findIndex(t => t.id === id)];
   const picksBefore = m.byClass('talents-pick'), firstRect = new Map(talents.map(t => [t.id, nodeOf(t.id).getBoundingClientRect()]));
   check('the Forever layout is the default and its nodes sit at their Forever cells', talents.every(t => nodeOf(t.id).getAttribute('data-row') === String(t.row) && nodeOf(t.id).getAttribute('data-column') === String(t.column)) && m.document.animations.length === 0);
+  m.document.layoutEvents.length = 0;
   m.toggle(true);
+  const events = m.document.layoutEvents.slice(), firstPlay = events.findIndex(event => event.kind === 'play');
+  check('First includes the old legend geometry and all Last measurements precede the first animation', events[0]?.kind === 'read' && events[0].classic === false && firstPlay > 0 && events.slice(0, firstPlay).some(event => event.classic === true) && events.slice(firstPlay).every(event => event.kind === 'play'));
+  const movingArrows = m.document.animations.filter(a => a.node.className === 'talents-link-arrow');
+  check('every Forever prerequisite arrowhead travels with the same easing and duration as its talent', movingArrows.length > 0 && movingArrows.length === m.byClass('talents-link-arrow').length && movingArrows.every(a => a.keyframes.some(frame => frame.transform?.startsWith('translate3d(')) && a.options.easing === api.COMPARE_EASING && a.options.duration === 620));
+  const frameAnimations = m.document.animations.filter(a => a.node.className === 'talents-tree-frame');
+  check('every frame changes its visual geometry through the same transition', frameAnimations.length === 3 && frameAnimations.every(a => a.keyframes[0].transform.includes('scale(') && a.options.duration === 620));
   check('Compare to Classic moves every node to its Classic placement without rebuilding or reordering buttons', talents.every(t => nodeOf(t.id).getAttribute('data-row') === String(places.get(t.id).row) && nodeOf(t.id).getAttribute('data-column') === String(places.get(t.id).column)) && m.byClass('talents-pick').every((pick, i) => pick === picksBefore[i]));
   check('each tree switches to the Classic layout class and extra nodes are marked', m.byClass('talents-tree').length === 3 && m.byClass('talents-tree').every(tree => tree.className === 'talents-tree talents-classic-layout') && talents.filter(t => places.get(t.id).extra).every(t => nodeOf(t.id).getAttribute('data-classic-extra') === places.get(t.id).extra));
   const moved = talents.filter(t => { const a = firstRect.get(t.id), b = nodeOf(t.id).getBoundingClientRect(); return a.left !== b.left || a.top !== b.top; });
   const animated = new Map(m.document.animations.map(a => [a.node, a]));
-  check('every node that changed cell is animated exactly once, and unmoved nodes are not', m.document.animations.length === moved.length && moved.length > 0 && moved.every(t => animated.has(nodeOf(t.id))));
+  check('every node that changed visual position is animated exactly once, and unmoved nodes are not', m.document.animations.filter(a => a.node.className.startsWith('talents-node ')).length === moved.length && moved.length > 0 && moved.every(t => animated.has(nodeOf(t.id))));
   check('each FLIP starts at the inverted offset, bends through a midpoint and ends at zero, with the exact easing', moved.every(t => {
-    const a = animated.get(nodeOf(t.id)), before = firstRect.get(t.id), after = nodeOf(t.id).getBoundingClientRect(), frames = a.keyframes;
-    return frames.length === 3 && frames[0].transform === 'translate3d(' + (before.left - after.left) + 'px, ' + (before.top - after.top) + 'px, 0)' && frames[1].offset === 0.5 && frames[2].transform === 'translate3d(0, 0, 0)' && a.options.easing === 'cubic-bezier(0.22, 1, 0.36, 1)' && a.options.duration === 620;
+    const a = animated.get(nodeOf(t.id)), before = firstRect.get(t.id), after = nodeOf(t.id).getBoundingClientRect(), frames = a?.keyframes;
+    return frames?.length === 3 && frames[0].transform === 'translate3d(' + (before.left - after.left) + 'px, ' + (before.top - after.top) + 'px, 0)' && frames[1].offset === 0.5 && frames[2].transform === 'translate3d(0, 0, 0)' && a.options.easing === 'cubic-bezier(0.22, 1, 0.36, 1)' && a.options.duration === 620;
   }));
   check('the node tags appear in compare mode with short labels', m.byClass('talents-node-tag').filter(tag => !tag.hidden).every(tag => ['NEW', 'MOVED', 'BUFF', 'NERF', 'VALUES', 'REWORK'].includes(tag.textContent)) && m.byClass('talents-node-tag').some(tag => !tag.hidden && tag.textContent === 'NEW'));
   check('the layout note is shown only in compare mode', m.byClass('talents-layout-note')[0].hidden === false);
@@ -161,19 +178,23 @@ async function mountWith({ reduced = false, className = 'warrior' } = {}) {
   // Back to Forever.
   const animationsBefore = m.document.animations.length;
   m.toggle(false);
-  check('turning comparison off returns every node to its Forever cell and animates the movers back', talents.every(t => nodeOf(t.id).getAttribute('data-row') === String(t.row) && nodeOf(t.id).getAttribute('data-column') === String(t.column)) && m.document.animations.length - animationsBefore === moved.length && m.byClass('talents-tree').every(tree => tree.className === 'talents-tree'));
+  check('turning comparison off returns every node to its Forever cell and animates the movers back', talents.every(t => nodeOf(t.id).getAttribute('data-row') === String(t.row) && nodeOf(t.id).getAttribute('data-column') === String(t.column)) && m.document.animations.slice(animationsBefore).filter(a => a.node.className.startsWith('talents-node ')).length === moved.length && m.byClass('talents-tree').every(tree => tree.className === 'talents-tree'));
+  check('reversing comparison cancels the previous effects and gives the new link layer the same duration', m.document.animations.slice(0, animationsBefore).every(animation => animation.cancelled) && m.document.animations.slice(animationsBefore).filter(a => a.node.className === 'talents-links' && a.options.duration === 620).length === 3);
   check('points, share code and buttons survive the round trip', m.byClass('talents-pick').every((pick, i) => pick === picksBefore[i]) && api.parseBuild(data, m.byClass('talents-share-code')[0].getAttribute('value')).ok);
   // Reduced motion.
   const r = await mountWith({ reduced: true });
   r.toggle(true);
   const rTalents = data.classes[0].trees.flatMap(tree => tree.talents);
-  check('reduced motion moves the nodes at once with no animation', r.document.animations.length === 0 && rTalents.every((t, i) => r.byClass('talents-node')[i].getAttribute('data-row') === String(places.get(t.id).row)));
+  check('reduced motion moves the nodes at once with no animation or geometry reads', r.document.animations.length === 0 && r.document.layoutEvents.length === 0 && rTalents.every((t, i) => r.byClass('talents-node')[i].getAttribute('data-row') === String(places.get(t.id).row)));
   // A class opened while comparison is on is laid out without an animation burst.
   const s = await mountWith({ className: 'druid' });
   s.toggle(true); const druidAnimations = s.document.animations.length;
   s.byClass('talents-class-button').find(button => button.textContent === 'Mage').click();
   const mage = data.classes.find(c => c.id === 'mage'), magePlaces = new Map(mage.trees.flatMap(tree => [...api.classicPlacements(tree)]));
   check('switching class in compare mode places the new class in its Classic layout without animating it', s.document.animations.length === druidAnimations && mage.trees.flatMap(tree => tree.talents).every((t, i) => s.byClass('talents-node')[i].getAttribute('data-row') === String(magePlaces.get(t.id).row)));
+  const paladin = await mountWith({ className: 'paladin' });
+  paladin.toggle(true);
+  check('an edge whose Classic parent moves below its child mirrors both its last leg and arrowhead', paladin.document.animations.some(a => a.node.className === 'talents-link-v' && a.keyframes[0].transform.includes('scaleY(') && a.keyframes[2].transform.includes('scaleY(-')) && paladin.document.animations.some(a => a.node.className === 'talents-link-arrow' && a.keyframes[0].transform.endsWith('scaleY(1)') && a.keyframes[2].transform.endsWith('scaleY(-1)')));
   console.log(`\n${pass}/${n} passed`);
   if (pass !== n) process.exitCode = 1;
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -11,6 +11,7 @@ import { apiJson, isSiteAdmin, PAGE_VERSION, sameOrigin } from "./site-core";
 import { admitted, admittedRead, communityFeatures, DB_NOW, fenceSql, FENCE_REFUSED, organizerIds, randomToken, refusal, registerCommunityData, type CommunityContext } from "./community-context";
 import { secondsToIso } from "./community-time";
 import { privacyAccountIncarnationLiteralFenceSql, privacyProviderCustodyDatabase } from "./privacy-serving-authority";
+import { siteMemberLink } from "./site-return";
 
 const ID = /^[A-Za-z0-9_-]{22}$/;
 const SNOWFLAKE = /^[0-9]{17,20}$/;
@@ -77,7 +78,8 @@ async function bodyOf(request: Request, keys: string[]): Promise<Record<string, 
 }
 const escapeTitle = (text: string) => text.replace(/[\\`*_{}\[\]()<>#|~]/g, "\\$&");
 export function contentOf(e: EventRow, d: Destination): string {
-  return `**${escapeTitle(e.title)}**\n<t:${e.starts_at}:F> · <t:${e.starts_at}:R>\nDuration: ${e.duration_min} minutes\n[Sign up on the Olympus calendar](https://${d.host}/#/community/calendar/${e.id})\nA sign-up reserves a place; the organizer confirms the raid roster.`;
+  const signupUrl = siteMemberLink(d.host, `community/calendar/${e.id}`);
+  return `**${escapeTitle(e.title)}**\n<t:${e.starts_at}:F> · <t:${e.starts_at}:R>\nDuration: ${e.duration_min} minutes\n[Sign up on the Olympus calendar](${signupUrl})\nA sign-up reserves a place; the organizer confirms the raid roster.`;
 }
 /** Owner item 3, stage 1 (14 Oct 2026): the sign-up buttons under the announcement. Deterministic from the event id, the
  * event revision and the site host, so a stored delivery row reproduces them exactly; the revision in each custom_id
@@ -85,11 +87,13 @@ export function contentOf(e: EventRow, d: Destination): string {
 export const RAID_BUTTONS = [["yes", "Sign up", 3], ["tentative", "Tentative", 2], ["no", "Can't make it", 2]] as const;
 export type Button = { type: 2; style: number; label: string; custom_id?: string; url?: string };
 export type ActionRow = { type: 1; components: Button[] };
-export function componentsOf(eventId: string, revision: number, host: string): ActionRow[] {
+export function componentsOf(eventId: string, revision: number, host: string, legacyFragment = false): ActionRow[] {
+  const route = `community/calendar/${eventId}`;
+  const url = legacyFragment ? `https://${host}/#/${route}` : siteMemberLink(host, route);
   return [{ type: 1, components: [
     ...RAID_BUTTONS.map(([status, label, style]): Button => ({ type: 2, style, label, custom_id: `raid:rsvp:${eventId}:${revision}:${status}` })),
     { type: 2, style: 2, label: "Remind me", custom_id: `raid:remind:${eventId}:${revision}` }, // stage 2: toggles the reminder mention of an existing sign-up
-    { type: 2, style: 5, label: "Open on the site", url: `https://${host}/#/community/calendar/${eventId}` },
+    { type: 2, style: 5, label: "Open on the site", url },
   ] }];
 }
 export interface Payload { content: string; components: ActionRow[]; allowed_mentions: { parse: [] } }
@@ -328,12 +332,17 @@ export async function eventDeliveryReconcile(request: Request, env: Env, ctx: Co
     const response = await discord(env, "GET", `/channels/${d.channel}/messages/${body.messageId}`);
     if (response.status !== 200 || !ownMessage(response.value, d, bot) || response.value.id !== body.messageId
       || (!row.message_id && response.value.nonce !== row.claim_nonce)) throw new Bad("delivery_custody_unqualified", 409);
-    // Codex raid review v1, finding 2: the stored row holds the text and the hash of the COMPLETE original payload; the buttons
-    // are reconstructed from the row's revision and the current host and must hash back to that stored value before the observed
-    // message is compared. Current configuration never becomes evidence of an old effect.
-    const components = componentsOf(eventId, row.event_revision, d.host);
-    if (row.frozen_content === null || row.payload_hash === null || (await hashOf({ content: row.frozen_content, components, allowed_mentions: { parse: [] } })) !== row.payload_hash) throw new Bad("delivery_custody_unqualified", 409);
-    if (!exactPayload(response.value, row.frozen_content, components)) throw new Bad(exactContent(response.value, row.frozen_content) ? "delivery_mismatch" : "delivery_custody_unqualified", 409);
+    // Reconstruct the buttons using the row's revision and current host. The full stored hash selects the exact
+    // current or historical link before the observed message is compared.
+    const content = row.frozen_content;
+    if (content === null || row.payload_hash === null) throw new Bad("delivery_custody_unqualified", 409);
+    const matchesStoredHash = async (components: ActionRow[]) => await hashOf({ content, components, allowed_mentions: { parse: [] } }) === row.payload_hash;
+    let components = componentsOf(eventId, row.event_revision, d.host);
+    if (!(await matchesStoredHash(components))) {
+      components = componentsOf(eventId, row.event_revision, d.host, true);
+      if (!(await matchesStoredHash(components))) throw new Bad("delivery_custody_unqualified", 409);
+    }
+    if (!exactPayload(response.value, content, components)) throw new Bad(exactContent(response.value, content) ? "delivery_mismatch" : "delivery_custody_unqualified", 409);
     const custody: EventCustodyProof = { eventId, revision: row.event_revision, startsAt: row.starts_at, opId: row.op_id,
       nonce: row.claim_nonce, guild: row.guild_id, channel: row.channel_id, pointer: row.message_id, retainUntil: row.retain_until };
     await settle(env, ctx, custody, "posted", "reconciled", body.messageId);

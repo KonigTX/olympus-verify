@@ -27,7 +27,7 @@ const body218 = String.raw`
   }
   const all = page.app.querySelectorAll('[data-role-key201]').map(node => node.getAttribute('data-role-key201')).sort();
   const expectedVisible = directory.families.flatMap(f => [f.primaryKey,...f.variants.filter(v=>['office','region','class'].includes(v.presentation)).map(v=>v.key)]).sort();
-  check('.219 all140 source identities remain mapped while only70 canonical guides and genuine sub-offices render', Object.keys(directory.keyToFamily).length===141 && all.length===new Set(all).size && JSON.stringify(all)===JSON.stringify(expectedVisible) && page.app.querySelectorAll('[data-role-family203]').length===71);
+  check('.219 all140 source identities remain mapped while only70 canonical guides and genuine sub-offices render', Object.keys(directory.keyToFamily).length===142 && all.length===new Set(all).size && JSON.stringify(all)===JSON.stringify(expectedVisible) && page.app.querySelectorAll('[data-role-family203]').length===72);
   check('.219 no duplicate metadata drawers or stitched alias prose', !page.app.textContent.includes('Covered by the') && !page.app.textContent.includes('Related titles & rank details') && !page.app.textContent.includes('Also known as:') && !page.app.querySelector('[data-role-variant-group218="associations"]'));
 
   for (const family of directory.families) {
@@ -61,7 +61,7 @@ const body218 = String.raw`
     const card=page.app.querySelector('[data-role-family203="'+familyKey+'"]');
     check('.218 '+familyKey+' stays one job and one application choice across native aliases', card.querySelectorAll('.role-guide201').length === 1
       && card.querySelectorAll('[data-family-apply203]').length === 1 && sourceKeys.every(key => directory.keyToFamily[key] === familyKey));
-    check('.219 '+familyKey+' native standing is metadata on the main card, without a duplicate specification', !card.querySelector('[data-role-key201="rank_'+familyKey+'"]') && card.querySelector('.role-primary203 .rank-office199').textContent.includes('Slot ') && card.querySelector('.role-primary203').querySelectorAll('.role-guide201').length===1);
+    check('.219 '+familyKey+' native standing is metadata on the main card, without a duplicate specification', !card.querySelector('[data-role-key201="rank_'+familyKey+'"]') && card.querySelector('summary .rank-office199').textContent.includes('Slot ') && !card.querySelector('.role-primary203 .rank-office199') && card.querySelector('.role-primary203').querySelectorAll('.role-guide201').length===1);
 
   }
   const vice=page.app.querySelector('[data-role-key201="office_92"]'), co=page.app.querySelector('[data-role-family203="co_gm"] .role-primary203');
@@ -93,9 +93,16 @@ const body218 = String.raw`
     && page.app.textContent.split('This is a descriptive website guide. A title or application changes no game rank').length === 2
     && !page.app.textContent.includes('Native-rank standing and its separate display record'));
   const rankDrawer218=page.app.querySelectorAll('details.technical-profile199').filter(node=>node.querySelector('summary')?.textContent==='Rank Slot & Technical Metadata');
-  const nativeNames218=['Leader','High Council','Officer','Officer Alt','Raid Leader','Veteran','Raider','Member','Alt','Initiate'];
+  const nativeNames218=['Leader (Guild Master)','High Council','Officer','Officer Alt','Raid Leader','Veteran','Raider','Member','Alt','Initiate'];
   const nativeSlots218=rankDrawer218.length===1?rankDrawer218[0].querySelectorAll('li'):[];
   check('.218 exactly one CLOSED owner-named metadata drawer preserves all ten ordered native slots',rankDrawer218.length===1&&!rankDrawer218[0].open&&nativeSlots218.length===10&&nativeSlots218.every((node,index)=>node.textContent==='Rank '+(index+1)+' '+nativeNames218[index]+' · slot '+index));
+  const memberFamilies228=page.app.querySelector('[data-role-section201="members"]').querySelectorAll('[data-role-family203]');
+  check('.228 the member group starts with its five native ranks in order', memberFamilies228.slice(0,5).map(node=>node.getAttribute('data-role-family203')).join() === 'veteran,raider,member,alt,initiate');
+  check('.228 the Marshall is grouped with organized combat leadership', !!page.app.querySelector('[data-role-section201="raid"]').querySelector('[data-role-family203="marshall"]'));
+  check('.228 a leadership guide links its exact existing board while its reserved application control remains absent',
+    page.app.querySelector('[data-role-family203="officer"]').querySelector('a[href="#/vote/officer"]')?.textContent === 'Leadership board'
+    && !page.app.querySelector('[data-role-family203="officer"]').querySelector('[data-apply-role201]')
+    && !!page.app.querySelector('[data-role-family203="member"]').querySelector('[data-apply-role201]'));
   for (const key of ['office_06','office_92','raid_leader_na','class_lead:mage','rank_raider']) {
     await page.go('#/roles/'+encodeURIComponent(key));
     const family=directory.families.find(row=>row.key===directory.keyToFamily[key]);
@@ -104,15 +111,18 @@ const body218 = String.raw`
     check('.219 direct '+key+' links open the canonical family, retaining real sub-office scope', page.app.querySelector('[data-role-family203="'+family.key+'"]').open && (!node || node.classList.contains('role-primary203') || node.open));
   }
   const reservedNotice218 = 'Leader, High Council and Officer Corps seats are reserved appointments. You cannot apply for them, including when no holder is listed.';
-  for (const route of ['#/roles', '#/vote', '#/apply']) {
+  await page.go('#/vote/officer');
+  check('.228 the Officer board points back to the exact role family', page.app.querySelector('.board-role-content a[href="#/roles/officer"]')?.textContent === 'Role guide');
+  for (const [route, surface] of [['#/roles','#application-directory201 .notice-box'],['#/vote','.frame'],['#/apply','#application-track-chooser228']]) {
     await page.go(route);
-    await waitFor(() => !!page.app.querySelector('#application-directory201'), 'reserved notice on '+route);
-    const notices=page.app.querySelectorAll('#application-directory201 .notice-box p').filter(node=>node.textContent===reservedNotice218);
+    await waitFor(() => !!page.app.querySelector(surface), 'reserved notice on '+route);
+    const notices=page.app.querySelectorAll(surface+' p').filter(node=>node.textContent===reservedNotice218);
     check('.218 '+route+' explains reserved seats exactly once', notices.length===1&&page.app.textContent.split(reservedNotice218).length===2);
   }
+  await page.go('#/roles');
   const standingNotes218=Object.values(guides).filter(guide=>guide.eligibility==='standing').map(guide=>guide.eligibilityNote);
-  const naturalStanding218='These labels record a member’s current guild standing; they are not open positions. Ask the responsible officer to review a change in status.';
-  const standingSection218=page.app.querySelector('[data-role-section201="standing"]'),standingIntro218=standingSection218?.querySelectorAll('.role-standing-scope218')||[];
+  const naturalStanding218='Guild Member and Raider accept applications. For a change in your guild standing, ask the responsible officer to review your record.';
+  const standingSection218=page.app.querySelector('[data-role-section201="members"]'),standingIntro218=standingSection218?.querySelectorAll('.role-standing-scope218')||[];
   check('.218 one natural status-section intro suppresses only the old generic display text while distinct native rules remain', standingNotes218.filter(note=>note==='This label records current guild standing, rather than an open position. Ask the responsible officer to review a change in status.').length>1&&standingIntro218.length===1&&standingIntro218[0].textContent===naturalStanding218&&page.app.querySelectorAll('.role-standing-scope218').length===1&&page.app.textContent.split(naturalStanding218).length===2&&!page.app.textContent.includes('This label records current guild standing, rather than an open position. Ask the responsible officer to review a change in status.'));
   check('.218 role reading performs no protected writes', requests.length > 0 && requests.every(row => row.method === 'GET'));
   console.log('\n'+ok+'/'+n+' passed'); process.exit(ok === n ? 0 : 1);

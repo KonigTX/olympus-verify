@@ -14,6 +14,7 @@ async function checks222(){
   const r=await worker.fetch(new Request('https://verify.example/interactions',{method:'POST',headers:{'Content-Type':'application/json','X-Signature-Timestamp':ts,'X-Signature-Ed25519':sig},body}),env(over219),{waitUntil:p=>pending.push(p)});
   const text=await r.text(),initial=text?JSON.parse(text):null;await Promise.all(pending);return {status:r.status,initial,answer:answers219.at(-1),id};
  };
+ const hubOptions=(options=[])=>[{type:1,name:'hub',options}];
  const controls=a=>(a?.components??[]).flatMap(r=>r.components),control=(a,label)=>controls(a).find(c=>c.label===label||c.placeholder===label)?.custom_id;
  await fresh219();
  const raid=catalog222.GUILD_COMMANDS_222.find(c=>c.name==='raid');
@@ -22,6 +23,8 @@ async function checks222(){
  let r=await send222({who:MEMBER});
  check('member opens a private empty hub without organizer controls',r.initial.type===5&&r.initial.data.flags===64&&r.answer.embeds[0].title==='Olympus raid & event hub'&&!control(r.answer,'Schedule an event…'));
  check('opening the hub creates no event, reminder, signup or public message',one('SELECT COUNT(*) n FROM community_events').n===0&&one('SELECT COUNT(*) n FROM community_event_reminders').n===0&&publicEffects219().length===0);
+ r=await send222({who:MEMBER,options:hubOptions()});
+ check('registered /raid hub opens the same private member hub as legacy bare /raid',r.initial?.type===5&&r.initial.data.flags===64&&r.answer?.embeds?.[0]?.title==='Olympus raid & event hub'&&!control(r.answer,'Schedule an event…'));
  r=await send222();const create=control(r.answer,'Schedule an event…');
  r=await send222({type:3,custom:create});
  check('organizer Schedule opens a real initial-response modal before any write',r.initial.type===9&&r.initial.data.components.length===5&&one('SELECT COUNT(*) n FROM community_events').n===0);
@@ -33,9 +36,24 @@ async function checks222(){
  check('replayed modal submits cannot create a second event',r.initial.type===5&&one('SELECT COUNT(*) n FROM community_events').n===1);
  r=await send222({type:4,options:[{type:3,name:'find',value:'private',focused:true}]});
  check('event autocomplete returns current matching calendar IDs without a write',r.initial.type===8&&r.initial.data.choices.length===1&&r.initial.data.choices[0].value===event.id);
+ r=await send222({type:4,options:hubOptions([{type:3,name:'find',value:'private',focused:true}])});
+ check('nested hub find autocomplete returns the same private calendar ID as legacy find',r.initial?.type===8&&r.initial.data.choices.length===1&&r.initial.data.choices[0].value===event.id);
+ r=await send222({options:hubOptions([{type:3,name:'find',value:event.id}]),who:MEMBER});
+ check('nested hub find opens event detail without saving a signup',r.initial?.type===5&&r.answer?.embeds?.[0]?.title===event.title&&one('SELECT COUNT(*) n FROM community_event_signups').n===0);
+ r=await send222({options:hubOptions(),who:MEMBER});const openById=control(r.answer,'Open event by ID…');
+ const lookup=openById?await send222({type:3,custom:openById,who:MEMBER}):null;
+ check('registered hub opens the existing private event-ID modal',lookup?.initial?.type===9&&lookup.initial.data.components[0].components[0].custom_id==='id');
+ const opened=lookup?.initial?.type===9?await send222({type:5,custom:lookup.initial.data.custom_id,fields:[['id',event.id]],who:MEMBER}):null;
+ check('registered hub modal opens details through the original guarded path',opened?.initial?.type===5&&opened.answer?.embeds?.[0]?.title===event.title&&one('SELECT COUNT(*) n FROM community_event_signups').n===0);
+ const rosterOptions=[{type:1,name:'roster',options:[{type:3,name:'id',value:event.id}]}];
+ const raidRoster=await send222({options:rosterOptions,who:MEMBER}),eventRoster=await send222({name:'event',options:rosterOptions,who:MEMBER});
+ check('direct /raid roster and /event roster still share the same private reply',raidRoster.initial?.type===5&&eventRoster.initial?.type===5&&raidRoster.answer?.embeds?.[0]?.title.endsWith(' · roster')&&JSON.stringify(raidRoster.answer)===JSON.stringify(eventRoster.answer));
  r=await send222({who:MEMBER});const choose=control(r.answer,'Choose a raid or guild event');
  r=await send222({type:3,custom:choose,values:[event.id],who:MEMBER});const memberDetail=r.answer;
  check('event dropdown opens current details without signing the member up',memberDetail.embeds[0].title===event.title&&one('SELECT COUNT(*) n FROM community_event_signups').n===0);
+ const returnUrl='https://guild.example/?to='+encodeURIComponent('community/calendar/'+event.id);
+ check('signed raid details and their calendar button carry the same server-visible return',
+  memberDetail.embeds[0].url===returnUrl&&memberDetail.components.flatMap(row=>row.components).some(c=>c.label==='Open calendar'&&c.url===returnUrl));
  const signup=control(memberDetail,'Your signup preference');
  r=await send222({type:3,custom:signup,values:['bench'],who:MEMBER});
  check('signup dropdown stores the member preference without an officer decision',r.answer.content.includes('Bench is a request')&&one('SELECT COUNT(*) n FROM community_event_signups WHERE event_id=? AND discord_id=?',event.id,MEMBER).n===1);
@@ -65,6 +83,8 @@ async function checks222(){
  over219.COMMUNITY_FEATURES='directory';
  r=await send222({type:4,options:[{type:3,name:'find',value:'fixture',focused:true}]});
  check('events OFF returns a valid empty autocomplete without leaking event titles',r.initial.type===8&&r.initial.data.choices.length===0);
+ r=await send222({type:4,options:hubOptions([{type:3,name:'find',value:'fixture',focused:true}])});
+ check('events OFF also returns empty nested hub autocomplete',r.initial?.type===8&&r.initial.data.choices.length===0);
  over219.COMMUNITY_FEATURES='events,attendance,directory,crafting';
  await fresh219();
  const attendanceEnv222=directEnv(over219);
@@ -90,6 +110,31 @@ async function checks222(){
  await send222({type:3,custom:stateSelect222,values:['absent']});
  check('locked attendance cannot be changed through an older private selector',one('SELECT state FROM community_event_attendance WHERE event_id=? AND discord_id=?',attended222.id,MEMBER).state==='present');
  check('the attendance and search hub scenarios create no public message',publicEffects219().length===0);
+ await fresh219();
+ const start=at()+1800;
+ const isoAt=(seconds)=>new Date(seconds*1000).toISOString();
+ const offsetStart=(seconds,offsetHours)=>{
+  const suffix=offsetHours>0?'+02:00':'-05:00';
+  return isoAt(seconds+offsetHours*3600).replace(/Z$/,suffix);
+ };
+ const scheduleAt=(name,title,starts)=>send222({name,options:[{type:1,name:'schedule',options:[
+  {type:3,name:'title',value:title},{type:3,name:'starts',value:starts},{type:4,name:'minutes',value:60}
+ ]}]});
+ const plus=await scheduleAt('raid','Positive offset',offsetStart(start,2).replace('.000',''));
+ const minusStart=(Math.floor(at()/86400)+1)*86400+3600;
+ const minus=await scheduleAt('event','Negative offset',offsetStart(minusStart,-5));
+ check('signed /raid schedule accepts a positive offset and persists the exact UTC instant',plus.initial?.type===5&&one('SELECT starts_at FROM community_events WHERE title=?','Positive offset')?.starts_at===start&&plus.answer?.embeds?.[0]?.description.includes('<t:'+start+':F>'));
+ check('signed /event schedule accepts a negative offset across a UTC day boundary',minus.initial?.type===5&&one('SELECT starts_at FROM community_events WHERE title=?','Negative offset')?.starts_at===minusStart);
+ const eventCount=one('SELECT COUNT(*) n FROM community_events').n;
+ for(const bad of ['2026-02-30T12:00:00+01:00','2026-11-05T12:00:00+24:00','2026-11-05T12:00:00+05:60','2026-11-05T12:00:00.123+01:00','2026-11-05T12:00+01:00']){
+  const rejected=await scheduleAt('raid','Malformed offset',bad);
+  check('invalid offset timestamp is explained and writes nothing '+bad,rejected.answer?.content.includes('valid ISO start time')&&one('SELECT COUNT(*) n FROM community_events').n===eventCount);
+ }
+ const past=await scheduleAt('raid','Past offset',offsetStart(at()-30,2));
+ check('offset normalization preserves the future-event guard',past.answer?.content.includes('Schedule a future start time')&&one('SELECT COUNT(*) n FROM community_events').n===eventCount);
+ const website=await call('POST','/api/community/events',{opId:'w'.repeat(22),title:'Website offset',startsAt:offsetStart(start,2),durationMin:60},ORG,over219);
+ check('the website event contract still rejects non-Z timestamps without writing',website.status===400&&website.body.error==='invalid_starts_at'&&one('SELECT COUNT(*) n FROM community_events').n===eventCount);
+ check('offset and timezone checks leave reminder and public delivery custody untouched',one('SELECT COUNT(*) n FROM community_event_reminders').n===0&&publicEffects219().length===0);
  console.log('\n'+passed+'/'+total+' signed raid hub checks passed');process.exit(passed===total?0:1);
 }
 const inherited=parent222.slice(pre222,end222).replace('async function guildCommands219(){','async function run222(){');

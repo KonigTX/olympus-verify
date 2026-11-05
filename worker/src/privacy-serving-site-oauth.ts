@@ -17,7 +17,7 @@ export type SiteOAuthSummary=Readonly<{ticketId:string;state:'acknowledged_local
 type Method={receiver:object;owner:object;fn:Function};
 type Identity={id:string;username:string;global_name:string|null;avatar:string|null};
 type Reply=D1Result&{privacySubject:PrivacySubject};
-type Origin={env:Env;native:D1Database;prepare:Method;batch:Method;metadata:object;metadataTuple:string;namespace:object|null;servingSecret:string|null;mode:'off'|'configured';slots:readonly Slot[];request:Request;requestTuple:string;callbackRequest:Request;callbackTuple:string;consumer:{env:Env;slots:readonly Slot[]}|null;authTuple:string;cookieSecret:string;config:ServingOriginalConfig|null;writeEpoch:string;layout:AdmissionLayout;client:ServingGateClient|null;url:string;created:number;expires:number;id:string;nonce:string;accountBound:boolean;userInput:object|null;user:Identity|null;captureInput:PrivacySubject|null;capture:PrivacySubject|null;issuedAt:number|null;spent:boolean;nativeSpent:boolean;lastClock:number;nativeSnapshot:NativeProfileSnapshot|null;nativeReplyValue:object|null;nativeReplyWitness:(()=>void)|null;phase:'captured'|'running'|'terminal'|'unknown';result:SiteOAuthSummary|null};
+type Origin={env:Env;native:D1Database;prepare:Method;batch:Method;metadata:object;metadataTuple:string;namespace:object|null;servingSecret:string|null;mode:'off'|'configured';slots:readonly Slot[];request:Request;requestTuple:string;callbackRequest:Request;callbackTuple:string;consumer:{env:Env;slots:readonly Slot[]}|null;authTuple:string;cookieSecret:string;config:ServingOriginalConfig|null;writeEpoch:string;layout:AdmissionLayout;client:ServingGateClient|null;url:string;created:number;expires:number;id:string;nonce:string;accountBound:boolean;userInput:object|null;user:Identity|null;captureInput:PrivacySubject|null;capture:PrivacySubject|null;issuedAt:number|null;verifiedState:string|null;spent:boolean;nativeSpent:boolean;lastClock:number;nativeSnapshot:NativeProfileSnapshot|null;nativeReplyValue:object|null;nativeReplyWitness:(()=>void)|null;phase:'captured'|'running'|'terminal'|'unknown';result:SiteOAuthSummary|null};
 const origins=new WeakMap<SiteOAuthOrigin,Origin>();
 const held=():never=>{throw new RecoveryFloorHeld();};
 const hex=(v:unknown,n:number):v is string=>typeof v==='string'&&v.length===n&&!/[^0-9a-f]/.test(v);
@@ -69,7 +69,7 @@ export function captureSiteOAuthOrigin(request:Request,env:Env):SiteOAuthOrigin{
  if(mode==='configured'){const ce=data(env,'PRIVACY_CREDENTIAL_EPOCH'),tree=data(env,'PRIVACY_SERVING_SOURCE_TREE');namespace=data(env,'PRIVACY_RECOVERY_FLOOR') as object;servingSecret=data(env,'PRIVACY_SERVING_GATE_SECRET') as string;config=Object.freeze({credentialEpoch:ce as string,writeEpoch:we,sourceTree:tree as string,deploymentVersion:JSON.parse(metadataTuple)[0] as string});const mapped=Object.freeze({PRIVACY_RECOVERY_FLOOR:namespace,PRIVACY_SERVING_GATE_SECRET:servingSecret,PRIVACY_CREDENTIAL_EPOCH:ce,PRIVACY_WRITE_EPOCH:we}) as ServingGateEnvironment;client=createServingRecoveryGateClient(mapped,config);}
  const callbackRequest=Object.freeze(new NativeRequest(snapshot.url,{method:'GET',headers:new NativeHeaders({Cookie:snapshot.cookie,'CF-Connecting-IP':snapshot.address})})),callbackTuple=requestSnapshot(callbackRequest).tuple;
  const h=Object.freeze({scope:'site_oauth_atomic_producer' as const,externalOriginQualified:false as const,readyToReopen:false as const});
- origins.set(h,{env,native:native as D1Database,prepare,batch,metadata,metadataTuple,namespace,servingSecret,mode,slots,request,requestTuple:snapshot.tuple,callbackRequest,callbackTuple,consumer:null,authTuple,cookieSecret,config,writeEpoch:we,layout:layout as AdmissionLayout,client,url:snapshot.url,created,expires:created+300,id:random(),nonce:random(),accountBound:false,userInput:null,user:null,captureInput:null,capture:null,issuedAt:null,spent:false,nativeSpent:false,lastClock:initialClock,nativeSnapshot:null,nativeReplyValue:null,nativeReplyWitness:null,phase:'captured',result:null});
+ origins.set(h,{env,native:native as D1Database,prepare,batch,metadata,metadataTuple,namespace,servingSecret,mode,slots,request,requestTuple:snapshot.tuple,callbackRequest,callbackTuple,consumer:null,authTuple,cookieSecret,config,writeEpoch:we,layout:layout as AdmissionLayout,client,url:snapshot.url,created,expires:created+300,id:random(),nonce:random(),accountBound:false,userInput:null,user:null,captureInput:null,capture:null,issuedAt:null,verifiedState:null,spent:false,nativeSpent:false,lastClock:initialClock,nativeSnapshot:null,nativeReplyValue:null,nativeReplyWitness:null,phase:'captured',result:null});
  if(client)bindServingGateClientWitness(client,()=>{bindings(h);});current(h);return h;
 }
 
@@ -88,11 +88,38 @@ export async function verifySiteOAuthState(h:SiteOAuthOrigin,state:string,mac:st
  const o=current(h);if(typeof state!=='string'||state.length>2048||typeof mac!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(mac))return false;
  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(`olympus-site/state|${o.cookieSecret}`),{name:'HMAC',hash:'SHA-256'},false,['verify']);current(h);
  const pad=mac.length%4===0?'':'='.repeat(4-mac.length%4),bytes=Uint8Array.from(atob(mac.replace(/-/g,'+').replace(/_/g,'/')+pad),c=>c.charCodeAt(0));
- const valid=await crypto.subtle.verify('HMAC',key,bytes,new TextEncoder().encode(state));current(h);return valid;
+ const valid=await crypto.subtle.verify('HMAC',key,bytes,new TextEncoder().encode(state));current(h);if(valid)o.verifiedState=state;return valid;
  }catch{return false;}}
 
 /** Genuine callback captures original me/G-or-absence/issuedAt before its awaited member lookup. */
 export function captureSiteOAuthAccount(h:SiteOAuthOrigin,me:object,original:PrivacySubject|null,issuedAt:number|null):void{const o=current(h);if(o.accountBound||o.spent||issuedAt!==null&&!integer(issuedAt,1))return held();const projected=user(me),capture=subject(original,projected.id);o.accountBound=true;o.userInput=me;o.user=projected;o.captureInput=original;o.capture=capture;o.issuedAt=issuedAt;current(h);}
+
+/** Called only from the original callback's confirmed negative Discord membership branches.
+ * True consumes this origin for a response without a local account or session. False preserves
+ * the original revocation of a legacy site account with no privacy subject. Unknown is held. */
+export async function confirmSiteOAuthNoLocalAccount(h:SiteOAuthOrigin):Promise<boolean>{
+ const o=current(h);
+ if(!o.consumer||!o.user||!o.accountBound||o.spent||o.phase!=='captured'||o.capture&&o.capture.state!=='retired')return held();
+ const db=privacyProviderCustodyDatabase(o.consumer.env);
+ const row=await db.prepare(`SELECT CASE
+   WHEN ?2 IS NULL AND NOT EXISTS(SELECT 1 FROM privacy_subjects WHERE subject_id=?1)
+     THEN CASE WHEN EXISTS(SELECT 1 FROM site_users WHERE discord_id=?1) THEN 'legacy' ELSE 'absent' END
+   WHEN EXISTS(SELECT 1 FROM privacy_subjects WHERE subject_id=?1 AND generation=?2 AND revision=?3
+       AND state='retired' AND typeof(erased_at)='integer' AND erased_at<?4)
+     AND NOT EXISTS(SELECT 1 FROM site_users WHERE discord_id=?1) THEN 'absent'
+   ELSE 'held'
+ END AS negative_membership`).bind(o.user.id,o.capture?.subjectGeneration??null,o.capture?.revision??null,o.issuedAt)
+ .first<{negative_membership:string}>();
+ current(h);
+ if(o.spent||o.phase!=='captured'||!row||Reflect.ownKeys(row).join('|')!=='negative_membership')return held();
+ const result=data(row,'negative_membership');
+ if(result==='legacy'&&o.capture===null)return false;
+ const at=Math.floor(o.lastClock/1000);
+ if(result!=='absent'||!o.verifiedState||o.verifiedState!==new URL(o.url).searchParams.get('state')
+     ||o.issuedAt===null||o.issuedAt>at||o.issuedAt<=at-600)return held();
+ o.spent=true;
+ return true;
+}
 
 // These are the exact existing producer SQL strings, not caller-supplied identifiers or new guards.
 const PROFILE=`INSERT INTO site_users (discord_id, username, global_name, nick, avatar, account_created, server_joined, first_login, last_login, checked_at, in_server, session_version)

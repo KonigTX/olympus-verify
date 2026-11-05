@@ -15,10 +15,20 @@ const brandCompiled = ts.transpileModule(brandSource, { reportDiagnostics: true,
 assert.equal(brandCompiled.diagnostics.length, 0);
 const brand = { exports: {} };
 new Function('module', 'exports', 'require', brandCompiled.outputText)(brand, brand.exports, name => { assert.fail('Unexpected site-brand import: ' + name); });
+const moduleCache = new Map();
+function loadRankSource(name) {
+  if (moduleCache.has(name)) return moduleCache.get(name).exports;
+  assert.ok(['./governance-offices', './site-role-directory203', './policy-render', './policy-asset-cache'].includes(name), 'Unexpected planner import: ' + name);
+  const module = { exports: {} };
+  moduleCache.set(name, module);
+  const output = ts.transpileModule(read(path.join(worker, 'src', name.slice(2) + '.ts')), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  new Function('module', 'exports', 'require', output)(module, module.exports, key => key === './site-brand' || key === './site-core' ? {} : loadRankSource(key));
+  return module.exports;
+}
 const server = { exports: {} };
 new Function('module', 'exports', 'require', compiled.outputText)(server, server.exports, name => {
   if (name === './site-brand') return brand.exports;
-  assert.equal(name, './site-core');
+  if (name !== './site-core') return loadRankSource(name);
   return { currentUser: async () => { authCalls++; return user; }, isSiteAdmin: (_env, id) => /^\d{17,20}$/.test(id) && admins.has(id), securityHeaders: headers => { headers.set('Cache-Control', 'no-store'); headers.set('Content-Security-Policy', "default-src 'self'"); return headers; } };
 });
 const request = (method = 'GET') => new Request('https://olympus.roachcouncil.com/admin/ranks/fragment', { method });
@@ -104,16 +114,16 @@ function deferred() { let resolve, reject; const promise = new Promise((a, b) =>
     assert.ok(!/<(?:html|head|body|main|nav|script|style|link|iframe)\b/i.test(html));
     assert.ok(!html.includes('property="og:')); assert.ok(!html.includes('brand-mark'));
   });
-  await check('both planner layouts expose all twelve current portfolios separately from the historical library', async () => {
+  await check('both planner layouts expose the Co-Guild Master and twelve current portfolios separately from the historical library', async () => {
     const standalone = await (await server.exports.rankPlannerPage(request(), {}, true)).text();
     const current = JSON.parse(read(path.join(worker, 'public/static/governance/organization.json'))).councilComposition.currentSeats.filter(seat => seat.id !== 'gm-chair');
-    assert.equal(current.length, 12);
+    assert.equal(current.length, 13);
     for (const markup of [html, standalone]) {
       const panel = markup.match(/<section class="reference-note current-council218"[\s\S]*?<\/section>/)?.[0];
       assert.ok(panel, 'current reference exists');
-      assert.equal((panel.match(/<li>/g) || []).length, 12);
+      assert.equal((panel.match(/<li>/g) || []).length, 13);
       for (const seat of current) assert.ok(panel.includes('href="/#/roles/' + seat.familyKey + '"') && panel.includes(seat.label.replace(/&/g, '&amp;')), seat.id);
-      assert.ok(panel.includes('/static/governance/council-portfolios224.md') && panel.includes('All 102 offices and 138 assignment keys'));
+      assert.ok(panel.includes('/static/governance/council-portfolios228.md') && panel.includes('All 103 offices and 139 assignment keys'));
       assert.ok(markup.indexOf(panel) < markup.indexOf('Historical &amp; Draft-Only Rank Ideas'));
     }
   });
@@ -126,8 +136,8 @@ function deferred() { let resolve, reject; const promise = new Promise((a, b) =>
       assert.ok(opening, 'authored historical disclosure exists'); assert.ok(!/\bopen(?:\s|=|>)/.test(opening[0]));
       assert.ok(markup.includes('<summary>Historical &amp; Draft-Only Rank Ideas</summary>'));
       const guide = markup.match(/<ol class="current-rank-guide">([\s\S]*?)<\/ol>/); assert.ok(guide);
-      const rows = [...guide[1].matchAll(/<li>(.*?)<\/li>/g)].map(match => match[1]);
-      assert.deepEqual(rows, expected.map((name, index) => name + ' — zero-based slot ' + index));
+      const rows = [...guide[1].matchAll(/<li[^>]*>(.*?)<\/li>/g)].map(match => match[1].replace(/<[^>]+>/g, ""));
+      assert.deepEqual(rows, expected.map((name, index) => name + ' · zero-based slot ' + index));
       assert.ok(markup.indexOf(guide[0]) < markup.indexOf(opening[0]), 'current guide precedes historical alternatives');
       const historyStart = markup.indexOf(opening[0]), historyEnd = markup.indexOf('</section>', historyStart);
       assert.ok(historyEnd > historyStart);

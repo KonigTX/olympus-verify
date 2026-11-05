@@ -15,7 +15,6 @@
 .treasury-plan207 :is(section, article, div, form, label, input, details, table, ul, ol, li) { min-width: 0; }
 .treasury-plan207 [hidden] { display: none !important; }
 .treasury-plan207 :is(a, button, input, summary, [tabindex]):focus-visible { outline: 3px solid #ffe4a1; outline-offset: 3px; }
-.treasury-plan207 :is(button, a, input, details) { scroll-margin-top: 7rem; }
 .treasury-plan207 :is(h1, h2, h3) { color: var(--tp207-gold); line-height: 1.25; }
 .treasury-plan207 :is(h2, h3) { margin-top: 0; }
 .treasury-plan207 .small, .treasury-plan207 small { font-size: .88rem; line-height: 1.5; }
@@ -107,6 +106,10 @@
   .tp207-rule, .tp207-model-note, .tp207-warning { padding: .65rem; }
   .tp207-actions > .btn { width: 100%; }
   .tp207-bars li { grid-template-columns: 2.8rem minmax(0, 1fr) 5.8rem; font-size: .7rem; }
+}
+@media (max-width: 220px) {
+  .tp207-bars li { grid-template-columns: minmax(0, 1fr); }
+  .tp207-bars li > :last-child { text-align: left; }
 }
 @media print {
   .treasury-plan207 { max-width: none; color: #111; font-size: 10pt; line-height: 1.4; }

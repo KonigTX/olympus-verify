@@ -75,6 +75,9 @@ export const LINK_HOSTS = [
   "www.wowhead.com", "www.icy-veins.com", "www.warcrafttavern.com",
 ];
 
+const LEGACY_GUIDE_INVITE = "You can request a guild invite this way before joining.";
+const IN_GAME_GUIDE_INVITE = "Ask an Olympus officer for an in-game invite first. The website invite queue is paused.";
+
 export const INTROS: Intro[] = [
   {
     key: "olympus-info",
@@ -88,8 +91,7 @@ export const INTROS: Intro[] = [
           "",
           "**Get into the guild channels**",
           "1. Read the server rules in {#server-rules}; they apply here too.",
-          // .52 (Codex's content candidate, 1 Oct 00:37 UTC): the supported flow queues an invite; nobody has to be in the guild first.
-          "2. Follow the pinned guide in {#join-olympus}: get a code and send the shown line from your character in game. You can request a guild invite this way before joining. The member channels open after the bot confirms your character on the officer-exported guild roster and the access checks pass.",
+          `2. Follow the pinned guide in {#join-olympus}: get a code and send the shown line from your character in game. ${LEGACY_GUIDE_INVITE} The member channels open after the bot confirms your character on the officer-exported guild roster and the access checks pass.`,
           "3. In Olympus 2 or a later Olympus guild? Chat in {#olympus-visitors}; only the main guild is verified here.",
           "",
           "**Good to know**",
@@ -104,7 +106,8 @@ export const INTROS: Intro[] = [
         fields: [
           { name: "Launch", value: "<t:1793833200:F> (November 4, 2026, 3:00 p.m. PST, global). Included with a WoW subscription or Game Time." },
           { name: "Beta", value: "Began September 17, 2026. Blizzard's October 20 announcement planned the final shutdown for October 23 at 10:00 a.m. PDT (17:00 UTC); this is the announced schedule, not an observed server-closure receipt. Access was for selected invited testers and eligible Skyborne Epic Pack or Warcraft Forever Collection accounts; a guild application does not grant beta access." },
-          { name: "Early name reservation", value: "October 27 – November 3, 2026. North America opens October 27 at 1:00 p.m. PDT (20:00 UTC); other regions have separate hours. Skyborne Heroic Pack, Skyborne Epic Pack or Warcraft Forever Collection purchase is required on that WoW account. Up to three characters total across all Rulesets, first come, first served. A name on our guild planning list does not reserve it in the game." },
+          // Evergreen Stage 2 (4 Nov 2026): the window closed on 3 November, so the field is a dated record, true either side of launch.
+          { name: "Early name reservation", value: "October 27 – November 3, 2026 (closed). North America opened October 27 at 1:00 p.m. PDT (20:00 UTC); other regions had separate hours. A Skyborne Heroic Pack, Skyborne Epic Pack or Warcraft Forever Collection purchase was required on that WoW account. Up to three characters total across all Rulesets, first come, first served. A name on our guild planning list does not reserve it in the game." },
           { name: "First new raids", value: "Unlock December 9, 2026." },
           { name: "Olympus ruleset", value: "{ruleset-ruleset} · {ruleset-faction} ({ruleset-decided}). Forever is realmless: choose the guild's ruleset and region, rather than a traditional realm." },
           { name: "New in Forever", value: "The Skyborne race (Zephras Isle), Mount Hyjal, Shen'dralas and Riverglades, nine new dungeons, the Hyjal Summit (20-player) and Barrow Deeps (10-player) raids, the Darkspear Islands 15 vs 15 battleground, Legacy progression for alts, camping and opt-in transmog." },
@@ -125,7 +128,7 @@ export const INTROS: Intro[] = [
           `• [What's Next panel recap](${LINKS.whatsNext})`,
           `• [Deep Dive panel recap](${LINKS.deepDive})`,
           "",
-          "**Community guides** (unofficial; written from the beta, so details can change before launch)",
+          "**Community guides** (unofficial; written from the beta, so the released game can differ)",
           `• [Wowhead Forever hub](${LINKS.wowheadHub}): overview, zones, dungeons, raids, talent calculator`,
           `• [Icy Veins Forever hub](${LINKS.icyHub}): class and spec guides, choosing a class, races, rulesets, camping, Legacy`,
           `• [Warcraft Tavern professions guide](${LINKS.tavernProfessions})`,
@@ -406,8 +409,13 @@ export function resolveRuleset(text: string, snapshot: RulesetSnapshot): string 
     return k === "label" ? rulesetLabel(snapshot.profile) : k === "ruleset" ? snapshot.profile.ruleset : k === "faction" ? snapshot.profile.faction : rulesetDecidedText(snapshot);
   });
 }
-export function renderEmbeds(intro: Intro, channels: Record<string, string>, snapshot: RulesetSnapshot): Embed[] {
-  return JSON.parse(JSON.stringify(intro.embeds), (_k, v) => (typeof v === "string" ? resolveRuleset(resolveText(v, channels), snapshot) : v)) as Embed[];
+export function renderEmbeds(intro: Intro, channels: Record<string, string>, snapshot: RulesetSnapshot, legacyInviteQueue = true): Embed[] {
+  const inGameInvites = intro.key === "olympus-info" && !legacyInviteQueue;
+  return JSON.parse(JSON.stringify(intro.embeds), (_k, value) => {
+    if (typeof value !== "string") return value;
+    const copy = inGameInvites ? value.replace(LEGACY_GUIDE_INVITE, IN_GAME_GUIDE_INVITE) : value;
+    return resolveRuleset(resolveText(copy, channels), snapshot);
+  }) as Embed[];
 }
 
 /** What the bot last posted is compared by this, so a refresh edits only what changed. A forum post's title counts. */

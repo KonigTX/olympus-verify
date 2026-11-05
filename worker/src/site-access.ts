@@ -5,6 +5,7 @@ import { stillMember } from './site-api';
 import { privacyBoundSiteEnv } from './privacy-serving-authority';
 import { loginHeaders, policyShell } from './policy-render';
 import { errorRef } from './log';
+import { siteEntryReturn, siteLoginLocation } from './site-return';
 
 const AUTH_PATHS = new Set(['/auth/login', '/auth/callback']);
 // These existing privacy flows have their own Discord identity / one-use case credentials.
@@ -13,9 +14,10 @@ const PRIVACY_PATHS = new Set(['/privacy/access', '/privacy/signin', '/privacy/c
 const FLASH: Record<string, string> = {
   cancelled: 'Discord sign-in was cancelled. You can try again when ready.',
   expired: 'This sign-in attempt expired. Start a new Discord sign-in.',
+  session_ended: 'Your session ended. Sign in with Discord again.',
   not_member: 'Join the Asmongold Discord server before using the guild site.',
   pending: 'Finish the Discord server membership screening, then sign in again.',
-  denied: 'This account cannot enter the guild site. Your privacy account connection remains available.',
+  denied: 'This account cannot enter the guild site.',
   busy: 'Discord is busy. Wait a moment before trying again.',
   updating: 'The guild site is updating. Please try again shortly.',
   discord_error: 'Discord sign-in could not be completed. Please try again shortly.',
@@ -24,13 +26,16 @@ const FLASH: Record<string, string> = {
 };
 
 export function siteSignIn(request: Request, status = 200, flash?: string, cookies: string[] = [], animation = false): Response {
-  const note = flash && FLASH[flash] ? `<p role="status">${FLASH[flash]}</p>` : '';
+  const privacyLink = flash === 'denied' || flash === 'not_member'
+    ? ' <a href="/privacy/access">Connect to your account data</a>.' : '';
+  const note = flash && Object.hasOwn(FLASH, flash) ? `<p role="status">${FLASH[flash]}${privacyLink}</p>` : '';
   // Direct owner answer, 23 Oct 2026: approved .173 stills remain the default.
   // The optional animation is a client-model render, not a publisher-issued video.
   const still = `<picture class="login-portal-art"><source media="(max-aspect-ratio: 6/5)" srcset="/static/wow/login/olympus-dark-portal-portrait.png" width="852" height="1847"><img class="login-portal-poster" src="/static/wow/login/olympus-dark-portal-wide.png" alt="" aria-hidden="true" width="1916" height="821"></picture>`;
   const motion = animation && request.headers.get('Save-Data')?.trim().toLowerCase() !== 'on'
     ? `<details class="login-motion" open><summary><span class="motion-hide">Hide animated background</span><span class="motion-show">Show animated background</span></summary><video class="login-portal-video" aria-hidden="true" width="960" height="540" autoplay loop muted playsinline preload="metadata"><source src="/static/wow/login/dark-portal.webm" type="video/webm" media="(prefers-reduced-motion: no-preference)"></video></details>` : '';
-  const body = `<section class="sign-in-gate portal-login"><div class="login-portal" aria-hidden="true">${still}</div>${motion}<div class="login-card"><img class="login-card-crest" src="/static/olympus-icon.png" alt="Olympus guild tabard" width="72" height="72"><h1>Enter Olympus</h1><p class="eyebrow">The gates of Olympus</p><p>Sign in with Discord to enter the guild hall. Membership of the Asmongold Discord server is required.</p>${note}<a class="policy-button" href="/auth/login">Sign in with Discord</a></div></section>`;
+  const login = siteLoginLocation(siteEntryReturn(new URL(request.url)));
+  const body = `<section class="sign-in-gate portal-login"><div class="login-portal" aria-hidden="true">${still}</div>${motion}<div class="login-card"><img class="login-card-crest" src="/static/olympus-icon.png" alt="Olympus guild tabard" width="72" height="72"><h1>Enter Olympus</h1><p class="eyebrow">The gates of Olympus</p><p>Sign in with Discord to enter the guild hall. Membership of the Asmongold Discord server is required.</p>${note}<a class="policy-button" href="${login}">Sign in with Discord</a></div></section>`;
   const headers = loginHeaders();
   for (const value of cookies) headers.append('Set-Cookie', value);
   // Owner's entry-page simplification (18 Oct 2026): policy URLs remain public for Discord's application links.
@@ -78,7 +83,9 @@ export async function memberSiteGate(request: Request, env: Env, path: string): 
   }
   const status = user ? 403 : 401;
   if ((request.method === 'GET' || request.method === 'HEAD') && !path.startsWith('/api/') && !path.startsWith('/static/') && (!path.includes('.') || path === '/index.html')) {
-    return siteSignInWithMedia(request, env, path === '/' || path === '/index.html' ? 200 : status, user ? user.denied ? 'denied' : 'not_member' : undefined);
+    const entry = path === '/' || path === '/index.html';
+    const ended = entry && new URL(request.url).search === '?entry=session-ended';
+    return siteSignInWithMedia(request, env, entry ? 200 : status, user ? user.denied ? 'denied' : 'not_member' : ended ? 'session_ended' : undefined);
   }
   const api = path.startsWith('/api/');
   const error = user ? user.denied ? 'denied' : 'not_member' : api ? 'signed_out' : 'discord_sign_in_required';
@@ -91,6 +98,14 @@ export function privateSiteAsset(response: Response): Response {
   headers.set('Cache-Control', 'private, no-store, no-transform');
   headers.set('Vary', 'Cookie');
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+/** Fetch a verified .html route's extensionless ASSETS key so the provider's
+ * default HTML redirect cannot move the browser outside its exact policy route. */
+export function fetchCanonicalHtmlAsset(request: Request, assets: Env['ASSETS'], htmlPath: string): Promise<Response> {
+  const url = new URL(request.url);
+  url.pathname = htmlPath.slice(0, -'.html'.length);
+  return assets.fetch(new Request(url, { method: request.method, headers: request.headers, redirect: 'manual' }));
 }
 
 /** The councillor verification page alone may use the device camera (owner item 32 fallback, 14 October 2026): an

@@ -754,11 +754,11 @@
     "title": "The most trusted World of Warcraft: Forever guides and addons",
     "sourceCheckedAt": "2026-10-18",
     "reconciledAt": "2026-10-23T15:29:40.991Z",
-    "scopeNote": "The October 18 shortlist, presented in full thematic sections with original summaries and publisher links. October 18 beta limits and reported dates are historical context, not a claim about today’s playable cap. Public pages were re-read on October 23 where stated; advertised coverage, independent testing and installed-client compatibility remain separate. “Most trusted” describes a practical shortlist, not certification or a guild endorsement of every article.",
+    "scopeNote": "The October 18 shortlist records the beta limits and dates known at the time. The October 23 follow-up could not open Warcraft Tavern articles or recover The Forever Era’s BiS method, so those entries retain October 18 evidence. Publisher coverage, independent testing and installed-client compatibility each have their own evidence. “Most trusted” describes the shortlist.",
     "sections": [
       {
         "id": "main-websites",
-        "title": "1. The main websites I would use",
+        "title": "1. Where to start",
         "intro": "Start with Wowhead and Icy Veins for classes, WoW-Professions for profession routes, and Blizzard for announced rules. Add Method, Mobalytics and Warcraft Tavern for their specific authored coverage.",
         "blocks": [
           {
@@ -810,7 +810,7 @@
           {
             "heading": "Warcraft Tavern: additional class and system guidance",
             "text": [
-              "The October 18 shortlist includes named-author class, leveling, class-quest and system articles and the publisher’s stated editing standards. Direct article retrieval returned HTTP 403 during the October 23 public source check; no fresh article-body or editorial-policy review is claimed. Open the publisher and check each article’s evidence and date."
+              "The October 18 review covered named-author class, leveling, class-quest and system articles, along with the publisher’s stated editing standards. Check the evidence and date on each article before using its advice."
             ],
             "links": [
               {
@@ -944,7 +944,7 @@
             "heading": "The Forever Era",
             "text": [
               "The October 18 review describes announcements, beta tables, caches, hotfix information and marked Classic-derived inputs. Use it to compare changes and investigate items or talents.",
-              "Its reviewed BiS methodology used indicative weights without simulations or scoring for procs/set bonuses and included Classic-derived acquisition assumptions. The October 23 text retrieval did not expose that methodology again, so the limitation remains attributed to the dated October 18 review; no fresh simulation validation is claimed. Check the current page before relying on its ranking."
+              "The October 18 review found indicative weights and Classic-derived acquisition assumptions in the BiS tool. Its method omitted simulations and scoring for procs and set bonuses. Check the current method before using its rankings."
             ],
             "links": [
               {
@@ -1226,7 +1226,7 @@
       },
       {
         "claim": "Forever Codex is proven current with every beta build.",
-        "treatment": "The accessible fallback still identifies70245/October8 and defers live figures to JavaScript. Check the particular current page rather than asserting universal freshness.",
+        "treatment": "The fallback identifies build 70245, 8 October, and uses JavaScript to load live figures. Check the date and build on the page you plan to use.",
         "links": [
           {
             "label": "Status",

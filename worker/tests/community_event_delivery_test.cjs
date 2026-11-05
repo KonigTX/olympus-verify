@@ -24,6 +24,9 @@ let db, nativePort, hooks, requests, messages, SQL, maxParameters, counter, sess
 const ORG = "300000000000000002", OTHER = "300000000000000003", MEMBER = "300000000000000004", STAFF = "300000000000000005";
 const GUILD = "300000000000000006", CHANNEL = "300000000000000007", BOT = "300000000000000008", WRONG = "300000000000000009";
 const EVENT = "E".repeat(22), OP = "P".repeat(22), NEXT = "Q".repeat(22);
+const CALENDAR_ROUTE = "community/calendar/" + EVENT, CALENDAR_RETURN = "/#/" + CALENDAR_ROUTE;
+const LEGACY_NOTICE = "https://guild.example" + CALENDAR_RETURN;
+const MEMBER_NOTICE = "https://guild.example/?to=" + encodeURIComponent(CALENDAR_ROUTE);
 const ONE = "400000000000000001";
 const SECRET = "synthetic-cookie-secret-0123456789";
 const at = () => Math.floor(Date.now() / 1000);
@@ -59,6 +62,15 @@ const env = (over = {}) => entry.currentEntryEnvironment({ DB: d1(), COOKIE_SECR
 globalThis.fetch = async (input, options = {}) => {
   const u = new URL(input), method = options.method ?? "GET";
   if (u.origin !== "https://discord.com" || !u.pathname.startsWith("/api/v10/")) throw Error("blocked synthetic network");
+  // This fresh visitor uses the real Worker OAuth routes. Only Discord's replies are simulated.
+  if (u.pathname === "/api/v10/oauth2/token" && method === "POST" && options.body.get("code") === "synthetic-member-code") {
+    return Response.json({ access_token: "synthetic-member-token" });
+  }
+  if (new Headers(options.headers).get("Authorization") === "Bearer synthetic-member-token") {
+    if (method === "GET" && u.pathname === "/api/v10/users/@me") return Response.json({ id: MEMBER, username: "Synthetic" });
+    if (method === "GET" && u.pathname === `/api/v10/users/@me/guilds/${GUILD}/member`) return Response.json({ user: { id: MEMBER }, pending: false });
+    throw Error("unexpected synthetic member OAuth request");
+  }
   const req = { url: u.pathname, method, options, body: options.body ? JSON.parse(options.body) : null }; requests.push(req);
   const intercepted = await hooks.http?.(req);
   if (intercepted !== undefined) return intercepted;
@@ -116,6 +128,21 @@ async function event() {
 }
 async function preview() { return (await call("GET", `/api/community/events/discord?eventId=${EVENT}`)).body; }
 async function publish(over = {}, op = OP) { const p = await preview(); return call("POST", "/api/community/events/discord/publish", { eventId: EVENT, revision: p.revision, opId: op, payloadHash: p.payloadHash }, ORG, over); }
+const siteButton = payload => payload.components.flatMap(row => row.components).find(button => button.label === "Open on the site");
+const noticeLink = payload => payload.content.match(/\[Sign up on the Olympus calendar\]\(([^)]+)\)/)?.[1];
+async function followNotice(href) {
+  const target = new URL(href);
+  target.hash = ""; // Browsers do not transmit a fragment to the server.
+  const get = (url, headers) => worker.fetch(new Request(new URL(url, target), { headers }), env({ DISCORD_CLIENT_SECRET: "synthetic-client-secret" }), { waitUntil: () => {} });
+  const page = await get(target);
+  const login = (await page.text()).match(/href="(\/auth\/login[^"]*)"/)?.[1];
+  if (!login) throw Error("fresh visitor has no sign-in link");
+  const start = await get(login);
+  const state = new URL(start.headers.get("Location")).searchParams.get("state");
+  const cookie = start.headers.getSetCookie().find(value => value.startsWith("__Host-olg_state=")).split(";")[0];
+  const result = await get("/auth/callback?" + new URLSearchParams({ code: "synthetic-member-code", state }), { Cookie: cookie });
+  return { login, status: result.status, location: result.headers.get("Location"), session: result.headers.getSetCookie().some(value => value.startsWith("__Host-olg=")) };
+}
 let passed = 0, total = 0;
 function check(name, value, detail) { total++; if (value) passed++; console.log(`${value ? "PASS" : "FAIL"} ${name}`); if (!value && detail) console.log(detail); }
 
@@ -131,7 +158,7 @@ async function deleteThroughOriginalRoute(target,actor) {
 (async () => {
   await seed(); await event();
   let p = await preview();
-  check("safe preview uses site host and exact calendar link; no private details/name/character/signup DTO", p.payload.content.includes(`https://guild.example/#/community/calendar/${EVENT}`) && !JSON.stringify(p).includes("PRIVATE_") && !p.payload.content.includes("verify.example") && p.payload.allowed_mentions.parse.length === 0);
+  check("signed preview uses the exact member return for both links; no private details/name/character/signup DTO", noticeLink(p.payload) === MEMBER_NOTICE && siteButton(p.payload).url === MEMBER_NOTICE && !JSON.stringify(p).includes("PRIVATE_") && !p.payload.content.includes("verify.example") && p.payload.allowed_mentions.parse.length === 0);
   check("free-text title markdown is escaped", p.payload.content.includes("Raid \\*title\\* \\<@123456789012345678\\>"));
   let r = await call("POST", "/api/community/events/discord/publish", { eventId: EVENT, revision: p.revision, opId: OP, payloadHash: p.payloadHash }, ORG, { EVENT_DISCORD_DELIVERY: "" });
   check("publication defaults OFF, without provider reads/effects or claim", r.status === 503 && requests.length === 0 && !row());
@@ -152,6 +179,12 @@ async function deleteThroughOriginalRoute(target,actor) {
   r = await publish(); check("first publish records posted known custody at parent's exact deadline", r.status === 200 && row().state === "posted" && row().message_id === ONE && row().retain_until === one("SELECT retain_until FROM community_events WHERE id=?", EVENT).retain_until, r);
   check("one create uses empty allowed mentions, durable nonce, and redirect refusal/deadline", effects().length === 1 && effects()[0].body.allowed_mentions.parse.length === 0 && effects()[0].body.enforce_nonce === true && effects()[0].body.nonce === row().claim_nonce && effects()[0].options.redirect === "manual" && !!effects()[0].options.signal);
   r = await publish(); check("same content replay does not issue another HTTP effect", r.status === 200 && r.body.replay === true && effects().length === 1);
+  const posted = messages.get(ONE), postedLinks = [noticeLink(posted), siteButton(posted).url];
+  check("signed publication actually sends both exact member links", postedLinks.every(link => link === MEMBER_NOTICE), postedLinks);
+  const historical = await followNotice(LEGACY_NOTICE);
+  check("fresh visitor using the historical fragment signs in and lands on Home", historical.login === "/auth/login" && historical.status === 303 && historical.location === "/" && historical.session, historical);
+  const landing = await followNotice(postedLinks[1]);
+  check("fresh visitor following the actual posted link signs in and returns to the exact event", landing.login === "/auth/login?return=" + encodeURIComponent(CALENDAR_ROUTE) && landing.status === 303 && landing.location === CALENDAR_RETURN && landing.session, landing);
   const changed = await call("POST", "/api/community/events/update", { eventId: EVENT, revision: 1, title: "Changed raid" });
   r = await publish({}, NEXT); check("changed event updates exact existing bot message, never a second create", changed.status === 200 && r.status === 200 && effects().map((v) => v.method).join() === "POST,PATCH" && messages.size === 1 && row().event_revision === 2);
   const parentBefore = one("SELECT retain_until FROM community_events WHERE id=?", EVENT).retain_until;
@@ -224,6 +257,22 @@ async function deleteThroughOriginalRoute(target,actor) {
   check("bot author/content alone cannot reconcile an unrelated pointer", r.status === 409 && row().message_id === null);
   r = await call("POST", "/api/community/events/discord/reconcile", { eventId: EVENT, opId: OP, messageId: ONE });
   check("exact stored nonce and frozen content reconcile without any new POST", r.status === 200 && row().state === "posted" && row().message_id === ONE && effects().length === 1);
+
+  await seed(); await event();
+  hooks.afterEffect = () => { throw Error("synthetic lost POST response"); };
+  await publish(); hooks = {};
+  const legacyPost = messages.get(ONE);
+  legacyPost.content = legacyPost.content.replace(noticeLink(legacyPost), LEGACY_NOTICE);
+  siteButton(legacyPost).url = LEGACY_NOTICE;
+  const originalPayload = { content: legacyPost.content, components: legacyPost.components, allowed_mentions: { parse: [] } };
+  const oldHash = require("node:crypto").createHash("sha256").update(JSON.stringify(originalPayload)).digest("hex");
+  await fixtureRun("UPDATE community_event_deliveries SET frozen_content=?,payload_hash=? WHERE event_id=?", originalPayload.content, oldHash, EVENT);
+  siteButton(legacyPost).url = "https://outside.example/";
+  r = await call("POST", "/api/community/events/discord/reconcile", { eventId: EVENT, opId: OP, messageId: ONE });
+  check("historical payload hash cannot authorize an altered observed button", r.status === 409 && r.body.error === "delivery_mismatch" && row().state === "unknown" && row().message_id === null && effects().length === 1, r);
+  siteButton(legacyPost).url = LEGACY_NOTICE;
+  r = await call("POST", "/api/community/events/discord/reconcile", { eventId: EVENT, opId: OP, messageId: ONE });
+  check("exact held historical notice reconciles with its original full payload hash and no new effect", r.status === 200 && row().state === "posted" && row().message_id === ONE && row().payload_hash === oldHash && effects().length === 1, r);
 
   await seed(); await event();
   hooks.afterEffect = async () => { await fixtureRun("UPDATE site_users SET session_version=session_version+1 WHERE discord_id=?",ORG); };

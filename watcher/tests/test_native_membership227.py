@@ -132,19 +132,52 @@ class NativeMembershipTests(unittest.TestCase):
         self.w.pull_unverified = lambda: self.fail('Membership mode fetched legacy invitation state')
         self.w.render_queue = lambda *args: self.fail('Membership mode rendered an invitation queue')
         self.w.retry_queue_written = lambda: self.fail('Membership mode replayed an old acknowledgement')
-        for response in ({'presenceOnly': True, 'entries': []}, {'entries': [{'id': 'must-not-write'}]}, None):
+        presence = {'presenceOnly': True, 'entries': []}
+        fresh = dict(protocol=watcher.STRICT_DISPLAY_PROTOCOL, fetchedAt=self.at, snapshotAt=self.at - 60,
+                     guild='Olympus', realm='Fixture Realm', verified=[],
+                     unverified=[dict(name=NAME, guid=GUID, pending=False)])
+        original_lists = None
+        for response, report in ((presence, fresh), (presence, {**fresh, 'snapshotAt': self.at - 3601}),
+                                 (presence, {**fresh, 'entries': []}),
+                                 (presence, {**fresh, 'unverified': fresh['unverified'] * 2}),
+                                 (presence, {**fresh, 'verified': [dict(name='Example', guid='Player-1234-0ABC', status='member', discordId='123', username=None, displayName=None)]}),
+                                 (presence, None), ({'entries': [{'id': 'must-not-write'}]}, fresh), (None, fresh)):
             calls = []
-            self.w._last_queue_pull = 0
-            self.w.worker.call = lambda method, path, body=None, retries=3: (calls.append((method, path, body, retries)) or (True, response))
-            self.w.pull_queue()
-            self.assertEqual(len(calls), 1)
+            self.w._last_queue_pull = self.w._next_strict_display_pull = 0
+            def call(method, path, body=None, retries=3):
+                calls.append((method, path, body, retries))
+                return True, (report if path == watcher.STRICT_DISPLAY_PATH else response)
+            self.w.worker.call = call
+            with patch.object(watcher.time, 'time', return_value=self.at):
+                self.w.pull_queue()
+            self.assertEqual(len(calls), 2 if response is presence else 1)
             method, path, body, retries = calls[0]
             self.assertEqual(method, 'GET')
             self.assertIn('presenceOnly=1', path)
             self.assertIsNone(body)
             self.assertEqual(retries, 1)
+            if response is presence:
+                self.assertEqual(calls[1], ('GET', watcher.STRICT_DISPLAY_PATH, None, 1))
             self.assertEqual(self.w.queue_file.read_bytes(), original_file)
             self.assertEqual(self.w.state.d, original_state)
+            lists = self.w.strict_display_file.read_bytes()
+            if report is fresh and response is presence:
+                original_lists = lists
+                self.assertEqual(self.w.strict_display_file.name, 'OlympusVerifyLists.lua')
+                self.assertIn(b'OlympusVerifyLists = { version = 1', lists)
+                self.assertIn(f'snapshotAt = {self.at - 60}'.encode(), lists)
+                self.assertIn(GUID.encode(), lists)
+                for banned in (b'OlympusQueue', b'entries', b'eligibleAt', b'discordId'):
+                    self.assertNotIn(banned, lists)
+            self.assertEqual(lists, original_lists)
+        self.w._custody_halted = True
+        self.w._last_queue_pull = self.w._next_strict_display_pull = 0
+        self.w.worker.call = lambda *args, **kwargs: self.fail('Halted custody still polled')
+        self.w.pull_queue()
+        self.w.pull_strict_display()
+        self.assertEqual(self.w.strict_display_file.read_bytes(), original_lists)
+        self.assertEqual(self.w.queue_file.read_bytes(), original_file)
+        self.assertEqual(self.w.state.d, original_state)
 
     def test_strict_transport_binds_backward_refused_protocol_without_changing_original_body(self):
         worker = watcher.Worker('https://test.invalid', 'synthetic-only')
@@ -163,6 +196,18 @@ class NativeMembershipTests(unittest.TestCase):
                 worker.call('POST' if path.startswith('/ingest/') else 'GET', path, retries=1)
             self.assertEqual(transport.call_args.args[0].full_url, 'https://test.invalid' + path)
 
+
+    def test_strict_display_transport_is_separately_versioned_and_bounded(self):
+        worker = watcher.Worker('https://test.invalid', 'synthetic-only')
+        worker.membership_only = True
+        path = watcher.STRICT_DISPLAY_PATH
+        for raw, wanted in ((b'{}', True), (b' ' * (watcher.STRICT_DISPLAY_MAX_BYTES + 1), False)):
+            with patch.object(worker.opener, 'open', return_value=io.BytesIO(raw)) as transport:
+                okay, _ = worker.call('GET', path, retries=1)
+            self.assertEqual(okay, wanted)
+            request = transport.call_args.args[0]
+            self.assertEqual(request.full_url, 'https://test.invalid/queue/unverified?keyVersion=launch-roster-display-v1')
+            self.assertIsNone(request.data)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

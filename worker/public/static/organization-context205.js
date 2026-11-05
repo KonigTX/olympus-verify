@@ -53,20 +53,20 @@ export const ORGANIZATION_LANES205 = Object.freeze([
   {
     key: "heraldry",
     rootId: "heraldry",
-    title: "Department of Heraldry",
-    summary: "Guild identity, communications and participation.",
+    title: "Court Protocol & Crown Estates",
+    summary: "Ceremonial precedence, the court calendar and Crown venues.",
     duties: [
-      "Coordinate approved news, branch announcements and accurate public identity.",
-      "Support intake, recruitment communications and approachable member guidance.",
-      "Arrange events, training and permitted media with their responsible organizers."
+      "Maintain the court calendar and prepare ceremonial arrangements.",
+      "Keep the precedence list, venue handovers and Crown estates register current.",
+      "Coordinate public-facing notices with the Lord High Herald."
     ],
-    boundary: "Publicity needs verified facts and appropriate consent. Private cases, chat logs and financial receipts stay outside publicity; a title grants no moderation or publishing access."
+    boundary: "The Seneschal coordinates protocol and facilities. Property ownership, Treasury custody, publicity and judicial decisions remain separately assigned."
   },
   {
     key: "propaganda", rootId: "propaganda", title: "Ministry of Propaganda",
-    summary: "Truthful guild campaigns, recruitment storytelling and broadcaster-safe promotion.",
-    duties: ["Prepare an approved campaign calendar and clear creative briefs.", "Coordinate accurate recruitment messages with Intake and identity standards with Heraldry.", "Measure useful participation, obtain member consent and correct inaccurate claims."],
-    boundary: "Campaign direction grants no moderation or publishing access. Heraldry keeps official records; broadcasters retain their Stream Shield and consent choices."
+    summary: "Official communications, truthful guild campaigns and broadcaster-safe coverage.",
+    duties: ["Keep approved news, campaign and correction records. Check claims with the responsible office.", "Coordinate recruitment messages with the Chancery and event, Academy and Leveling communications with the responsible teams.", "Coordinate news with Heraldry Emissaries and obtain consent for media and broadcaster coverage."],
+    boundary: "The Herald directs communications within the accepted remit. Event command, publishing access and moderation require separate authority. Broadcasters retain their consent and Stream Shield choices."
   },
   {
     key: "systems",

@@ -151,16 +151,16 @@ export const TREASURY_PLAN207 = {
     { day: 90, cashGold: 1078928.5714285714, spendableAfterReserveGold: 1028928.5714285714, note: "Illustrative scenario, not a guarantee or measured balance." }
   ],
   responsibilities: [
-    { title: "Guild Master / Co-GM", body: "Sponsor the programme, approve its budget and priorities, decide target or deadline changes, and keep the programme aligned with member benefits. This plan grants no new authority." },
-    { title: "Treasurer · High Council", body: "Own the cash forecast, authorised custody records, payment reconciliation and complete accounting of obligations and reserves. Escalate discrepancies before further affected payments." },
-    { title: "Head of Trading & Markets · High Council", body: "Focus exclusively on auction-house trading, direct item trades and market strategy. Research current prices, real demand, liquidity and total transaction costs; propose funded buy/sell opportunities, negotiate direct trades and manage execution and stock within separately approved capital, concentration and loss limits. Report realised net profit, sell-through, time to cash, aged inventory and losses to the Treasurer. Turnover, unsold stock and optimistic valuations are not profit. Do not administer donations, dues, appeals, discipline or Workshop commissions; custody, budgets, reconciliation and independent audit stay with their separate officers." },
-    { title: "Independent Bank Auditor", body: "Review records and reconciliation independently of fundraising results. Report discrepancies without accepting sales or donation targets; do not approve or audit your own payment." },
-    { title: "Minister of Artisanry / Workshop leads", body: "Select products from actual demand, coordinate funded production, record complete costs, check quality and train backup providers." },
-    { title: "Main Raid Lead / Main PvP Lead · High Council remits", body: "Define useful activity requirements, provider capacity and costed spending requests. Their remit is planning and delivery, not selling authority, admissions or favourable discipline." },
-    { title: "Minister of Heraldry", body: "Communicate accurate campaign terms and aggregate results. Obtain consent for recognition and label forecasts, examples and active offers clearly." },
-    { title: "Chief of Intake", body: "Keep ordinary membership accessible, distinguish active people from character counts and make clear that contributions do not buy acceptance, rank or flagship placement." },
-    { title: "Head of Justice · High Council", body: "Handle conflicts and complaints independently of revenue. Ordinary appeals are free; judges and moderators have no fundraising quota or sanction commission." },
-    { title: "Systems / reporting support", body: "Assist authorised operators with aggregate reporting under existing access, privacy, erasure and retention boundaries. No new identity tracking or provider dispatch is authorised." }
+    { officeKeys: ["office_43", "office_19"], body: "Sponsor the programme, approve its budget and priorities, decide target or deadline changes, and keep the programme aligned with member benefits. This plan grants no new authority." },
+    { officeKeys: ["office_86"], body: "Own the cash forecast, authorised custody records, payment reconciliation and complete accounting of obligations and reserves. Escalate discrepancies before further affected payments." },
+    { officeKeys: ["office_96"], body: "Focus exclusively on auction-house trading, direct item trades and market strategy. Research current prices, real demand, liquidity and total transaction costs; propose funded buy/sell opportunities, negotiate direct trades and manage execution and stock within separately approved capital, concentration and loss limits. Report realised net profit, sell-through, time to cash, aged inventory and losses to the Treasurer. Turnover, unsold stock and optimistic valuations are not profit. Do not administer donations, dues, appeals, discipline or Workshop commissions; custody, budgets, reconciliation and independent audit stay with their separate officers." },
+    { officeKeys: ["office_08"], body: "Review records and reconciliation independently of fundraising results. Report discrepancies without accepting sales or donation targets; do not approve or audit your own payment." },
+    { officeKeys: ["office_58"], body: "Select products from actual demand, coordinate funded production, record complete costs, check quality and train backup providers." },
+    { officeKeys: ["office_97", "office_98"], body: "Define useful activity requirements, provider capacity and costed spending requests. Their remit is planning and delivery, not selling authority, admissions or favourable discipline." },
+    { officeKeys: ["office_102"], body: "Communicate accurate campaign terms and aggregate results. Obtain consent for recognition and label forecasts, examples and active offers clearly." },
+    { officeKeys: ["office_14"], body: "Keep ordinary membership accessible, distinguish active people from character counts and make clear that contributions do not buy acceptance, rank or flagship placement." },
+    { officeKeys: ["office_101"], body: "Handle conflicts and complaints independently of revenue. Ordinary appeals are free; judges and moderators have no fundraising quota or sanction commission." },
+    { officeKeys: ["office_03"], body: "Assist authorised operators with aggregate reporting under existing access, privacy, erasure and retention boundaries. No new identity tracking or provider dispatch is authorised." }
   ],
   frameworks: [
     { title: "SMART", body: "Specific: a useful and reconciled treasury. Measurable: 1,000,000g spendable plus 50,000g reserve after exclusions. Achievable: unvalidated until the pilot proves capacity. Relevant: fund guild benefits. Time-bound: 90 operating days with Day-14 and weekly decisions." },
@@ -181,7 +181,7 @@ export const TREASURY_PLAN207 = {
     { title: "Net growth and forecast", body: "Actual weekly net gold, cumulative cash, variance from the scenario, days remaining and the newly required weekly net." },
     { title: "Income mix", body: "Voluntary contributions, goods and services separately; distinguish internal members from external customer demand." },
     { title: "Realised margin", body: "Receipts less all materials, provider pay, selling fees, refunds and commissions; no estimated inventory profit." },
-    { title: "Trading performance and capital risk", body: "The Head of Trading & Markets reports settled trading profit after acquisition costs, auction fees, lost deposits and agreed costs, plus sell-through, cash tied up, inventory age and concentration. Show losses and remaining approved capital limits. The current zero opening balance and unknown demand mean no funded trading operation or profit promise is established by this plan." },
+    { title: "Trading performance and capital risk", body: "The Lord High Factor reports settled trading profit after acquisition costs, auction fees, lost deposits and agreed costs, plus sell-through, cash tied up, inventory age and concentration. Show losses and remaining approved capital limits. The current zero opening balance and unknown demand mean no funded trading operation or profit promise is established by this plan." },
     { title: "Participation and demand", body: "Unique voluntary contributors, repeat customers and funded completed orders; do not equate alts or Discord membership with people." },
     { title: "Fulfilment quality", body: "On-time rate, errors, refunds and overdue commitments. At least 95% on time is a proposed pilot target, not existing performance." },
     { title: "Capacity and concentration", body: "Officer hours, provider capacity, backup coverage, largest donor/customer exposure and dependence on individual operators." },
@@ -275,7 +275,7 @@ TREASURY_PLAN207.chapters = [
     { heading: "Deliverables and decision gate", paragraphs: [entry.decisionGate], bullets: entry.deliverables }
   ]) },
   { id: "officers", title: "Officer responsibilities and operating rhythm", intro: "Use existing offices. These responsibilities do not create appointments or change permissions.", sections: [
-    ...plan207.responsibilities.map(section207),
+    ...plan207.responsibilities.map(({ officeKeys, body }) => ({ officeKeys, paragraphs: [body] })),
     { heading: "Working rhythm", table: { headers: ["Frequency", "Operating action"], rows: plan207.cadence.map(entry => [entry.title, entry.body]) } }
   ] },
   { id: "frameworks", title: "One strategy, connected planning frameworks", intro: "The frameworks describe the same programme, not separate committees or paperwork.", sections: plan207.frameworks.map(section207) },

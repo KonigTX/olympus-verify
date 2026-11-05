@@ -219,13 +219,14 @@ async function call(method, pathname, { who, body, host = "guild.example", heade
   const decision = method==='POST' && pathname.match(/^\/api\/admin\/(users|applications)\/(\d+)\/(deny|undeny|delete|status)$/);
   if(decision) {
     const action=decision[3]==='delete'?'partial_delete':'business_only';
-    if(!h.has('X-Olympus-Decision-Action'))h.set('X-Olympus-Decision-Action',action);
+    const explicitAction=h.has('X-Olympus-Decision-Action');
+    if(!explicitAction)h.set('X-Olympus-Decision-Action',action);
     if(who===VIKTOR && !h.has('X-Olympus-Decision-Target') && h.get('Origin')===`https://${host}` && h.get('X-Olympus')==='2') {
       const prep=await call('GET',`/api/admin/users/${decision[2]}/decision-target?route=${decision[3]}&decisionAction=${action}`,{who,host});
       if(prep.status!==200)return prep;
       const prepared=await prep.json();
-      if(typeof prepared.targetToken!=='string')throw Error('actual decision target preparation held');
-      h.set('X-Olympus-Decision-Target',prepared.targetToken);
+      if(typeof prepared.targetToken==='string')h.set('X-Olympus-Decision-Target',prepared.targetToken);
+      if(!explicitAction)h.set('X-Olympus-Decision-Action',prepared.decisionAction);
     }
   }
   const res = await index.fetch(new Request(`https://${host}${pathname}`, { method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) }), rawEnv(), ctx);
@@ -416,7 +417,13 @@ async function legacySchemaHeld(old) {
     const icon = path.join(root, "public", "static", "olympus-icon.png");
     const png = fs.existsSync(icon) ? fs.readFileSync(icon) : Buffer.alloc(0);
     const imagesOutsideWow = (function walk(dir) { return fs.readdirSync(dir, { withFileTypes: true }).flatMap((d) => d.isDirectory() ? (d.name === "wow" ? [] : walk(path.join(dir, d.name))) : (/\.(png|jpe?g|gif|webp|svg|ico|woff2?|ttf|otf)$/i.test(d.name) ? [path.relative(path.join(root, "public"), path.join(dir, d.name)).replace(/\\/g, "/")] : [])); })(path.join(root, "public"));
-    check('the sign-in and member brand use the exact owner-approved tabard', png.length === 53204 && require('node:crypto').createHash('sha256').update(png).digest('hex') === '6363b15aff31a623aef0a6d7e52104fc44066f64852a328da788c84c325874eb' && page.html.includes('<link rel="icon" href="/static/olympus-icon.png">') && /<img\b[^>]*src=["']\/static\/olympus-icon\.png/.test(page.html) && fs.readFileSync(path.join(root, 'public/static/app.js'), 'utf8').includes('src: "/static/olympus-icon.png"'));
+    const tabardDigest = '6363b15aff31a623aef0a6d7e52104fc44066f64852a328da788c84c325874eb';
+    const publicTabard = `/public-assets/by-digest/${tabardDigest}/olympus-icon.png`;
+    check('the sign-in and member brand use the exact owner-approved tabard', png.length === 53204
+      && require('node:crypto').createHash('sha256').update(png).digest('hex') === tabardDigest
+      && page.html.includes(`<link rel="icon" href="${publicTabard}">`)
+      && page.html.includes(`<img class="login-card-crest" src="${publicTabard}"`)
+      && fs.readFileSync(path.join(root, 'public/static/app.js'), 'utf8').includes('src: "/static/olympus-icon.png"'));
     const appJs = fs.readFileSync(path.join(root, "public", "static", "app.js"), "utf8");
     const avatarSource = ts.createSourceFile("app.js", appJs, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS), avatarParts = {};
     (function readAvatarDefinitions(node) {
@@ -490,6 +497,68 @@ async function legacySchemaHeld(old) {
     alice.username === "alice" && alice.global_name === "Alice A" && alice.nick === "Alice of Olympus" && alice.avatar === "u:0123456789abcdef0123456789abcdef" &&
     alice.account_created === data.snowflakeTime("300000000000000001") && alice.server_joined === Date.parse("2023-05-01T00:00:00.000Z") / 1000);
   check("  and the access token is stored nowhere", !JSON.stringify(db.prepare("SELECT * FROM site_users").all()).includes("tok-"));
+  {
+    const member = "300000000000000001", route = "community/calendar/AbCdEfGhIjKlMnOpQrSt_1";
+    const encoded = encodeURIComponent(route), entryPath = "/?to=" + encoded, destination = "/#/" + route;
+    const address = { "CF-Connecting-IP": "192.0.2.68" };
+    const start = async (path) => {
+      const response = await call("GET", path, { headers: address });
+      const provider = new URL(response.headers.get("Location"));
+      const state = provider.searchParams.get("state");
+      return { provider, state, cookie: cookiesFrom(response)["__Host-olg_state"], payload: JSON.parse(Buffer.from(state.slice(0, -1), "base64url")) };
+    };
+    const complete = (attempt, args, state = attempt.state) => call("GET",
+      "/auth/callback?" + new URLSearchParams({ ...args, state }), { headers: { ...address, Cookie: "__Host-olg_state=" + attempt.cookie } });
+    const gate = await call("GET", entryPath), gateHtml = await gate.text();
+    check(".228 a new event link carries its exact route on the script-free gate with both approved stills",
+      gate.status === 200 && /script-src 'none'/.test(gate.headers.get("Content-Security-Policy")) && !/<script\b/.test(gateHtml)
+      && gateHtml.includes('href="/auth/login?return=' + encoded + '"') && gateHtml.includes("olympus-dark-portal-wide.png") && gateHtml.includes("olympus-dark-portal-portrait.png"));
+    const negativeRoutes = ["//outside.example", "https://outside.example", "/\\outside.example", "community/calendar/../admin", "community/calendar/" + "A".repeat(22) + "\n",
+      "community/calendar/%2Foutside", "community/calendar/" + "A".repeat(23), "community/calendar/new", "community/calendar/" + "A".repeat(22) + "/edit", "privacy/access", "admin", "data", "resources#//outside"];
+    const invalidPaths = negativeRoutes.map(value => "/?to=" + encodeURIComponent(value)).concat("/?to=resources&to=vote", "/index.html?to=resources");
+    let invalidGate = true;
+    for (const path of invalidPaths) {
+      const response = await call("GET", path);
+      invalidGate &&= response.status === 200 && (await response.text()).includes('href="/auth/login"');
+    }
+    check(".228 duplicate, encoded, external, overlong, privileged and nonroot returns preserve the ordinary gate", invalidGate);
+    const attempt = await start("/auth/login?return=" + encoded);
+    check(".228 the return enters MAC-protected state without changing OAuth scopes or the callback URL",
+      attempt.payload.returnTo === route && attempt.provider.origin === "https://discord.com"
+      && attempt.provider.searchParams.get("redirect_uri") === "https://guild.example/auth/callback"
+      && attempt.provider.searchParams.get("scope") === "identify guilds.members.read" && attempt.provider.searchParams.get("prompt") === "none");
+    const tampered = Buffer.from(JSON.stringify({ ...attempt.payload, returnTo: "vote" })).toString("base64url") + "n";
+    const forged = await complete(attempt, { code: "code-" + member }, tampered);
+    check(".228 replacing the destination in provider state cannot issue a site session", forged.status === 400
+      && !forged.headers.has("Location") && !cookiesFrom(forged)["__Host-olg"]);
+    const retry = await complete(attempt, { error: "interaction_required" });
+    check(".228 the verified silent attempt preserves the return through the one consent retry",
+      retry.status === 302 && retry.headers.get("Location") === "/auth/login?consent=1&return=" + encoded && cookiesFrom(retry)["__Host-olg_state"] === "");
+    const consent = await start(retry.headers.get("Location"));
+    const admitted = await complete(consent, { code: "code-" + member, return: "vote", to: "roles" });
+    check(".228 successful consent callback follows only its signed route and issues the normal session",
+      consent.provider.searchParams.get("prompt") === "consent" && consent.payload.returnTo === route
+      && admitted.status === 303 && admitted.headers.get("Location") === destination && !!cookiesFrom(admitted)["__Host-olg"]);
+    const signedIn = await call("GET", entryPath, { who: member });
+    const legacy = await call("GET", destination, { who: member });
+    check(".228 admitted visitors reach the same fragment directly and the old signed-in fragment remains usable",
+      signedIn.status === 303 && signedIn.headers.get("Location") === destination
+      && /no-store/.test(signedIn.headers.get("Cache-Control")) && (await bootOf(legacy)).boot !== null);
+    const invalidStart = await start("/auth/login?return=%2F%2Foutside.example&return=vote");
+    const defaultResult = await complete(invalidStart, { code: "code-" + member, to: "vote" });
+    check(".228 an invalid login return and callback query alone still land at Home",
+      !Object.hasOwn(invalidStart.payload, "returnTo") && defaultResult.status === 303 && defaultResult.headers.get("Location") === "/");
+    const stale = await start("/auth/login?return=vote");
+    T += 600;
+    let staleRetry;
+    try { staleRetry = await complete(stale, { error: "interaction_required" }); } finally { T -= 600; }
+    check(".228 an old signed return is discarded even if a stale browser cookie is supplied",
+      staleRetry.status === 302 && staleRetry.headers.get("Location") === "/auth/login?consent=1");
+    const outsider = await start("/auth/login?return=vote");
+    const blocked = await complete(outsider, { code: "code-300000000000000004" });
+    check(".228 a valid route cannot grant admission or redirect a nonmember",
+      blocked.status === 403 && !blocked.headers.has("Location") && !cookiesFrom(blocked)["__Host-olg"]);
+  }
   for (const id of [VIKTOR, "300000000000000002", "300000000000000003", "300000000000000006", "300000000000000007"]) await signIn(id);
   // .197: use the original OAuth-issued member cookie, not an invented cookie or
   // a mocked currentUser. Policy access must not depend on SPA admission or JS.
@@ -1335,6 +1404,7 @@ async function legacySchemaHeld(old) {
     .every((x) => { const [want, st, qs] = x.split(":"); return siteApi.shownReserved(st, qs || null) === want; }));
 
   console.log("\n== deny, undeny, delete ==");
+  await qdb("INSERT INTO site_applications(discord_id,position,fallback,answers,status,created_at,updated_at) VALUES(?,'member',0,'{}','submitted',?,?) ON CONFLICT(discord_id) DO NOTHING", "300000000000000006", T, T);
   res = await call("POST", "/api/admin/users/300000000000000006/deny", { who: VIKTOR, body: { reason: "joke application" } });
   check("deny works", res.status === 200 && db.prepare("SELECT denied FROM site_users WHERE discord_id = '300000000000000006'").get().denied === 1);
   res = await call("GET", "/api/me", { who: "300000000000000006" });
@@ -1436,6 +1506,30 @@ async function legacySchemaHeld(old) {
   check("search by character", (await J(res)).total === 1);
   res = await call("GET", "/api/admin/applications?q=%25", { who: VIKTOR });
   check("  % is taken literally", (await J(res)).total === 0);
+  const searchedApplicant = "300000000000000001";
+  const storedAnswers = db.prepare("SELECT answers FROM site_applications WHERE discord_id = ?").get(searchedApplicant).answers;
+  const hadMemberRow = db.prepare("SELECT 1 FROM members WHERE discord_id = ?").get(searchedApplicant);
+  const answersWithAlt = { ...JSON.parse(storedAnswers), talentBuilds: { version: 1, characters: [
+    { character: "Fern Melder", class: "priest", build30: "", build60: "" },
+    { character: "Altura Fen", class: "druid", build30: "", build60: "" },
+  ] } };
+  await qdb("UPDATE site_applications SET answers = ?1 WHERE discord_id = ?2", JSON.stringify(answersWithAlt), searchedApplicant);
+  await qdb("INSERT OR IGNORE INTO members (discord_id) VALUES (?1)", searchedApplicant);
+  await qdb("INSERT INTO characters (name_key, name, discord_id, status, bound_at) VALUES ('alta grove', 'Alta Grove', ?1, 'verified', ?2), ('retired grove', 'Retired Grove', ?1, 'unbound', ?2)", searchedApplicant, T);
+  const adminApplications = async (query) => J(await call("GET", `/api/admin/applications?${query}`, { who: VIKTOR }));
+  const isSoleApplicant = (result) => result.total === 1 && result.items.length === 1 && result.items[0].user.id === searchedApplicant;
+  check("admin application search finds a linked alt by full realm-qualified name", isSoleApplicant(await adminApplications("q=Alta%20Grove-Realm")));
+  check("admin application search finds a declared alt without builds by partial case-insensitive name", isSoleApplicant(await adminApplications("q=ALTURA")));
+  check("matches in both alt sources count the applicant once and honor the position filter", isSoleApplicant(await adminApplications("q=alt&position=raid_leader_eu")) && (await adminApplications("q=alt&position=member")).total === 0);
+  check("admin application search excludes unbound links and escapes SQL wildcards", (await adminApplications("q=Retired")).total === 0 && (await adminApplications("q=Alt%25")).total === 0);
+  check("a regular applicant cannot query the staff search by alt", (await call("GET", "/api/admin/applications?q=ALTURA", { who: searchedApplicant })).status === 403);
+  await qdb("UPDATE site_applications SET answers = ?1 WHERE discord_id = ?2", JSON.stringify({ talentBuilds: { version: 1, characters: [null, "not an object", 1] } }), searchedApplicant);
+  check("malformed legacy alt rows leave linked-character search usable", isSoleApplicant(await adminApplications("q=Alta%20Grove")) && (await adminApplications("q=not%20an%20object")).total === 0);
+  await qdb("UPDATE site_applications SET answers = ?1 WHERE discord_id = ?2", "{invalid", searchedApplicant);
+  check("invalid legacy answers leave existing main-name search usable", isSoleApplicant(await adminApplications("q=fern")));
+  await qdb("UPDATE site_applications SET answers = ?1 WHERE discord_id = ?2", storedAnswers, searchedApplicant);
+  await qdb("DELETE FROM characters WHERE name_key IN ('alta grove','retired grove') AND discord_id = ?1", searchedApplicant);
+  if (!hadMemberRow) await qdb("DELETE FROM members WHERE discord_id = ?1", searchedApplicant);
   res = await call("POST", "/api/admin/applications/300000000000000001/status", { who: VIKTOR, body: { status: "accepted", note: "strong" } });
   out = await J(res);
   check("accept with a note; the detail has friends, nominations and the account", out.application.status === "accepted" && out.application.adminNote === "strong" && out.friends.length === 2 && out.nominated.some((x) => x.ballot === "officer") && !out.nominated.some((x) => x.ballot === "raid_leader_na") && out.account.site.signedUp, // Bob, who picked her for raid leader, was deleted
@@ -1556,7 +1650,7 @@ async function legacySchemaHeld(old) {
   check("/queue/unverified carries the verified list for the watcher", Array.isArray(out.verified) && out.verified[0].username === "grace_new" && out.members.some((m) => m.name === "Nobody Here"));
   res = await index.fetch(new Request("https://verify.example/health", { headers: { Authorization: "Bearer watcher-token-for-tests-only-0123456789" } }), rawEnv(), ctx);
   out = await res.json();
-  check("/health names the build and the site (to the watcher's bearer, since .49)", out.build === "2026-11-03.227 Launch verification and local receipts" && out.site.host === "guild.example" && out.site.admins === 1);
+  check("/health names the build and the site (to the watcher's bearer, since .49)", out.build === "2026-11-04.228 Evergreen guild site and raid tools" && out.site.host === "guild.example" && out.site.admins === 1);
 
   console.log("\n== the addon-facing queue still works for an old-style caller ==");
   res = await ingest.getQueue(env(), "");

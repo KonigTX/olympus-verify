@@ -6,12 +6,12 @@
   "appointmentsIssued": false,
   "book": {
     "path": "/static/governance/reconciled-book.md",
-    "bytes": 272700,
-    "sha256": "947093b9f1bdaf787c63d875b895821f2ac63d51ca4be240992713f9d346d683"
+    "bytes": 273507,
+    "sha256": "fb6816b77507c2855f45511a32d1b46fbdcab804965e78a3650eb6f071684cac"
   },
   "councilComposition": {
-    "status": "owner_directed_current224",
-    "recordedAt": "2026-11-02",
+    "status": "owner_directed_current228",
+    "recordedAt": "2026-11-04",
     "authority": "project owner clarification",
     "offices": [
       "Guild Master — Council Chair",
@@ -26,15 +26,16 @@
       "Lord High Artificer · Minister of Artisanry & The Guild Workshop",
       "Lord High Herald · Minister of Propaganda",
       "Lord High Seneschal · Minister of Court Protocol & Crown Estates",
-      "Lord High Factor · Minister of Trading & Markets"
+      "Lord High Factor · Minister of Trading & Markets",
+      "Systems & Heraldry"
     ],
-    "summary": "Twelve reserved Council portfolios serve under the Guild Master as chair. Each portfolio has a distinct remit; all share the High Council native rank.",
+    "summary": "The Guild Master chairs the High Council. The Co-Guild Master serves alongside 12 numbered portfolios, all associated with native High Council rank.",
     "formalStatus": "Council appointments, voting eligibility and actual access are separately recorded. Listing a portfolio appoints no holder.",
     "recommendationRecorded": false,
     "founderRatificationRecorded": false,
     "eligibleSeatIssued": false,
     "permissionsApplied": false,
-    "sourcePath": "/static/governance/council-portfolios224.md",
+    "sourcePath": "/static/governance/council-portfolios228.md",
     "currentSeats": [
       {
         "id": "gm-chair",
@@ -165,7 +166,7 @@
         ],
         "scope": "alliance",
         "codexTitle": "V",
-        "description": "Leads recruitment campaigns, guild storytelling, promotional art and broadcaster-safe messaging. Agrees creative direction with the Council, verifies claims with the responsible office and hands official records to Heraldry. The office grants no moderation, Council vote or publishing access by itself."
+        "description": "Leads official communications, recruitment campaigns, guild storytelling, promotional art and consenting broadcaster coverage. Verifies claims with the responsible office and maintains approved publication and correction records. Coordinates event and Academy communications with their responsible teams. The office grants no moderation, Council vote or publishing access by itself."
       },
       {
         "id": "heraldry",
@@ -190,10 +191,22 @@
         "scope": "alliance",
         "codexTitle": "III",
         "description": "A reserved High Council portfolio devoted solely to Auction House optimization, direct buy/sell negotiation and the market economy. The Treasurer authorizes capital and risk limits and retains custody; realized results and inventory are independently reviewable. No holder or access is granted by this reference."
+      },
+      {
+        "id": "systems-heraldry",
+        "label": "Systems & Heraldry",
+        "familyKey": "systems_heraldry",
+        "nodeId": "systems-heraldry",
+        "officeKeys": [
+          "office_103"
+        ],
+        "scope": "alliance",
+        "codexTitle": "II",
+        "description": "Sets technical stewardship, recovery and release evidence standards, and maintains the guild’s standards for arms, insignia, titles and attribution. Systems operators keep their own access grants; the Herald leads campaigns and the Seneschal directs court protocol."
       }
     ],
     "persistentAppointmentKeysAdded": true,
-    "seatReferenceNote": "Thirteen current rows identify the Guild Master as chair and twelve distinct reserved Council portfolios. PvE and PvP now have separate office_97 and office_98 records; the historical shared office_94 template remains in the register without being copied as a new holder. The previous seat map is preserved separately. No published row appoints a person or creates voting or platform permission.",
+    "seatReferenceNote": "The register lists the Guild Master as chair, the Co-Guild Master, and twelve numbered portfolios. Each has its own reserved appointment record. Earlier seat maps, ballots and appointments retain their original keys.",
     "historicalSourcePath": "/static/governance/council-composition-2026-10-19.md",
     "previousDirection": {
       "status": "owner_directed_20261023",
@@ -230,7 +243,7 @@
       "summary": "The owner directed inclusion of the Co-Guild Master in the High Council alongside its five core portfolio offices.",
       "formalStatus": "Constitutional recommendation and Founder ratification are not recorded; eligible seats and individual appointment instruments remain separate."
     },
-    "cabinetSeatCount": 12,
+    "cabinetSeatCount": 13,
     "previousSeatMap": {
       "status": "owner_clarified_20261028",
       "recordedAt": "2026-10-28",
@@ -447,7 +460,7 @@
       "kind": "council of accepted offices",
       "icon": "officer",
       "remit": "Olympus-wide standards, budgets and portfolio coordination.",
-      "limits": "Guild Master, Co-Guild Master and Treasurer form the core Council offices. An accepted warrant and eligible vote remain separate from native ranks and actual permissions.",
+      "limits": "The Guild Master chairs the Council. The Co-Guild Master serves alongside twelve portfolios. An accepted warrant and eligible vote remain separate from native ranks and actual permissions.",
       "coordinates": [],
       "chapter": "organisation-and-offices"
     },
@@ -773,7 +786,7 @@
       "remit": "Verified local news and approved event publicity.",
       "limits": "Communications duties are not extra native officer ranks.",
       "coordinates": [
-        "heraldry"
+        "propaganda"
       ],
       "chapter": "organisation-and-offices"
     },
@@ -958,13 +971,29 @@
       "kind": "High Council portfolio",
       "icon": "herald",
       "remit": "Guild campaigns, recruitment storytelling and broadcaster-safe creative direction, with accurate claims and attributable sources.",
-      "limits": "The Minister approves campaign direction within the accepted warrant. Heraldry owns official records and publication standards; editors and platform operators retain separately granted access. No harassment, deceptive impersonation or private-information disclosure.",
+      "limits": "The Herald directs campaigns and official communications within the accepted warrant. The Registrar maintains the official register. Editors and platform operators retain separately granted access. No harassment, deceptive impersonation or private-information disclosure.",
       "coordinates": [
         "heraldry",
         "intake",
         "media"
       ],
       "chapter": "organisation-and-offices"
+    },
+    {
+      "id": "systems-heraldry",
+      "title": "Systems & Heraldry",
+      "parent": "council",
+      "relation": "accountability",
+      "kind": "High Council portfolio",
+      "icon": "herald",
+      "remit": "Sets technical stewardship, recovery and release evidence standards, and maintains the guild’s standards for arms, insignia, titles and attribution. Systems operators keep their own access grants; the Herald leads campaigns and the Seneschal directs court protocol.",
+      "limits": "The portfolio sets standards. Deployment, credential custody, publication and appointments require their own authority.",
+      "coordinates": [
+        "systems",
+        "heraldry",
+        "propaganda"
+      ],
+      "chapter": "title-ii-the-high-council-co-guild-master-privy-court"
     }
   ],
   "termGroups": [
@@ -1881,7 +1910,7 @@
       "applicationTrack": "high_council",
       "applicationEligible": true,
       "statusOverlay": false,
-      "acquisition": "Case-designated judicial institution; chaired by the Lord High Chancellor, with accepted unconflicted members.",
+      "acquisition": "Case-designated judicial institution. The Lord High Justiciar directs procedure. Panel members must be designated and unconflicted.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "applicationAliases": [
         "Head of Justice",
@@ -4418,11 +4447,12 @@
       "statusOverlay": false,
       "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
-      "applicationAliases": [
-        "Lord High Chancellor / Head of Justice"
-      ],
+      "applicationAliases": [],
       "applicationLabel": "Lord High Justiciar · Minister of Justice & The Privy Court",
-      "applicationRoleKeys": []
+      "applicationRoleKeys": [],
+      "historicalOfficeLabels": [
+        "Head of Justice, formerly styled Lord High Chancellor"
+      ]
     },
     {
       "ordinal": 102,
@@ -4458,6 +4488,38 @@
         "Chief Propagandist"
       ],
       "applicationLabel": "Lord High Herald · Minister of Propaganda",
+      "applicationRoleKeys": []
+    },
+    {
+      "ordinal": 103,
+      "label": "Systems & Heraldry",
+      "classification": "portfolios",
+      "nodeId": "systems-heraldry",
+      "note": "Sets technical stewardship, recovery and release evidence standards, and maintains the guild’s standards for arms, insignia, titles and attribution. Systems operators keep their own access grants; the Herald leads campaigns and the Seneschal directs court protocol.",
+      "nativeSlot": 1,
+      "nativeRelationship": "High Council portfolio associated with native slot 1.",
+      "recommendedNativeSlots": [
+        1
+      ],
+      "nativeMappingNote": "Reserved Council appointment. Platform access follows separate authorization.",
+      "mappingApplies": false,
+      "officeKey": "office_103",
+      "nativeRankOrdinal": 2,
+      "nativeRankName": "High Council",
+      "tier": "high_council",
+      "tierLabel": "High Council",
+      "codexTitles": [
+        "II",
+        "V"
+      ],
+      "department": "Systems & Heraldry",
+      "applicationTrack": "high_council",
+      "applicationEligible": false,
+      "statusOverlay": false,
+      "acquisition": "Reserved Council appointment by accepted warrant.",
+      "discordPortal": "Any platform or publication access requires a separate grant.",
+      "applicationAliases": [],
+      "applicationLabel": "Systems & Heraldry",
       "applicationRoleKeys": []
     }
   ],
@@ -4888,6 +4950,13 @@
       "duty": "Set accurate, distinctive guild campaigns and recruitment storytelling.",
       "output": "A dated editorial calendar, approved creative briefs and measured campaign results.",
       "boundary": "No fabricated claims, harassment, private-data disclosure, moderation powers or paid membership promises."
+    },
+    {
+      "nodeId": "systems-heraldry",
+      "title": "Systems & Heraldry",
+      "duty": "Sets technical stewardship, recovery and release evidence standards, and maintains the guild’s standards for arms, insignia, titles and attribution. Systems operators keep their own access grants; the Herald leads campaigns and the Seneschal directs court protocol.",
+      "output": "A reviewed systems inventory, release and recovery standards, and a register of approved heraldic marks and sources.",
+      "boundary": "A warrant to set standards grants no credential, platform write or publishing permission."
     }
   ],
   "currentOwnerDirection": {
@@ -5069,8 +5138,8 @@
     "schema": "olympus-role-rank-199/v1",
     "ownerConfirmedSlotBase": "zero-based",
     "nativeApplied": false,
-    "officeCount": 102,
-    "assignableKeyCount": 138,
+    "officeCount": 103,
+    "assignableKeyCount": 139,
     "availability": "This static register lists application routes, not vacancies. Current appointed/withheld holders and eligibility are checked by the portal; no seat is claimed open here.",
     "historicalProfileNote": "The beta-five observation and older ten-rank drafts are preserved as historical evidence, not competing current recommendations. Native adoption and key-signing profiles remain separately unverified."
   },
@@ -5943,7 +6012,7 @@
         "office_26"
       ],
       "statusOverlay": false,
-      "acquisition": "Case-designated judicial institution; chaired by the Lord High Chancellor, with accepted unconflicted members.",
+      "acquisition": "Case-designated judicial institution. The Lord High Justiciar directs procedure. Panel members must be designated and unconflicted.",
       "discordPortal": "High Council access requires a separately verified current appointment; no automatic signing, bank or portal access.",
       "cabinetSeatId": "head-justice",
       "ministry": "Council of Justice",
@@ -8442,9 +8511,7 @@
       "applicationTrack": "high_council",
       "applicationEligible": false,
       "applicationLabel": "Lord High Justiciar · Minister of Justice & The Privy Court",
-      "applicationAliases": [
-        "Lord High Chancellor / Head of Justice"
-      ],
+      "applicationAliases": [],
       "applicationRoleKeys": [],
       "statusOverlay": false,
       "acquisition": "Reserved appointment by the authorized guild leadership; public applications are not accepted.",
@@ -8492,6 +8559,38 @@
         1
       ],
       "nativeMappingNote": "A reserved Council portfolio; the title alone confers no vote, appointment or actual permission.",
+      "mappingApplies": false
+    },
+    {
+      "key": "office_103",
+      "label": "Systems & Heraldry",
+      "group": "office",
+      "termOrdinal": 103,
+      "nativeRankOrdinal": 2,
+      "nativeSlot": 1,
+      "nativeRankName": "High Council",
+      "tier": "high_council",
+      "tierLabel": "High Council",
+      "codexTitles": [
+        "II",
+        "V"
+      ],
+      "department": "Systems & Heraldry",
+      "applicationTrack": "high_council",
+      "applicationEligible": false,
+      "applicationLabel": "Systems & Heraldry",
+      "applicationAliases": [],
+      "applicationRoleKeys": [],
+      "statusOverlay": false,
+      "acquisition": "Reserved Council appointment by accepted warrant.",
+      "discordPortal": "Any platform or publication access requires a separate grant.",
+      "cabinetSeatId": "systems-heraldry",
+      "ministry": "Systems & Heraldry",
+      "councilSeat": "Systems & Heraldry",
+      "recommendedNativeSlots": [
+        1
+      ],
+      "nativeMappingNote": "Reserved Council appointment. Platform access follows separate authorization.",
       "mappingApplies": false
     },
     {
@@ -9716,7 +9815,7 @@
       "id": "high_council",
       "label": "High Council Application",
       "rankPath": "Rank 2 High Council",
-      "description": "Reserved historical category; not open for applications. Hand of the Sovereign · Co-Guild Master; Lord High Treasurer · Minister of the Imperial Exchequer; Lord High Justiciar · Minister of Justice & The Privy Court; Lord High Marshal of PvE · Minister of Raid Campaigns; Lord High Marshal of PvP · Minister of Battlegrounds & Honor; Lord High Inquisitor · Minister of Internal Security; Lord High Chancellor · Minister of the Chancery & Imperial Census; Lord High Legate · Minister of the Grand Concordat; Lord High Artificer · Minister of Artisanry & The Guild Workshop; Lord High Herald · Minister of Propaganda; Lord High Seneschal · Minister of Court Protocol & Crown Estates; Lord High Factor · Minister of Trading & Markets. Every appointment and permission requires separate review."
+      "description": "Reserved historical category; not open for applications. Hand of the Sovereign · Co-Guild Master; Lord High Treasurer · Minister of the Imperial Exchequer; Lord High Justiciar · Minister of Justice & The Privy Court; Lord High Marshal of PvE · Minister of Raid Campaigns; Lord High Marshal of PvP · Minister of Battlegrounds & Honor; Lord High Inquisitor · Minister of Internal Security; Lord High Chancellor · Minister of the Chancery & Imperial Census; Lord High Legate · Minister of the Grand Concordat; Lord High Artificer · Minister of Artisanry & The Guild Workshop; Lord High Herald · Minister of Propaganda; Lord High Seneschal · Minister of Court Protocol & Crown Estates; Lord High Factor · Minister of Trading & Markets; Systems & Heraldry. Every appointment and permission requires separate review."
     },
     {
       "id": "patron",
@@ -9727,7 +9826,7 @@
   ],
   "cabinet218": {
     "schema": "olympus-cabinet218/v1",
-    "seatCount": 12,
+    "seatCount": 13,
     "nativeRankCount": 10,
     "permissionsApplied": false,
     "offices": {
@@ -10828,6 +10927,17 @@
         "seatLabel": "Lord High Herald · Minister of Propaganda",
         "ministryId": "propaganda",
         "ministry": "Ministry of Propaganda",
+        "codexTitles": [
+          "II",
+          "V"
+        ],
+        "independentReview": false
+      },
+      "office_103": {
+        "seatId": "systems-heraldry",
+        "seatLabel": "Systems & Heraldry",
+        "ministryId": "systems-heraldry",
+        "ministry": "Systems & Heraldry",
         "codexTitles": [
           "II",
           "V"

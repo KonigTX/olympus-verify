@@ -162,7 +162,16 @@ async function detailRenderRegression() {
   pick(mortal.name).focus();
   check('real present cost and prerequisite fields remain readable without allocating a locked talent or mutating the snapshot', byClass(detail(), 'talents-cost')[0].textContent === mortal.cost && byClass(detail(), 'talents-requires')[0].textContent === 'Requires ' + parent.name + ' at maximum rank.' && detail().textContent.includes(mortal.descriptions[0]) && !detail().textContent.includes('null') && changes.at(-1).points === 3 && initialJSON === JSON.stringify(data));
   const classButtons = () => byClass(container, 'talents-class-button');
-  check('the real class strip exposes all 9 labelled icon controls and three current spec-point bars', classButtons().length === 9 && classButtons().every((button, index) => button.textContent === data.classes[index].name && button.all(node => node.tagName === 'IMG')[0].getAttribute('src') === art.classIcons[data.classes[index].id]) && byClass(container, 'talents-class-banner')[0].textContent.includes('Warrior') && byClass(container, 'talents-spec-bars')[0].all(node => node.tagName === 'METER').length === 3);
+  const displayClassIds = ['druid', 'hunter', 'mage', 'paladin', 'priest', 'rogue', 'shaman', 'warlock', 'warrior'];
+  check('the class strip and picker alphabetize all nine classes and preserve the correct icons and current spec bars',
+    classButtons().length === displayClassIds.length && classButtons().every((button, index) => {
+      const classId = displayClassIds[index];
+      return button.textContent === data.classes.find(cls => cls.id === classId).name
+        && button.all(node => node.tagName === 'IMG')[0].getAttribute('src') === art.classIcons[classId];
+    }) && container.all(node => node.getAttribute('aria-label') === 'Character class')[0]
+      .all(node => node.tagName === 'OPTION').map(node => node.getAttribute('value')).join() === displayClassIds.join()
+    && byClass(container, 'talents-class-banner')[0].textContent.includes('Warrior')
+    && byClass(container, 'talents-spec-bars')[0].all(node => node.tagName === 'METER').length === 3);
   check('the compact tree uses all 52 real talent icons, three header images and three painted backdrops without fake sigils or extra point rows', byClass(container, 'talents-pick').length === 52 && byClass(container, 'talents-pick').every((button, index) => button.all(node => node.tagName === 'IMG')[0].getAttribute('src') === art.talentIcons[all(data.classes[0])[index].id]) && byClass(container, 'talents-tree-header').every((header, index) => header.all(node => node.tagName === 'IMG')[0].getAttribute('src') === art.treeIcons['warrior-' + data.classes[0].trees[index].id]) && byClass(container, 'talents-backdrop').every((image, index) => image.getAttribute('src') === art.treeBackgrounds['warrior-' + data.classes[0].trees[index].id]) && byClass(container, 'talents-point-controls').length === 0 && !source.includes('talents-sigil'));
   const requirements = all(data.classes[0]).filter(talent => talent.requires), edges = byClass(container, 'talents-link');
   check('every real prerequisite has a behind-grid connection bound to its actual parent row and child position', edges.length === requirements.length && edges.every((edge, index) => { const child = requirements[index], prior = all(data.classes[0]).find(talent => talent.id === child.requires); return edge.className.includes('from-r' + prior.row) && edge.className.includes('to-r' + child.row) && edge.className.includes('to-c' + child.column) && edge.className.includes('span-r' + (child.row - prior.row)); }) && css.includes('.talents-links{position:absolute;z-index:1;') && css.includes('.talents-node{position:relative;z-index:2;'));
@@ -231,6 +240,9 @@ async function detailRenderRegression() {
   check('the actual Reset control clears an invested build while retaining class and snapshot data', changes.at(-2).points === 1 && changes.at(-1).points === 0 && changes.at(-1).className === 'paladin' && initialJSON === JSON.stringify(data));
   const importedContainer = document.createElement('main');
   const imported = await browserModule.exports.mount(importedContainer, { className: 'warrior', build: code });
+  check('a shared build identifies the beta snapshot and links the newer Blizzard notes', importedContainer.textContent.includes('16 October beta talent snapshot')
+    && importedContainer.all(node => node.tagName === 'A').some(link => link.textContent === "Blizzard's 2 November notes"
+      && link.getAttribute('href') === 'https://us.forums.blizzard.com/en/wow/t/2360696/9'));
   check('the real image renderer imports the unchanged exact build without re-reading or mutating its data', byClass(importedContainer, 'talents-share-code')[0].getAttribute('value') === code && api.validateBuild(data, api.parseBuild(data, code).build).points === 16 && reads === 2 && initialJSON === JSON.stringify(data));
   imported.destroy();
   pick(paladinFirst.name).dispatch('pointerenter'); pick(paladinFirst.name).parentNode.dispatch('pointerleave', { relatedTarget: null });
@@ -618,11 +630,11 @@ async function detailRenderRegression() {
     && left196(21) && meters196(21) && stable196() && initialJSON === JSON.stringify(data));
   levelMount196.destroy();
   const unknownHostN03=document.createElement('main'),unknownChangesN03=[],unknownControllerN03=await browserModule.exports.mount(unknownHostN03,{className:'no_such_class',onBuildChange:value=>unknownChangesN03.push(value)});
-  const classButtonsN03=()=>byClass(unknownHostN03,'talents-class-button'),classKeysN03=['warrior','paladin','hunter','rogue','priest','shaman','mage','warlock','druid'];
+  const classButtonsN03=()=>byClass(unknownHostN03,'talents-class-button'),classKeysN03=displayClassIds;
   check('.218 an unavailable linked class exposes one real heading and all nine choices with an explicit blank default and no automatic change callback',
     unknownHostN03.all(node=>node.tagName==='H1').length===1&&unknownHostN03.all(node=>node.tagName==='H1')[0].textContent==='Olympus · Forever talents'
     &&classButtonsN03().length===9&&classButtonsN03().map(node=>node.getAttribute('data-class')).join('|')===classKeysN03.join('|')
-    &&classButtonsN03().filter(node=>node.getAttribute('aria-pressed')==='true').length===1&&classButtonsN03()[0].getAttribute('aria-pressed')==='true'
+    &&classButtonsN03().filter(node=>node.getAttribute('aria-pressed')==='true').length===1&&classButtonsN03().find(node=>node.getAttribute('data-class')==='warrior').getAttribute('aria-pressed')==='true'
     &&byClass(unknownHostN03,'talents-tree').length===3&&byClass(unknownHostN03,'talents-feedback')[0].textContent==='That linked class is unavailable. Showing a blank Warrior plan; choose a supported class below.'
     &&unknownChangesN03.length===0&&initialJSON===JSON.stringify(data));
   classButtonsN03().find(node=>node.getAttribute('data-class')==='paladin').click();
@@ -644,7 +656,7 @@ async function detailRenderRegression() {
     &&byClass(invalidHostN03,'talents-tool')[0].getAttribute('data-class')==='warrior'&&invalidHostN03.all(node=>node.tagName==='H1').length===1
     &&byClass(invalidHostN03,'talents-class-button').length===9&&byClass(invalidHostN03,'talents-class-button').map(node=>node.getAttribute('data-class')).join('|')===classKeysN03.join('|')
     &&byClass(invalidHostN03,'talents-class-button').filter(node=>node.getAttribute('aria-pressed')==='true').length===1
-    &&byClass(invalidHostN03,'talents-class-button')[0].getAttribute('aria-pressed')==='true'&&invalidChangesN03.length===0&&initialJSON===JSON.stringify(data));
+    &&byClass(invalidHostN03,'talents-class-button').find(node=>node.getAttribute('data-class')==='warrior').getAttribute('aria-pressed')==='true'&&invalidChangesN03.length===0&&initialJSON===JSON.stringify(data));
   invalidControllerN03.destroy();
   const staleClassN03=classButtonsN03().find(node=>node.getAttribute('data-class')==='mage'),beforeDisposedN03=unknownChangesN03.length;
   unknownControllerN03.destroy();staleClassN03.click();sharedControllerN03.destroy();
