@@ -2894,9 +2894,11 @@ function originalTerms218(terms) {
  });
 }
       const digest = value => require("node:crypto").createHash("sha256").update(JSON.stringify(value)).digest("hex"), trading = model.terms[95];
+      const readerNodes = require("./governance_reader_nodes228_fixture.cjs").originalReaderNodes228(model.nodes);
+      if (!readerNodes) return false;
       return modelResponse.status === 200 && modelResponse.headers.get("Cache-Control") === "private, no-store, no-transform" && model.revision === "R7" && model.draft === false && model.ratified === true && model.appointmentsIssued === false
         && model.nodes.length === 43 && nodes.size === 43 && model.terms.length === 103 && new Set(model.terms.map(term => term.label)).size === 103 && model.nativeRanks.length === 10 && model.officeMandates.length === 43
-        && digest(require("../../scripts/governance-cabinet224-inverse.cjs").restoreCabinet224(model.nodes,"nodes").filter(node => !["trading","security","concordat","propaganda","systems-heraldry"].includes(node.id)).map(node=>node.id==="intake"?{...node,parent:"heraldry"}:node.id==="systems"?JSON.parse(fs.readFileSync(path.join(root,"../docs/governance-nodes222.json"),"utf8")).systemsBefore:node)) === "62fd12faf62b8529a8679a80a1ee278e2422048502c01738ac2fe7286c677ddf"
+        && digest(require("../../scripts/governance-cabinet224-inverse.cjs").restoreCabinet224(readerNodes,"nodes").filter(node => !["trading","security","concordat","propaganda","systems-heraldry"].includes(node.id)).map(node=>node.id==="intake"?{...node,parent:"heraldry"}:node.id==="systems"?JSON.parse(fs.readFileSync(path.join(root,"../docs/governance-nodes222.json"),"utf8")).systemsBefore:node)) === "62fd12faf62b8529a8679a80a1ee278e2422048502c01738ac2fe7286c677ddf"
         && digest(require("../../scripts/governance-cabinet224-inverse.cjs").restoreCabinet224(model.officeMandates,"officeMandates").filter(office => !["trading","security","concordat","propaganda","systems-heraldry"].includes(office.nodeId))) === "ae968c007def93478c0bfac5e51169f9a3f4bd62d7abddaaa624210aa267ae2c"
         && digest(originalTerms218(model.terms.slice(0, 95))) === "74fb4f44153a550b7b306789763e73932393e96124d781572c6d2db5c9b87d3b"
         && model.book.bytes === 273507 && model.book.sha256 === "fb6816b77507c2855f45511a32d1b46fbdcab804965e78a3650eb6f071684cac"
