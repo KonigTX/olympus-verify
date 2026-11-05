@@ -1,0 +1,45 @@
+{
+  "schema": "treasury228-static-tier-inverse-v1",
+  "current": {
+    "bytes": 35574,
+    "sha256": "a7ff7f6351229447fe872b7c869b87ef57a5a47f9e288900fd31417bfc8217b8"
+  },
+  "historical224": {
+    "bytes": 34575,
+    "sha256": "1a474a6fc2a0248b3c74fe73b34c47c9845bc036042b9315f519b5e36a2859f0"
+  },
+  "contexts": [
+    {
+      "from": "import { ROYAL_WRIT_POLICY } from './royal-writs199';\n",
+      "to": ""
+    },
+    {
+      "from": "type TierKey = RoleKey | 'archFinancier' | 'imperialTreasuryHand';\ntype TreasuryTier = Readonly<{ key: RoleKey; label: string; copper: number; ceremonial: false }\n  | { key: Exclude<TierKey, RoleKey>; label: string; copper: number; ceremonial: true }>;\nexport const TREASURY_TIERS: readonly TreasuryTier[] = Object.freeze(([\n  { key: 'tithePayer', label: 'Tithe Payer', copper: 250000, ceremonial: false },\n  { key: 'patron', label: 'Patron of the Treasury', copper: 1000000, ceremonial: false },\n  { key: 'benefactor', label: 'Benefactor of Olympus', copper: 5000000, ceremonial: false },\n  { key: 'archFinancier', label: 'Arch-Financier of Olympus', copper: 10000000, ceremonial: true },\n  { key: 'imperialTreasuryHand', label: 'Hand of the Imperial Treasury', copper: 25000000, ceremonial: true },\n] satisfies TreasuryTier[]).map(tier => Object.freeze(tier)));\nconst ROLE_TIERS = TREASURY_TIERS.filter(tier => !tier.ceremonial);\n",
+      "to": "export const TREASURY_TIERS: readonly Readonly<{ key: RoleKey; label: string; copper: number }>[] = Object.freeze([{ key: 'tithePayer', label: 'Tithe Payer', copper: 250000 }, { key: 'patron', label: 'Patron of the Treasury', copper: 1000000 }, { key: 'benefactor', label: 'Benefactor of Olympus', copper: 5000000 }].map(t => Object.freeze(t as { key: RoleKey; label: string; copper: number })));\n"
+    },
+    {
+      "from": "export function treasuryTier(totalCopper: number): TierKey | null { if (!Number.isSafeInteger(totalCopper) || totalCopper < 0) return fail('treasury_amount'); return [...TREASURY_TIERS].reverse().find(t => totalCopper >= t.copper)?.key ?? null; }\n",
+      "to": "export function treasuryTier(totalCopper: number): RoleKey | null { if (!Number.isSafeInteger(totalCopper) || totalCopper < 0) return fail('treasury_amount'); return [...TREASURY_TIERS].reverse().find(t => totalCopper >= t.copper)?.key ?? null; }\n"
+    },
+    {
+      "from": "    return ROLE_TIERS.map(t => [config.roles[t.key], t.label] as const);\n",
+      "to": "    return TREASURY_TIERS.map(t => [config.roles[t.key], t.label] as const);\n"
+    },
+    {
+      "from": "      return apiJson({discordId:a.target.id,mailReference:reference,recipient:ROYAL_WRIT_POLICY.recipient,seasonStartsAt:a.config.seasonStartsAt,seasonEndsAt:a.config.seasonStartsAt+TREASURY_WINDOW_SECONDS,tiers:TREASURY_TIERS.map(t=>({key:t.key,label:t.label,gold:t.copper/10000,ceremonial:t.ceremonial})),note:'The mail reference is a lookup aid, never proof that extra gold was received.'});\n",
+      "to": "      return apiJson({discordId:a.target.id,mailReference:reference,recipient:'Fernmelder',seasonStartsAt:a.config.seasonStartsAt,seasonEndsAt:a.config.seasonStartsAt+TREASURY_WINDOW_SECONDS,tiers:TREASURY_TIERS.map(t=>({key:t.key,label:t.label,gold:t.copper/10000})),note:'The mail reference is a lookup aid, never proof that extra gold was received.'});\n"
+    },
+    {
+      "from": "      const seasonOpen = now() >= a.config.seasonStartsAt && now() < a.config.seasonStartsAt + TREASURY_WINDOW_SECONDS;\n      const tier = recognitionConsent && seasonOpen ? treasuryTier(a.total) : null;\n      const tierInfo = TREASURY_TIERS.find(t => t.key === tier);\n      // Apex eligibility is ceremonial. The highest configured Discord colour still applies.\n      const discordColourTier = tierInfo?.ceremonial ? 'benefactor' : tierInfo?.key ?? null;\n      const desired = discordColourTier ? a.config.roles[discordColourTier] : null;\n",
+      "to": "      const seasonOpen = now() >= a.config.seasonStartsAt && now() < a.config.seasonStartsAt + TREASURY_WINDOW_SECONDS, tier = recognitionConsent && seasonOpen ? treasuryTier(a.total) : null, desired = new Set(tier ? [a.config.roles[tier]] : []);\n"
+    },
+    {
+      "from": "      const nonce = randomToken(), changes = await Promise.all(ROLE_TIERS.filter(t => held.includes(a.config.roles[t.key]) !== (a.config.roles[t.key] === desired)).map(async t => ({ operationId: (await hash(JSON.stringify([TREASURY_PURPOSE, nonce, a.config.roles[t.key]]))).slice(0, 32), roleId: a.config.roles[t.key], label: t.label, desired: a.config.roles[t.key] === desired ? 1 : 0 })));\n",
+      "to": "      const nonce = randomToken(), changes = await Promise.all(ROLE_KEYS.filter(k => held.includes(a.config.roles[k]) !== desired.has(a.config.roles[k])).map(async k => ({ operationId: (await hash(JSON.stringify([TREASURY_PURPOSE, nonce, a.config.roles[k]]))).slice(0, 32), roleId: a.config.roles[k], label: TREASURY_TIERS.find(t => t.key === k)!.label, desired: desired.has(a.config.roles[k]) ? 1 : 0 })));\n"
+    },
+    {
+      "from": "      return apiJson({ token, recognitionConsent, recognitionMode, expiresAt: a.expires, tier, tierLabel: tierInfo?.label ?? null, ceremonial: tierInfo?.ceremonial ?? false, discordColourTier, qualifyingGold: a.total / 10000, seasonStartsAt: a.config.seasonStartsAt, seasonEndsAt: a.config.seasonStartsAt + TREASURY_WINDOW_SECONDS, changes, liveEffectClaimed: false, dispatchEnabled: env.TREASURY_COSMETIC_ENABLED === 'true' });\n",
+      "to": "      return apiJson({ token, recognitionConsent, recognitionMode, expiresAt: a.expires, tier, qualifyingGold: a.total / 10000, seasonStartsAt: a.config.seasonStartsAt, seasonEndsAt: a.config.seasonStartsAt + TREASURY_WINDOW_SECONDS, changes, liveEffectClaimed: false, dispatchEnabled: env.TREASURY_COSMETIC_ENABLED === 'true' });\n"
+    }
+  ]
+}

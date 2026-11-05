@@ -74,7 +74,9 @@ function apply(b,op){try{op(b);return 'ok';}catch(e){return 'throw:'+e.message;}
  check('role-rank-continuation.ts is byte-identical to the reviewed .163 integrated source',sha(src('role-rank-continuation.ts'))==='bf4a2926770bf44af674e7a2ddc6f9b5c029960aaeca66a30947730d9d296561');
  check('.227 static inverse binds all four whole current sources and refuses unrelated/context/line-ending drift',Object.values(source227.checks(path.join(root,'src'))).every(Boolean));
  check('roles.ts reconstructs byte-identical reviewed .163 integrated source through the exact finite .227 inverse',sha(source227.inverse('roles',src('roles.ts'))??'')==='0fb851d804ddb97594a8b4109db3fad46a3f88df8c65475b63f2c79dbf89f6f8');
- const {sources211,discord222,branch224,drift224}=source227.withStaticView(path.join(root,'src'),view=>({
+ const treasury228=require('./source228-treasury-tier-projection.cjs');
+ check('.228 Treasury tier inverse binds the exact current and .224 sources and refuses unrelated changes',Object.values(treasury228.checks(path.join(root,'src'))).every(Boolean));
+ const {sources211,discord222,branch224,drift224}=treasury228.withStaticView(path.join(root,'src'),view=>({
   sources211:source211.sourceChecks(view,{files:{'role-settlements':'04bf328c854d60033a604e1f8b0e8d26712d3ec40b521985732a723a6d1c5672','privacy-global-serving-origin':'89053632c43fec4e5fd05cc82749ea3362f2907b1a58adee8d1f27e9fd2397ca'}}),
   discord222:require('./source222-discord-type-projection.cjs').checks(view),branch224:require('./source224-branch-name-projection.cjs').checks(view),drift224:require('./source224-branch-name-projection.cjs').driftControls224(view),
  }));

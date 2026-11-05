@@ -412,7 +412,9 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
   const recoverySources=recovery217.sourceChecks(SRC);
   check('.217 recovery successor binds the exact current interactions source',Object.values(recoverySources).every(Boolean),recoverySources);
   check('.227 static inverse binds all four whole current sources and refuses unrelated/context/line-ending drift',Object.values(source227.checks(SRC)).every(Boolean));
-  const {sources211,discord222,branch224,drift224}=source227.withStaticView(SRC,view=>({
+  const treasury228=require('./source228-treasury-tier-projection.cjs');
+  check('.228 Treasury tier inverse binds the exact current and .224 sources and refuses unrelated changes',Object.values(treasury228.checks(SRC)).every(Boolean));
+  const {sources211,discord222,branch224,drift224}=treasury228.withStaticView(SRC,view=>({
     sources211:source211.sourceChecks(view,PINS),discord222:require('./source222-discord-type-projection.cjs').checks(view),
     branch224:require('./source224-branch-name-projection.cjs').checks(view),drift224:require('./source224-branch-name-projection.cjs').driftControls224(view),
   }));
