@@ -155,7 +155,7 @@ const ephemeral = (r) => r.status === 200 && r.body.type === 4 && r.body.data.fl
   let p = await preview();
   const ids = p.payload.components[0].components.map((c) => c.custom_id ?? c.url).join("|");
   check("the preview payload carries one action row: three sign-up buttons bound to the event and its revision, the Remind me toggle (stage 2) and the site link",
-    Array.isArray(p.payload.components) && p.payload.components.length === 1 && p.payload.components[0].type === 1 && ids === `raid:rsvp:${EVENT}:1:yes|raid:rsvp:${EVENT}:1:tentative|raid:rsvp:${EVENT}:1:no|raid:remind:${EVENT}:1|https://guild.example/#/community/calendar/${EVENT}`
+    Array.isArray(p.payload.components) && p.payload.components.length === 1 && p.payload.components[0].type === 1 && ids === `raid:rsvp:${EVENT}:1:yes|raid:rsvp:${EVENT}:1:tentative|raid:rsvp:${EVENT}:1:no|raid:remind:${EVENT}:1|https://guild.example/?to=${encodeURIComponent("community/calendar/" + EVENT)}`
     && p.payload.components[0].components.every((c) => c.type === 2 && typeof c.label === "string") && p.payload.components[0].components[4].style === 5 && p.payload.allowed_mentions.parse.length === 0 && !JSON.stringify(p).includes("PRIVATE_"), JSON.stringify(p.payload));
   const hash1 = p.payloadHash;
   let r = await publish();
