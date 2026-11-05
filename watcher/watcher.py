@@ -1284,7 +1284,13 @@ class Watcher:
                     self.record_treasury_receipt(receipt, "savedvariables")
         self.note_saved_relay(db, mtime)
         self.forward_events(db.get("events") or [])
-        self.forward_roster(db.get("roster") or {})
+        control = self.valid_launch_control(db)
+        new_scan = (control is not None and control['action'] == 'scan'
+                    and not self.state.was_seen("launch-control:" + control['guid'] + ":" + control['id']))
+        if new_scan:
+            self.forward_roster(db.get("roster") or {}, begin_launch_scan=True)
+        else:
+            self.forward_roster(db.get("roster") or {})
         self.read_launch_control(db)
         self.state.d["sv_mtime"] = mtime
         self.state.save()
@@ -1378,12 +1384,12 @@ class Watcher:
             self._stale_reported = True
             log(f"SavedVariables: {stale} join/departure event(s) older than {SV_EVENT_MAX_AGE // 3600} h not relayed (the roster export has settled them)")
 
-    def forward_roster(self, roster: dict[str, Any]) -> None:
+    def forward_roster(self, roster: dict[str, Any], *, begin_launch_scan: bool = False) -> None:
         digest = launch_operations229.complete_roster_digest(roster)
         accepted = self._launch_accepted_roster
         first = self.launch_scan.pages.get(0)
         at = time.time()
-        if (self.membership_only and digest is not None and accepted is not None and first is not None
+        if (not begin_launch_scan and self.membership_only and digest is not None and accepted is not None and first is not None
                 and self.launch_scan.stopped is None and at < first['scan']['expiresAt']
                 and first['snapshotId'] == accepted['snapshot'] and first['snapshotAt'] == accepted['exportedAt']
                 and first['snapshotAt'] == self.state.d['roster_sent'] and digest == accepted['digest']
@@ -1552,18 +1558,24 @@ class Watcher:
         if queued:
             self.retry_queue_written()
 
-    def read_launch_control(self, db: dict[str, Any]) -> None:
+    def valid_launch_control(self, db: dict[str, Any]) -> dict[str, Any] | None:
         if not self.membership_only or self._custody_halted:
-            return
+            return None
         roster = db.get("roster")
         control = db.get("launchControl")
         at = int(time.time())
         if not isinstance(roster, dict):
-            return
+            return None
         own = saved_character(db)
         if (not own or codes.normalize_character(own) != codes.normalize_character(self.officer)
                 or not isinstance(roster.get("exportedAt"), (int, float)) or not 0 <= at-roster["exportedAt"] <= 600
                 or not launch_operations229.validate_control(self.secret, control, at, db.get("lastCharacterGuid"), roster.get("nativeGuild"), roster.get("nativeRealm"))):
+            return None
+        return control
+
+    def read_launch_control(self, db: dict[str, Any]) -> None:
+        control = self.valid_launch_control(db)
+        if control is None:
             return
         key = "launch-control:" + control["guid"] + ":" + control["id"]
         if self.state.was_seen(key):
@@ -1571,7 +1583,19 @@ class Watcher:
         # Spend the explicit local request before its first read. Restart never resumes a role scan.
         self.state.seen(key)
         self.state.save()
+        if control['action'] == 'scan':
+            roster = db['roster']
+            accepted = self._launch_accepted_roster
+            if (accepted is None or accepted['exportedAt'] != roster.get('exportedAt')
+                    or accepted['exportedAt'] != self.state.d['roster_sent']
+                    or accepted['digest'] != launch_operations229.complete_roster_digest(roster)):
+                self.launch_scan._stop('native-roster-receipt-required')
+                self.launch_scan.control_id = control['id']
+                self.write_launch_operations()
+                return
         if self.launch_scan.request(control, time.time()):
+            if control['action'] == 'scan':
+                self.launch_scan.expected_snapshot = (accepted['snapshot'],accepted['exportedAt'])
             self.write_launch_operations()
 
     def write_launch_operations(self) -> None:

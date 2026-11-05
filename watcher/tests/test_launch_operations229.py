@@ -24,7 +24,7 @@ def page(at, offset=0, total=20, started=None):
                 snapshotId=12, snapshotAt=started - 10, memberCount=total, guild=guild, canonicalGuild=guild, realm=realm,
                 scan=dict(id='a'*32, startedAt=started, expiresAt=started+590), pageCursor='page-'+str(offset),
                 scopeHash=hashlib.sha256(f'native-scope|1|{guild}|{realm}'.encode()).hexdigest()[:16],
-                entitlements=dict(offset=offset, pageSize=20, scanned=20, total=total, unscanned=max(0, total-offset-20), retryAfterSeconds=None),
+                entitlements=dict(offset=offset, pageSize=20, scanned=min(20,max(0,total-offset)), total=total, unscanned=max(0, total-offset-20), retryAfterSeconds=None),
                 nextCursor=None if last else 'opaque-cursor-' + str(offset + 20), invites=[],
                 promotions=[dict(guid=f'Player-1-{offset+1:08X}', name='Test Member', currentSlot=9, targetSlot=7, reason='verified-initiate')],
                 riskBuffer=[], held=[], heldReasons=['native-unguilded-proof-required'],
@@ -75,17 +75,26 @@ class LaunchOperations(unittest.TestCase):
             return True, page(int(self.clock), offset, total, self.at)
         return scan, call, calls
 
-    def test_full_1000_scan_50_pages_plus_three_refreshes(self):
+    def test_full_1000_scan_50_pages_plus_fifty_explicit_refresh_attempts(self):
         scan, call, calls = self.scan(1000)
         self.assertTrue(scan.step(call, self.clock))
         self.assertFalse(scan.step(call, self.clock+1))
-        for _ in range(52):
+        for _ in range(49):
             self.clock += 5
             self.assertTrue(scan.step(call, self.clock))
-        self.assertEqual((len(calls), len(scan.pages), scan.refreshed, scan.complete, scan.phase), (53, 50, 3, True, 'idle'))
+        self.assertEqual((len(calls), len(scan.pages), scan.refreshed, scan.complete, scan.phase), (50, 50, 0, True, 'idle'))
+        self.assertFalse(scan.step(call, self.clock+5))  # discovery never allocates automatic refreshes
+        original_scan = copy.deepcopy(scan.pages[0]['scan'])
+        self.assertLess(scan.pages[0]['expiresAt'], self.clock)
+        for index in range(50):
+            self.clock += 5
+            self.assertTrue(scan.request(dict(action='recheck',offset=index*20,id=str(index),scopeHash=page(self.at)['scopeHash']),self.clock))
+            self.assertTrue(scan.step(call,self.clock))
+            self.assertEqual(scan.pages[index*20]['scan'],original_scan)
+        self.assertEqual((len(calls),scan.refreshed,scan.calls),(100,50,100))
+        self.assertFalse(scan.request(dict(action='recheck',offset=0,id='exhausted',scopeHash=page(self.at)['scopeHash']),self.clock+5))
         self.assertLess(self.clock-self.at, 600)
-        self.assertLess(scan.pages[0]['fetchedAt'], scan.pages[40]['fetchedAt'])
-        self.assertLess(scan.pages[980]['fetchedAt'], scan.pages[0]['fetchedAt'])
+        self.assertLess(scan.pages[0]['fetchedAt'], scan.pages[980]['fetchedAt'])
         self.assertLess(scan.pages[60]['expiresAt'], self.clock)  # retained advisory, never renewed by other pages
         body = launch.render_pages(scan.result(), int(self.clock))
         self.assertIn('OlympusLaunchQueue=', body)
@@ -137,13 +146,18 @@ class LaunchOperations(unittest.TestCase):
             instance.queue_file.parent.mkdir(parents=True)
             instance.queue_file.write_text('LEGACY UNCHANGED')
             calls = []
-            instance.worker.call = lambda method, path, body=None, retries=3: (calls.append((method, path, body)) or (True, page(self.at)))
+            def call(method,path,body=None,retries=3):
+                if method == 'POST': return True,dict(snapshot=12,members=len(body['members']),trusted=True)
+                calls.append((method,path,body));return True,page(self.at)
+            instance.worker.call = call
             instance.pull_launch_operations()
             self.assertEqual(calls, [])  # no explicit request, no role fetch
             control = dict(version=1, action='scan', id=str(self.at)+':1', observedAt=self.at, scopeHash=page(self.at)['scopeHash'], guid='Player-1-0000AAAA', offset=0)
             control['mac'] = launch.control_mac('synthetic-secret', control)
             db = dict(lastCharacterGuid=control['guid'], launchControl=control,
-                      roster=dict(exportedAt=self.at, nativeGuild='OLYMPUS PRIME', nativeRealm='Native Realm', members=[dict(guid=control['guid'], name='Fern Melder')]))
+                      roster=dict(exportedAt=self.at-10,total=20,nativeGuild='OLYMPUS PRIME',nativeRealm='Native Realm',
+                                  members=[dict(guid=control['guid'] if i==0 else f'Player-1-{i:08X}',name='Fern Melder' if i==0 else 'Member '+str(i),rank='Member',rankIndex=7,level=60) for i in range(20)]))
+            instance.forward_roster(db['roster'])
             instance.read_launch_control(db)
             instance.pull_launch_operations()
             before = instance.launch_operations_file.read_bytes()
@@ -154,14 +168,41 @@ class LaunchOperations(unittest.TestCase):
             instance.pull_launch_operations()
             self.assertEqual(len(calls), count)  # No role request on the normal fast loop.
             instance.worker.call = lambda *a, **k: (False, {'httpStatus': 429})
-            instance.launch_scan.next_at = 0
-            instance.pull_launch_operations()
+            with patch.object(watcher.time,'time',return_value=self.at+6):
+                self.assertTrue(instance.launch_scan.request(dict(action='recheck',offset=0,id='explicit-refusal',scopeHash=page(self.at)['scopeHash']),self.at+6))
+                instance.pull_launch_operations()
             self.assertIn(b'stoppedReason="source-refused"', instance.launch_operations_file.read_bytes())
             self.assertFalse(instance.state.d.get('queue_written_pending'))
             self.assertEqual(instance.queue_file.read_text(), 'LEGACY UNCHANGED')
             self.assertEqual(instance.launch_scan.calls, 2)
+            self.assertEqual(instance.launch_scan.refreshed, 1)  # the explicit 429 attempt remains spent
             instance.read_launch_control(db)  # saved replay does not restart
             self.assertEqual(instance.launch_scan.calls, 2)
+
+    def test_explicit_same_page_attempts_are_cumulative_and_paced_across_controls(self):
+        scan, call, calls = self.scan(80)
+        for _ in range(4):
+            scan.step(call,self.clock);self.clock+=5
+        self.assertEqual((len(calls),scan.refreshed),(4,0))
+        self.clock=self.at+16
+        scope=page(self.at)['scopeHash']
+        self.assertTrue(scan.request(dict(action='recheck',offset=60,id='late-row',scopeHash=scope),self.clock))
+        self.assertFalse(scan.step(call,self.clock));self.assertEqual(len(calls),4)
+        self.clock=self.at+20;self.assertTrue(scan.step(call,self.clock))
+        self.assertTrue(calls[-1].endswith('page-60'));self.assertEqual(scan.refreshed,1)
+        self.clock+=1
+        self.assertTrue(scan.request(dict(action='recheck',offset=60,id='same-page-again',scopeHash=scope),self.clock))
+        self.assertFalse(scan.step(call,self.clock));self.assertEqual(scan.refreshed,1)
+        self.clock=self.at+25;self.assertTrue(scan.step(call,self.clock));self.assertEqual((scan.calls,scan.refreshed),(6,2))
+        self.clock+=1
+        self.assertTrue(scan.request(dict(action='recheck',offset=0,id='unknown',scopeHash=scope),self.clock))
+        self.assertFalse(scan.step(call,self.clock))
+        self.clock=self.at+30
+        def unknown(*args,**kwargs): raise OSError('synthetic transport outcome')
+        self.assertTrue(scan.step(unknown,self.clock))
+        self.assertEqual((scan.calls,scan.refreshed,scan.stopped),(7,3,'source-unknown'))
+        self.assertFalse(scan.step(call,self.clock+5))
+        self.assertFalse(scan.request(dict(action='recheck',offset=60,id='retry-unknown',scopeHash=scope),self.clock+5))
 
     def test_local_control_scope_mac_expiry_stop_and_scan_expiry(self):
         value = dict(version=1, action='scan', id=str(self.at)+':1', observedAt=self.at, scopeHash=page(self.at)['scopeHash'], guid='Player-1-0000AAAA', offset=0)
@@ -242,6 +283,58 @@ class LaunchOperations(unittest.TestCase):
                 instance.note_launch_roster_receipt(dict(path='/ingest/roster',body={'members':[{}]}),response)
                 self.assertIsNone(instance._launch_accepted_roster)
             self.assertNotIn('launch_accepted_roster',instance.state.d)
+
+    def test_exhausted_scan_requires_fresh_unseen_control_and_accepted_new_native_export(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary)
+            w=watcher.Watcher(dict(wow_dir=str(root),account='synthetic',worker_url='https://test.invalid',watcher_token='synthetic-token',verify_secret='synthetic-secret',officer_character='Fern Melder',membership_only=True,state_file=str(root/'state.json')))
+            w.queue_file.parent.mkdir(parents=True);w.sv_file.parent.mkdir(parents=True,exist_ok=True);w.sv_file.write_text('synthetic')
+            self.clock=float(self.at)
+            roster=dict(exportedAt=self.at-10,total=1,nativeGuild='OLYMPUS PRIME',nativeRealm='Native Realm',members=[dict(name='Fern Melder',guid='Player-1-0000AAAA',rank='High Council',rankIndex=1,level=60)])
+            db=dict(lastCharacterGuid='Player-1-0000AAAA',roster=roster)
+            calls=[];source_at=self.at-10;scan_start=self.at
+            def control(sequence):
+                c=dict(version=1,action='scan',id=str(int(self.clock))+':'+str(sequence),observedAt=int(self.clock),scopeHash=page(self.at)['scopeHash'],guid=db['lastCharacterGuid'],offset=0)
+                c['mac']=launch.control_mac('synthetic-secret',c);db['launchControl']=c;return c
+            def call(method,path,body=None,retries=3):
+                nonlocal source_at,scan_start
+                calls.append((method,path))
+                if method=='POST':
+                    source_at=body['exportedAt'];return True,dict(snapshot=12,members=1,trusted=True)
+                if '&cursor=' not in path:scan_start=int(self.clock)
+                p=page(int(self.clock),total=1,started=scan_start);p['snapshotAt']=source_at;p['scan']['expiresAt']=min(scan_start+600,source_at+600);p['promotions']=[]
+                return True,p
+            w.worker.call=call;control(1)
+            with patch.object(watcher.time,'time',lambda:self.clock),patch.object(watcher.time,'sleep'),patch.object(watcher.savedvars,'parse_file',lambda p:{'OlympusVerifyDB':db}):
+                w.check_savedvars();w.pull_launch_operations()
+                old_snapshot=w.launch_scan.expected_snapshot;old_scan=copy.deepcopy(w.launch_scan.pages[0]['scan'])
+                w.launch_scan.refreshed=50;self.clock+=100;roster['exportedAt']=int(self.clock)
+                replay=control(2);w.state.seen('launch-control:'+replay['guid']+':'+replay['id']);w.state.save()
+                w.state.d['sv_mtime']=0;w.check_savedvars();w.pull_launch_operations()
+                self.assertEqual((len(calls),w.launch_scan.refreshed,w.launch_scan.expected_snapshot),(2,50,old_snapshot))
+                invalid=control(3);invalid['mac']='0'*32
+                w.state.d['sv_mtime']=0;w.check_savedvars();w.pull_launch_operations()
+                self.assertEqual((len(calls),w.launch_scan.refreshed),(2,50))
+                expired=control(4);expired['observedAt']-=61;expired['mac']=launch.control_mac('synthetic-secret',expired)
+                w.state.d['sv_mtime']=0;w.check_savedvars();w.pull_launch_operations();self.assertEqual(len(calls),2)
+                control(5);w.state.d['sv_mtime']=0;w.check_savedvars();w.pull_launch_operations()
+                self.assertEqual([m for m,p in calls],['POST','GET','POST','GET'])
+                self.assertEqual((w.launch_scan.calls,w.launch_scan.refreshed,w.launch_scan.expected_snapshot),(1,0,(12,int(self.clock))))
+                self.assertNotEqual(w.launch_scan.pages[0]['scan'],old_scan)
+                self.assertEqual(w.state.d['roster_sent'],int(self.clock))
+
+    def test_unacknowledged_new_scan_is_spent_and_held_without_get(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary)
+            w=watcher.Watcher(dict(wow_dir=str(root),account='synthetic',worker_url='https://test.invalid',watcher_token='synthetic-token',verify_secret='synthetic-secret',officer_character='Fern Melder',membership_only=True,state_file=str(root/'state.json')))
+            w.queue_file.parent.mkdir(parents=True)
+            c=dict(version=1,action='scan',id=str(self.at)+':1',observedAt=self.at,scopeHash=page(self.at)['scopeHash'],guid='Player-1-0000AAAA',offset=0)
+            c['mac']=launch.control_mac('synthetic-secret',c)
+            db=dict(lastCharacterGuid=c['guid'],launchControl=c,roster=dict(exportedAt=self.at,total=1,nativeGuild='OLYMPUS PRIME',nativeRealm='Native Realm',members=[dict(name='Fern Melder',guid=c['guid'],rank='Member',rankIndex=7,level=60)]))
+            calls=[];w.worker.call=lambda *a,**k:(calls.append(1) or (False,'unknown'))
+            w.read_launch_control(db);w.pull_launch_operations();w.read_launch_control(db);w.pull_launch_operations()
+            self.assertEqual(calls,[]);self.assertEqual(w.launch_scan.stopped,'native-roster-receipt-required')
+            self.assertTrue(w.state.was_seen('launch-control:'+c['guid']+':'+c['id']))
 
     def test_transport_body_bound_and_cursor_logging_redaction(self):
         class Reply(io.BytesIO):

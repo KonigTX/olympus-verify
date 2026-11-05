@@ -28,7 +28,7 @@ export const GUILD_COMMANDS_219=Object.freeze([
  command('treasury','Treasury policy, Fernmelder and the current Royal Writs switch'),
  command('stockades','Free ordinary appeals and eligible conditional in-game-gold clemency'),
  command('council','The ten native ranks and current High Council portfolio guide'),
- command('branches','OLYMPUS PRIME / Olympus II–X capacity sources and unavailable-feed disclosure'),
+ command('branches','Olympus I–X capacity sources and unavailable-feed disclosure'),
  command('launch','November 4 global launch countdown and official reference')
 ]);
 export const GUILD_COMMAND_NAMES_219=new Set(GUILD_COMMANDS_219.map(row=>row.name));

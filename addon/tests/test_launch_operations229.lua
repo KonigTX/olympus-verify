@@ -52,6 +52,30 @@ local function fixture(fallback)
   return f
 end
 do
+  local f, pages = fixture(), {}
+  local start = f.env.NOW
+  for pageIndex = 1, 4 do
+    local page = {}
+    for key, value in pairs(f.page) do page[key] = value end
+    page.entitlements, page.promotions = {offset=(pageIndex-1)*20,total=80}, {}
+    for item = 1, 2 do local n = (pageIndex-1)*2+item
+      page.promotions[item] = {name="Mixed candidate "..n,guid=string.format("Player-1-%08X",100+n),currentSlot=9,targetSlot=7,reason="verified-initiate"}
+    end
+    pages[pageIndex] = page
+  end
+  f.env.OlympusLaunchQueue.pages, f.env.NOW = pages, start+100
+  f.q.Show()
+  check("each visible mixed-source recommendation exposes its own recheck button", f.q.rowRecheckButtons and f.q.rowRecheckButtons[8] and f.q.rowRecheckButtons[8]:IsShown())
+  if f.q.rowRecheckButtons then
+    f.q.rowRecheckButtons[8]:GetScript("OnClick")()
+    local c, h = f.env.OlympusVerifyDB.launchControl, f.env.OlympusHmac
+    check("stale later recommendation rechecks its source offset60 rather than first offset0", c and c.action == "recheck" and c.offset == 60 and f.syncs == 1)
+    local message = c and table.concat({"launch-control","1",c.action,c.id,tostring(c.observedAt),c.scopeHash,c.guid,tostring(c.offset)},"|")
+    check("per-row recheck signs the exact own native GUID scope and selected offset", c and c.guid == "Player-1-0000AAAA" and c.mac == h.hmacSha256hex(f.env.OlympusVerifyConfig.secret,message):sub(1,32))
+    check("later-page recheck never promotes invites removes or sets MOTD", f.direct == 0 and f.fallback == 0 and f.invites == 0 and f.removals == 0 and f.motd == 0)
+  end
+end
+do
   local f = fixture(); local p2 = {}
   for key, value in pairs(f.page) do p2[key] = value end
   p2.fetchedAt, p2.expiresAt, p2.entitlements, p2.promotions = f.env.NOW + 1, f.env.NOW + 61, { offset = 20, total = 20 }, {}

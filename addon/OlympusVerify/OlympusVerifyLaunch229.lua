@@ -253,23 +253,26 @@ function Q.Show()
     local function button(label, x, y, width, fn)
       local b = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate"); b:SetSize(width, 24); b:SetPoint("TOPLEFT", x, y); b:SetText(label); b:SetScript("OnClick", fn); return b
     end
-    Q.window, Q.windowInfo, Q.rowButtons, Q.listPage = frame, info, {}, 1
+    Q.window, Q.windowInfo, Q.rowButtons, Q.rowRecheckButtons, Q.listPage = frame, info, {}, {}, 1
     button("Scan + reload", 18, -110, 125, function() Q.Control("scan") end)
     button("Stop + reload", 150, -110, 125, function() Q.Control("stop") end)
     button("Sync & reload", 282, -110, 125, function() if OlympusVerifyAPI then OlympusVerifyAPI.Sync() end end)
     button("Close", 414, -110, 125, function() frame:Hide() end)
     for i = 1, 8 do local index = i
-      Q.rowButtons[i] = button("", 18, -145-(i-1)*28, 520, function()
+      Q.rowButtons[i] = button("", 18, -145-(i-1)*28, 400, function()
         local rows = Q.shownRows or {}; local row = rows[(Q.listPage-1)*8+index]
         if row then Q.HardwarePromote(row.guid); Q.Show() end
+      end)
+      Q.rowRecheckButtons[i] = button("Recheck + reload", 426, -145-(i-1)*28, 112, function()
+        local row = (Q.shownRows or {})[(Q.listPage-1)*8+index]
+        local current, why = Q.Current()
+        local source = row and current and current.freshness[row.guid]
+        if source then Q.Control("recheck", source.offset) else Say(why or "This recommendation is unavailable; refresh the projection.") end
       end)
     end
     button("Previous", 18, -378, 100, function() Q.listPage = math.max(1, Q.listPage-1); Q.Show() end)
     button("Next", 125, -378, 100, function() Q.listPage = math.min(math.max(1, math.ceil(#(Q.shownRows or {})/8)), Q.listPage+1); Q.Show() end)
-    button("Recheck page + reload", 232, -378, 195, function()
-      local row = (Q.shownRows or {})[(Q.listPage-1)*8+1]; local c = Q.Current()
-      Q.Control("recheck", row and c and c.freshness[row.guid].offset or 0)
-    end)
+    button("Recheck MOTD + reload", 232, -378, 195, function() Q.Control("recheck", 0) end)
     button("Risk review", 18, -415, 140, function() Q.RiskBuffer() end)
     button("Show MOTD", 165, -415, 140, function() Q.Motd("show") end)
     button("Set MOTD once", 312, -415, 140, function() Q.Motd("set") end)
@@ -277,12 +280,15 @@ function Q.Show()
   local current, why = Q.Current()
   Q.shownRows = current and current.promotions or {}
   Q.listPage = math.min(Q.listPage, math.max(1, math.ceil(#Q.shownRows/8)))
-  Q.windowInfo:SetText(current and ((current.scanComplete and "Discovery complete" or "Discovery incomplete") .. "; " .. #current.pages .. "/50 pages. Each action needs a fresh 60-second page and native roster.\nKnight invites held: explicit unguilded proof unavailable. Rows may be stale. Sync loads watcher results.") or why)
+  local used = OlympusLaunchQueue and OlympusLaunchQueue.refreshedPages
+  used = Number(used, 0, 50) and used or 0
+  Q.windowInfo:SetText(current and ((current.scanComplete and "Discovery complete" or "Discovery incomplete") .. "; " .. #current.pages .. "/50 pages; " .. used .. "/50 explicit recheck attempts used.\n" .. (used >= 50 and "Refresh budget exhausted: start a new Scan. " or "Recheck the chosen row, then load results. ") .. "Each action needs its fresh 60-second page and native roster. Knight invites held: unguilded proof unavailable.") or why)
   for i, b in ipairs(Q.rowButtons) do
     local row = Q.shownRows[(Q.listPage-1)*8+i]
     if row then local fresh = current.freshness[row.guid]
       b:SetText(row.name .. " -> slot " .. row.targetSlot .. (not current.actionHeld and time() < fresh.expiresAt and time() < fresh.scanExpiresAt and " (click: one native request)" or " (STALE/held; recheck)")); b:Show()
-    else b:Hide() end
+      Q.rowRecheckButtons[i]:SetText("Recheck p" .. fresh.offset); Q.rowRecheckButtons[i]:Show()
+    else b:Hide(); Q.rowRecheckButtons[i]:Hide() end
   end
   Q.window:Show()
 end

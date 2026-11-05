@@ -135,3 +135,25 @@ condition = "AND"
 paths = ['''^worker/tests/officer_queue217_test\.cjs$''']
 regexTarget = "match"
 regexes = ['''^VERIFY_SECRET:'synthetic217-secret'$''']
+
+# .229: these exact public wire-version identifiers select read-only protocols;
+# they do not authenticate requests. Keep the rule active and bind each exception
+# to its exact relative path AND complete identifier. Other values remain scanned.
+[[allowlists]]
+description = "Exact public launch read-protocol identifier in its consumer and native fixture"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = [
+  '''^watcher/launch_operations229\.py$''',
+  '''^worker/tests/launch_operations229_native_test\.cjs$''',
+]
+regexTarget = "secret"
+regexes = ['''^launch-operations-v1$''']
+
+[[allowlists]]
+description = "Exact proposed public Knight invite protocol identifier in the source audit"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^docs/launch229-addon-audit\.md$''']
+regexTarget = "secret"
+regexes = ['''^launch-knight-invite-v2$''']

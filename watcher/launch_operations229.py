@@ -14,7 +14,7 @@ PATH = "/queue/launch-operations?keyVersion=launch-operations-v1"
 PROTOCOL = "launch-operations-v1"
 MAX_BYTES = 262144
 MAX_PAGES = 50
-MAX_REFRESH_PAGES = 3
+MAX_REFRESH_ATTEMPTS = 50
 _GUID = re.compile(r"Player-[0-9]{1,6}-[0-9A-Fa-f]{4,16}")
 _KEYS = {"protocol", "fetchedAt", "expiresAt", "status", "snapshotId", "snapshotAt", "memberCount", "guild", "canonicalGuild", "realm", "scopeHash", "entitlements", "nextCursor", "pageCursor", "scan", "invites", "promotions", "riskBuffer", "held", "heldReasons", "motd", "actions"}
 
@@ -183,6 +183,7 @@ class Scan:
         self.complete = False
         self.stopped: str | None = None
         self.last_start = -math.inf
+        self.expected_snapshot: tuple[int, int] | None = None
 
     def request(self, value: dict[str, Any], at: float) -> bool:
         action = value['action']
@@ -190,15 +191,17 @@ class Scan:
             if self.phase != 'idle' or at < self.last_start + 60:
                 return False
             self.pages = {}; self.scope_hash = value['scopeHash']; self.calls = 0; self.refreshed = 0
+            self.expected_snapshot = None
             self.cursor = None; self.complete = False; self.phase = 'discover'; self.last_start = at
         elif action == 'stop':
             self.phase = 'idle'; self.stopped = 'operator-stopped'; self.control_id = value['id']; return True
         else:
             page = self.pages.get(value['offset'])
-            if self.phase != 'idle' or not page or page['scan']['expiresAt'] <= at or page['scopeHash'] != value['scopeHash']:
+            if (self.phase != 'idle' or self.stopped is not None or self.refreshed >= MAX_REFRESH_ATTEMPTS
+                    or not page or page['scan']['expiresAt'] <= at or page['scopeHash'] != value['scopeHash']):
                 return False
-            self.phase = 'refresh'; self.refresh = [value['offset']]; self.calls = 0; self.refreshed = 0
-        self.control_id = value['id']; self.stopped = None; self.next_at = at
+            self.phase = 'refresh'; self.refresh = [value['offset']]
+        self.control_id = value['id']; self.stopped = None; self.next_at = max(self.next_at, at)
         return True
 
     def _stop(self, reason: str) -> None:
@@ -212,6 +215,8 @@ class Scan:
         if self.phase == 'discover' and len(self.pages) >= MAX_PAGES:
             self._stop('scan-cap'); return True
         if self.phase == 'refresh':
+            if self.refreshed >= MAX_REFRESH_ATTEMPTS:
+                self._stop('refresh-budget-exhausted'); return True
             if not self.refresh:
                 self.phase = 'idle'; return True
             offset = self.refresh.pop(0)
@@ -220,14 +225,25 @@ class Scan:
             offset = len(self.pages) * 20
             cursor = self.cursor
         path = PATH + ('&cursor=' + urllib.parse.quote(cursor, safe='') if cursor else '')
-        okay, page = call('GET', path, retries=1)
-        self.calls += 1; self.next_at = self.clock() + 5
+        # Spend each attempt, including refusal/unknown, before transport. Controls do
+        # not reset the per-scan counters or the five-second cross-request spacing.
+        self.calls += 1
+        if self.phase == 'refresh':
+            self.refreshed += 1
+        try:
+            okay, page = call('GET', path, retries=1)
+        except Exception:
+            self.next_at = self.clock() + 5
+            self._stop('source-unknown'); return True
+        self.next_at = self.clock() + 5
         if not okay:
             self._stop('source-refused'); return True
         if not validate_page(page, int(self.clock())) or page['scopeHash'] != self.scope_hash:
             self._stop('invalid-page'); return True
         if page['status'] == 'held':
             self._stop('source-held'); return True
+        if self.expected_snapshot is not None and (page['snapshotId'],page['snapshotAt']) != self.expected_snapshot:
+            self._stop('snapshot-changed'); return True
         if page['entitlements']['offset'] != offset or self.pages and not _same_scan(page, self.pages[min(self.pages)]):
             self._stop('snapshot-changed'); return True
         others = {row['guid'] for key, prior in self.pages.items() if key != offset for kind in ('promotions', 'riskBuffer', 'held') for row in prior[kind]}
@@ -240,12 +256,8 @@ class Scan:
             self.cursor = page['nextCursor']
             if self.cursor is None:
                 self.complete = True
-                candidates = sorted((key for key, prior in self.pages.items() if key != 0 and prior['promotions']),
-                                    key=lambda key: (min(row['targetSlot'] for row in self.pages[key]['promotions']), key))
-                self.refresh = [0, *candidates][:MAX_REFRESH_PAGES]
-                self.phase = 'refresh'
+                self.phase = 'idle'  # only a new explicit chosen-page control can refresh
         else:
-            self.refreshed += 1
             if not self.refresh:
                 self.phase = 'idle'
         return True
@@ -280,7 +292,7 @@ def render_pages(result: Any, at: int) -> str | None:
             or type(result['scanComplete']) is not bool or type(result['running']) is not bool
             or result['stoppedReason'] is not None and not _text(result['stoppedReason'], 64)
             or not _integer(result['discoveredPages'], 0, 50) or result['discoveredPages'] != len(pages)
-            or not _integer(result['refreshedPages'], 0, 3) or any(not validate_page(page, at, allow_stale=True) for page in pages)):
+            or not _integer(result['refreshedPages'], 0, MAX_REFRESH_ATTEMPTS) or any(not validate_page(page, at, allow_stale=True) for page in pages)):
         return None
     if pages and any(not _same_scan(page, pages[0]) or page['entitlements']['offset'] != index*20 for index, page in enumerate(pages)):
         return None

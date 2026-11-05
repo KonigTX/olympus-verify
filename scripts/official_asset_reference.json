@@ -15,7 +15,7 @@
       "path": "worker/public/static/app.js",
       "mode": "100644",
       "bytes": 787403,
-      "sha256": "f0935b046fdc11861f75686a561f5b81863ca74f786385df6f59ac165eb9123c"
+      "sha256": "25f0327a76b176b4ad02f3a40c7e363fbc227a40b9cd4d3bdabf155d5afa23f4"
     },
     {
       "path": "worker/public/static/olympus-icon.png",
@@ -3831,7 +3831,7 @@
       "path": "worker/public/static/app.js",
       "mode": "100644",
       "bytes": 787403,
-      "sha256": "f0935b046fdc11861f75686a561f5b81863ca74f786385df6f59ac165eb9123c"
+      "sha256": "25f0327a76b176b4ad02f3a40c7e363fbc227a40b9cd4d3bdabf155d5afa23f4"
     },
     {
       "path": "worker/public/static/rank-planner/app.js",
@@ -3908,8 +3908,8 @@
     {
       "path": "worker/public/static/army-live/army.js",
       "mode": "100644",
-      "bytes": 20678,
-      "sha256": "f15b49455746b0dbc7fc365b00dc9a1ea7a8e232d6a95882bdbf88f5e0951fda"
+      "bytes": 20667,
+      "sha256": "de06cb199183f10cbc7bea6a864398ed36f5bb7903f87a9d689bc5fed815f345"
     },
     {
       "path": "worker/public/static/army-live/decoder.js",

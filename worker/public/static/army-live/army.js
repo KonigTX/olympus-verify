@@ -19,7 +19,8 @@
   function card(snapshot, evaluatedAt) {
     const guild = snapshot.guilds[0], article = node('article', undefined, 'army-card'), stale = evaluatedAt - snapshot.observedAt > 86400 || evaluatedAt - guild.receivedAt > 86400;
     article.setAttribute('data-army-source-guild', guild.name);
-    article.append(node('span', stale ? 'Stale community observation' : 'Unverified community observation', 'source-label'), node('h2', /^Olympus(?: I| PRIME)?$/i.test(guild.name) ? 'OLYMPUS PRIME' : guild.name), node('p', snapshot.realmGroup + ' · ' + snapshot.faction, 'muted'));
+    article.append(node('span', stale ? 'Stale community observation' : 'Unverified community observation', 'source-label'), node('h2', guild.name), node('p', snapshot.realmGroup + ' · ' + snapshot.faction, 'muted'));
+    if (/^Olympus(?: I)?$/i.test(guild.name)) article.append(node('p', 'Flagship affiliation: OLYMPUS PRIME', 'guild-affiliation229'));
     const figures = node('dl', undefined, 'figures');
     for (const [label, value] of [[stale ? 'Last reported characters' : 'Reported characters', guild.reportedCharacters], ['Reported online', evaluatedAt - guild.receivedAt > 900 ? null : guild.online]]) { const item = node('div'); item.append(node('dt', label), node('dd', count(value))); figures.append(item); }
     article.append(figures);
@@ -82,10 +83,9 @@
         const heading = Array.from(article.children).find(child => child.tagName === 'H2');
         if (!heading) continue;
         const sections = Array.from(article.children).filter(child => child.tagName === 'DETAILS');
-        const sourceGuild = article.getAttribute('data-army-source-guild') || heading.textContent;
-        state.expanded.set(sourceGuild, new Set(sections.filter(child => child.open).map(child => child.children[0].textContent)));
+        state.expanded.set(heading.textContent, new Set(sections.filter(child => child.open).map(child => child.children[0].textContent)));
         const holder = active ? sections.find(child => child.children[0] === active) : undefined;
-        if (holder) { state.focus = [sourceGuild, holder.children[0].textContent]; state.from = active; }
+        if (holder) { state.focus = [heading.textContent, holder.children[0].textContent]; state.from = active; }
       }
       return state;
     }
