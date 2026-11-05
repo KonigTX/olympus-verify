@@ -55,7 +55,7 @@ async function evergreen221(){
  check('application instructions have no orphan separator after their sentence',!!copy&&!copy.textContent.includes('.  · ')&&!copy.textContent.includes('. · '));
  const after=await openPage(MEMBER,{}, {clockNow:Date.parse('2026-11-05T12:00:00Z')});
  const afterNotice=after.app.querySelector('.launch-notice218');
- check('the launch milestone advances to the announced December raid date',!!afterNotice&&afterNotice.textContent.includes('9 December 2026')&&afterNotice.textContent.includes('has not announced the hour')&&!afterNotice.querySelector('[role="timer"]'));
+ check('the launch milestone advances to the announced December raid date',!!afterNotice&&afterNotice.textContent.includes('9 December 2026')&&afterNotice.textContent.includes('Check Blizzard for the opening time.')&&!afterNotice.querySelector('[role="timer"]'));
  check('post-reservation instructions do not ask people to claim early names',!!afterNotice&&!afterNotice.querySelector('.launch-application-copy218').textContent.startsWith('Claim'));
  // Evergreen Stage 2 (4 Nov 2026): once 9 December has ended in PST the notice retires instead of announcing a passed date.
  const later=await openPage(MEMBER,{}, {clockNow:Date.parse('2026-12-10T12:00:00Z')});
