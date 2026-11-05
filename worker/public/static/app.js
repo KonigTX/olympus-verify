@@ -5462,23 +5462,26 @@
           || !Number.isSafeInteger(prepared.expiresAt) || prepared.expiresAt <= 0
           || typeof prepared.reviewKey !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(prepared.reviewKey)) throw new ApiError(409, { message: "The decision could not be prepared. Reload the application and review it again." });
         if (!allowed.includes(prepared.decisionAction)) throw new ApiError(409, { message: "The prepared decision did not match this action. Reload the application and review it again." });
-        if (reviewKey && prepared.reviewKey !== reviewKey) throw new ApiError(409, { message: "The account changed while you opened this review." });
+        if (reviewKey && prepared.reviewKey !== reviewKey) throw new ApiError(409, { error: "review_changed" });
         reviewKey = prepared.reviewKey;
         targets.set(targetRoute, Object.freeze({ token: prepared.targetToken, action: prepared.decisionAction, expiresAt: prepared.expiresAt }));
       }
       d = await api("GET", `/api/admin/applications/${encodeURIComponent(id)}`, undefined, { live });
       if (!live()) return;
       if (!d || d.user?.id !== id || !d.account) throw new ApiError(409, { message: "The application answer did not match this account. Reload it before deciding." });
+      if (d.reviewKey !== reviewKey) throw new ApiError(409, { error: "review_changed" });
     }
     catch (err) {
       if (!live() || err && err.status === 401) return;
       const held = err && err.status === 409 && codeOf(err) === "original_membership_decision_held";
+      const changed = err && err.status === 409 && codeOf(err) === "review_changed";
       clear(body);
       add(body, frame(held ? "Application decision held" : "Application could not be opened", h("a", { class: "btn small", href: "#/admin/applications", text: "Back to all applications" }),
         noticeBox("warn", "icon-warning", h("p", { text: held
           ? "The original membership decision for this account could not be safely confirmed. No data or access was changed. Ask a site administrator to investigate. Reopening alone may not resolve this hold."
+          : changed ? "The account changed while you opened the review. Open the current record before deciding."
           : "This application could not be read. Return to the list and try again. No changes were made." })),
-        draft ? h("button", { class: "btn small", type: "button", text: "Retry and keep my note", onclick: () => { if (live()) adminApplication(body, id, draft); } }) : null));
+        changed || draft ? h("button", { class: "btn small", type: "button", text: changed ? "Open the current account" : "Retry and keep my note", onclick: () => { if (live()) adminApplication(body, id, changed ? null : draft); } }) : null));
       return;
     }
     if (!live()) return;

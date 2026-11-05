@@ -90,6 +90,10 @@ async function cases(layout){const costs={};
   const f=await opened(layout);
   try {
    const prepared=await f.target('status');
+   const detail=await f.fetch(f.req('GET',`/api/admin/applications/${TARGET}`));
+   const dto=await detail.json();
+   const birth=f.db.prepare('SELECT account_incarnation FROM site_users WHERE discord_id=?').get(TARGET).account_incarnation;
+   eq(layout+' displayed original account has the prepared opaque note scope',[detail.status,dto.reviewKey,JSON.stringify(dto).includes(birth)],[200,prepared.reviewKey,false]);
    const route=`/api/admin/applications/${TARGET}/status`;
    const headers={'X-Olympus-Decision-Target':prepared.targetToken,'X-Olympus-Decision-Action':'business_only','X-Olympus':'1'};
    const stale=await f.fetch(f.req('POST',route,{status:'reviewing'},headers));

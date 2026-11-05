@@ -104,6 +104,16 @@ function targetShape(x:unknown):Target{if(!x||typeof x!=='object'||Array.isArray
  if(typeof r.actorNonce!=='string'||r.actorNonce.length!==32||!HEX.test(r.actorNonce)||r.actorNonce!==session.n||typeof r.id!=='string'||!ID.test(r.id)||typeof r.targetNonce!=='string'||!HEX.test(r.targetNonce)||r.g!==null&&(typeof r.g!=='string'||!HEX.test(r.g))||r.revision!==null&&(!Number.isSafeInteger(r.revision)||(r.revision as number)<0)||!Number.isSafeInteger(r.version)||(r.version as number)<1||![0,1].includes(r.denied as number)||r.deniedAt!==null&&!Number.isSafeInteger(r.deniedAt)||r.app!==null&&typeof r.app!=='string'||typeof r.proof!=='string'||!Number.isSafeInteger(r.prepared)||(r.prepared as number)<1||!Number.isSafeInteger(r.expires)||r.expires!==Math.min((r.prepared as number)+300,session.e)||typeof r.decisionId!=='string'||!HEX.test(r.decisionId)||!['business_only','membership_rejection_v1','membership_reconsideration_v1','partial_delete'].includes(r.action as string)||typeof r.route!=='string'||!['status','deny','undeny','delete'].includes(r.route)||typeof r.subjectKey!=='string'||!canonicalRejectionKey(r.subjectKey)||typeof r.reviewDigest!=='string'||!/^[0-9a-f]{64}$/.test(r.reviewDigest))return held();
  const proof=JSON.parse(r.proof as string);if(!Array.isArray(proof)||proof.length!==4)return held();return Object.freeze({...r,session}) as Target;}
 export function canonicalRejectionKey(x:unknown):x is string{if(typeof x!=='string'||!KEY.test(x)||x.includes('\0'))return false;try{const bytes=unb64u(x);return bytes.byteLength===32&&b64u(bytes)===x;}catch{return false;}}
+function reviewNoteKey(o:Origin,actor:Session,nonce:string):Promise<string>{
+ return sign(o.authEnv.COOKIE_SECRET,'site-membership-review-note-scope-v1',JSON.stringify([actor.u,actor.n,o.id,nonce]));
+}
+export async function membershipDecisionDetailKey(origin:MembershipDecisionOrigin,env:Env,id:string,nonce:unknown):Promise<string>{
+ const o=original(origin,env),actor=o.session;
+ if(!actor||o.method!=='GET'||o.id!==id||o.path!==`/api/admin/applications/${id}`)return held();
+ if(typeof nonce!=='string'||nonce.length!==32||!HEX.test(nonce))return held();
+ const key=await reviewNoteKey(o,actor,nonce);
+ original(origin,env);return key;
+}
 export async function membershipDecisionTargetToken(origin:MembershipDecisionOrigin,env:Env,route:DecisionRoute):Promise<Readonly<{targetToken:string|null;decisionAction:Action;decisionAvailable:boolean;expiresAt:number|null;reviewKey:string|null}>>{
  const o=original(origin,env),s=o.session;
  if(!s||o.method!=='GET')return held();
@@ -117,7 +127,7 @@ export async function membershipDecisionTargetToken(origin:MembershipDecisionOri
  // Scope an in-memory draft to the same actor and account birth. Only the target token authorizes a decision.
  const [mac,reviewKey]=await Promise.all([
   sign(o.authEnv.COOKIE_SECRET,TOKEN_PURPOSE,raw),
-  sign(o.authEnv.COOKIE_SECRET,'site-membership-review-note-scope-v1',JSON.stringify([s.u,s.n,t.id,t.targetNonce]))
+  reviewNoteKey(o,s,t.targetNonce)
  ]);
  original(origin,env);const token=raw+'.'+mac;if(token.length>8192)return held();
  return Object.freeze({targetToken:token,decisionAction:selected.action,decisionAvailable:selected.available,expiresAt:t.expires,reviewKey});

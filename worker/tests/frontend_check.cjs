@@ -3442,6 +3442,32 @@ function originalTerms218(terms) {
       check("RT16 application replacement between preparation and final detail fails closed for covered proof fields", replaced && displayed === "New displayed application" && status210(id).status === "reviewing" && status210(id).admin_note === "New displayed application" && posts210(rows).length === 1 && preparations210(rows).length === 4);
     }
 
+    {
+      const id = await seed210();
+      let replaceBeforeDetail = false;
+      const { p, rows } = await open210(id, async pathname => {
+        if (replaceBeforeDetail && pathname === `/api/admin/applications/${id}`) {
+          replaceBeforeDetail = false;
+          await fixtureRun("DELETE FROM site_applications WHERE discord_id = ?", id);
+          await fixtureRun("DELETE FROM site_users WHERE discord_id = ?", id);
+          await siteUser(id, { global_name: "Replacement at detail read" });
+          await fixtureRun("INSERT INTO site_applications (discord_id, position, answers, status, admin_note, created_at, updated_at) VALUES (?, 'member', '{}', 'submitted', 'New birth stored note', ?, ?)", id, now, now);
+        }
+        return null;
+      });
+      await ready210(p);
+      p.app.querySelector("textarea").value = "Original account unsaved draft";
+      replaceBeforeDetail = true;
+      byText(p.app, "button", "Reload application")?.click();
+      const blocked = await waitFor(() => !!byText(p.app, "button", "Open the current account"), "RT16 detail birth mismatch", 8000);
+      const hidden = !p.app.querySelector("textarea") && !byText(p.app, "button", "Save note") && preparations210(rows).length === 8;
+      byText(p.app, "button", "Open the current account")?.click();
+      await ready210(p);
+      check("RT16 a birth change between the last preparation and detail exposes no draft or decision controls until a fresh review", blocked && hidden
+        && p.app.querySelector("textarea")?.value === "New birth stored note" && status210(id).admin_note === "New birth stored note"
+        && preparations210(rows).length === 12 && posts210(rows).length === 0);
+    }
+
     for (const interruption of ["navigation", "session-revocation", "sign-out"]) {
       const id = await seed210(); let release, entered = false, responseCompleted = false;
       const gate = new Promise(resolve => { release = resolve; });

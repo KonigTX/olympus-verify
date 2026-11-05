@@ -47,7 +47,7 @@ import { handleTreasuryCosmeticAdmin } from "./treasury-cosmetic";
 import { discordDirectoryAttendedVisibility } from "./community-discord-directory";
 import { handleRulesetPublication } from './ruleset-publication';
 import { handleMembershipRetirement } from './membership-retirement-route';
-import {prepareMembershipDecision,membershipDecisionTargetToken,applyMembershipDecision,membershipDecisionPartialGuard,membershipDecisionAuthRequest,membershipDecisionBodyRequest,assertMembershipDecisionOrigin,type MembershipDecisionOrigin} from './privacy-rejection-decision';
+import {prepareMembershipDecision,membershipDecisionTargetToken,membershipDecisionDetailKey,applyMembershipDecision,membershipDecisionPartialGuard,membershipDecisionAuthRequest,membershipDecisionBodyRequest,assertMembershipDecisionOrigin,type MembershipDecisionOrigin} from './privacy-rejection-decision';
 import { handleBetaRoleReset } from './beta-reset-route';
 import { ORDINARY_DECLINE_ANSWER_KEY } from './application-edit219';
 import { appointmentPublicationConfirmation, containsInternalAppointmentProof, prepareAppointmentPublication, appointmentPublicationTargetsCurrentSql, appointmentPublicationTargetFailure, type AppointmentPublicationFailure } from './site-appointed-identities';
@@ -125,7 +125,7 @@ export async function handleAdmin(request: Request, env: Env, path: string, admi
   }
   if (m === "GET" && parts[0] === "applications" && !parts[1]) return listApplications(env, q);
   if(m==='GET'&&parts[0]==='users'&&parts[2]==='decision-target'){if(!decisionOrigin)return apiJson({error:'original_membership_decision_held'},409);const route=q.get('route');if(!['status','deny','undeny','delete'].includes(route??''))return apiJson({error:'bad_request'},400);return apiJson(await membershipDecisionTargetToken(decisionOrigin,env,route as 'status'|'deny'|'undeny'|'delete'));}
-  if (m === "GET" && parts[0] === "applications" && parts[1]) return applicationDetail(env, parts[1]);
+  if (m === "GET" && parts[0] === "applications" && parts[1]) return applicationDetail(env, parts[1], decisionOrigin);
   if (m === "POST" && parts[0] === "applications" && parts[2] === "status") return setStatus(env, actor, parts[1], body,decisionOrigin);
   if (m === "POST" && parts[0] === "users" && parts[2] === "deny") return deny(env, actor, parts[1], body,decisionOrigin);
   if (m === "POST" && parts[0] === "users" && parts[2] === "undeny") return undeny(env, actor, parts[1],decisionOrigin);
@@ -420,14 +420,15 @@ async function listApplications(env: Env, q: URLSearchParams): Promise<Response>
   });
 }
 
-async function applicationDetail(env: Env, id: string): Promise<Response> {
+async function applicationDetail(env: Env, id: string, origin?: MembershipDecisionOrigin): Promise<Response> {
   if (!isId(id)) return apiJson({ error: "bad_request" }, 400);
   const row = await env.DB.prepare(
-    "SELECT a.*, u.username, u.global_name, u.nick, u.avatar, u.account_created, u.server_joined, u.in_server, u.denied, u.denied_reason FROM site_users u LEFT JOIN site_applications a ON a.discord_id = u.discord_id WHERE u.discord_id = ?1",
+    "SELECT a.*, u.username, u.global_name, u.nick, u.avatar, u.account_created, u.server_joined, u.in_server, u.denied, u.denied_reason, u.account_incarnation AS detail_account_incarnation FROM site_users u LEFT JOIN site_applications a ON a.discord_id = u.discord_id WHERE u.discord_id = ?1",
   )
     .bind(id)
     .first<Record<string, unknown>>();
   if (!row) return apiJson({ error: "not_found" }, 404);
+  const reviewKey = origin ? await membershipDecisionDetailKey(origin, env, id, row.detail_account_incarnation) : null;
   const friendsOf = await env.DB.prepare("SELECT friend_kind AS kind, friend_key AS key, friend_label AS label, note FROM site_friends WHERE owner_id = ?1 ORDER BY created_at")
     .bind(id)
     .all();
@@ -458,6 +459,7 @@ async function applicationDetail(env: Env, id: string): Promise<Response> {
   const tally = new Map(board.results.map((r) => [r.role, r]));
   const roles = app ? choicesOf(row as never as AppRow).filter((r) => ballotOf(r)) : []; // Raider and Member are not voted on
   return apiJson({
+    ...(reviewKey ? { reviewKey } : {}),
     user: { ...userOut(env, { ...row, discord_id: id } as never), deniedReason: row.denied_reason ?? null },
     application: app,
     // Every role they are (or were) listed under, their own choices first, with the board's counts.
