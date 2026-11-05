@@ -7,6 +7,7 @@ export { LOGIN_ASSETS, POLICY_ASSETS } from "./policy-asset-cache";
 export const STATIC_POLICY_CSP = "default-src 'none'; script-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'";
 export const FORM_POLICY_CSP = STATIC_POLICY_CSP.replace("form-action 'none'", "form-action 'self'");
 export const LOGIN_POLICY_CSP = STATIC_POLICY_CSP + "; media-src 'self'";
+export const heldErasureGuidance = "<p>Keep this request ID and ask an Olympus officer privately for attended review. Keep your status code private and use the same request ID when you check again.</p>";
 export const escapeText = (s: unknown): string => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 /** body is composed by finite server templates, never arbitrary caller HTML. */
 export function policyShell(title: string, body: string, { policyNavigation = false, loginPresentation = false } = {}): string {

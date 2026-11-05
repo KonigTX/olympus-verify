@@ -190,11 +190,76 @@ async function applicationExportOmitsInternalStamp() {
  }finally{f.close();}
 }
 
+async function olderDenialHeldGuidance(){
+ const guidance='Keep this request ID and ask an Olympus officer privately for attended review.';
+ const privateCode='Keep your status code private and use the same request ID when you check again.';
+ const hasGuidance=html=>html.includes(guidance)&&html.includes(privateCode);
+ const hasOriginalCode=html=>/<pre class="privacy-status-code">([^<]+)<\/pre>/.exec(html)?.[1];
+ const cookieFor=response=>Object.entries(cookies(response)).map(([key,value])=>key+'='+value).join('; ');
+ const fields=(html,action)=>{
+  const form=[...html.matchAll(/<form method="post" action="([^"]+)">([\s\S]*?)<\/form>/g)].find(match=>match[1]===action);
+  assert.ok(form,'expected real '+action+' form');
+  return Object.fromEntries([...form[2].matchAll(/<input type="hidden" name="([^"]+)" value="([^"]*)">/g)].map(match=>[match[1],match[2]]));
+ };
+ const outcomes=[];
+ for(const identify of [false,true]){
+  const f=fixture(),lane=identify?'identify-only':'site account';
+  try{
+   const session=await f.signIn(ID);
+   await f.write("UPDATE site_users SET denied=1,denied_at=?,denied_reason='older denial fixture' WHERE discord_id=?",clock-60,ID);
+   const original=identify?await f.call('GET','/privacy/signin'):await f.call('GET','/privacy/account',{cookie:session});
+   const before=await original.text();
+   check(lane+' entry offers no request-specific held guidance',!hasGuidance(before));
+   let submission,operation;
+   if(identify){
+    const started=await f.call('POST','/privacy/signin',{cookie:cookieFor(original),form:fields(before,'/privacy/signin')});
+    const state=new URL(started.headers.get('Location')).searchParams.get('state');
+    const callback=await f.call('GET','/privacy/callback?code=code-'+ID+'&state='+encodeURIComponent(state)+'&iss=https%3A%2F%2Fdiscord.com',{cookie:cookieFor(started)});
+    assert.equal(callback.status,303);
+    const cookie=cookieFor(callback),page=await f.call('GET','/privacy/access',{cookie}),action='/privacy/access/erasure';
+    const form=fields(await page.text(),action);
+    operation=form.grant;
+    submission=await f.call('POST',action,{cookie,form:{...form,confirm:'yes'}});
+   }else{
+    const action='/privacy/account/full-erase',form=fields(before,action);
+    operation=form.operationId;
+    submission=await f.call('POST',action,{cookie:session+'; '+cookieFor(original),form:{...form,confirm:'erase'}});
+   }
+   const receipt=await submission.text(),token=hasOriginalCode(receipt);
+   const job=()=>f.raw('SELECT * FROM privacy_serving_jobs WHERE operation_id=?',operation);
+   check(lane+' older denial produces a genuine held job and original private status code',
+    submission.status===(identify?202:200)&&!!token&&job()?.state==='held'&&job()?.hold_reason==='native_attempt_pending'
+    &&!!f.raw('SELECT 1 FROM site_users WHERE discord_id=?',ID)&&!f.raw('SELECT 1 FROM privacy_denial_markers')
+    &&!f.raw('SELECT 1 FROM privacy_restore_replay')&&!f.terminalCommitted);
+   const snapshot=JSON.stringify(job()),transport=f.http.length;
+   const statusForm=await f.call('GET','/privacy/account'),statusCookie=cookieFor(statusForm),statusPath='/privacy/account/erasure-status';
+   const statusFields=fields(await statusForm.text(),statusPath);
+   const status=(id,code)=>f.call('POST',statusPath,{cookie:statusCookie,form:{...statusFields,operationId:id,statusToken:code}});
+   const valid=await status(operation,token),validHtml=await valid.text();
+   const [payload,mac]=token.split('.'),badCode=payload+'.'+(mac[0]==='A'?'B':'A')+mac.slice(1);
+   for(const [id,code] of [[operation,badCode],['e'.repeat(32),token],[operation,'']]){
+    const refused=await status(id,code),html=await refused.text();
+    check(lane+' invalid or absent saved proof is uniform and discloses no request-specific facts',
+     refused.status===404&&html.includes('No erasure request matches this ID and private code.')
+     &&![operation,badCode,token,ID,'older denial fixture',guidance].some(value=>html.includes(value)));
+   }
+   check(lane+' original saved status proof reads without a session, provider call or change to the job',
+    valid.status===200&&validHtml.includes('<strong>held</strong>')&&hasOriginalCode(validHtml)===token&&snapshot===JSON.stringify(job())&&transport===f.http.length);
+   check(lane+' held presentation contains no raw subject or internal denial reason',
+    [receipt,validHtml].every(html=>![ID,'older denial fixture','native_attempt_pending','Serving account records were erased','Serving account erasure was recorded'].some(value=>html.includes(value))));
+   outcomes.push({lane,receipt:hasGuidance(receipt),savedStatus:hasGuidance(validHtml)});
+  }finally{f.close();}
+ }
+ console.log('C09_HELD_GUIDANCE '+JSON.stringify(outcomes));
+ check('both genuine held receipt routes and private-code status reads give attended guidance',outcomes.every(result=>result.receipt&&result.savedStatus));
+}
+
  await applicationExportOmitsInternalStamp();
  await serverAuthorityAndDenialSequence();
  await legacyLiftRequiresEmptyProof();
  await ordinaryDeclineAndErasure();
  await ambiguousDeclineHolds();
  await permanentDenialPolicy();
+ await olderDenialHeldGuidance();
  console.log(`${checks}/${checks} C09 Native erasure checks passed`);
 }).catch(error=>{console.error(error);process.exitCode=1;});
