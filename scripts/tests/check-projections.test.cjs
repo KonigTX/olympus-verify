@@ -142,6 +142,7 @@ const talentGenerator218 = 'scripts/build-talent-build-contract.cjs', talentProj
 const talentPriorSource218 = 'fbed6f34d022cea57a6760d96bd7b04f0419effa25b0f47eaa85d72e92636b14';
 const talentRecoverySource218 = '0830ff6fc69ef3a3430bf1cdf31a272f3a5a84da4bcedfba2ae398748cd131c8';
 const talentCurrentSource218 = 'b626de0b68cc93edc0ea45565e463e1fe241666d012e16bd5ee38d7f5d571cb0';
+const talentDisplaySource228 = '259235a2bc371c7f227a486bc39e26064661add952e5dd8c647d9ad75cac684b';
 const talentNewHeading218 = 'h("h1", { class: "talents-eyebrow", text: "Olympus · Forever talents" })';
 const talentOldHeading218 = 'h("p", { class: "talents-eyebrow", text: "Olympus · Forever talents" })';
 const actualCalculator218 = base.get(talentCalculator218).toString('utf8');
@@ -161,7 +162,32 @@ const talentDisplayLines228 = [
   '        h("p", { class: "talents-diff-note" }, "This calculator uses the 16 October beta talent snapshot. Check shared builds against your current in-game talents and ",\n'
   + '          h("a", { href: "https://us.forums.blizzard.com/en/wow/t/2360696/9", rel: "noopener noreferrer", text: "Blizzard\'s 2 November notes" }), "."),\n',
 ];
-let recoveryCalculator218 = actualCalculator218;
+// Only exact reviewed CC075 motion contexts are reversed. No historical Git objects are needed.
+const talentMotionFixture228 = base.get('scripts/tests/calculator-compare-motion-inverse.fixture.json');
+if (hash(talentMotionFixture228) !== '69407525f32407f4cdaf080f7b29f9a48ba12d9228e3199b54eab23c01e5767a')
+  throw Error('reviewed calculator motion contexts differ');
+const talentMotion228 = JSON.parse(talentMotionFixture228.toString('utf8'));
+function restoreCalculatorDisplay228(current) {
+  if (hash(Buffer.from(current)) !== talentCurrentSource218) return null;
+  let previous = current;
+  for (const { from, to } of talentMotion228.contexts) {
+    if (previous.split(from).length !== 2) return null;
+    previous = previous.replace(from, to);
+  }
+  return hash(Buffer.from(previous)) === talentDisplaySource228 ? previous : null;
+}
+const displayCalculator228 = restoreCalculatorDisplay228(actualCalculator218);
+if (displayCalculator228 === null) throw Error('exact reviewed calculator display predecessor required');
+const motionCurve228 = 'Math.min(36 / distance, 0.18)';
+if (actualCalculator218.split(motionCurve228).length !== 2) throw Error('one exact calculator motion control required');
+const unauthorizedMotion228 = actualCalculator218.replace(motionCurve228, 'Math.min(36 / distance, 0.19)');
+let motionPinRefused228 = false;
+try {
+  verify(fixture(changed(talentCalculator218, () => unauthorizedMotion228), true));
+} catch (error) {
+  motionPinRefused228 = /talent calculator source and generated serializer pin/.test(error.message);
+}
+let recoveryCalculator218 = displayCalculator228;
 for (const line of talentDisplayLines228) {
   if (recoveryCalculator218.split(line).length !== 2) throw Error('one exact calculator display addition required');
   recoveryCalculator218 = recoveryCalculator218.replace(line, '');
@@ -169,7 +195,9 @@ for (const line of talentDisplayLines228) {
 if (recoveryCalculator218.split('displayClasses.map(').length !== 3) throw Error('both calculator class controls must use display order');
 recoveryCalculator218 = recoveryCalculator218.replaceAll('displayClasses.map(', 'data.classes.map(');
 check('the calculator display changes preserve the complete previous allocation and recovery source',
-  hash(base.get(talentCalculator218)) === talentCurrentSource218 && hash(Buffer.from(recoveryCalculator218)) === talentRecoverySource218);
+  hash(base.get(talentCalculator218)) === talentCurrentSource218 && hash(Buffer.from(displayCalculator228)) === talentDisplaySource228
+  && hash(Buffer.from(recoveryCalculator218)) === talentRecoverySource218
+  && restoreCalculatorDisplay228(unauthorizedMotion228) === null && motionPinRefused228);
 let headingOnlyCalculator218 = recoveryCalculator218;
 for (const edit of talentRecoveryEdits218.slice().reverse()) {
   if (headingOnlyCalculator218.split(edit.new).length !== 2) throw Error("one exact reviewed calculator recovery edit required");
