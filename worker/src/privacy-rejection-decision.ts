@@ -10,8 +10,11 @@ import {privacyAdmissionMatchesOriginalNative,assertPrivacyAdmissionWitness} fro
 import {ORIGINAL_REQUEST_DESCRIPTORS,checkOriginalNativeRequest} from './privacy-native-http-intrinsics';
 import {assertOriginalRecoveryDataIntrinsics,recoveryDataUtf8Length,recoveryScalarArraySha256} from './privacy-recovery-data-json';
 
-export class MembershipDecisionHeld extends Error{constructor(){super('original_membership_decision_held');}}
-const held=():never=>{throw new MembershipDecisionHeld();};
+type DecisionRefusal = 'original_membership_decision_held' | 'reload' | 'target_expired' | 'review_changed';
+export class MembershipDecisionHeld extends Error {
+ constructor(readonly code: DecisionRefusal = 'original_membership_decision_held') { super(code); }
+}
+const held=(code?:DecisionRefusal):never=>{throw new MembershipDecisionHeld(code);};
 function unb64u(text:string):Uint8Array{if(typeof text!=='string'||!/^[A-Za-z0-9_-]*$/.test(text))return held();const raw=atob(text.replaceAll('-','+').replaceAll('_','/')+'='.repeat((4-text.length%4)%4));return Uint8Array.from(raw,c=>c.charCodeAt(0));}
 const HEX=/^[0-9a-f]{32}$/,ID=/^\d{17,20}$/,KEY=/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/;
 const PROTOCOL='original-guild-membership-rejection-v1',TOKEN_PURPOSE='site-membership-decision-target-incarnation-v2';
@@ -68,7 +71,10 @@ export async function authenticateMembershipDecision(origin:MembershipDecisionOr
  const o=original(origin,env);const descriptors=Object.getOwnPropertyDescriptors(o.authEnv);descriptors.DB={value:env.DB,enumerable:true};const authEnv=Object.freeze(Object.create(Object.getPrototypeOf(o.authEnv),descriptors)) as Env;
  const s=await readSession(authEnv,o.authRequest);original(origin,env);if(!s)return null;assertOriginalSiteSessionRead(s);const copied=sessionCopy(s);if(!o.unsigned||JSON.stringify(copied)!==JSON.stringify(o.unsigned)||o.session)return held();o.session=copied;o.originalRead=s;
  const user=await currentUser(authEnv,o.authRequest);original(origin,env);if(!user||user.discord_id!==copied.u||!isSiteAdmin(authEnv,copied.u))return null;
- if(o.method==='POST'&&(!sameOrigin(o.request)||Reflect.apply(headerGet,nativeGet(o.request,'headers') as Headers,['X-Olympus'])!==PAGE_VERSION))return held();
+ if(o.method==='POST'){
+  if(!sameOrigin(o.request))return held();
+  if(Reflect.apply(headerGet,nativeGet(o.request,'headers') as Headers,['X-Olympus'])!==PAGE_VERSION)return held('reload');
+ }
  return Object.freeze({user,session:s});
 }
 export function membershipDecisionAuthRequest(origin:MembershipDecisionOrigin):Request{return original(origin).authRequest;}
@@ -98,7 +104,7 @@ function targetShape(x:unknown):Target{if(!x||typeof x!=='object'||Array.isArray
  if(typeof r.actorNonce!=='string'||r.actorNonce.length!==32||!HEX.test(r.actorNonce)||r.actorNonce!==session.n||typeof r.id!=='string'||!ID.test(r.id)||typeof r.targetNonce!=='string'||!HEX.test(r.targetNonce)||r.g!==null&&(typeof r.g!=='string'||!HEX.test(r.g))||r.revision!==null&&(!Number.isSafeInteger(r.revision)||(r.revision as number)<0)||!Number.isSafeInteger(r.version)||(r.version as number)<1||![0,1].includes(r.denied as number)||r.deniedAt!==null&&!Number.isSafeInteger(r.deniedAt)||r.app!==null&&typeof r.app!=='string'||typeof r.proof!=='string'||!Number.isSafeInteger(r.prepared)||(r.prepared as number)<1||!Number.isSafeInteger(r.expires)||r.expires!==Math.min((r.prepared as number)+300,session.e)||typeof r.decisionId!=='string'||!HEX.test(r.decisionId)||!['business_only','membership_rejection_v1','membership_reconsideration_v1','partial_delete'].includes(r.action as string)||typeof r.route!=='string'||!['status','deny','undeny','delete'].includes(r.route)||typeof r.subjectKey!=='string'||!canonicalRejectionKey(r.subjectKey)||typeof r.reviewDigest!=='string'||!/^[0-9a-f]{64}$/.test(r.reviewDigest))return held();
  const proof=JSON.parse(r.proof as string);if(!Array.isArray(proof)||proof.length!==4)return held();return Object.freeze({...r,session}) as Target;}
 export function canonicalRejectionKey(x:unknown):x is string{if(typeof x!=='string'||!KEY.test(x)||x.includes('\0'))return false;try{const bytes=unb64u(x);return bytes.byteLength===32&&b64u(bytes)===x;}catch{return false;}}
-export async function membershipDecisionTargetToken(origin:MembershipDecisionOrigin,env:Env,route:DecisionRoute):Promise<Readonly<{targetToken:string|null;decisionAction:Action;decisionAvailable:boolean}>>{
+export async function membershipDecisionTargetToken(origin:MembershipDecisionOrigin,env:Env,route:DecisionRoute):Promise<Readonly<{targetToken:string|null;decisionAction:Action;decisionAvailable:boolean;expiresAt:number|null}>>{
  const o=original(origin,env),s=o.session;
  if(!s||o.method!=='GET')return held();
  const subjectKey=await privacySubjectKey(o.authEnv,o.id);original(origin,env);
@@ -106,9 +112,9 @@ export async function membershipDecisionTargetToken(origin:MembershipDecisionOri
  const snapshot=reviewRaw(data(row,'review_raw'));original(origin,env);const digest=await reviewDigest(snapshot);original(origin,env);
  const t=targetShape({session:s,actorNonce:row.actor_nonce,id:o.id,targetNonce:row.target_nonce,g:row.g,revision:row.revision,version:row.version,denied:row.denied,deniedAt:row.denied_at,app:row.app,proof:row.proof,prepared:row.prepared,expires:Math.min(Number(row.prepared)+300,s.e),decisionId:row.decision_id,action:o.action,route,subjectKey,reviewDigest:digest});
  const selected=route==='deny'||route==='undeny'?permanentDenialAction(t,route,data(row,'has_rejection')):{action:t.action,available:true};
- if(!selected.available)return Object.freeze({targetToken:null,decisionAction:selected.action,decisionAvailable:false});
+ if(!selected.available)return Object.freeze({targetToken:null,decisionAction:selected.action,decisionAvailable:false,expiresAt:null});
  const raw=b64u(new TextEncoder().encode(JSON.stringify({...t,action:selected.action}))),mac=await sign(o.authEnv.COOKIE_SECRET,TOKEN_PURPOSE,raw);original(origin,env);const token=raw+'.'+mac;if(token.length>8192)return held();
- return Object.freeze({targetToken:token,decisionAction:selected.action,decisionAvailable:selected.available});
+ return Object.freeze({targetToken:token,decisionAction:selected.action,decisionAvailable:selected.available,expiresAt:t.expires});
 }
 /** Verify once before readJson awaits. A negative/expired/unknown token never renews its native target. */
 export async function prepareMembershipDecision(origin:MembershipDecisionOrigin,env:Env):Promise<void>{
@@ -121,8 +127,11 @@ export async function prepareMembershipDecision(origin:MembershipDecisionOrigin,
  // The actual route also uses privacyBoundSiteEnv. This SELECT independently fences original
  // actor authority and the original target incarnation before any private snapshot is returned.
  original(origin,env);
- const row=await env.DB.prepare(`SELECT ${APP_REVIEW_RAW} AS review_raw FROM site_users u JOIN site_users actor ON actor.discord_id=?1 WHERE u.discord_id=?2 AND actor.session_version=?3 AND ${privacyAccountIncarnationLiteralFenceSql('actor.account_incarnation',s.n)} AND ?4>${NOW} AND ${privacyGenerationFenceSql(1,5)} AND u.account_incarnation=?6 AND u.session_version=?7 AND u.denied=?8 AND u.denied_at IS ?9 AND ((?10 IS NULL AND NOT EXISTS(SELECT 1 FROM privacy_subjects p WHERE p.subject_id=u.discord_id)) OR EXISTS(SELECT 1 FROM privacy_subjects p WHERE p.subject_id=u.discord_id AND p.generation=?10 AND p.revision=?11 AND p.state='active')) AND ${USER_PROOF}=?12 AND ${APP_PROOF} IS ?13 AND ${APP_REVIEW_IN_BOUNDS} AND ${CLOCK}`).bind(s.u,t.id,s.v,s.e,s.g,t.targetNonce,t.version,t.denied,t.deniedAt,t.g,t.revision,t.proof,t.app).first<Record<string,unknown>>();original(origin,env);if(!row)return held();
- const snapshot=reviewRaw(data(row,'review_raw'));original(origin,env);const digest=await reviewDigest(snapshot);original(origin,env);if(digest!==t.reviewDigest)return held();
+ const row=await env.DB.prepare(`SELECT ${NOW} AS observed_at,${APP_REVIEW_RAW} AS review_raw FROM site_users u JOIN site_users actor ON actor.discord_id=?1 WHERE u.discord_id=?2 AND actor.session_version=?3 AND ${privacyAccountIncarnationLiteralFenceSql('actor.account_incarnation',s.n)} AND ?4>${NOW} AND ${privacyGenerationFenceSql(1,5)} AND u.account_incarnation=?6 AND u.session_version=?7 AND u.denied=?8 AND u.denied_at IS ?9 AND ((?10 IS NULL AND NOT EXISTS(SELECT 1 FROM privacy_subjects p WHERE p.subject_id=u.discord_id)) OR EXISTS(SELECT 1 FROM privacy_subjects p WHERE p.subject_id=u.discord_id AND p.generation=?10 AND p.revision=?11 AND p.state='active')) AND ${USER_PROOF}=?12 AND ${APP_PROOF} IS ?13 AND ${APP_REVIEW_IN_BOUNDS} AND ${CLOCK}`).bind(s.u,t.id,s.v,s.e,s.g,t.targetNonce,t.version,t.denied,t.deniedAt,t.g,t.revision,t.proof,t.app).first<Record<string,unknown>>();original(origin,env);if(!row)return held();
+ const observedAt=data(row,'observed_at');
+ if(typeof observedAt!=='number'||!Number.isSafeInteger(observedAt)||observedAt<t.prepared)return held();
+ if(observedAt>=t.expires)return held('target_expired');
+ const snapshot=reviewRaw(data(row,'review_raw'));original(origin,env);const digest=await reviewDigest(snapshot);original(origin,env);if(digest!==t.reviewDigest)return held('review_changed');
  applicationReviews.set(origin,snapshot);targets.set(origin,t);original(origin,env);
 }
 const APP_REVIEW_NOW=APP_REVIEW_RAW.replaceAll('u.discord_id','?6');

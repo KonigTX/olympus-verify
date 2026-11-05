@@ -136,7 +136,7 @@ export async function handleApi(request: Request, env: Env, path: string, waitUn
   if(m==='POST' && path==='/api/me/erasure/status'){if(!sameOrigin(request)||request.headers.get('X-Olympus')!==PAGE_VERSION)return apiJson({error:'bad_origin'},403);const body=await readJson(request);const status=await erasureRequestStatus(env,request,typeof body?.operationId==='string'?body.operationId:'',typeof body?.statusToken==='string'?body.statusToken:undefined);return status?apiJson(status):apiJson({error:'not_found'},404);}
   const decisionOrigin=membershipDecisionOrigin(request);
   let decisionAuth:Awaited<ReturnType<typeof authenticateMembershipDecision>>=null;
-  try{if(decisionOrigin)decisionAuth=await authenticateMembershipDecision(decisionOrigin,env);}catch(e){if(e instanceof MembershipDecisionHeld)return apiJson({error:'original_membership_decision_held'},409);throw e;}
+  try{if(decisionOrigin)decisionAuth=await authenticateMembershipDecision(decisionOrigin,env);}catch(e){if(e instanceof MembershipDecisionHeld)return apiJson({error:e.code},409);throw e;}
   const user = decisionOrigin?decisionAuth?.user??null:await currentUser(env, request);
   if (!user) return apiJson({ error: "signed_out", message: "You are signed out. Sign in with Discord again." }, 401);
   if (m !== "GET" && m !== "HEAD" && !sameOrigin(request)) return apiJson({ error: "bad_origin", message: "Refused: that request did not come from this page." }, 403);
@@ -147,7 +147,7 @@ export async function handleApi(request: Request, env: Env, path: string, waitUn
   const admin = isSiteAdmin(env, user.discord_id);
   if (path.startsWith("/api/admin/")) {
     if (!admin) return apiJson({ error: "forbidden" }, 403);
-    try{if(decisionOrigin)assertMembershipDecisionOrigin(decisionOrigin,env);return await handleAdmin(request, env, path, user, waitUntil,decisionOrigin??undefined,roleDispatch);}catch(e){if(e instanceof MembershipDecisionHeld)return apiJson({error:'original_membership_decision_held'},409);throw e;}
+    try{if(decisionOrigin)assertMembershipDecisionOrigin(decisionOrigin,env);return await handleAdmin(request, env, path, user, waitUntil,decisionOrigin??undefined,roleDispatch);}catch(e){if(e instanceof MembershipDecisionHeld)return apiJson({error:e.code},409);throw e;}
   }
   // .56: the community modules (consolidation batches 1-8) apply their own write fence (community-context.ts).
   if (path.startsWith("/api/community/")) return handleCommunity(request, env, path);

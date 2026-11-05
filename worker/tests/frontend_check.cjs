@@ -3359,7 +3359,7 @@ function originalTerms218(terms) {
 
   {
     // RT16 successor proposal: actual UI + Native Worker unless explicitly labelled early-response transport fixture.
-    // No product/test clock override. Tokens are never read/decoded by these UI assertions.
+    // Optional synthetic browser clock only. Tokens are never read/decoded by these UI assertions.
     let next210 = 220;
     const seed210 = async () => {
       const id = "300000000000000" + String(next210++);
@@ -3370,8 +3370,8 @@ function originalTerms218(terms) {
     const status210 = id => one("SELECT status, admin_note, updated_at, reviewed_at FROM site_applications WHERE discord_id = ?", id);
     const preparations210 = rows => rows.filter(r => r.method === "GET" && r.path.includes("/decision-target?"));
     const posts210 = rows => rows.filter(r => r.method === "POST");
-    const open210 = async (id, intercept = null) => {
-      const p = await openPage(STAFF), rows = [];
+    const open210 = async (id, intercept = null, clockNow) => {
+      const p = await openPage(STAFF, {}, { clockNow }), rows = [];
       p.intercept(async (pathname, init) => {
         if (pathname.startsWith("/api/admin/")) rows.push({ path: pathname, method: init.method || "GET", target: typeof init.headers?.["X-Olympus-Decision-Target"] === "string" });
         return intercept ? await intercept(pathname, init) : null;
@@ -3381,6 +3381,26 @@ function originalTerms218(terms) {
     };
     const ready210 = async p => await waitFor(() => !!byText(p.app, "button", "Save note"), "RT16 prepared actual application controls", 8000);
     const refused210 = async p => await waitFor(() => p.app.textContent.includes("The decision result could not be confirmed."), "RT16 spent refused application view", 8000);
+
+    {
+      const id = await seed210(), start = Date.now();
+      const { p, rows } = await open210(id, null, start); await ready210(p);
+      const announced = /Decision window [0-5]:\d{2}/.test(p.app.textContent);
+      p.app.querySelector("textarea").value = "Unsaved note after expiry";
+      p.clock(start + 310000);
+      const recheck = await waitFor(() => !!byText(p.app, "button", "Reload to decide"), "RT16 original deadline disables decisions", 3000);
+      const save = byText(p.app, "button", "Save note");
+      const disabled = save.disabled;
+      save.click();
+      byText(p.app, "button", "Reload to decide")?.click();
+      p.clock(start);
+      await ready210(p);
+      check("RT16 original deadline blocks stale dispatch and manual refresh keeps the unsaved note", announced && recheck && disabled
+        && preparations210(rows).length === 8 && posts210(rows).length === 0
+        && p.app.querySelector("textarea").value === "Unsaved note after expiry"
+        && p.app.textContent.includes("Your unsaved note was kept.")
+        && status210(id).admin_note === "Original reviewed note");
+    }
 
     { const id = await seed210(), { p, rows } = await open210(id); await ready210(p);
       const detail = rows.findIndex(r => r.path === `/api/admin/applications/${id}`);

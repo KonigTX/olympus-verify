@@ -5438,7 +5438,7 @@
   }
 
   const applicationDecisionReads = new WeakMap();
-  async function adminApplication(body, id) {
+  async function adminApplication(body, id, draftNote = null) {
     const read = {}, actor = S.user, actorState = JSON.stringify(actor), actorRevision = decisionActorRevision, route = currentRoute();
     applicationDecisionReads.set(body, read);
     const live = () => applicationDecisionReads.get(body) === read && app.contains(body) && currentRoute() === route
@@ -5458,9 +5458,10 @@
         if (targetRoute === "deny" && prepared?.decisionAvailable === false && prepared.targetToken === null) continue;
         const allowed = targetRoute === "deny" ? ["membership_rejection_v1"]
           : targetRoute === "undeny" ? ["business_only", "membership_reconsideration_v1"] : [action];
-        if (!prepared || typeof prepared.targetToken !== "string" || !prepared.targetToken || prepared.targetToken.length > 8192) throw new ApiError(409, { message: "The decision could not be prepared. Reload the application and review it again." });
+        if (!prepared || typeof prepared.targetToken !== "string" || !prepared.targetToken || prepared.targetToken.length > 8192
+          || !Number.isSafeInteger(prepared.expiresAt) || prepared.expiresAt <= 0) throw new ApiError(409, { message: "The decision could not be prepared. Reload the application and review it again." });
         if (!allowed.includes(prepared.decisionAction)) throw new ApiError(409, { message: "The prepared decision did not match this action. Reload the application and review it again." });
-        targets.set(targetRoute, Object.freeze({ token: prepared.targetToken, action: prepared.decisionAction }));
+        targets.set(targetRoute, Object.freeze({ token: prepared.targetToken, action: prepared.decisionAction, expiresAt: prepared.expiresAt }));
       }
       d = await api("GET", `/api/admin/applications/${encodeURIComponent(id)}`, undefined, { live });
       if (!live()) return;
@@ -5473,7 +5474,8 @@
       add(body, frame(held ? "Application decision held" : "Application could not be opened", h("a", { class: "btn small", href: "#/admin/applications", text: "Back to all applications" }),
         noticeBox("warn", "icon-warning", h("p", { text: held
           ? "The original membership decision for this account could not be safely confirmed. No data or access was changed. Ask a site administrator to investigate. Reopening alone may not resolve this hold."
-          : "This application could not be read. Return to the list and try again. No changes were made." }))));
+          : "This application could not be read. Return to the list and try again. No changes were made." })),
+        draftNote !== null ? h("button", { class: "btn small", type: "button", text: "Retry and keep my note", onclick: () => { if (live()) adminApplication(body, id, draftNote); } }) : null));
       return;
     }
     if (!live()) return;
@@ -5481,17 +5483,37 @@
     const a = d.application;
     const acct = d.account;
     const note = h("textarea", { rows: "3", maxlength: "1000" });
-    if (a) note.value = a.adminNote || "";
+    const savedNote = a?.adminNote || "";
+    if (a) note.value = draftNote ?? savedNote;
     let pending = false, spent = false;
-    const controls = [], decisionNotice = h("p", { class: "small muted", role: "status", "aria-live": "polite" });
-    const reload = h("button", { type: "button", class: "btn small", text: "Reload application", onclick: () => { if (live() && !pending) adminApplication(body, id); } });
-    const sync = () => { for (const control of controls) control.disabled = !live() || pending || spent; reload.disabled = !live() || pending; };
+    const deadline = Math.min(...Array.from(targets.values(), target => target.expiresAt));
+    const decisionWindow = h("p", { class: "small muted" });
+    const decisionNotice = h("p", { class: "small muted", role: "status",
+      text: a && draftNote !== null ? "Your unsaved note was kept. Review it against this refreshed application before saving." : "" });
+    const controls = [];
+    const reload = h("button", { type: "button", class: "btn small", text: "Reload application",
+      onclick: () => { if (live() && !pending) adminApplication(body, id, a && note.value !== savedNote ? note.value : null); } });
+    const sync = () => {
+      const left = Math.max(0, deadline - nowSec());
+      const unavailable = !live() || pending;
+      for (const control of controls) control.disabled = unavailable || spent || left === 0;
+      note.disabled = unavailable;
+      reload.disabled = unavailable;
+      reload.textContent = left === 0 && !spent ? "Reload to decide" : "Reload application";
+      decisionWindow.textContent = spent ? "" : left === 0 ? "Decision window ended."
+        : `Decision window ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+      return live() && !spent && left > 0;
+    };
     const decide = async (targetRoute, makeBody, success) => {
-      if (!live() || pending || spent) return;
+      if (!live() || pending || spent || nowSec() >= deadline) { sync(); return; }
       pending = true; sync(); // Own the dialog as well as the write; a second click cannot open another.
       try {
         const payload = await makeBody();
         if (payload === null || !live()) return;
+        if (nowSec() >= deadline) {
+          decisionNotice.textContent = "The review expired before you sent a decision. Reload the application to review it again.";
+          return;
+        }
         const target = targets.get(targetRoute);
         if (!target) throw new ApiError(409, { message: "Reload the application and review it again." });
         // Once dispatched, neither a lost answer nor a refusal renews any authority on this old view.
@@ -5505,8 +5527,12 @@
         success(); // An acknowledged success may start a fresh, visibly loading review; never retry this write.
       } catch (err) {
         if (!live()) return;
-        toast(err.message, "bad");
-        decisionNotice.textContent = spent ? "The decision result could not be confirmed. Reload and review the current account before another decision. If it remains held, ask a site administrator to investigate; reloading alone may not resolve it." : "No decision was sent. Review the application before trying again.";
+        const refused = codeOf(err);
+        decisionNotice.textContent = refused === "reload" ? "Reload the site to open the latest decision screen."
+          : refused === "target_expired" ? "This review expired. Reload the application to review it again."
+          : refused === "review_changed" ? "This account or application changed. Reload it and review the current record."
+          : spent ? "The decision result could not be confirmed. Reload the application and review the current account before deciding again."
+          : "No decision was sent. Review the application before trying again.";
       } finally { pending = false; sync(); }
     };
     const setStatus = status => decide("status", async () => ({ status, note: note.value }), () => {
@@ -5552,7 +5578,7 @@
           a && a.status !== "submitted" ? h("button", { class: "btn", type: "button", text: "Back to submitted", onclick: () => setStatus("submitted") }) : null,
           a ? h("button", { class: "btn", type: "button", text: "Save note", onclick: () => setStatus(a.status) }) : null),
         h("div", { class: "rule" }),
-        h("div", { class: "btn-row" }, denyBtn, deleteBtn), decisionNotice, reload),
+        h("div", { class: "btn-row" }, denyBtn, deleteBtn), decisionWindow, decisionNotice, reload),
       frame("On the voting board", h("span", { class: "aside", text: `They voted on ${plural(d.boardVotesCast || 0, "applicant")}` }),
         boardRows.length
           ? h("div", null, h("p", { class: "table-scroll-hint small muted", text: "Scroll sideways to see every voting column." }), h("div", { class: "table-wrap" }, h("table", { class: "data admin-application-board" },
@@ -5578,8 +5604,11 @@
         frame("Their own write-ins", null, list(d.votesCast, (v) => h("div", { class: "person" }, h("div", { class: "nm" }, h("b", { text: v.label }), h("small", { text: `${roleName(v.ballot)}${v.slot > 1 ? `, choice ${v.slot}` : ""}${v.reason ? " — " + v.reason : ""}` }))), "None."))),
       frame("Reserved names", null, list(acct.site.reserved, (r) => h("div", { class: "person" }, h("div", { class: "nm" }, h("b", { text: r.name })), h("span", { class: "badge", text: r.status })), "None entered.")),
     ]);
-    controls.push(note, ...Array.from(body.querySelectorAll("button")).filter(button => button !== reload));
-    sync();
+    controls.push(...Array.from(body.querySelectorAll("button")).filter(button => button !== reload));
+    if (sync()) {
+      const clock = setInterval(() => { if (!sync()) clearInterval(clock); }, 1000);
+      timers.push(clock);
+    }
   }
 
   // ---------- votes: the board and write-ins, per role ----------
