@@ -251,6 +251,8 @@ check("Members reads the strict Discord username for the admitted GUID", strictM
 check("Members shows no older Discord username for the unlinked character", strictMembers["Plain Paul"].discord == nil, true)
 check("the strict row opens an editable reminder", (remind()), true)
 check("the native recipient retains both words and realm", edit.target, "Plain Paul-Forever")
+check("the strict reminder gives the Discord code and in-game whisper steps", edit.text,
+  "Hi! In Asmongold's Discord, use Get my code in #⚡olympus-verify. Follow the bot's instructions to whisper the code from this character in game.")
 check("no whisper was sent", #WHISPERS, 0)
 edit.text = ""
 paul.pending = true

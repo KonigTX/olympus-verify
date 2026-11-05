@@ -68,8 +68,11 @@ verification result. The Members window uses these conservative rules too.
 
 Click **Not verified** for an online member in either view. The click rereads that native
 member and the lists, then opens the game's whisper editor addressed to the **complete
-native name**, including Forever's two-part names. It fills an editable reminder linking
-to `https://olympus.roachcouncil.com/`. **The player must press Enter to send it.** There is
+native name**, including Forever's two-part names. The editable reminder points the recipient
+to **Get my code** in Asmongold's **#⚡olympus-verify** channel and asks them to follow the
+bot's whisper instructions from that character in game. In membership-only mode the bot can
+issue a request code to an unbound Discord account. Completing verification still requires the
+current native roster and exact per-whisper membership proof. **The player must press Enter to send it.** There is
 no bulk button, timer, automatic send, retry queue, invite or role action. An existing chat
 draft is preserved. Offline, pending, unknown and stale members cannot be contacted by
 this shortcut. Preview blocks the action without enabling or altering preview mode.

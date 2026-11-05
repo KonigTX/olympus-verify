@@ -7,7 +7,7 @@ local G = {}
 OlympusVerifyGuild = G
 local MAX_MEMBERS, LIST_AGE, MAX_ROWS = 1000, 3600, 60
 local COLUMN_WIDTH, NAV_GUTTER, SCREEN_MARGIN = 116, 48, 8
-local REMINDER = "Hi! Please verify your Olympus character at https://olympus.roachcouncil.com/ — sign in with Discord and follow the verification steps. Happy to help if you get stuck!"
+local REMINDER = "Hi! In Asmongold's Discord, use Get my code in #⚡olympus-verify. Follow the bot's instructions to whisper the code from this character in game."
 local LABEL = { verified = "Verified", unverified = "Not verified", pending = "Verifying", unknown = "Unknown", stale = "Stale list" }
 local COLOR = { verified = "|cff8ac69a", unverified = "|cffe57572", pending = "|cffe8be65", unknown = "|cff9ea3ad", stale = "|cffe8be65" }
 local nativeNames, nativeGuids, nativeAliases, nativeAt, loadedIdentity, changedGuild = {}, {}, {}, nil, nil, false
