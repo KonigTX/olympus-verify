@@ -780,7 +780,7 @@ const quiet = async (fn) => { const real = console.error, lines = []; console.er
   const openNamed = await verify(VERA, "Vera Code");
   const openTicket = await verify(WREN, null, { REQUEST_CODES: "on" });
   const queueOpen = JSON.stringify((await (await ingest.getQueue(env(), "")).json()).entries);
-  check("/verify with a name answers exactly the same full and not full (no new line)", fullNamed.content === openNamed.content && !/full|OLYMPUS PRIME\b/.test(fullNamed.content), fullNamed.content);
+  check("/verify with a name keeps the same flagship instructions full and not full, without capacity copy", fullNamed.content === openNamed.content && fullNamed.content.includes("**OLYMPUS PRIME**") && !/\bfull\b/i.test(fullNamed.content), fullNamed.content);
   check("/verify with no name (a request code) answers exactly the same", fullTicket.content === openTicket.content && /Your code/.test(fullTicket.content));
   check("getQueue serves identical rows full and not full", queueFull === queueOpen && JSON.parse(queueFull).length === 1);
   await snapRow(1000, { exportedAt: T - 30 });

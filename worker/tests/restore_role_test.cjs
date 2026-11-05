@@ -28,6 +28,9 @@ stubs['./beta-reset-policy']=betaPolicyMod.exports;
 // .227: execute the real launch-mode capture, including its fail-closed parser,
 // rather than leaving a newly imported production dependency undefined.
 stubs['./launch-verification227']=entry.load('launch-verification227');
+// The fixed-target restriction is a real production dependency; exercise its
+// default-OFF behavior in the unchanged historical restoration scenarios.
+stubs['./shared-membership-cutover230']=entry.load('shared-membership-cutover230');
 
 const rolesJs = ts.transpileModule(fs.readFileSync(path.join(__dirname, "..", "src", "roles.ts"), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
 const rolesMod = { exports: {} };

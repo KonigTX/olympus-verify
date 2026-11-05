@@ -16,6 +16,7 @@ import { guildSeats, seatsStaffLine, seatsText } from "./guild-seats";
 import { approvePending, denyPending } from "./review";
 import { GUIDE_FIELD, GUIDE_MODAL, GUIDE_STATUS, GUIDE_VERIFY, guideMessage, usesLegacyInviteQueue, verifyModal, visitorChat } from "./guide";
 import { activeRulesetSnapshot } from "./ruleset-profile";
+import { FLAGSHIP_GUILD_NAME } from "./guild-affiliation229";
 import { unverifiedReport } from "./unverified";
 import { restoreMemberRole, restoreNote } from "./restore";
 import { relayStatus, ticketsReady, whisperInstructions } from "./relays";
@@ -184,11 +185,9 @@ async function issueCode(env: Env, i: Interaction, input: string, lane?: LaneCap
       ``,
       ...whisperInstructions(env, code, expiresAt!, await relayStatus(env), raw),
       env.ROLE_GUILD_MEMBER
-        ? freshGrantText(lane)
-          ? `Your guild roles follow automatically once that character is on a current guild roster export.`
-          : `Your Guild Member role follows automatically once you are on the guild roster${env.ADMISSION_MODE === "review" ? ", after an officer approves" : ""} \u2014 already in the guild? Then it follows as soon as the code is confirmed.`
+        ? `Use **My status** to check your verification progress. Follow the current instructions, or ask an officer if access is on hold.`
         : `Your guild invite is queued as soon as the code is confirmed${env.ADMISSION_MODE === "review" ? " and an officer approves" : ""} \u2014 already in the guild? Then your Discord account is linked to the character on the spot.`,
-      `This is for the **main Olympus guild** only \u2014 Olympus 2 and the later Olympus guilds are not verified here (their members use ${visitorChat(env)}).`,
+      `This is for **${FLAGSHIP_GUILD_NAME}** only \u2014 Olympus 2 and the later Olympus guilds are not verified here (their members use ${visitorChat(env)}).`,
     ].join("\n")),
   );
 }
@@ -262,11 +261,9 @@ async function issueTicket(env: Env, i: Interaction, lane?: LaneCapture): Promis
       ...whisperInstructions(env, code, row.expires_at, await relayStatus(env, { tickets: true })),
       `The character that sends it is the one linked to your Discord account. Another character later? Press the button again once this one is confirmed.`,
       env.ROLE_GUILD_MEMBER
-        ? freshGrantText(lane)
-          ? `Your guild roles follow automatically once that character is on a current guild roster export.`
-          : `Your Guild Member role follows automatically once that character is on the guild roster${env.ADMISSION_MODE === "review" ? ", after an officer approves" : ""} \u2014 already in the guild? Then it follows as soon as the code is confirmed.`
+        ? `Use **My status** to check your verification progress. Follow the current instructions, or ask an officer if access is on hold.`
         : `Your guild invite is queued as soon as the code is confirmed${env.ADMISSION_MODE === "review" ? " and an officer approves" : ""}.`,
-      `This is for the **main Olympus guild** only \u2014 Olympus 2 and the later Olympus guilds are not verified here (their members use ${visitorChat(env)}).`,
+      `This is for **${FLAGSHIP_GUILD_NAME}** only \u2014 Olympus 2 and the later Olympus guilds are not verified here (their members use ${visitorChat(env)}).`,
     ].join("\n")),
   );
 }

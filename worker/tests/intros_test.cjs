@@ -143,6 +143,11 @@ async function run(i) {
   }
   check("every intro fits Discord's limits (embeds, fields, 6000 per message, post titles)", limitsOk);
   const rendered = INTROS.map((x) => textOf(renderEmbeds(x, CH, BETA_SNAP)) + "\n" + intros.resolveText(x.content || "", CH)).join("\n");
+  const rawProfile230 = JSON.stringify(BETA_SNAP.profile);
+  const flagshipInfo230 = renderEmbeds(INTROS.find(x=>x.key==="olympus-info"),CH,BETA_SNAP);
+  const flagshipVisitors230 = renderEmbeds(INTROS.find(x=>x.key==="olympus-visitors"),CH,BETA_SNAP);
+  check(".230 current flagship intro and visitor instructions name OLYMPUS PRIME", flagshipInfo230[0].title.startsWith("OLYMPUS PRIME") && textOf(flagshipInfo230).includes("only OLYMPUS PRIME is verified here") && textOf(flagshipVisitors230).includes("Only OLYMPUS PRIME is verified"));
+  check(".230 rendering the flagship display preserves the supplied ruleset profile bytes", JSON.stringify(BETA_SNAP.profile)===rawProfile230);
   check("content lines fit (2000) and every forum post has one, so its preview is not \"Click to see attachment\"",
     INTROS.every((x) => (x.content || "").length <= 2000) && INTROS.filter((x) => x.forum).every((x) => (x.content || "").length > 10));
   check("no placeholder is left after rendering", !/\{#/.test(rendered));

@@ -5,6 +5,7 @@ import {BETA_RESET_GUILD_ID,BETA_RESET_ROLE_IDS} from './beta-reset-policy';
 import {parseNativeRoleMap} from './native-rank-adapter';
 import {nativeErasureMode} from './privacy-native-mode';
 import {captureAccountErasureProof,currentAccountErasureProof,CURRENT_ERASURE_SQL,originalErasureJobBirthSql,PRIVACY_DB_NOW as NOW,type AccountErasureProof} from './privacy-serving-authority';
+import {captureRuntimeVenue230,assertRuntimeVenue230,runtimeVenue230Facts,oldSharedMemberProducerHeld230,SHARED_MEMBER230_GUILD,SHARED_MEMBER230_ROLE,type RuntimeVenue230} from './shared-membership-cutover230';
 
 export const NATIVE_ERASURE_ROLE_DELETES=2;
 export const NATIVE_ERASURE_ROLE_HTTP_MAX=7;
@@ -14,10 +15,12 @@ const ID=/^[1-9][0-9]{16,19}$/,HEX=/^[0-9a-f]{32}$/;
 // Transitional aliases identify the same two Branch roles; two matches for one semantic role remain ambiguous.
 const COUNCIL=Object.freeze([Object.freeze(['Olympus Council GM','Olympus Branch GM']),Object.freeze(['Olympus Council Officer','Olympus Branch Officer'])]);
 const ATTRIBUTED=Object.freeze(['roster_membership','verified_native_rank','roster_native_rank','verified_privileged_rank','roster_privileged_rank',
-  'fresh_roster_membership','fresh_roster_rank','staff_roster_rank','guild_departure','ban','rename_hold','blocking_role','account_erasure','treasury_cosmetic','treasury_cosmetic_expiry']);
+  'fresh_roster_membership','fresh_roster_rank','staff_roster_rank','guild_departure','ban','rename_hold','blocking_role','account_erasure','treasury_cosmetic','treasury_cosmetic_expiry',
+  'launch_membership230','launch_membership_compensation230','launch_membership_removal230','launch_membership_erasure230']);
 const KEYS=['DB','GUILD_ID','DISCORD_APP_ID','DISCORD_BOT_TOKEN','PRIVACY_NATIVE_ERASURE_ENABLED','PRIVACY_ERASURE_ENABLED',
   'ROLE_GUILD_MEMBER','MEMBERSHIP_RETIRED_ROLE_ID','ROLE_OFFICER','ROLE_GUILD_LEADER','ROLE_GUILD_MASTER','ROLE_RAID_LEADER','ROLE_MODERATOR',
-  'BLOCKING_ROLE_IDS','QR_NATIVE_ROLE_MAP','FULL_RELEASE_ROLES','TREASURY_COSMETIC_ROLES'] as const;
+  'BLOCKING_ROLE_IDS','QR_NATIVE_ROLE_MAP','FULL_RELEASE_ROLES','TREASURY_COSMETIC_ROLES',
+  'SHARED_MEMBERSHIP230_MODE','SHARED_MEMBERSHIP230_CLOSURE_JSON','SHARED_MEMBERSHIP230_CLOSURE_SHA256','PRIVACY_WRITE_ADMISSION_ENABLED','PRIVACY_WRITE_ADMISSION_LAYOUT','PRIVACY_WRITE_ADMISSION_EPOCH','VERIFY_MEMBERSHIP_ONLY','VERIFY_NATIVE_SCOPE','MEMBERSHIP_ROLE_SETTLEMENT_ENABLED'] as const;
 type Role=Readonly<{id:string;name:string;position:number;permissions:bigint;managed:boolean}>;
 declare const receiptBrand:unique symbol;
 export type NativeErasureRoleReceipt=Readonly<{[receiptBrand]:true}>;
@@ -68,9 +71,12 @@ export function nativeErasureRolesSettledSql(env:Env,input:AccountErasureProof,r
 export async function cleanupNativeErasureRoles(env:Env,input:AccountErasureProof):Promise<NativeErasureRoleResult>{
   let attributed=0,removed=0,remaining=0,staffAccess:NativeErasureRoleResult['staffAccess']='unknown';
   const result=(state:NativeErasureRoleResult['state'],reason:string,checkedAt:number|null=null,receipt?:NativeErasureRoleReceipt):NativeErasureRoleResult=>({state,reason,checkedAt,attributed,removed,remaining,staffAccess,...(receipt?{receipt}:{})});
-  let lease=false,nonce='',p:Readonly<AccountErasureProof>,binding:ReturnType<typeof capture>,targetJSON='';
+  let lease=false,nonce='',p:Readonly<AccountErasureProof>,binding:ReturnType<typeof capture>,targetJSON='';const sharedAcknowledged:{id:string;nonce:string}[]=[];
   try{if(!nativeErasureMode(env))return result('held','native_erasure_disabled');binding=capture(env);if(binding.text('PRIVACY_ERASURE_ENABLED')!=='true')return result('held','erasure_disabled');const original=captureAccountErasureProof(input);p=original.proof;original.check();if(!HEX.test(p.operationId)||!HEX.test(p.subjectGeneration)||!/^[0-9a-f]{64}$/.test(p.requestDigest)||!validId(p.subject)||!validId(env.GUILD_ID)||!validId(env.DISCORD_APP_ID))return result('held','native_role_proof_invalid');
-    const check=()=>{binding.check();original.check();},values=[p.operationId,p.subject,p.subjectGeneration,p.requestDigest];
+    // Capture the selected venue before the first current-job/provider await. It is not a caller-supplied bypass.
+    const selectedVenue=await captureRuntimeVenue230(env);binding.check();original.check();
+    const sharedVenue:RuntimeVenue230|null=selectedVenue.mode==='enabled'?selectedVenue.venue:null;
+    const check=()=>{binding.check();original.check();if(sharedVenue)assertRuntimeVenue230(env,sharedVenue);},values=[p.operationId,p.subject,p.subjectGeneration,p.requestDigest];
     const current=async()=>{check();const yes=await currentAccountErasureProof(env,p);check();return yes;};
     if(!await current())return result('held','request_not_current');
     const roles=roleInventory(await rest(env,'GET',`/guilds/${env.GUILD_ID}/roles`,undefined,1));if(!await current())return result('held','request_not_current');
@@ -95,18 +101,29 @@ export async function cleanupNativeErasureRoles(env:Env,input:AccountErasureProo
       const botRoles=await readMember(env.DISCORD_APP_ID);if(!botRoles)return result('held','native_role_bot_not_member');
       const own=roles.filter(r=>r.id===env.GUILD_ID||botRoles.includes(r.id)),highest=Math.max(0,...own.map(r=>r.position)),permissions=own.reduce((all,r)=>all|r.permissions,0n);
       if(!(permissions&8n)&&!(permissions&268435456n))return result('held','native_role_manage_roles_missing');
-      let blocked='';const removable=wanted.filter(id=>{const target=roles.find(r=>r.id===id);if(!target||target.managed||target.position>=highest){blocked||=target?.managed?'native_role_managed':target&&target.position>=highest?'native_role_above_bot':'native_role_inventory_unqualified';return false;}return true;});
+      let blocked='';const removable=wanted.filter(id=>{if(oldSharedMemberProducerHeld230(env,env.GUILD_ID,id)&&!sharedVenue){blocked||='shared_member230_venue_held';return false;}const target=roles.find(r=>r.id===id);if(!target||target.managed||target.position>=highest){blocked||=target?.managed?'native_role_managed':target&&target.position>=highest?'native_role_above_bot':'native_role_inventory_unqualified';return false;}return true;});
       if(!removable.length)return result('held',blocked||'native_role_inventory_unqualified');
       for(const id of removable.slice(0,NATIVE_ERASURE_ROLE_DELETES)){
         if(!await current())return result('held','request_not_current');const attempt=random(),effectNonce=random();
-        const inserted=await env.DB.prepare(`INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,claim_nonce,subject_generation,request_digest,created_at,expires_at,native_profile,attempts) SELECT ?7,?2,'${NATIVE_ERASURE_ROLE_PURPOSE}',?8,?9,0,'dispatching','dispatching',?10,?3,?4,${NOW},${NOW}+120,?5,1 WHERE EXISTS(SELECT 1 FROM role_settlements WHERE ${owned}) RETURNING id`).bind(...values,targetJSON,nonce,attempt,env.GUILD_ID,id,effectNonce).first();check();
+        const shared=!!sharedVenue&&env.GUILD_ID===SHARED_MEMBER230_GUILD&&id===SHARED_MEMBER230_ROLE;
+        const purpose=shared?'launch_membership_erasure230':NATIVE_ERASURE_ROLE_PURPOSE;
+        const vf=shared?runtimeVenue230Facts(sharedVenue!):null,venueSQL=vf?`EXISTS(SELECT 1 FROM site_settings WHERE key=${literal(vf.sealKey)} AND value=${literal(vf.sealJSON)})`:'1=1';
+        const effectCurrent=()=>{check();if(!shared&&oldSharedMemberProducerHeld230(env,env.GUILD_ID,id))throw Error('shared_member230_old_producer_held');};effectCurrent();
+        const inserted=await env.DB.prepare(`INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,claim_nonce,subject_generation,request_digest,created_at,expires_at,native_profile,attempts) SELECT ?7,?2,'${purpose}',?8,?9,0,'dispatching','dispatching',?10,?3,?4,${NOW},${NOW}+120,?5,1 WHERE EXISTS(SELECT 1 FROM role_settlements WHERE ${owned}) AND ${venueSQL} RETURNING id`).bind(...values,targetJSON,nonce,attempt,env.GUILD_ID,id,effectNonce).first();effectCurrent();
         if(!inserted||!await current())return result('held','native_role_claim_changed');
-        const admitted=await env.DB.prepare(`SELECT 1 AS admitted WHERE EXISTS(SELECT 1 FROM role_settlements WHERE ${owned}) AND EXISTS(SELECT 1 FROM role_settlements WHERE id=?7 AND purpose='${NATIVE_ERASURE_ROLE_PURPOSE}' AND state='dispatching' AND claim_nonce=?8 AND role_id=?9 AND subject=?2 AND subject_generation=?3 AND request_digest=?4)`).bind(...values,targetJSON,nonce,attempt,effectNonce,id).first();check();if(!admitted)return result('held','native_role_claim_changed');
-        try{await rest(env,'DELETE',`/guilds/${env.GUILD_ID}/members/${p.subject}/roles/${id}`,undefined,1,'olympus-verify: owner-authorized account erasure');check();
-          const ack=await env.DB.prepare(`UPDATE role_settlements SET state='settled',reason='delete_acknowledged',checked_at=${NOW} WHERE id=?1 AND purpose='${NATIVE_ERASURE_ROLE_PURPOSE}' AND state='dispatching' AND claim_nonce=?2 RETURNING id`).bind(attempt,effectNonce).first();check();if(!ack)return result('unknown','native_role_ack_write_unknown');removed++;
-        }catch(e){check();await env.DB.prepare(`UPDATE role_settlements SET state='unknown',reason='delete_outcome_unknown' WHERE id=?1 AND purpose='${NATIVE_ERASURE_ROLE_PURPOSE}' AND state='dispatching' AND claim_nonce=?2`).bind(attempt,effectNonce).run();check();return result('unknown',e instanceof DiscordError&&e.status===403?'native_role_provider_forbidden':'native_role_delete_unknown');}
+        const admitted=await env.DB.prepare(`SELECT 1 AS admitted WHERE EXISTS(SELECT 1 FROM role_settlements WHERE ${owned}) AND EXISTS(SELECT 1 FROM role_settlements WHERE id=?7 AND purpose='${purpose}' AND state='dispatching' AND claim_nonce=?8 AND role_id=?9 AND subject=?2 AND subject_generation=?3 AND request_digest=?4) AND ${venueSQL}`).bind(...values,targetJSON,nonce,attempt,effectNonce,id).first();effectCurrent();if(!admitted)return result('held','native_role_claim_changed');
+        try{await rest(env,'DELETE',`/guilds/${env.GUILD_ID}/members/${p.subject}/roles/${id}`,undefined,1,'olympus-verify: owner-authorized account erasure',undefined,false,effectCurrent);check();
+          const ack=await env.DB.prepare(`UPDATE role_settlements SET state='settled',reason='delete_acknowledged',checked_at=${NOW} WHERE id=?1 AND purpose='${purpose}' AND state='dispatching' AND claim_nonce=?2 RETURNING id`).bind(attempt,effectNonce).first();check();if(!ack)return result('unknown','native_role_ack_write_unknown');if(shared)sharedAcknowledged.push({id:attempt,nonce:effectNonce});removed++;
+        }catch(e){check();await env.DB.prepare(`UPDATE role_settlements SET state='unknown',reason='delete_outcome_unknown' WHERE id=?1 AND purpose='${purpose}' AND state='dispatching' AND claim_nonce=?2`).bind(attempt,effectNonce).run();check();return result('unknown',e instanceof DiscordError&&e.status===403?'native_role_provider_forbidden':'native_role_delete_unknown');}
       }
       present=await readMember(p.subject);if(!await current())return result('held','request_not_current');staffAccess=retainedStaffAccess(present,roles,targets,env.GUILD_ID,binding.text('ROLE_MODERATOR'));wanted=[...targets].filter(id=>present?.includes(id));remaining=wanted.length;
+      // Only this callback's own DELETE ACK plus its confirming GET may complete the new-family receipt.
+      // A later absence observation never upgrades an older unknown or lost ACK.
+      if(sharedAcknowledged.length&&!present?.includes(SHARED_MEMBER230_ROLE))for(const own of sharedAcknowledged){
+        const vf=runtimeVenue230Facts(sharedVenue!);check();const ack=await env.DB.prepare(`UPDATE role_settlements SET reason='launch230_delete_acknowledged_and_confirmed',checked_at=${NOW}
+          WHERE id=?5 AND claim_nonce=?6 AND purpose='launch_membership_erasure230' AND subject=?2 AND subject_generation=?3 AND request_digest=?4 AND guild_id=${literal(SHARED_MEMBER230_GUILD)} AND role_id=${literal(SHARED_MEMBER230_ROLE)} AND state='settled' AND reason='delete_acknowledged'
+          AND ${authority} AND EXISTS(SELECT 1 FROM site_settings WHERE key=?7 AND value=?8) RETURNING id`).bind(...values,own.id,own.nonce,vf.sealKey,vf.sealJSON).first();check();if(!ack)return result('unknown','native_role_confirmation_write_unknown');
+      }
       if(wanted.length&&wanted.every(id=>!removable.includes(id)))return result('held',blocked||'native_role_cleanup_pending');
     }
     if(wanted.length)return result('held','native_role_cleanup_pending');

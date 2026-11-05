@@ -4,6 +4,9 @@ export interface Env {
   BETA_RESET_SOURCE_EPOCH?: string; // absent by default; restriction-only preparation for an immutable new source epoch
   MEMBERSHIP_ROLE_SETTLEMENT_ENABLED?: string; // exact true only; independently enables central membership custody
   MEMBERSHIP_RETIRED_ROLE_ID?: string; // unset by default; one reviewed removal/GET-only former target
+  SHARED_MEMBERSHIP230_MODE?: string; // absent/off preserves historical authority; close-only restricts old producers; enabled requires the qualified cutover
+  SHARED_MEMBERSHIP230_CLOSURE_JSON?: string; // exact source-issued non-personal closure bytes, externally pinned outside restored D1
+  SHARED_MEMBERSHIP230_CLOSURE_SHA256?: string; // exact digest of the original closure; never inferred from a database read
   QR_PHASE1_ENABLED?: string;
   QR_RANK_MAPPING_ENABLED?: string;
   QR_NATIVE_ROLE_MAP?: string;

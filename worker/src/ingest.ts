@@ -1,4 +1,4 @@
-import { readPrivacySubject, admittedPrivacySubjectWrite, pendingPrivacyCapture,privacyBoundSubjectEnv,PrivacySiteRequestHeld,privacyCaptureFromColumns,privacyGenerationFenceSql,type PrivacySubject } from './privacy-serving-authority';
+import { readPrivacySubject, admittedPrivacySubjectWrite, pendingPrivacyCapture,privacyBoundSubjectEnv,PrivacySiteRequestHeld,privacyCaptureFromColumns,privacyGenerationFenceSql,privacyProviderCustodyDatabase,type PrivacySubject } from './privacy-serving-authority';
 /** Endpoints for the officer-side watcher (bearer WATCHER_TOKEN). */
 import { intVar, staffChannel, type Env } from "./env";
 import { audit, getCharacter, getMember, linksNotBefore, now, openPendingFor, openTicket, type PendingRow,type PrivacyReference } from "./db";
@@ -7,13 +7,13 @@ import { json, logLine, postMessage, staffNotice } from "./discord";
 import { onVerified } from "./review";
 import { flushNotices, notify, noticeBatch, type NoticeBatch } from "./dm";
 import { demote, guidOf, ingestRoster, isCurrentRoster, latestRosterEntry, onLatestRoster, promote, ROSTER_PIN_WITHIN, type RosterMemberIn } from "./roster";
-import { callBudget } from "./roles"; // .90 (P-20): the join events' promotions share one Discord-call budget per batch
+import { callBudget,type GrantOutcome } from "./roles"; // .90 (P-20): the join events' promotions share one Discord-call budget per batch
 import {captureBetaRoleDispatch,type BetaRoleDispatch} from './beta-reset-policy';
 import type { RemovalDispatch } from './role-settlements';
 import { guildSeats, seatsStaffLine } from "./guild-seats";
 import { messageOperationId,postPrivacyMessage } from './privacy-provider-messages';
 import { captureLaneConfig } from './full-release-roles';
-import { captureLaunchVerification,launchVerificationRefusal,launchVerificationEnv,captureNativeMembershipProof,verifyNativeMembershipProof,captureLaunchMembershipSource,launchMembershipFence,launchMembershipCurrent,launchContradictionRestriction,LaunchVerificationHeld,type LaunchVerificationCapture,type NativeMembershipProof } from './launch-verification227';
+import { captureLaunchVerification,launchVerificationRefusal,launchVerificationEnv,captureNativeMembershipProof,verifyNativeMembershipProof,captureLaunchMembershipSource,launchMembershipFence,launchMembershipCurrent,launchMembershipPredicate,assertLaunchMembershipMode,launchContradictionRestriction,LaunchVerificationHeld,type LaunchVerificationCapture,type NativeMembershipProof,type LaunchMembershipSource } from './launch-verification227';
 
 type WatcherCapture = { references: PrivacyReference[] };
 type CapturedQueue = {id:number;discord_id:string;name_key:string;name:string;created_at:number;status:string;attempts:number|null;retry_after:number|null;last_reason:string|null;claimed_by:string|null;claimed_at:number|null;last_reason_at:number|null;note:string|null;written_at:number|null;invited_at:number|null;joined_at:number|null;approved_by:string|null;priority:number;privacy_generation:string|null;privacy_state:string|null;privacy_revision:number|null};
@@ -112,6 +112,97 @@ interface VerifyIn {
   nativeMembership?: unknown;
 }
 
+/** Only this module's successful original pending-consumption path can mint this
+ * capability. A copied result, old member row or later read cannot recreate it. */
+declare const consumed230Brand: unique symbol;
+export type OriginalConsumedMembership230 = Readonly<{[consumed230Brand]:true}>;
+export type Consumed230Facts = Readonly<{subject:string;subjectGeneration:string|null;pendingId:number;consumedAt:number;
+  admittedAt:number;pendingExpiresAt:number;source:LaunchMembershipSource;fingerprint:string;deadline:number}>;
+type Consumed230Record = {facts:Consumed230Facts;db:D1Database;check:()=>void;effectCheck:(env:Env)=>void;pendingValues:readonly (string|number|null)[]};
+const consumed230Originals = new WeakMap<OriginalConsumedMembership230,Consumed230Record>();
+const CONSUMED230_CONFIG = ['GUILD_ID','ROLE_GUILD_MEMBER','VERIFY_MEMBERSHIP_ONLY','VERIFY_NATIVE_SCOPE','VERIFY_SECRET',
+  'LINKS_NOT_BEFORE','LINKS_NOT_BEFORE_CLOCK_GATED','PRIVACY_WRITE_ADMISSION_ENABLED','PRIVACY_WRITE_ADMISSION_LAYOUT',
+  'PRIVACY_WRITE_ADMISSION_EPOCH','SHARED_MEMBERSHIP230_MODE','SHARED_MEMBERSHIP230_CLOSURE_JSON','SHARED_MEMBERSHIP230_CLOSURE_SHA256',
+  'PRIVACY_ERASURE_ENABLED','PRIVACY_NATIVE_ERASURE_ENABLED','MEMBERSHIP_ROLE_SETTLEMENT_ENABLED','QR_PHASE1_ENABLED',
+  'DISCORD_APP_ID','DISCORD_BOT_TOKEN','BLOCKING_ROLE_IDS','ROLE_OFFICER','ROLE_MODERATOR','ROLE_GUILD_LEADER','ROLE_GUILD_MASTER',
+  'ROLE_RAID_LEADER','LINK_ROLE_ID','MEMBERSHIP_RETIRED_ROLE_ID','QR_NATIVE_ROLE_MAP','FULL_RELEASE_ROLES','INTROS_ROLES',
+  'TREASURY_COSMETIC_ROLES','BETA_RESET_SOURCE_EPOCH','BETA_RESET_DISPATCH_SEAL_MODE','BETA_RESET_REMOVALS_ENABLED','ROLE_CALL_BUDGET'] as const;
+function consumed230Held():never {throw new LaunchVerificationHeld();}
+function original230Slots(object:object,keys:readonly string[]):()=>void {
+  const proto=Object.getPrototypeOf(object),slots=keys.map(key=>Object.getOwnPropertyDescriptor(object,key));
+  const check=()=>{if(Object.getPrototypeOf(object)!==proto)consumed230Held();for(let n=0;n<keys.length;n++){
+    const before=slots[n],after=Object.getOwnPropertyDescriptor(object,keys[n]!);
+    if(before===undefined){if(after||keys[n]! in object)consumed230Held();}
+    else if(!Object.hasOwn(before,'value')||!after||!Object.hasOwn(after,'value')||
+      ['value','writable','enumerable','configurable','get','set'].some(key=>!Object.is(before[key as keyof PropertyDescriptor],after[key as keyof PropertyDescriptor])))consumed230Held();
+  }};check();return check;
+}
+function captureConsumed230Config(env:Env) {
+  let active=true,slots:()=>void;const close=()=>{active=false;};
+  try{slots=original230Slots(env,CONSUMED230_CONFIG);}catch{return Object.freeze({enabled:false,check:()=>consumed230Held(),assertEffect:(_effect:Env)=>consumed230Held(),close});}
+  const check=()=>{if(!active)consumed230Held();slots();};
+  const mode=Object.getOwnPropertyDescriptor(env,'SHARED_MEMBERSHIP230_MODE');
+  return Object.freeze({enabled:!!mode&&Object.hasOwn(mode,'value')&&mode.value==='enabled',check,close,
+    assertEffect(effect:Env){check();for(const key of CONSUMED230_CONFIG){const a=Object.getOwnPropertyDescriptor(env,key),b=Object.getOwnPropertyDescriptor(effect,key);
+      if(a===undefined?!!b||key in effect:!b||!Object.hasOwn(a,'value')||!Object.hasOwn(b,'value')||!Object.is(a.value,b.value))consumed230Held();}}
+  });
+}
+/** The result and selected graph descriptors stay original across fingerprint crypto
+ * and every later provider await. This helper is private and is called only after the
+ * actual admitted batch returns; it does not accept a caller-asserted ACK flag. */
+async function mintConsumed230(env:Env,selection:ReturnType<typeof captureConsumed230Config>,pending:PendingRow,
+  pendingCheck:()=>void,capture:PrivacySubject|null,source:LaunchMembershipSource,allDone:D1Result[],consumeIndex:number,
+  consumedAt:number,nameKey:string,name:string,via:'whisper'|'mail'):Promise<OriginalConsumedMembership230> {
+  selection.check();pendingCheck();assertLaunchMembershipMode(env,source);
+  if(!Array.isArray(allDone))consumed230Held();const length=Object.getOwnPropertyDescriptor(allDone,'length')?.value;
+  if(!Number.isSafeInteger(length)||length<4||length>10)consumed230Held();
+  const graphChecks:(()=>void)[]=[original230Slots(allDone,['length',...Array.from({length},(_v,n)=>String(n))])];
+  for(const item of allDone){graphChecks.push(original230Slots(item,['success','results','meta']));if(item.success!==true)consumed230Held();}
+  const consumed=allDone[consumeIndex];if(!consumed||!consumed.meta||typeof consumed.meta!=='object'||!Array.isArray(consumed.results))consumed230Held();
+  graphChecks.push(original230Slots(consumed.meta,['changes']),original230Slots(consumed.results,['length','0']));
+  if(consumed.meta.changes!==1||consumed.results.length!==1)consumed230Held();
+  const row=consumed.results[0] as Record<string,unknown>;if(!row||typeof row!=='object')consumed230Held();
+  graphChecks.push(original230Slots(row,['id','consumed_at','admitted_at']));
+  const admittedAt=row.admitted_at;
+  if(row.id!==pending.id||row.consumed_at!==consumedAt||!Number.isSafeInteger(admittedAt)||Number(admittedAt)<1||
+    !Number.isSafeInteger(pending.id)||pending.id<1||!Number.isSafeInteger(pending.expires_at)||pending.expires_at<=Number(admittedAt)||
+    source.nameKey!==nameKey||capture!==null&&(capture.subject!==pending.discord_id||capture.state!=='active'))consumed230Held();
+  const db=privacyProviderCustodyDatabase(env),generation=capture?.subjectGeneration??null;
+  const pendingValues=Object.freeze([pending.id,pending.discord_id,pending.created_at,pending.expires_at,pending.nonce??null,consumedAt,via,nameKey,name,generation]);
+  const deadline=Math.min(Number(admittedAt)+300,source.exportedAt+600,source.nativeObservedAt+600,pending.expires_at);
+  if(deadline<=Number(admittedAt))consumed230Held();
+  const check=()=>{selection.check();pendingCheck();for(const witness of graphChecks)witness();assertLaunchMembershipMode(env,source);};check();
+  const digestInput=JSON.stringify(['original-consumed-membership230',...pendingValues,source.snapshotId,source.guid,source.provenance,source.nativeObservedAt,admittedAt,deadline]);
+  const fingerprint=Array.from(await sha256(digestInput),byte=>byte.toString(16).padStart(2,'0')).join('');check();
+  const facts=Object.freeze({subject:pending.discord_id,subjectGeneration:generation,pendingId:pending.id,consumedAt,admittedAt:Number(admittedAt),
+    pendingExpiresAt:pending.expires_at,source,fingerprint,deadline});
+  const cap=Object.freeze({}) as OriginalConsumedMembership230;
+  consumed230Originals.set(cap,{facts,db,pendingValues,check,effectCheck:selection.assertEffect});return cap;
+}
+export function assertConsumed230Original(env:Env,cap:OriginalConsumedMembership230):void {
+  const saved=consumed230Originals.get(cap),database=env&&typeof env==='object'?Object.getOwnPropertyDescriptor(env,'DB'):undefined;
+  if(!saved||!database||!Object.hasOwn(database,'value')||database.value!==saved.db)consumed230Held();saved.check();
+  saved.effectCheck(env);
+  assertLaunchMembershipMode(env,saved.facts.source);
+}
+export function consumed230Facts(cap:OriginalConsumedMembership230):Consumed230Facts {
+  const saved=consumed230Originals.get(cap);if(!saved)consumed230Held();saved.check();return saved.facts;
+}
+export function consumed230Predicate(env:Env,cap:OriginalConsumedMembership230,start=1):Readonly<{sql:string;values:readonly (string|number|null)[];next:number}> {
+  assertConsumed230Original(env,cap);if(!Number.isSafeInteger(start)||start<1||start>75)consumed230Held();const saved=consumed230Originals.get(cap)!;
+  const at=(offset:number)=>'?'+(start+offset),launch=launchMembershipPredicate(env,saved.facts.source,start+10);
+  return Object.freeze({sql:`EXISTS(SELECT 1 FROM pending p WHERE p.id=${at(0)} AND p.discord_id=${at(1)} AND p.created_at=${at(2)}
+    AND p.expires_at=${at(3)} AND p.nonce IS ${at(4)} AND p.consumed_at=${at(5)} AND p.consumed_source=${at(6)} AND p.name_key=${at(7)} AND p.name=${at(8)})
+    AND ${privacyGenerationFenceSql(start+1,start+9)} AND EXISTS(SELECT 1 FROM characters c WHERE c.discord_id=${at(1)} AND c.name_key=${at(7)} AND c.name=${at(8)}
+      AND c.guid=?${start+17} AND c.status='member') AND (SELECT COUNT(*) FROM characters WHERE guid=?${start+17} AND status IN('member','left_pending'))=1
+    AND ?${start+18}>CAST(strftime('%s','now') AS INTEGER) AND (${launch.sql})`,
+    values:Object.freeze([...saved.pendingValues,...launch.values,saved.facts.source.guid,saved.facts.deadline]),next:start+19});
+}
+function memberRoleResult230(outcome:GrantOutcome|undefined) {
+  const roleOutcome=outcome==='granted'?'granted':outcome==='has-role'?'observed-present':outcome==='unknown'?'unknown':outcome==='no-role'||outcome===undefined?'not-attempted':'held';
+  return {pendingConsumed:true,inviteQueued:false,roleOutcome,roleGranted:roleOutcome==='granted'||roleOutcome==='observed-present'};
+}
+
 /** A player GUID as the client writes it ("Player-4613-0ABCDEF0"), or null. */
 export function playerGuid(v: unknown): string | null {
   const g = guidOf(v);
@@ -121,6 +212,7 @@ export function playerGuid(v: unknown): string | null {
 export async function postVerify(env: Env, body: VerifyIn,originalDispatch?:BetaRoleDispatch): Promise<Response> {
   const roleDispatch=originalDispatch??captureBetaRoleDispatch(env);
   const launch = captureLaunchVerification(env);
+  const consumedSelection230=captureConsumed230Config(env);
   if (launch.mode === 'held') return json({ result: 'verification_configuration_held', roleGranted: false, inviteQueued: false, pendingConsumed: false }, 503);
   const context:WatcherCapture={references:[]};
   try {
@@ -131,14 +223,15 @@ export async function postVerify(env: Env, body: VerifyIn,originalDispatch?:Beta
       for(const field of ['character','code','source','ts','officer','guid','nativeMembership']){const d=Object.getOwnPropertyDescriptor(body,field);if(d&&!Object.hasOwn(d,'value'))throw new LaunchVerificationHeld();copied[field]=d?.value;}
       copied.nativeMembership=captureNativeMembershipProof(copied.nativeMembership);originalBody=Object.freeze(copied) as unknown as VerifyIn;
     }
-    const result=await postVerifyInner(launchVerificationEnv(env,launch),originalBody,context,roleDispatch,launch);
+    const result=await postVerifyInner(launchVerificationEnv(env,launch),originalBody,context,roleDispatch,launch,consumedSelection230);
     if(result.status<400)await assertWatcherCurrent(env,context);
     return result;
   }
   catch(error) { if(error instanceof PrivacySiteRequestHeld||error instanceof LaunchVerificationHeld)return watcherHeldResult(env,context);throw error; }
+  finally {consumedSelection230.close();}
 }
 
-async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,roleDispatch:BetaRoleDispatch,launch:LaunchVerificationCapture): Promise<Response> {
+async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,roleDispatch:BetaRoleDispatch,launch:LaunchVerificationCapture,consumedSelection230:ReturnType<typeof captureConsumed230Config>): Promise<Response> {
   const originalEnv=env;
   const name = (body.character ?? "").trim();
   const nameKey = normalizeCharacter(name);
@@ -154,6 +247,7 @@ async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,r
     return json({ result: "invalid" });
   }
   let pending: PendingRow | null = ticket ? await openTicket(env, ticketNonce(code)!) : await openPendingFor(env, nameKey);
+  const pendingCheck230=pending?original230Slots(pending,['id','discord_id','name_key','name','created_at','expires_at','consumed_at','nonce','privacy_generation','privacy_state','privacy_revision']):()=>consumed230Held();
   if(pending?.privacy_state&&pending.privacy_state!=='active')return json({result:'privacy_held'},409);
   // Bind immediately after the joint pending/generation read, before ticket crypto or any later await.
   const privacyCapture=pending?pendingPrivacyCapture(pending):null;
@@ -271,7 +365,8 @@ async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,r
     env.DB.prepare(
       `UPDATE pending SET consumed_at = ?2, consumed_source = ?3, name_key = ?4, name = ?5
         WHERE id = ?1 AND consumed_at IS NULL
-          AND NOT EXISTS (SELECT 1 FROM characters WHERE name_key = ?4 AND discord_id <> ?6 AND status NOT IN ('unbound', 'denied', 'left'))`,
+          AND NOT EXISTS (SELECT 1 FROM characters WHERE name_key = ?4 AND discord_id <> ?6 AND status NOT IN ('unbound', 'denied', 'left'))
+          ${consumedSelection230.enabled&&launchSource?"RETURNING id,consumed_at,CAST(strftime('%s','now') AS INTEGER) AS admitted_at":''}`,
     ).bind(pending.id, t, body.source, nameKey, name, pending.discord_id),
   ];
   if (!alreadyLinked) {
@@ -334,13 +429,18 @@ async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,r
     return json({ result: "no_pending" });
   }
   const resolved: PendingRow = { ...pending, name_key: nameKey, name, consumed_at: t };
+  let originalConsumed230:OriginalConsumedMembership230|undefined;
+  if(consumedSelection230.enabled&&launchSource&&(body.source==='whisper'||body.source==='mail')){
+    try{originalConsumed230=await mintConsumed230(env,consumedSelection230,pending,pendingCheck230,privacyCapture,launchSource,allDone,3,t,nameKey,name,body.source);}
+    catch{/* The link may be acknowledged while new role authority is held. Never adopt a later pending row or ACK. */}
+  }
   if (alreadyLinked) {
     // An already linked member may have lost their Discord role. A newly proved
     // native source can reach the existing writer; never replay an unknown intent.
-    if(launchSource)await promote(env,pending.discord_id,nameKey,name,undefined,whisperGuid,undefined,privacyCapture,roleDispatch,launchSource);
+    const roleOutcome=launchSource?await promote(env,pending.discord_id,nameKey,name,undefined,whisperGuid,undefined,privacyCapture,roleDispatch,launchSource,originalConsumed230):undefined;
     await audit(env, "watcher", "verify.already_linked", name, { discordId: pending.discord_id, source: body.source },reference);
     if(launchSource&&!await launchMembershipCurrent(env,launchSource))return json({result:'outcome_unknown',pendingConsumed:true,roleOutcome:'unknown',inviteQueued:false},503);
-    return json({ result: "member", discordId: pending.discord_id, name });
+    return json({ result: "member", discordId: pending.discord_id, name,...(launchSource?memberRoleResult230(roleOutcome):{}) });
   }
   await audit(env, "watcher", "verify.confirmed", name, { discordId: pending.discord_id, source: body.source, officer: body.officer, ticket, guid: whisperGuid },reference);
   await logLine(env, `✅ verify: **${name}** confirmed in game (${body.source}${ticket ? ", request code" : ""}) for <@${pending.discord_id}>.`,[reference!]);
@@ -352,9 +452,9 @@ async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,r
     // last export, read on launch day, would grant the role to whoever took the name on live and pin the wrong
     // character to them. The GUID is taken only from a very fresh export; otherwise the next export pins it.
     await audit(env, "watcher", "verify.already_member", name, { discordId: pending.discord_id, source: body.source },reference);
-    await promote(env, pending.discord_id, nameKey, name, undefined, whisperGuid ?? (now() - onRoster.exportedAt <= ROSTER_PIN_WITHIN ? onRoster.guid : null),undefined,privacyCapture,roleDispatch,launchSource??undefined);
+    const roleOutcome=await promote(env, pending.discord_id, nameKey, name, undefined, whisperGuid ?? (now() - onRoster.exportedAt <= ROSTER_PIN_WITHIN ? onRoster.guid : null),undefined,privacyCapture,roleDispatch,launchSource??undefined,originalConsumed230);
     if(launchSource&&!await launchMembershipCurrent(env,launchSource))return json({result:'outcome_unknown',pendingConsumed:true,roleOutcome:'unknown',inviteQueued:false},503);
-    return json({ result: "member", discordId: pending.discord_id, name });
+    return json({ result: "member", discordId: pending.discord_id, name,...(launchSource?memberRoleResult230(roleOutcome):{}) });
   }
   if (onRoster) await audit(env, "watcher", "verify.roster_not_current", name, { exportedAt: onRoster.exportedAt },reference);
   await onVerified(env, resolved, body.source,privacyCapture);

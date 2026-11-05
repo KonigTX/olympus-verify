@@ -18,6 +18,8 @@ import { captureTreasuryReservedRoles } from './treasury-reserved-roles';
 import { BETA_RESET_GUILD_ID,BETA_RESET_ROLE_IDS,captureBetaRoleDispatch,betaRoleDispatchHeld,betaGrantDispatchHeld,betaGrantDispatchSql,type BetaGrantCapture,type BetaRoleDispatch } from './beta-reset-policy';
 import { type LaneCapture,type LaneKind,type LaneRemovalPurpose,type LaneTupleRow } from './full-release-roles';
 import { captureLaunchVerification,assertLaunchMembershipMode,launchMembershipPredicate,type LaunchMembershipSource } from './launch-verification227';
+import {assertRuntimeVenue230,runtimeVenue230Facts,runtimeVenue230Predicate,oldSharedMemberProducerHeld230,type RuntimeVenue230} from './shared-membership-cutover230';
+import type {OriginalConsumedMembership230} from './ingest';
 
 type Role={id:string;position:number;permissions:string;managed:boolean};
 type Member={roles:string[];user:{id:string}};
@@ -44,21 +46,27 @@ function originalRemovalDispatch(env:Env,given?:RemovalDispatch):RemovalDispatch
 /** Holds a fixed target unless the entry capture is absent and unchanged against the env it was read from. Cross-env
  * (restriction only): the effect env itself holds a fixed target when it carries any own, accessor or inherited mode
  * descriptor, so another env can add a hold but never lift one. Pure: no getter call, SQL, await, request or audit. */
-const removalHeld=betaRoleDispatchHeld;
+const removalHeld=(env:Env,capture:RemovalDispatch,guild:string,role:string)=>betaRoleDispatchHeld(env,capture,guild,role)||oldSharedMemberProducerHeld230(env,guild,role);
 const now=()=>Math.floor(Date.now()/1000);
 const budget=():AttemptBudget=>({limit:8,attempts:0,retries:0});
 /** This path counts every network request and disables the legacy 429 retry. */
-async function request<T>(env:Env,b:AttemptBudget,method:string,path:string,readAdmission?:()=>Promise<boolean>,beforeDispatch?:()=>void):Promise<T> {
- if(readAdmission&&(method==='GET'||method==='PUT')&&!await readAdmission())throw Error('retirement_original_read_admission_changed');
+async function request<T>(env:Env,b:AttemptBudget,method:string,path:string,readAdmission?:()=>Promise<boolean>,beforeDispatch?:()=>void,deleteAdmission230?:object):Promise<T> {
+ if(deleteAdmission230!==undefined&&deleteAdmission230!==launch230RoleOnly&&deleteAdmission230!==launch230OriginalCompensation)throw Error('role_configuration');
+ if(readAdmission&&(method==='GET'||method==='PUT'||method==='DELETE'&&deleteAdmission230!==undefined&&deleteAdmission230===launch230RoleOnly)&&!await readAdmission())throw Error('retirement_original_read_admission_changed');
+ const dispatch=()=>{const target=/^\/guilds\/(\d+)\/members\/\d+\/roles\/(\d+)$/.exec(path);
+  if((method==='PUT'||method==='DELETE')&&target&&oldSharedMemberProducerHeld230(env,target[1],target[2])&&deleteAdmission230===undefined)throw Error('shared_member230_old_producer_held');};
+ dispatch();
  if(b.attempts>=b.limit)throw new Error('role_budget');b.attempts++;if('calls' in b)(b as AttemptBudget&{calls:number}).calls++;
- return rest<T>(env,method,path,undefined,1,'Olympus verified role settlement',b,false,beforeDispatch);
+ return rest<T>(env,method,path,undefined,1,'Olympus verified role settlement',b,false,()=>{dispatch();beforeDispatch?.();});
 }
 async function member(env:Env,b:AttemptBudget,subject:string,readAdmission?:()=>Promise<boolean>):Promise<Member|null> {
  try{return await request<Member>(env,b,'GET',`/guilds/${env.GUILD_ID}/members/${subject}`,readAdmission);}catch(e){if(e instanceof DiscordError&&e.status===404)return null;throw e;}
 }
-async function qualify(env:Env,b:AttemptBudget,subject:string,roleId:string,grant:boolean,cosmetic=false,otherRoles:readonly {id:string;cosmetic:boolean}[]=[],allowMissingRetired=false,readAdmission?:()=>Promise<boolean>,allowMissingBetaDuplicate=false) {
+async function qualify(env:Env,b:AttemptBudget,subject:string,roleId:string,grant:boolean,cosmetic=false,otherRoles:readonly {id:string;cosmetic:boolean}[]=[],allowMissingRetired=false,readAdmission?:()=>Promise<boolean>,allowMissingBetaDuplicate=false,roleOnly230?:object) {
+ const roleOnly=roleOnly230!==undefined&&roleOnly230===launch230RoleOnly&&env.GUILD_ID===BETA_RESET_GUILD_ID&&roleId===BETA_RESET_ROLE_IDS[0]&&otherRoles.length===0&&!cosmetic&&!allowMissingRetired&&!allowMissingBetaDuplicate;
+ if(roleOnly230!==undefined&&!roleOnly)throw Error('role_configuration');
  if(!ID.test(env.GUILD_ID)||!ID.test(subject)||!ID.test(roleId)||!env.DISCORD_BOT_TOKEN)throw new Error('role_configuration');
- const me=await request<{id:string}>(env,b,'GET','/users/@me',readAdmission);if(!ID.test(env.DISCORD_APP_ID)||me.id!==env.DISCORD_APP_ID||me.id===subject)throw new Error('bot_identity');
+ const me=await request<{id:string;bot?:boolean}>(env,b,'GET','/users/@me',readAdmission);if(!ID.test(env.DISCORD_APP_ID)||me.id!==env.DISCORD_APP_ID||me.id===subject||roleOnly&&me.bot!==true)throw new Error('bot_identity');
  const roles=await request<Role[]>(env,b,'GET',`/guilds/${env.GUILD_ID}/roles`,readAdmission);
  const bot=await member(env,b,me.id,readAdmission),target=await member(env,b,subject,readAdmission);
  if(!Array.isArray(roles)||roles.length>250||!bot||!Array.isArray(bot.roles)||target&&!Array.isArray(target.roles))throw new Error('role_inventory');
@@ -71,8 +79,8 @@ async function qualify(env:Env,b:AttemptBudget,subject:string,roleId:string,gran
   if(!wanted&&allowMissingBetaDuplicate&&!grant&&!cosmetic&&otherRoles.length===0
    &&env.GUILD_ID===BETA_RESET_GUILD_ID&&roleId==='1558657538960916490'&&requested.id===roleId
    &&!target?.roles.includes(roleId)&&!!(permission&268435456n||permission&8n))continue;
-  if(!wanted&&allowMissingRetired&&membershipTransitionEnabled(env)&&membershipTargets(env).retired===requested.id)continue;if(!wanted||wanted.managed||wanted.id===env.GUILD_ID||wanted.position>=highest||requested.cosmetic&&wanted.permissions!=='0'||!(permission&268435456n||permission&8n))throw new Error('role_hierarchy');}
- if(target){if(target.roles.some(id=>!inventory.has(id))||Math.max(0,...target.roles.map(id=>inventory.get(id)!.position))>=highest)throw new Error('target_hierarchy');}
+  if(!wanted&&allowMissingRetired&&membershipTransitionEnabled(env)&&membershipTargets(env).retired===requested.id)continue;if(!wanted||wanted.managed||wanted.id===env.GUILD_ID||wanted.position>=highest||requested.cosmetic&&wanted.permissions!=='0'||roleOnly&&grant&&wanted.permissions!=='0'||!(permission&268435456n||permission&8n))throw new Error('role_hierarchy');}
+ if(target){if(target.roles.some(id=>!inventory.has(id))||!roleOnly&&Math.max(0,...target.roles.map(id=>inventory.get(id)!.position))>=highest)throw new Error('target_hierarchy');}
  if(grant&&(!target||(env.BLOCKING_ROLE_IDS||'').split(',').map(x=>x.trim()).some(x=>x&&target.roles.includes(x))))throw new Error('server_restriction');
  return target;
 }
@@ -119,7 +127,7 @@ export async function queueRosterMembershipRole(env:QrEnv,subject:string,snapsho
  if(rows.results.length!==1)throw Error('unique_native_guid_required');const r=rows.results[0]!,id=randomGeneration();
  if(!membershipSettlementEnabled(env)||!membershipTargetsCurrent(env,binding))throw Error('membership_configuration_changed');
  const args=[snapshotId,subject,r.guid,r.rank,r.rank_index,capturedGeneration,id,Number(env.LINKS_NOT_BEFORE||0),binding.guild,binding.current,profile];
- if(betaGrantDispatchHeld(env,removal,binding.guild,binding.current))throw Error(HELD_BY_MODE);
+ if(betaGrantDispatchHeld(env,removal,binding.guild,binding.current)||oldSharedMemberProducerHeld230(env,binding.guild,binding.current))throw Error(HELD_BY_MODE);
  const createGuard=betaGrantDispatchSql(env,removal,'?9','?10',ROSTER_CURRENT);
  // A later genuinely fresh producer may dispose an operation that never dispatched. It cannot renew its deadline,
  // borrow its authority or retry an attempted/unknown write; the successor is a distinct operation captured here.
@@ -145,7 +153,7 @@ export async function queueRosterRankRoles(env:QrEnv,subject:string,snapshotId:n
  WHERE r.snapshot_id=?2 AND c.status='member'`).bind(subject,snapshotId).all<{guid:string;rank:string;rank_index:number}>();
  if(r.results.length!==1)throw Error('unique_native_guid_required');const row=r.results[0]!,desiredRows=await rankTargets(env,subject,profile,row.rank,row.rank_index),rows=desiredRows.map(([role,desired,purpose])=>({id:randomGeneration(),role,desired,purpose:purpose.replace('verified_','roster_')}));
  const args=[snapshotId,subject,row.guid,row.rank,row.rank_index,capturedGeneration,randomGeneration(),Number(env.LINKS_NOT_BEFORE||0),env.GUILD_ID,JSON.stringify(rows),profile];
- if(rows.some(r=>r.desired===1&&betaGrantDispatchHeld(env,removal,env.GUILD_ID,r.role)))throw Error(HELD_BY_MODE);
+ if(rows.some(r=>oldSharedMemberProducerHeld230(env,env.GUILD_ID,r.role)||r.desired===1&&betaGrantDispatchHeld(env,removal,env.GUILD_ID,r.role)))throw Error(HELD_BY_MODE);
  const createGuard=betaGrantDispatchSql(env,removal,'?9',"CASE WHEN json_extract(j.value,'$.desired')=1 THEN json_extract(j.value,'$.role') ELSE '' END",ROSTER_CURRENT);
  const expired=`state='held' AND reason='expired_without_dispatch' AND attempts=0 AND expires_at<=${DB_NOW}`;
  await env.DB.batch([env.DB.prepare(`UPDATE role_settlements SET state='held',reason='expired_without_dispatch'
@@ -256,7 +264,7 @@ export async function queueProofRoles(env:QrEnv,proofId:string,dispatch?:Removal
  if(p.beta_window_id===null)desired.push(...await rankTargets(env,p.requester,p.native_profile,p.rank_name,p.native_rank));else{if(!betaOriginal?.enabled||p.beta_window_id!==betaOriginal.windowId||desired[0]![0]!==betaOriginal.membershipRole)throw Error('beta_membership_only');assertBetaConfiguration(betaOriginal);}
  // One bounded source-owned json_each INSERT, not one DB round trip per role. No caller role values enter it.
  const rows=desired.map(([role,wanted,purpose])=>({id:randomGeneration(),role,wanted,purpose}));
- if(rows.some(r=>r.wanted===1&&betaGrantDispatchHeld(env,removal,membershipBinding?.guild??env.GUILD_ID,r.role)))throw Error(HELD_BY_MODE);
+ if(rows.some(r=>oldSharedMemberProducerHeld230(env,membershipBinding?.guild??env.GUILD_ID,r.role)||r.wanted===1&&betaGrantDispatchHeld(env,removal,membershipBinding?.guild??env.GUILD_ID,r.role)))throw Error(HELD_BY_MODE);
  const createGuard=betaGrantDispatchSql(env,removal,'?4',"CASE WHEN json_extract(j.value,'$.wanted')=1 THEN json_extract(j.value,'$.role') ELSE '' END",PROOF_CURRENT);
  if(membershipBinding&&!membershipTargetsCurrent(env,membershipBinding))throw Error('membership_configuration_changed');
  await env.DB.prepare(`INSERT INTO role_settlements(id,subject,purpose,proof_id,guild_id,role_id,desired,state,reason,created_at,expires_at,native_profile,native_rank,native_rank_name)
@@ -304,6 +312,8 @@ export async function settleRoleIntent(env:QrEnv,id:string,reconcileOnly=false,a
  try{original=captureOriginalSettlementFacts(facts,env);owner?.check();}catch(error){if(error instanceof OriginalSettlementFactsHeld)return result('held','original_role_facts_changed',id);throw error;}
  const i=original.intent,compensation=original.compensation;
  if(!i||i.guild_id!==env.GUILD_ID)return result('held','operation_not_current',id);
+ if(/^launch_membership(?:230|_(?:compensation|removal|erasure)230)$/.test(i.purpose))return observeLaunchMembershipDebt230(env,id,b);
+ if(i.attempts===0&&oldSharedMemberProducerHeld230(env,i.guild_id,i.role_id))return result('held','shared_member230_old_producer_held',id);
  const betaScoped=i.guild_id===BETA_RESET_GUILD_ID&&BETA_RESET_ROLE_IDS.includes(i.role_id);
  const check=()=>{original.check();owner?.check();if(!reconcileOnly&&i.desired===1&&(launchMode.mode==='held'||!launchMode.current()))throw new OriginalSettlementFactsHeld();if(originalLaunchSource){try{assertLaunchMembershipMode(env,originalLaunchSource);}catch{throw new OriginalSettlementFactsHeld();}}if(!providerEffectStarted&&!compensation&&i.desired===1&&i.beta_window_id!==null&&i.beta_window_id!==undefined){if(!betaOriginal?.enabled||i.beta_window_id!==betaOriginal.windowId||i.purpose!=='verified_membership'||i.role_id!==betaOriginal.membershipRole)throw new OriginalSettlementFactsHeld();try{assertBetaConfiguration(betaOriginal);}catch{throw new OriginalSettlementFactsHeld();}}};
  const checked=async<T>(perform:()=>Promise<T>):Promise<T>=>{check();const value=await perform();check();return value;};
@@ -372,16 +382,16 @@ export async function settleRoleIntent(env:QrEnv,id:string,reconcileOnly=false,a
  // Item 15: new dispatch only. The compensation/beta/past-effect reconciliation and the fresh_server_confirmed receipt above
  // run in every mode; a fixed-target removal holds here, before its claim, at admit and at the final pre-effect point.
  if(i.desired===0&&removalHeld(env,removal,i.guild_id,i.role_id))return result('held',HELD_BY_MODE,id);
- if(i.desired===1&&betaGrantDispatchHeld(env,removal,i.guild_id,i.role_id))return result('held',HELD_BY_MODE,id);
+ if(i.desired===1&&(betaGrantDispatchHeld(env,removal,i.guild_id,i.role_id)||oldSharedMemberProducerHeld230(env,i.guild_id,i.role_id)))return result('held',HELD_BY_MODE,id);
  const claimed=await checked(()=>update(`state='dispatching',attempts=1,claim_nonce=?${base.nonce},reason='dispatching'`,`AND state='pending' AND attempts=0 AND expires_at>${DB_NOW}`,true).first());
  check();if(!claimed)return result('held','claim_changed',id);
  if(i.desired===0&&removalHeld(env,removal,i.guild_id,i.role_id))return result('held',HELD_BY_MODE,id);
- if(i.desired===1&&betaGrantDispatchHeld(env,removal,i.guild_id,i.role_id))return result('held',HELD_BY_MODE,id);
+ if(i.desired===1&&(betaGrantDispatchHeld(env,removal,i.guild_id,i.role_id)||oldSharedMemberProducerHeld230(env,i.guild_id,i.role_id)))return result('held',HELD_BY_MODE,id);
  if(!await checked(()=>update("reason='admitted_before_effect'",`AND claim_nonce=?${base.nonce} AND state='dispatching'`,true).first()))return result('held','proof_changed_before_effect',id);
  if(membershipBinding&&(!reconcileOnly&&!membershipSettlementEnabled(env)||!membershipTargetsCurrent(env,membershipBinding)))return result('held','frozen_configuration_changed',id);
  if(betaCapture&&betaPolicy&&!await checked(()=>betaPolicy.betaGrantCurrent(env,betaCapture)))return result('held','beta_grant_policy_changed',id);
  if(i.desired===0&&removalHeld(env,removal,i.guild_id,i.role_id))return result('held',HELD_BY_MODE,id);
- if(i.desired===1&&betaGrantDispatchHeld(env,removal,i.guild_id,i.role_id))return result('held',HELD_BY_MODE,id);
+ if(i.desired===1&&(betaGrantDispatchHeld(env,removal,i.guild_id,i.role_id)||oldSharedMemberProducerHeld230(env,i.guild_id,i.role_id)))return result('held',HELD_BY_MODE,id);
  // Scoped launch grants re-read the exact original admitted claim/source after
  // the final policy awaits. This is still not atomic with the following HTTP PUT.
  const finalAdmission=!reconcileOnly&&i.desired===1&&(originalLaunchSource||launchMode.mode==='members-only')?async()=>{
@@ -424,7 +434,7 @@ async function reconcileBetaClosedGrant(env:Env,i:Intent,b:AttemptBudget):Promis
 /** A landed grant that lost admission owes one separate, durable removal. This cannot mint a grant or retry a DELETE. */
 async function compensateGrant(env:Env,b:AttemptBudget,i:Intent,parentNonce:string,betaReceiptReplyLost=false,putAcknowledged=true,removal:RemovalDispatch):Promise<Settlement>{
  // Item 15 (compensation producer2): the parent's entry capture holds a fixed-target child before its attempted INSERT.
- if(removalHeld(env,removal,i.guild_id,i.role_id))return result('unknown',HELD_BY_MODE,i.id);
+ if(betaRoleDispatchHeld(env,removal,i.guild_id,i.role_id))return result('unknown',HELD_BY_MODE,i.id);
  const id=randomGeneration(),nonce=randomGeneration(),betaScoped=i.guild_id===BETA_RESET_GUILD_ID&&BETA_RESET_ROLE_IDS.includes(i.role_id);
  const ack=putAcknowledged?'acknowledged':'unknown';
  const claimed=await env.DB.prepare(`INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,request_digest,claim_nonce,attempts,created_at,expires_at)
@@ -433,8 +443,8 @@ async function compensateGrant(env:Env,b:AttemptBudget,i:Intent,parentNonce:stri
   AND NOT EXISTS(SELECT 1 FROM role_settlements WHERE purpose='grant_compensation' AND request_digest=?2) RETURNING id`).bind(id,i.id,nonce,parentNonce,Number(betaReceiptReplyLost),betaScoped?'beta_'+ack+'_put_cleanup':'admission_lost').first();
  if(!claimed)return result('unknown','compensation_claim_held',i.id);
  // Mode checked again after the claim ACK: a held child stays spent with no DELETE; parent and shared writers are untouched.
- if(removalHeld(env,removal,i.guild_id,i.role_id))return result('unknown',HELD_BY_MODE,i.id);
- try{await request(env,b,'DELETE',`/guilds/${i.guild_id}/members/${i.subject}/roles/${i.role_id}`);const after=await member(env,b,i.subject);if(after?.roles.includes(i.role_id))throw Error();
+ if(betaRoleDispatchHeld(env,removal,i.guild_id,i.role_id))return result('unknown',HELD_BY_MODE,i.id);
+ try{await request(env,b,'DELETE',`/guilds/${i.guild_id}/members/${i.subject}/roles/${i.role_id}`,undefined,undefined,oldSharedMemberProducerHeld230(env,i.guild_id,i.role_id)?launch230OriginalCompensation:undefined);const after=await member(env,b,i.subject);if(after?.roles.includes(i.role_id))throw Error();
  await env.DB.batch([env.DB.prepare(`UPDATE role_settlements SET state='settled',reason=?3,checked_at=${DB_NOW} WHERE id=?1 AND claim_nonce=?2`).bind(id,nonce,betaScoped?'beta_'+ack+'_put_cleanup_acknowledged':'removed'),env.DB.prepare("UPDATE role_settlements SET state=?3,reason=?4 WHERE id=?1 AND claim_nonce=?2").bind(i.id,parentNonce,putAcknowledged?'held':'unknown',putAcknowledged?'removed_after_admission_changed':'beta_put_unconfirmed_cleanup_observed')]);
  return result(putAcknowledged?'held':'unknown',putAcknowledged?'removed_after_admission_changed':'beta_put_unconfirmed_cleanup_observed',i.id,now());
  }catch{await env.DB.prepare("UPDATE role_settlements SET state='unknown',reason=?3 WHERE id IN(?1,?2)").bind(id,i.id,betaScoped?'beta_'+ack+'_put_cleanup_unknown':'compensation_unknown').run();return result('unknown','compensation_unknown',i.id);}
@@ -479,6 +489,7 @@ export async function settleBetaResetRemoval(env:Env,id:string,captured:BetaGran
  const digest=await sha256(captured.raw!);
  if(!first||first.purpose!=='beta_reset'||first.desired!==0||first.guild_id!==policy.BETA_RESET_GUILD_ID
   ||!policy.BETA_RESET_ROLE_IDS.includes(first.role_id)||first.request_digest!==digest||!ID.test(first.subject))return result('held','beta_reset_intent_held',id);
+ if(first.attempts===0&&oldSharedMemberProducerHeld230(env,first.guild_id,first.role_id))return result('held','shared_member230_old_producer_held',id);
  if(b.limit-b.attempts<6)return result('held','role_request_budget',id);
  let i=first,target:Member|null;
  const original=(row:Intent)=>JSON.stringify(row);
@@ -553,6 +564,7 @@ export async function settleVerifiedRemoval(env:Env,subject:string,purpose:Remov
  const removal=originalRemovalDispatch(env,removalDispatch);
  if(!membershipSettlementEnabled(env))return result('held','membership_writer_disabled');
  let binding:ReturnType<typeof membershipTargets>;try{binding=membershipTargets(env);}catch{return result('held','removal_configuration');}const role=targetRole??binding.current;
+ if(oldSharedMemberProducerHeld230(env,binding.guild,role))return settleLaunchMembershipRemoval230(env,subject,purpose,capturedGeneration,b);
  if(targetRole!==undefined&&(!membershipTransitionEnabled(env)||role!==binding.current&&role!==binding.retired))return result('held','removal_configuration');
  if(membershipTransitionEnabled(env)&&capturedGeneration===undefined)return result('held','original_removal_generation_required');
  const owned=role===binding.retired?(originalOwned??await env.DB.prepare(`SELECT * FROM role_settlements WHERE subject=?1 AND guild_id=?2 AND role_id=?3 AND purpose='roster_membership' AND proof_id IS NULL AND desired=1 AND attempts=1 AND claim_nonce IS NOT NULL AND subject_generation IS ?4 AND state IN('settled','dispatching','unknown') ORDER BY created_at,id LIMIT 1`).bind(subject,binding.guild,role,capturedGeneration??null).first<Intent>()):null;
@@ -619,6 +631,7 @@ async function reconcileRetiredMembershipReceipt(env:Env,i:Intent,b:AttemptBudge
  */
 export async function settleMembershipRemoval(env:Env,subject:string,purpose:RemovalPurpose,capture?:{subjectGeneration:string|null},b:AttemptBudget={limit:16,attempts:0,retries:0},removalDispatch?:RemovalDispatch):Promise<Settlement>{
  const removal=originalRemovalDispatch(env,removalDispatch);
+ if(oldSharedMemberProducerHeld230(env,env.GUILD_ID,env.ROLE_GUILD_MEMBER))return settleLaunchMembershipRemoval230(env,subject,purpose,capture?.subjectGeneration,b);
  if(!membershipTransitionEnabled(env))return settleVerifiedRemoval(env,subject,purpose,b,capture?.subjectGeneration,undefined,undefined,removal);
  if(!capture||!Object.hasOwn(capture,'subjectGeneration'))return result('held','original_removal_generation_required');
  let binding:ReturnType<typeof membershipTargets>;try{binding=membershipTargets(env);}catch{return result('held','removal_configuration');}
@@ -880,7 +893,7 @@ export async function reconcileAccountErasureRoleDebt(env:Env,proof:ErasureProof
  if((facts[0]!.results[0] as {current:number}|undefined)?.current!==1)return {state:'held' as const,outcomes,attempts:0};
  for(const row of facts[1]!.results as Intent[]){if(!await authority.currentAccountErasureProof(env,proof))return {state:'held' as const,outcomes,attempts:b.attempts};
  const original=JSON.stringify(Object.fromEntries(RETIREMENT_PARENT_FIELDS.map(k=>[k,row[k]])));
- const r=row.desired===0?await reconcileRemovalReceipt(env,row.id,b):await settleRoleIntent(env,row.id,true,undefined,b);outcomes.push(r);
+ const r=/^launch_membership(?:230|_(?:compensation|removal|erasure)230)$/.test(row.purpose)?await observeLaunchMembershipDebt230(env,row.id,b):row.desired===0?await reconcileRemovalReceipt(env,row.id,b):await settleRoleIntent(env,row.id,true,undefined,b);outcomes.push(r);
  if(!await authority.currentAccountErasureProof(env,proof))return {state:'held' as const,outcomes,attempts:b.attempts};
  // Only an unchanged original spent tuple can record a visit. No state/reason/nonce/clock is rewritten.
  // A lost reply never retries this write; committed visits rotate the next turn, uncommitted visits stay owed.
@@ -896,6 +909,7 @@ export async function settleErasure(env:Env,proof:ErasureProof,b:AttemptBudget=b
  proof=originalErasureRoleProof(proof);
  const authority=await import('./privacy-serving-authority');
  const held={state:'held' as const,checkedAt:null,staffAccess:'unknown' as const};
+ if(oldSharedMemberProducerHeld230(env,env.GUILD_ID,env.ROLE_GUILD_MEMBER))return held;
  if(proof.purpose!=='account_erasure'||!ID.test(proof.subject)||!TOKEN.test(proof.operationId)||!TOKEN.test(proof.subjectGeneration)||!/^[0-9a-f]{64}$/.test(proof.requestDigest)||!env.ROLE_GUILD_MEMBER)return held;
  // Item 15: new dispatch only. A fixed target creates no new intent unless the mode is absent and unchanged (the INSERT keeps
  // its place in the batch and is restricted by AND 0=1); an existing intent is still read, observed by GET and may settle
@@ -1166,7 +1180,7 @@ export async function settleLaneRemoval(env:Env,cap:LaneCapture,subject:string,g
  for(const g of groups){
   const fresh=(L.FRESH_REMOVAL_PURPOSES as readonly string[]).includes(g?.purpose),staff=(L.STAFF_REMOVAL_PURPOSES as readonly string[]).includes(g?.purpose);
   if(!fresh&&!staff||purposes.has(g.purpose)||!Array.isArray(g.roles)||g.roles.length<1||g.roles.length>LANE_ROLE_SET_MAX)return done('held','invalid_capture');purposes.add(g.purpose);
-  for(const role of g.roles){if(typeof role!=='string'||!ID.test(role)||laneTwelve(role)||role===cap.guild||seen.has(role))return done('held','frozen_configuration_changed');seen.add(role);}
+  for(const role of g.roles){if(typeof role!=='string'||!ID.test(role)||laneTwelve(role)||role===cap.guild||seen.has(role)||oldSharedMemberProducerHeld230(env,cap.guild,role))return done('held','frozen_configuration_changed');seen.add(role);}
   if(fresh){if(!clock.fresh||!cfg||!digest)return done('held','lane_closed');
    if((g.purpose===L.FRESH_REMOVAL_RENAME_HOLD||g.purpose===L.FRESH_REMOVAL_BLOCKING_ROLE)&&(g.roles.length!==1||g.roles[0]!==cfg.membership))return done('held','frozen_configuration_changed');
    if(g.purpose===L.FRESH_REMOVAL_BLOCKING_ROLE&&!(Number.isSafeInteger(opts.rosterId)&&opts.rosterId!>0))return done('held','invalid_capture');}
@@ -1250,6 +1264,7 @@ function laneAdopt(L:LaneModule,plan:readonly LanePlanItem[],found:readonly {id:
 export async function queueFreshRosterRoles(env:Env,cap:LaneCapture,subject:string,snapshotId:number,generation:string|null,observed:LaneObservation):Promise<LaneQueueResult>{
  const L=await import('./full-release-roles');
  const cfg=cap?.cfg;
+ if(cfg&&[cfg.membership,...cfg.native].some(role=>oldSharedMemberProducerHeld230(env,cap.guild,role)))return laneQueued('held','shared_member230_old_producer_held');
  if(!cfg||cap.raw===null||!L.laneClock(cap,now()).grants||!cap.current()||!ID.test(cap.guild)||env.GUILD_ID!==cap.guild||!ID.test(subject)||!Number.isSafeInteger(snapshotId)||snapshotId<1||!laneGeneration(generation)||!observed)return laneQueued('held','invalid_capture');
  if(!observed.member)return laneQueued('not_member','not_member');if(observed.blocked)return laneQueued('blocked','server_restriction');
  const D=await L.laneDigest(cap.raw);
@@ -1301,6 +1316,7 @@ export async function queueStaffRankRoles(env:Env,cap:LaneCapture,subject:string
  const grantOnly=candidates.some(r=>!authorized.has(r)||roles.includes(r)&&!ok(r));
  if(pick&&!grantOnly&&!observed.blocked&&ok(pick.role))plan.push({id:randomGeneration(),role:pick.role,desired:1,purpose:L.STAFF_RANK});
  if(!plan.length)return laneQueued(pick?'nothing':'link_missing',grantOnly?'rank_removal_authority_missing':pick?'nothing_to_queue':'link_missing',[],pending,top.guid);
+ if(plan.some(row=>oldSharedMemberProducerHeld230(env,cap.guild,row.role)))return laneQueued('held','shared_member230_old_producer_held');
  const s=L.laneProducerSql('staff'),v=[...values,JSON.stringify(plan),managed];
  if(!cap.current())return laneQueued('held','lane_configuration_changed');
  await env.DB.batch([env.DB.prepare(s.disposal).bind(...L.bindsFor(s.disposal,v)),env.DB.prepare(s.insert).bind(...L.bindsFor(s.insert,v))]);
@@ -1347,6 +1363,7 @@ export async function inspectTreasuryCosmeticRoles(env:Env,authority:import('./t
 }
 export async function settleTreasuryCosmeticRole(env:Env,authority:import('./treasury-cosmetic').TreasuryAuthority):Promise<Settlement>{
  const T=await import('./treasury-cosmetic'),a=T.treasuryAuthorityFacts(env,authority),id=a.operationId;
+ if(oldSharedMemberProducerHeld230(env,a.config.guildId,a.roleId))return result('held','shared_member230_old_producer_held',id);
  if(!id||!TOKEN.test(id)||!a.digest||!a.roleId||a.desired===undefined||typeof a.recognitionConsent!=='boolean'||a.recognitionConsent===false&&a.desired!==0)return result('held','treasury_confirmation_required');
  if(a.env.TREASURY_COSMETIC_ENABLED!=='true'||env.PRIVACY_NATIVE_ERASURE_ENABLED!=='true'||env.PRIVACY_ERASURE_ENABLED!=='true')return result('held','treasury_disabled',id);
  const nonce=randomGeneration(),values=[id,a.target.id,a.config.guildId,a.roleId,a.desired,a.target.generation,a.digest];
@@ -1425,6 +1442,7 @@ export async function expireTreasuryCosmeticRoles(env:Env,limits:{sqlRemaining:n
  AND NOT EXISTS(SELECT 1 FROM role_settlements x WHERE x.subject=r.subject AND x.guild_id=r.guild_id AND x.role_id=r.role_id AND x.id<>r.id AND (x.purpose<>'treasury_cosmetic_expiry' OR x.request_digest IS NOT r.id) AND ((x.attempts=1 AND x.state IN('dispatching','unknown')) OR (x.purpose='treasury_cosmetic' AND x.desired=1 AND x.expires_at>r.expires_at)))
  ORDER BY COALESCE((SELECT MAX(x.checked_at) FROM role_settlements x WHERE x.purpose='treasury_cosmetic_expiry' AND x.request_digest=r.id),0),r.expires_at,r.id LIMIT 1`).bind(env.GUILD_ID),env.DB.prepare('SELECT id,reason FROM role_settlements WHERE 0')]);
  const original=captureOriginalSettlementFacts(facts,env),p=original.intent;if(!p)return result('settled','no_expired_treasury_role');
+ if(oldSharedMemberProducerHeld230(env,p.guild_id,p.role_id))return result('held','shared_member230_old_producer_held',p.id);
  const sourceSlots=(['DISCORD_APP_ID','DISCORD_BOT_TOKEN','DB'] as const).map(k=>[k,Object.getOwnPropertyDescriptor(env,k)] as const);
  if(sourceSlots.some(([,d])=>!d||!Object.hasOwn(d,'value')))return result('held','treasury_expiry_configuration');
  const check=()=>{original.check();reserved.check();for(const[k,d]of sourceSlots){const live=Object.getOwnPropertyDescriptor(env,k);if(!live||!Object.hasOwn(live,'value')||live.value!==d!.value)throw Error('treasury_expiry_configuration_changed');}};
@@ -1455,4 +1473,239 @@ export async function expireTreasuryCosmeticRoles(env:Env,limits:{sqlRemaining:n
   const after=await request<Member>(env,b,'GET',`/guilds/${p.guild_id}/members/${p.subject}`);check();if(after?.user?.id!==p.subject||!Array.isArray(after.roles)||after.roles.includes(p.role_id)||!await current())throw Error('expiry_confirmation');
   const closed=await custody.prepare(`UPDATE role_settlements SET state='settled',reason='season_expiry_delete_acknowledged',checked_at=${DB_NOW} WHERE ${owned} AND ${guard} RETURNING id`).bind(...v,nonce).first();return closed?result('settled','season_expiry_delete_acknowledged',op,now()):result('unknown','treasury_expiry_ack_unknown',op);
  }catch{try{await custody.prepare(`UPDATE role_settlements SET state='unknown',reason='season_expiry_outcome_unknown',checked_at=${DB_NOW} WHERE ${owned}`).bind(...v,nonce).run();}catch{/* Never release a spent attempt if even its receipt is uncertain. */}return result('unknown','season_expiry_outcome_unknown',op);}
+}
+
+// Build .230: a separate original-native mandate for the one fixed shared role.
+// Old QR/beta/roster purposes above do not acquire this authority from their rows.
+export const LAUNCH_MEMBERSHIP230_PURPOSES=Object.freeze({grant:'launch_membership230',compensation:'launch_membership_compensation230',removal:'launch_membership_removal230',erasure:'launch_membership_erasure230'} as const);
+const launch230RoleOnly=Object.freeze({}); // Module-private selection; never a caller or request boolean.
+const launch230OriginalCompensation=Object.freeze({}); // Only an already-owned old callback may drain its child.
+const launch230Purposes=Object.freeze(Object.values(LAUNCH_MEMBERSHIP230_PURPOSES));
+const consumed230Spent=new WeakSet<object>();
+type Launch230Parent=Readonly<{id:string;nonce:string;subject:string;generation:string|null;guild:string;role:string;createdAt:number;expiresAt:number;fingerprint:string;snapshotId:number;guid:string;providerCheck:()=>void}>;
+const launch230PurposeSql=launch230Purposes.map(p=>`'${p}'`).join(',');
+const launch230KnownReceipt=(a:string)=>`(${a}.state='settled' AND ${a}.attempts=1 AND ${a}.claim_nonce IS NOT NULL AND (
+ (${a}.purpose='${LAUNCH_MEMBERSHIP230_PURPOSES.grant}' AND ${a}.desired=1 AND ${a}.reason='launch230_put_acknowledged_and_confirmed') OR
+ (${a}.purpose IN('${LAUNCH_MEMBERSHIP230_PURPOSES.compensation}','${LAUNCH_MEMBERSHIP230_PURPOSES.removal}','${LAUNCH_MEMBERSHIP230_PURPOSES.erasure}') AND ${a}.desired=0 AND ${a}.reason='launch230_delete_acknowledged_and_confirmed')))
+ OR (${a}.purpose IN(${launch230PurposeSql}) AND ${a}.state='held' AND ${a}.attempts=1 AND ${a}.reason='launch230_never_dispatched' AND ${a}.claim_nonce IS NOT NULL AND ${a}.checked_at>=${a}.created_at)
+ OR (${a}.purpose='${LAUNCH_MEMBERSHIP230_PURPOSES.grant}' AND ${a}.desired=1 AND ${a}.attempts=1 AND ${a}.state='held' AND ${a}.reason='launch230_compensated'
+  AND EXISTS(SELECT 1 FROM role_settlements child WHERE child.request_digest=${a}.id AND child.subject=${a}.subject AND child.guild_id=${a}.guild_id AND child.role_id=${a}.role_id
+   AND child.purpose='${LAUNCH_MEMBERSHIP230_PURPOSES.compensation}' AND child.desired=0 AND child.attempts=1 AND child.state='settled' AND child.reason='launch230_delete_acknowledged_and_confirmed'))`;
+function launch230Blocker(env:Env,target:Member|null):boolean{return !!target&&(env.BLOCKING_ROLE_IDS??'').split(',').some(id=>id.trim()&&target.roles.includes(id.trim()));}
+function launch230Member(target:Member|null,subject:string):boolean{return target===null||target.user?.id===subject&&Array.isArray(target.roles)&&target.roles.every(id=>ID.test(id));}
+/** Retain the exact provider result graph, rather than keeping a caller-supplied blocking boolean. */
+function launch230MemberWitness(target:Member|null,subject:string):()=>void{
+ if(!launch230Member(target,subject))throw Error('launch230_member');return launch230GraphWitness(target);
+}
+function launch230GraphWitness(input:unknown):()=>void{
+ const witnesses:(()=>void)[]=[],seen=new Set<object>();
+ const visit=(value:unknown)=>{if(!value||typeof value!=='object'||seen.has(value as object))return;const o=value as object;seen.add(o);const proto=Object.getPrototypeOf(o),keys=Reflect.ownKeys(o),slots=keys.map(k=>{const d=Object.getOwnPropertyDescriptor(o,k);if(!d||!Object.hasOwn(d,'value'))throw Error('launch230_member');return d;});
+  witnesses.push(()=>{if(Object.getPrototypeOf(o)!==proto||Reflect.ownKeys(o).length!==keys.length||Reflect.ownKeys(o).some((k,i)=>k!==keys[i]))throw Error('launch230_original_graph_changed');for(let i=0;i<keys.length;i++){const d=Object.getOwnPropertyDescriptor(o,keys[i]!);if(!d||!['value','writable','enumerable','configurable'].every(k=>Object.is(d[k as keyof PropertyDescriptor],slots[i]![k as keyof PropertyDescriptor])))throw Error('launch230_original_graph_changed');}});for(const d of slots)visit(d.value);};visit(input);
+ return ()=>{for(const check of witnesses)check();};
+}
+function launch230ProviderWitness(env:Env):()=>void{
+ const proto=Object.getPrototypeOf(env),keys=['DB','DISCORD_APP_ID','DISCORD_BOT_TOKEN','GUILD_ID','ROLE_GUILD_MEMBER','BLOCKING_ROLE_IDS'] as const;
+ const slots=keys.map(key=>Object.getOwnPropertyDescriptor(env,key));
+ const check=()=>{if(Object.getPrototypeOf(env)!==proto)throw Error('launch230_provider_configuration');for(let n=0;n<keys.length;n++){
+  const a=slots[n],b=Object.getOwnPropertyDescriptor(env,keys[n]!);
+  if(a===undefined?!!b||keys[n]! in env:!Object.hasOwn(a,'value')||!b||!Object.hasOwn(b,'value')||['value','writable','enumerable','configurable'].some(k=>!Object.is(a[k as keyof PropertyDescriptor],b[k as keyof PropertyDescriptor])))throw Error('launch230_provider_configuration');
+ }};check();return check;
+}
+async function launch230NativeIntent(env:Env,statement:D1PreparedStatement,check:()=>void,write=true){
+ check();const facts=await env.DB.batch([statement,env.DB.prepare('SELECT id,reason FROM role_settlements WHERE 0')]);check();
+ const graph=launch230GraphWitness(facts),original=captureOriginalSettlementFacts(facts,env);graph();original.check();
+ if(facts[0]?.success!==true||facts[1]?.success!==true||facts[0].results.length>1||facts[1].results.length!==0||write&&original.intent&&facts[0].meta.changes!==1)throw Error('launch230_original_native_ack');
+ return Object.freeze({...original,check:()=>{graph();original.check();}});
+}
+/** No purpose/subject supplied by a request is sufficient to create a grant. */
+export async function queueAndSettleLaunchMembership230(env:Env,cap:OriginalConsumedMembership230,venue:RuntimeVenue230,b:AttemptBudget=budget()):Promise<Settlement>{
+ let id:string|null=null,parent:Launch230Parent|null=null,effectStarted=false,putAcknowledged=false;
+ try{
+  assertRuntimeVenue230(env,venue);
+  if(!cap||typeof cap!=='object'||consumed230Spent.has(cap))return result('held','launch230_original_consumption_required');
+  const providerCheck=launch230ProviderWitness(env);
+  consumed230Spent.add(cap); // Spend before even loading the issuer; a parallel call cannot acquire another turn.
+  // The issuer stays private to ingest. Loading its readonly observers does not mint authority.
+  const issuer=await import('./ingest');issuer.assertConsumed230Original(env,cap);
+  const f=issuer.consumed230Facts(cap),v=runtimeVenue230Facts(venue);
+  let queueCheck=()=>{},claimCheck=()=>{};
+  const check=()=>{providerCheck();assertRuntimeVenue230(env,venue);issuer.assertConsumed230Original(env,cap);queueCheck();claimCheck();};check();
+  if(!ID.test(f.subject)||f.subjectGeneration!==null&&!TOKEN.test(f.subjectGeneration)||!/^[0-9a-f]{64}$/.test(f.fingerprint)
+   ||!Number.isSafeInteger(f.deadline)||f.deadline<=now())return result('held','launch230_original_consumption_expired');
+  id=randomGeneration();
+  const values:(string|number|null)[]=[id,f.subject,v.guildId,v.roleId,f.subjectGeneration,f.fingerprint,f.source.snapshotId,f.source.guid,f.deadline];
+  const p=issuer.consumed230Predicate(env,cap,values.length+1);values.push(...p.values);
+  const venueGuard=runtimeVenue230Predicate(env,venue,values.length+1);values.push(...venueGuard.values);
+  const legacy=(await import('./privacy-shared-member-cutover230')).sharedMember230LegacyAckSql('old');check();
+  const clear=`NOT EXISTS(SELECT 1 FROM role_settlements old WHERE old.subject=?2 AND old.guild_id=?3 AND old.role_id=?4 AND old.id<>?1 AND (
+   (old.attempts=1 AND NOT(CASE WHEN (${launch230KnownReceipt('old')}) OR (${legacy}) THEN 1 ELSE 0 END)) OR
+   (old.attempts=0 AND old.state IN('pending','dispatching') AND old.expires_at>${DB_NOW} AND (old.desired=0 OR old.purpose IN(${launch230PurposeSql})))))`;
+  const guard=`(${p.sql}) AND (${venueGuard.sql}) AND ${clear}
+   AND NOT EXISTS(SELECT 1 FROM members WHERE discord_id=?2 AND banned=1)
+   AND NOT EXISTS(SELECT 1 FROM site_users WHERE discord_id=?2 AND denied=1)
+   AND NOT EXISTS(SELECT 1 FROM rename_holds WHERE discord_id=?2 AND state='reapply')`;
+  const row=`id=?1 AND subject=?2 AND guild_id=?3 AND role_id=?4 AND purpose='${LAUNCH_MEMBERSHIP230_PURPOSES.grant}' AND desired=1
+   AND subject_generation IS ?5 AND request_digest=?6 AND roster_id=?7 AND native_guid=?8 AND expires_at=?9`;
+  const current=async()=>{check();const r=await env.DB.prepare(`SELECT 1 AS current WHERE ${guard}`).bind(...values).first();check();return !!r;};
+  const queuedFacts=await launch230NativeIntent(env,env.DB.prepare(`INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,subject_generation,request_digest,created_at,expires_at,roster_id,native_guid,native_profile)
+   SELECT ?1,?2,'${LAUNCH_MEMBERSHIP230_PURPOSES.grant}',?3,?4,1,'pending','launch230_awaiting_dispatch',?5,?6,${DB_NOW},?9,?7,?8,'prime-native-230'
+   WHERE ${guard} AND NOT EXISTS(SELECT 1 FROM role_settlements WHERE purpose='${LAUNCH_MEMBERSHIP230_PURPOSES.grant}' AND request_digest=?6)
+   RETURNING *,NULL AS beta_window_id`).bind(...values),check);queueCheck=queuedFacts.check;check();const queued=queuedFacts.intent;
+  if(!queued||queued.id!==id||!Number.isSafeInteger(queued.created_at))return result('held','launch230_queue_held',id);
+  if(b.limit-b.attempts<8)return result('held','role_request_budget',id);
+  let target:Member|null;
+  try{target=await qualify(env,b,f.subject,v.roleId,true,false,[],false,current,false,launch230RoleOnly);check();if(!launch230Member(target,f.subject))throw Error();}
+  catch{return result('held','inventory_hierarchy_or_server_hold',id);}
+  if(!await current())return result('held','launch230_admission_changed',id);
+  if(target?.roles.includes(v.roleId)){
+   const r=await env.DB.prepare(`UPDATE role_settlements SET state='settled',reason='launch230_current_role_observed',checked_at=${DB_NOW}
+    WHERE ${row} AND state='pending' AND attempts=0 AND ${guard} RETURNING id`).bind(...values).first();check();
+   return r?result('settled','fresh_server_confirmed',id,now()):result('held','launch230_receipt_held',id);
+  }
+  const nonce=randomGeneration(),n=values.length+1,withNonce=[...values,nonce];
+  const claimFacts=await launch230NativeIntent(env,env.DB.prepare(`UPDATE role_settlements SET state='dispatching',attempts=1,claim_nonce=?${n},reason='launch230_dispatching'
+   WHERE ${row} AND state='pending' AND attempts=0 AND expires_at>${DB_NOW} AND ${guard} RETURNING *,NULL AS beta_window_id`).bind(...withNonce),check);claimCheck=claimFacts.check;check();const claim=claimFacts.intent;
+  if(!claim||claim.id!==id||claim.claim_nonce!==nonce||claim.attempts!==1||claim.state!=='dispatching'||claim.expires_at!==f.deadline)return result('held','launch230_claim_changed',id);
+  parent=Object.freeze({id,nonce,subject:f.subject,generation:f.subjectGeneration,guild:v.guildId,role:v.roleId,createdAt:queued.created_at,expiresAt:f.deadline,fingerprint:f.fingerprint,snapshotId:f.source.snapshotId,guid:f.source.guid,providerCheck:()=>{providerCheck();queueCheck();claimCheck();}});
+  const owned=`${row} AND attempts=1 AND claim_nonce=?${n}`;
+  const finalAdmission=async()=>{check();const r=await env.DB.prepare(`SELECT 1 AS admitted FROM role_settlements WHERE ${owned}
+   AND state='dispatching' AND expires_at>${DB_NOW} AND ${guard}`).bind(...withNonce).first();check();return !!r;};
+  try{
+   await request(env,b,'PUT',`/guilds/${v.guildId}/members/${f.subject}/roles/${v.roleId}`,finalAdmission,()=>{check();if(now()>=f.deadline)throw Error('launch230_expired');effectStarted=true;},launch230RoleOnly);
+   putAcknowledged=true;
+  }catch{
+   const reason=effectStarted?'launch230_provider_outcome_unknown':'launch230_never_dispatched';
+   try{await env.DB.prepare(`UPDATE role_settlements SET state=?${n+1},reason=?${n+2},checked_at=${DB_NOW}
+    WHERE ${owned} AND state='dispatching' RETURNING id`).bind(...withNonce,effectStarted?'unknown':'held',reason).first();}catch{/* Keep the original attempted claim; no replay. */}
+   return result(effectStarted?'unknown':'held',reason,id);
+  }
+  let after:Member|null;
+  try{assertRuntimeVenue230(env,venue);after=await member(env,b,f.subject);assertRuntimeVenue230(env,venue);if(!launch230Member(after,f.subject))throw Error();}
+  catch{try{await env.DB.prepare(`UPDATE role_settlements SET state='unknown',reason='launch230_confirmation_unknown' WHERE ${owned}`).bind(...withNonce).run();}catch{}return result('unknown','launch230_confirmation_unknown',id);}
+  let admitted=false;try{admitted=await current();}catch{/* An invalidated original never becomes a new admission. */}
+  if(!admitted||launch230Blocker(env,after))return compensateLaunchMembership230(env,parent,venue,b);
+  if(!after?.roles.includes(v.roleId)){
+   try{await env.DB.prepare(`UPDATE role_settlements SET state='unknown',reason='launch230_effect_not_confirmed' WHERE ${owned}`).bind(...withNonce).run();}catch{}
+   return result('unknown','launch230_effect_not_confirmed',id);
+  }
+  try{
+   const r=await launch230NativeIntent(env,env.DB.prepare(`UPDATE role_settlements SET state='settled',reason='launch230_put_acknowledged_and_confirmed',checked_at=${DB_NOW}
+    WHERE ${owned} AND state='dispatching' AND ${guard} RETURNING *,NULL AS beta_window_id`).bind(...withNonce),check);check();r.check();
+   if(r.intent?.id===id&&r.intent.claim_nonce===nonce&&r.intent.state==='settled')return result('settled','effect_and_current_server_confirmed',id,now());
+  }catch{/* A lost receipt is unknown; a later SELECT cannot recreate its ACK. */}
+  try{await env.DB.prepare(`UPDATE role_settlements SET state='unknown',reason='launch230_receipt_unknown' WHERE ${owned} AND state IN('dispatching','settled')`).bind(...withNonce).run();}catch{}
+  return result('unknown','launch230_receipt_unknown',id);
+ }catch{
+  // Only this invocation's original successful PUT can mint its compensation child.
+  if(putAcknowledged&&parent)return compensateLaunchMembership230(env,parent,venue,b);
+  return result(effectStarted?'unknown':'held','launch230_original_admission_held',id);
+ }
+}
+
+/** Private child issuer. No JSON parent, purpose selector or later row lookup can call it. */
+async function compensateLaunchMembership230(env:Env,p:Launch230Parent,venue:RuntimeVenue230,b:AttemptBudget):Promise<Settlement>{
+ let child:string|null=null;
+ try{
+  p.providerCheck();assertRuntimeVenue230(env,venue);const v=runtimeVenue230Facts(venue);
+  if(v.guildId!==p.guild||v.roleId!==p.role||b.limit-b.attempts<2)return result('unknown','launch230_compensation_held',p.id);
+  child=randomGeneration();const nonce=randomGeneration(),values:(string|number|null)[]=[child,p.id,p.subject,p.guild,p.role,p.nonce,nonce,p.generation,p.createdAt,p.expiresAt,p.fingerprint,p.snapshotId,p.guid];
+  const g=runtimeVenue230Predicate(env,venue,values.length+1);values.push(...g.values);
+  const parent=`EXISTS(SELECT 1 FROM role_settlements own WHERE own.id=?2 AND own.subject=?3 AND own.guild_id=?4 AND own.role_id=?5
+   AND own.purpose='${LAUNCH_MEMBERSHIP230_PURPOSES.grant}' AND own.desired=1 AND own.attempts=1 AND own.claim_nonce=?6
+   AND own.subject_generation IS ?8 AND own.created_at=?9 AND own.expires_at=?10 AND own.request_digest=?11 AND own.roster_id=?12 AND own.native_guid=?13 AND own.state IN('dispatching','unknown'))`;
+  const noNewer=`NOT EXISTS(SELECT 1 FROM role_settlements newer WHERE newer.subject=?3 AND newer.guild_id=?4 AND newer.role_id=?5 AND newer.id<>?2
+   AND newer.desired=1 AND newer.attempts=1 AND newer.created_at>=?9)
+   AND NOT EXISTS(SELECT 1 FROM role_settlements other WHERE other.subject=?3 AND other.guild_id=?4 AND other.role_id=?5 AND other.id NOT IN(?1,?2)
+   AND other.attempts=1 AND other.state IN('dispatching','unknown'))`;
+  const admitted=`${parent} AND (${g.sql}) AND ${noNewer}`;
+  const baseCheck=()=>{p.providerCheck();assertRuntimeVenue230(env,venue);};
+  const r=await launch230NativeIntent(env,env.DB.prepare(`INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,request_digest,claim_nonce,attempts,subject_generation,created_at,expires_at)
+   SELECT ?1,?3,'${LAUNCH_MEMBERSHIP230_PURPOSES.compensation}',?4,?5,0,'dispatching','launch230_compensating',?2,?7,1,?8,${DB_NOW},${DB_NOW}+300
+   WHERE ${admitted} AND NOT EXISTS(SELECT 1 FROM role_settlements WHERE purpose='${LAUNCH_MEMBERSHIP230_PURPOSES.compensation}' AND request_digest=?2) RETURNING *,NULL AS beta_window_id`).bind(...values),baseCheck);
+  baseCheck();r.check();if(r.intent?.id!==child||r.intent.claim_nonce!==nonce||r.intent.request_digest!==p.id||r.intent.attempts!==1)return result('unknown','launch230_compensation_claim_held',p.id);
+  const owned=`id=?1 AND subject=?3 AND guild_id=?4 AND role_id=?5 AND purpose='${LAUNCH_MEMBERSHIP230_PURPOSES.compensation}' AND desired=0 AND attempts=1 AND request_digest=?2 AND claim_nonce=?7`;
+  const check=()=>{baseCheck();r.check();};
+  const final=async()=>{check();const x=await env.DB.prepare(`SELECT 1 FROM role_settlements WHERE ${owned} AND state='dispatching' AND expires_at>${DB_NOW} AND ${admitted}`).bind(...values).first();check();return !!x;};
+  await request(env,b,'DELETE',`/guilds/${p.guild}/members/${p.subject}/roles/${p.role}`,final,check,launch230RoleOnly);
+  const after=await member(env,b,p.subject);check();if(!launch230Member(after,p.subject)||after?.roles.includes(p.role))throw Error();
+  const ack=await launch230NativeIntent(env,env.DB.prepare(`UPDATE role_settlements SET state='settled',reason='launch230_delete_acknowledged_and_confirmed',checked_at=${DB_NOW}
+   WHERE ${owned} AND state='dispatching' AND (${g.sql}) RETURNING *,NULL AS beta_window_id`).bind(...values),check);check();ack.check();if(ack.intent?.id!==child||ack.intent.state!=='settled')throw Error();
+  const parentAck=await launch230NativeIntent(env,env.DB.prepare(`UPDATE role_settlements SET state='held',reason='launch230_compensated',checked_at=${DB_NOW}
+   WHERE id=?2 AND claim_nonce=?6 AND subject=?3 AND guild_id=?4 AND role_id=?5 AND ${parent} AND (${g.sql}) AND EXISTS(SELECT 1 FROM role_settlements WHERE ${owned} AND state='settled' AND reason='launch230_delete_acknowledged_and_confirmed') RETURNING *,NULL AS beta_window_id`).bind(...values),()=>{check();ack.check();});
+  parentAck.check();return parentAck.intent?.id===p.id?result('held','removed_after_admission_changed',p.id,now()):result('unknown','launch230_parent_receipt_unknown',p.id);
+ }catch{
+  if(child)try{await env.DB.prepare(`UPDATE role_settlements SET state='unknown',reason='launch230_compensation_unknown' WHERE id IN(?1,?2) AND attempts=1 AND state='dispatching'`).bind(child,p.id).run();}catch{}
+  return result('unknown','launch230_compensation_unknown',p.id);
+ }
+}
+
+/** Spent effects may be observed in every mode. Neither present nor absent mints an ACK or a retry. */
+export async function observeLaunchMembershipDebt230(env:Env,id:string,b:AttemptBudget=budget()):Promise<Settlement>{
+ try{
+  if(!TOKEN.test(id))return result('held','invalid_operation');const binding=launch230ProviderWitness(env);
+  const original=await launch230NativeIntent(env,env.DB.prepare('SELECT *,NULL AS beta_window_id FROM role_settlements WHERE id=?1').bind(id),binding,false);
+  const i=original.intent,check=()=>{binding();original.check();};check();
+  if(!i||!(launch230Purposes as readonly string[]).includes(i.purpose)||i.guild_id!==BETA_RESET_GUILD_ID||i.guild_id!==env.GUILD_ID||i.role_id!==BETA_RESET_ROLE_IDS[0]||!ID.test(i.subject))return result('held','launch230_receipt_not_owned',id);
+  if(i.attempts!==1||!i.claim_nonce)return result('held','launch230_original_consumption_required',id);
+  if(i.state==='settled'&&['launch230_put_acknowledged_and_confirmed','launch230_delete_acknowledged_and_confirmed'].includes(i.reason))return result('settled','launch230_original_ack_retained',id,i.checked_at);
+  if(b.limit-b.attempts<1)return result('held','role_request_budget',id);
+  const after=await member(env,b,i.subject);check();if(!launch230Member(after,i.subject))return result('held','current_server_unknown',id);
+  const tuple=JSON.stringify(i),fields=SETTLEMENT_INTENT_FIELDS.filter(k=>k!=='beta_window_id');
+  const stamped=await env.DB.prepare(`UPDATE role_settlements SET checked_at=${DB_NOW} WHERE ${fields.map(k=>`${k} IS json_extract(?1,'$.${k}')`).join(' AND ')} RETURNING id`).bind(tuple).first();check();
+  return stamped?result('unknown',after?.roles.includes(i.role_id)?'launch230_present_effect_unresolved':'launch230_absent_effect_unresolved',id,now()):result('held','launch230_receipt_changed',id);
+ }catch{return result('held','launch230_outcome_read_held',id);}
+}
+
+/** A selector chooses one fixed current cause; current SQL, generation, venue and live inventory supply authority. */
+export async function settleLaunchMembershipRemoval230(env:Env,subject:string,cause:RemovalPurpose,generation:string|null|undefined,b:AttemptBudget=budget()):Promise<Settlement>{
+ let id:string|null=null,nonce:string|null=null,started=false;
+ try{
+  if(generation===undefined)return result('held','original_removal_generation_required');
+  const selected=await captureRuntimeVenueForRemoval230(env);if(!selected)return result('held','launch230_venue_held');
+  const {effect,venue}=selected,v=runtimeVenue230Facts(venue),binding=launch230ProviderWitness(effect);
+  if(!ID.test(subject)||!['ban','rename_hold','blocking_role','guild_departure'].includes(cause))return result('held','removal_configuration');
+  const old=await readPrivacySubject(effect,subject);binding();assertRuntimeVenue230(effect,venue);
+  if(old&&old.state!=='active')return result('held','subject_held');const captured=old?.subjectGeneration??null;
+  if(generation!==captured)return result('held','original_removal_generation_changed');
+  const prior=await effect.DB.prepare(`SELECT id FROM role_settlements WHERE subject=?1 AND guild_id=?2 AND role_id=?3 AND purpose='${LAUNCH_MEMBERSHIP230_PURPOSES.removal}' AND attempts=1 AND state IN('dispatching','unknown') ORDER BY created_at,id LIMIT 1`).bind(subject,v.guildId,v.roleId).first<{id:string}>();
+  if(prior)return observeLaunchMembershipDebt230(effect,prior.id,b);
+  if(b.limit-b.attempts<(cause==='blocking_role'?7:6))return result('held','role_request_budget');
+  id=randomGeneration();const values:(string|number|null)[]=[id,subject,v.guildId,v.roleId,generation,cause,Number(env.LINKS_NOT_BEFORE||0)],g=runtimeVenue230Predicate(effect,venue,8);values.push(...g.values);
+  const causeSql=cause==='ban'?"EXISTS(SELECT 1 FROM members WHERE discord_id=?2 AND banned=1)":cause==='rename_hold'?renameRemovalSql:cause==='guild_departure'?`EXISTS(SELECT 1 FROM characters WHERE discord_id=?2)
+   AND NOT EXISTS(SELECT 1 FROM characters WHERE discord_id=?2 AND (status IN('member','left_pending') OR guid IS NULL))
+   AND EXISTS(SELECT 1 FROM roster_snapshots s WHERE s.id=(SELECT MAX(id) FROM roster_snapshots) AND s.complete=1 AND s.trusted=1 AND s.exported_at<=${DB_NOW} AND s.exported_at>${DB_NOW}-600 AND s.exported_at>=?7
+    AND s.member_count=(SELECT COUNT(*) FROM roster_members WHERE snapshot_id=s.id) AND NOT EXISTS(SELECT 1 FROM roster_members r JOIN characters c ON c.guid=r.guid WHERE r.snapshot_id=s.id AND c.discord_id=?2))`:'1=1';
+  const sourceSql=cause==='ban'?`SELECT json_object('subject',discord_id,'banned',banned,'reason',ban_reason) FROM members WHERE discord_id=?2 AND banned=1`
+   :cause==='rename_hold'?`SELECT json_group_array(json_object('id',id,'subject',discord_id,'key',char_key,'guid',guid,'old',old_name,'new',new_name,'nonce',nonce,'state',state,'actor',decided_by,'at',decided_at)) FROM (SELECT * FROM rename_holds WHERE discord_id=?2 AND state='reapply' ORDER BY id)`
+   :cause==='guild_departure'?`SELECT json_object('snapshot',(SELECT json_object('id',id,'at',exported_at,'source',source,'count',member_count) FROM roster_snapshots ORDER BY id DESC LIMIT 1),'characters',(SELECT json_group_array(json_object('key',name_key,'guid',guid,'status',status,'bound',bound_at)) FROM (SELECT * FROM characters WHERE discord_id=?2 ORDER BY name_key)))`
+   :`SELECT json_object('subject',?2,'generation',?5)`;
+  // The queue ACK below is the original admitted capture: G, exact cause bytes and venue are consumed together.
+  const initialGuard=`(${g.sql}) AND ${privacyGenerationFenceSql(2,5)} AND (${causeSql})`;
+  const causeRow=await effect.DB.prepare(`SELECT (${sourceSql}) AS causeJSON WHERE ${initialGuard}`).bind(...values).first<{causeJSON:string}>();binding();assertRuntimeVenue230(effect,venue);
+  if(!causeRow||typeof causeRow.causeJSON!=='string'||causeRow.causeJSON.length>64000)return result('held','removal_cause_withdrawn');
+  values.push(causeRow.causeJSON);const digest=await sha256(cause+'|'+causeRow.causeJSON);binding();assertRuntimeVenue230(effect,venue);values.push(digest);
+  const noCompeting=`NOT EXISTS(SELECT 1 FROM role_settlements other WHERE other.id<>?1 AND other.subject=?2 AND other.guild_id=?3 AND other.role_id=?4 AND other.desired=0
+   AND ((other.attempts=1 AND other.state IN('dispatching','unknown')) OR (other.attempts=0 AND other.state IN('pending','dispatching') AND other.expires_at>${DB_NOW})))`;
+  const guard=`${initialGuard} AND (${sourceSql}) IS ?10 AND ${noCompeting}`,row=`id=?1 AND subject=?2 AND guild_id=?3 AND role_id=?4 AND subject_generation IS ?5 AND native_profile=?6 AND request_digest=?11 AND purpose='${LAUNCH_MEMBERSHIP230_PURPOSES.removal}' AND desired=0`;
+  let factsCheck=()=>{},blockingCheck:(()=>void)|null=null;const check=()=>{binding();assertRuntimeVenue230(effect,venue);factsCheck();},current=async()=>{check();const r=await effect.DB.prepare('SELECT 1 WHERE '+guard+' AND ?11 IS NOT NULL').bind(...values).first();check();return !!r;};
+  let target=await qualify(effect,b,subject,v.roleId,false,false,[],false,current,false,launch230RoleOnly);check();if(!launch230Member(target,subject))throw Error();
+  if(cause==='blocking_role'&&!launch230Blocker(effect,target))return result('held','removal_cause_withdrawn');
+  const queued=await launch230NativeIntent(effect,effect.DB.prepare(`INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,subject_generation,native_profile,request_digest,created_at,expires_at)
+   SELECT ?1,?2,'${LAUNCH_MEMBERSHIP230_PURPOSES.removal}',?3,?4,0,'pending','launch230_awaiting_dispatch',?5,?6,?11,${DB_NOW},${DB_NOW}+300 WHERE ${guard}
+   AND NOT EXISTS(SELECT 1 FROM role_settlements WHERE subject=?2 AND guild_id=?3 AND role_id=?4 AND desired=0 AND attempts=1 AND state IN('dispatching','unknown')) RETURNING *,NULL AS beta_window_id`).bind(...values),check);
+  factsCheck=queued.check;check();if(!queued.intent)return result('held','launch230_removal_intent_held',id);
+  if(!target?.roles.includes(v.roleId)){const r=await effect.DB.prepare(`UPDATE role_settlements SET state='settled',reason='launch230_current_role_absent',checked_at=${DB_NOW} WHERE ${row} AND state='pending' AND attempts=0 AND ${guard} RETURNING id`).bind(...values).first();check();return r?result('settled','absent',id,now()):result('held','removal_cause_withdrawn',id);}
+  if(cause==='blocking_role'){target=await member(effect,b,subject,current);check();if(!launch230Member(target,subject)||!launch230Blocker(effect,target))return result('held','removal_cause_withdrawn',id);const original=launch230MemberWitness(target,subject),observedAt=now();blockingCheck=()=>{original();if(now()<observedAt||now()-observedAt>=60||!launch230Blocker(effect,target))throw Error('blocking_role_observation_changed');};}
+  nonce=randomGeneration();const all=[...values,nonce],at=all.length;
+  const claim=await launch230NativeIntent(effect,effect.DB.prepare(`UPDATE role_settlements SET state='dispatching',attempts=1,claim_nonce=?${at},reason='launch230_dispatching' WHERE ${row} AND state='pending' AND attempts=0 AND expires_at>${DB_NOW} AND ${guard} RETURNING *,NULL AS beta_window_id`).bind(...all),check);const qcheck=factsCheck;factsCheck=()=>{qcheck();claim.check();};check();if(!claim.intent)return result('held','removal_cause_withdrawn',id);
+  const owned=`${row} AND attempts=1 AND claim_nonce=?${at}`,admit=async()=>{check();if(cause==='blocking_role'){if(!blockingCheck)return false;blockingCheck();}const r=await effect.DB.prepare(`SELECT 1 FROM role_settlements WHERE ${owned} AND state='dispatching' AND expires_at>${DB_NOW} AND ${guard}`).bind(...all).first();check();blockingCheck?.();return !!r;};
+  try{await request(effect,b,'DELETE',`/guilds/${v.guildId}/members/${subject}/roles/${v.roleId}`,admit,()=>{check();started=true;},launch230RoleOnly);
+   const after=await member(effect,b,subject);check();if(!launch230Member(after,subject)||after?.roles.includes(v.roleId))throw Error();
+   const ack=await effect.DB.prepare(`UPDATE role_settlements SET state='settled',reason='launch230_delete_acknowledged_and_confirmed',checked_at=${DB_NOW} WHERE ${owned} AND state='dispatching' AND ${guard} RETURNING id`).bind(...all).first();check();if(!ack)throw Error();return result('settled','removed',id,now());
+  }catch{try{await effect.DB.prepare(`UPDATE role_settlements SET state=?${at+1},reason=?${at+2},checked_at=${DB_NOW} WHERE ${owned} AND state='dispatching'`).bind(...all,started?'unknown':'held',started?'launch230_delete_outcome_unknown':'launch230_never_dispatched').run();}catch{}return result(started?'unknown':'held',started?'launch230_delete_outcome_unknown':'launch230_never_dispatched',id);}
+ }catch{return result(started?'unknown':'held','launch230_removal_held',id);}
+}
+async function captureRuntimeVenueForRemoval230(env:Env):Promise<{effect:Env;venue:RuntimeVenue230}|null>{
+ const selected=await (await import('./shared-membership-cutover230')).captureRuntimeVenue230(env);if(selected.mode!=='enabled')return null;
+ const effect={...env,DB:privacyProviderCustodyDatabase(env)};assertRuntimeVenue230(effect,selected.venue);return {effect,venue:selected.venue};
 }

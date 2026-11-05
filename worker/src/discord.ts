@@ -194,8 +194,8 @@ export const addRole = (env: Env, userId: string, roleId: string, reason: string
   rest(env, "PUT", `/guilds/${env.GUILD_ID}/members/${userId}/roles/${roleId}`, undefined, 0, reason, budget,false,beforeDispatch);
 
 /** `mandatory` (.95): a removal the run owes (after a ban, or while a restriction is held): its retry is counted, never refused. */
-export const removeRole = (env: Env, userId: string, roleId: string, reason: string, budget?: AttemptBudget, mandatory = false) =>
-  rest(env, "DELETE", `/guilds/${env.GUILD_ID}/members/${userId}/roles/${roleId}`, undefined, 0, reason, budget, mandatory);
+export const removeRole = (env: Env, userId: string, roleId: string, reason: string, budget?: AttemptBudget, mandatory = false,beforeDispatch?:()=>void) =>
+  rest(env, "DELETE", `/guilds/${env.GUILD_ID}/members/${userId}/roles/${roleId}`, undefined, 0, reason, budget, mandatory,beforeDispatch);
 
 /** A guild member, or null when they are not in the server (404). Used to read someone's current roles. */
 export async function guildMember(env: Env, userId: string, budget?: AttemptBudget): Promise<{ roles: string[]; nick?: string | null; user?: { id: string; username: string } } | null> {

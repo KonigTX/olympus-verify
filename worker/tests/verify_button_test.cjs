@@ -52,6 +52,8 @@ const check = (name, cond) => { n++; if (cond) ok++; console.log((cond ? "PASS "
 
   console.log("\n== the button: a code and the whole line to paste, nothing typed ==");
   const first = await content(await handleInteraction(env, button(A)));
+  check(".230 the actual request-code reply names OLYMPUS PRIME rather than the ambiguous main guild", first.includes("**OLYMPUS PRIME**") && !first.includes("main Olympus guild"));
+  check(".230 the actual request-code reply offers progress and current instructions without an automatic role promise", first.includes("**My status**") && first.includes("current instructions") && first.includes("ask an officer") && !first.includes("follows automatically") && !first.includes("roles follow automatically"));
   const code = (first.match(/Your code: `([A-Z2-9]{7})`/) || [])[1];
   check("the button answers with a 7-symbol request code", !!code);
   check("  and the exact line to paste in game", first.includes("```\n/w Fern Melder !verify " + code + "\n```"));
@@ -86,6 +88,7 @@ const check = (name, cond) => { n++; if (cond) ok++; console.log((cond ? "PASS "
   check("/verify with nothing typed behaves like the button", bare.includes(code2));
   const named = await content(await handleInteraction(env, slash(A, "Thrall")));
   check("/verify Thrall gives a 6-symbol code bound to Thrall", /Your code for \*\*Thrall\*\*: `[A-Z2-9]{6}`/.test(named) && named.includes("logged in as **Thrall**"));
+  check(".230 the actual named-character reply uses the same flagship and truthful access instructions", named.includes("**OLYMPUS PRIME**") && named.includes("current instructions") && named.includes("ask an officer") && !named.includes("follows automatically") && !named.includes("main Olympus guild"));
 
   console.log("\n== a verification ban closes the account's open codes ==");
   const OFFICER = "1549581384035893328";
@@ -414,9 +417,10 @@ const check = (name, cond) => { n++; if (cond) ok++; console.log((cond ? "PASS "
   const { guideMessage } = load("./guide");
   const guideText = (e) => JSON.stringify(guideMessage(e, load("./ruleset-profile").currentRulesetProfile()));
   const off = guideText({ ...env, SET_NICKNAME: "false" });
+  check(".230 the guide names the canonical flagship and offers truthful progress while access can be held", off.includes("OLYMPUS PRIME") && !off.includes("main Olympus guild") && off.includes("current instructions") && off.includes("ask an officer") && !off.includes("can restore a missing role"));
   check("with the role configured and nicknames off, the guide names the role, the roster and the access checks, and no nickname", /Olympus Guild Member\*\* role opens the member channels once your verified character appears on the officer-exported guild roster and the access checks pass/.test(off) && !/nickname/i.test(off));
   check("  with nicknames on, the nickname is described as staff-enabled", /When enabled by guild staff, your Discord nickname updates/.test(guideText({ ...env, SET_NICKNAME: "true" })));
-  check("  with no role, no role sentence and the plain title", !/Guild Member/.test(guideText({ ...env, ROLE_GUILD_MEMBER: "" })) && /"title":"Join Olympus"/.test(guideText({ ...env, ROLE_GUILD_MEMBER: "" })));
+  check("  with no role, no role sentence and the canonical verification title", !/Guild Member/.test(guideText({ ...env, ROLE_GUILD_MEMBER: "" })) && /"title":"Verify OLYMPUS PRIME"/.test(guideText({ ...env, ROLE_GUILD_MEMBER: "" })));
   check("  under review mode an officer reviews before the invite queues; under auto it queues", /officer reviews the confirmed request before your invite enters the queue/.test(guideText({ ...env, ADMISSION_MODE: "review" })) && /your invite enters the queue; an officer sends it/.test(off));
   check("  the website is called optional, Battle.net is not promised (.114: its sign-in is switched off), codes private, no DM, and no #help-desk anywhere", /The website is optional for this verification flow/.test(off) && !/Battle\.net/.test(off) && /never sends you a DM/.test(off) && !/help-desk/.test(off) && !/olympus-2-x/.test(off));
   check("  the overflow guilds are sent to the configured visitors channel", /<#555000000000000009>/.test(guideText({ ...env, CHANNEL_VISITOR_CHAT: "555000000000000009" })) && /the visitors channel/.test(off));

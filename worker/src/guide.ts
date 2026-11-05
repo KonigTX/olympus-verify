@@ -1,6 +1,7 @@
 /** The verification guide: one embed with three buttons, posted by `/olympus-admin post-guide` (meant for #join-guild, pinned). */
 import type { Env } from "./env";
 import { rulesetLabel, type RulesetProfile } from "./ruleset-profile";
+import { FLAGSHIP_GUILD_NAME } from "./guild-affiliation229";
 
 export const GUIDE_VERIFY = "guide:verify"; // button → a request code, nothing to type (27 Sep; it opened a name modal before)
 export const GUIDE_STATUS = "guide:status"; // button → same answer as /verify-status
@@ -25,10 +26,10 @@ export function visitorChat(env: Env): string {
 /**
  * Olympus has overflow guilds (Olympus 2 and later) that this server does not verify. Saying so stops their members
  * applying to the main guild's queue by mistake, and tells them where they are welcome. .115 (item B, 2 Oct 2026): one
- * sentence shared by the guide and the full-guild paragraph of /verify-status (guild-seats.ts); the guide's posted
- * text is unchanged.
+ * sentence shared by the guide and the full-guild paragraph of /verify-status (guild-seats.ts).
+ * The owner's 5 Nov 2026 flagship display name does not rewrite the stored ruleset profile.
  */
-export const visitorLine = (env: Env) => `Olympus 2 and the later Olympus guilds are welcome in ${visitorChat(env)}; this flow verifies the main Olympus guild.`;
+export const visitorLine = (env: Env) => `Olympus 2 and the later Olympus guilds are welcome in ${visitorChat(env)}; this flow verifies ${FLAGSHIP_GUILD_NAME}.`;
 
 /**
  * .52 (1 Oct 2026): the copy is Codex's reviewed content candidate (evidence/discord-content-candidate.json, 00:37 UTC),
@@ -55,27 +56,25 @@ export function guideMessage(env: Env, profile: RulesetProfile, freshRoles = fal
   return {
     embeds: [
       {
-        title: role ? "Join Olympus or restore your guild access" : "Join Olympus",
+        title: role ? `Verify ${FLAGSHIP_GUILD_NAME} or check your guild access` : `Verify ${FLAGSHIP_GUILD_NAME}`,
         color: GOLD,
         description: [
-          `${profile.phase === "public_direction" ? "Olympus guild direction" : "Current game"}: **${rulesetLabel(profile)}**.`,
+          `${profile.phase === "public_direction" ? `${FLAGSHIP_GUILD_NAME} guild direction` : "Current game"}: **${rulesetLabel(profile)}**.`,
           "",
           legacyInviteQueue
-            ? "For a character in, or applying to, the main Olympus guild. The website is optional for this verification flow."
-            : "Joining Olympus? Ask an Olympus officer for an in-game invite. The website invite queue is paused. Once your character is in the main Olympus guild, follow the steps below to link Discord. The website is optional for this verification flow.",
+            ? `For a character in, or applying to, ${FLAGSHIP_GUILD_NAME}. The website is optional for this verification flow.`
+            : `Joining ${FLAGSHIP_GUILD_NAME}? Ask an ${FLAGSHIP_GUILD_NAME} officer for an in-game invite. The website invite queue is paused. Once your character is in ${FLAGSHIP_GUILD_NAME}, follow the steps below to link Discord. The website is optional for this verification flow.`,
           "",
           "**1. Get a code** — press **Get my code**. The bot shows the line to use in game. If the current officer relay needs a character name first, enter it exactly as it appears in game.",
           `**2. Send it from your character** — log in as the character you want linked, paste the shown line into the in-game chat box and press Enter. It whispers the code to an available officer (${officers}); the character that sends it is the one linked. Follow the bot's current instructions if no officer is online; mailing the code to an officer works too.`,
           "",
           `The officer's checked addon confirms the code from that character.${invite}${access}${nick}`,
-          role
-            ? "Already a member? Use the same steps. **My status** shows your progress and can restore a missing role when your membership proof is current and no access restriction prevents it."
-            : "Already in the guild? Use the same steps; there is nothing to approve, and **My status** shows your progress.",
+          `Already in ${FLAGSHIP_GUILD_NAME}? Use the same steps. **My status** shows your verification progress. Follow the current instructions, or ask an officer if access is on hold.`,
           "",
           visitorLine(env), // the overflow guilds (Olympus 2 and later) are not verified here; see visitorLine
           "Keep your verification code private. Never post passwords, authenticator codes, payment details or personal documents. The bot never sends you a DM.",
         ].join("\n"),
-        footer: { text: "Olympus Verify · My status for progress · Ask an Olympus officer for account help" },
+        footer: { text: `Olympus Verify · My status for progress · Ask an ${FLAGSHIP_GUILD_NAME} officer for account help` },
       },
     ],
     components: [

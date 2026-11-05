@@ -19,7 +19,9 @@ const inventory = (relative) => {
   else if (st.isFile()) { const bytes = fs.readFileSync(absolute); inputs.push({ path: relative, bytes: bytes.length, sha256: digest(bytes) }); }
   else throw Error("BUNDLE_INPUT_TYPE_REFUSED");
 };
-for (const relative of ["src", "public", "wrangler.toml", "schema.sql", "package.json", "package-lock.json"]) inventory(relative);
+// The protected archive includes tsconfig.json. Omitting it from this isolated
+// build changes Wrangler's emitted bytes and tests a different bundle.
+for (const relative of ["src", "public", "wrangler.toml", "tsconfig.json", "schema.sql", "package.json", "package-lock.json"]) inventory(relative);
 const inputsUnchanged = () => inputs.every((r) => { const st = fs.lstatSync(path.join(root, r.path)); if (!st.isFile() || st.isSymbolicLink()) return false; const bytes = fs.readFileSync(path.join(root, r.path)); return bytes.length === r.bytes && digest(bytes) === r.sha256; });
 // Only a reviewed owning runner supplies the complete tuple. No partial configured fallback.
 // This test handoff creates no application authority, production lease or provider effect.

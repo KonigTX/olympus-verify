@@ -41,6 +41,12 @@ import { membershipSettlementEnabled as durableServingRoles,membershipTransition
 import { privacyCaptureFromColumns } from './privacy-serving-authority';
 import { BETA_RESET_GUILD_ID,BETA_RESET_ROLE_IDS,captureBetaRemovalDispatch,captureBetaRoleDispatch,betaRoleDispatchHeld,betaGrantDispatchHeld,betaSourceEpochState,type BetaRoleDispatch,type BetaRemovalDispatchCapture } from './beta-reset-policy';
 import { captureLaunchVerification,assertLaunchMembershipMode,launchMembershipCurrent,LaunchVerificationHeld,type LaunchMembershipSource } from './launch-verification227';
+import type { OriginalConsumedMembership230 } from './ingest';
+import { oldSharedMemberProducerHeld230 } from './shared-membership-cutover230';
+
+function assertLegacyMemberDispatch230(env:Env,role:string):void {
+  if(oldSharedMemberProducerHeld230(env,env.GUILD_ID,role))throw Error('shared_member230_old_producer_held');
+}
 
 export const blockingRoleIds = (env: Env): string[] =>
   (env.BLOCKING_ROLE_IDS ?? "")
@@ -56,7 +62,7 @@ export function heldBlockingRole(env: Env, roles: readonly string[]): string | n
   return null;
 }
 
-export type GrantOutcome = "granted" | "has-role" | "blocked" | "banned" | "held" | "not-in-server" | "no-role" | "misconfigured" | "unverified" | "budget";
+export type GrantOutcome = "granted" | "has-role" | "blocked" | "banned" | "held" | "unknown" | "not-in-server" | "no-role" | "misconfigured" | "unverified" | "budget";
 
 /**
  * .90 (P-20, 1 Oct 2026): the Discord calls one role-writing RUN may make: a sweep, a roster export's promotions, a manual
@@ -127,16 +133,34 @@ export async function budgetExhausted(env: Env, budget: CallBudget, source: stri
  * bookkeeping only: the decision is made on a fresh member read and a fresh ban read, immediately before the write.
  * Throws what addRole throws, so every caller keeps its own failure handling and audit.
  */
-export async function grantMemberRole(env: Env, userId: string, reason: string, source: string, _roles?: readonly string[], budget?: CallBudget, generationCapture?:{subjectGeneration:string|null;membershipContext?:Readonly<{central:boolean;targets:MembershipTargets|null}>;launchSource?:LaunchMembershipSource},originalDispatch?:BetaRoleDispatch): Promise<GrantOutcome> {
+export async function grantMemberRole(env: Env, userId: string, reason: string, source: string, _roles?: readonly string[], budget?: CallBudget, generationCapture?:{subjectGeneration:string|null;membershipContext?:Readonly<{central:boolean;targets:MembershipTargets|null}>;launchSource?:LaunchMembershipSource;originalConsumed230?:OriginalConsumedMembership230},originalDispatch?:BetaRoleDispatch): Promise<GrantOutcome> {
   const launchMode=captureLaunchVerification(env);
   if(launchMode.mode==='held'||launchMode.mode==='members-only'&&!durableServingRoles(env))return 'held';
+  // A fresh consumed Native request has its own source-qualified venue. It never
+  // reinterprets a beta purpose or supplies authority to any ordinary restoration.
+  const consumed230=generationCapture?.originalConsumed230;
+  if(consumed230){
+    const selectedGeneration=generationCapture!.subjectGeneration,selectedSource=generationCapture!.launchSource;
+    let centralStarted=false;
+    try{
+      const original=await import('./ingest'),cap=consumed230;
+      original.assertConsumed230Original(env,cap);const facts=original.consumed230Facts(cap);
+      if(facts.subject!==userId||facts.subjectGeneration!==selectedGeneration||facts.source!==selectedSource)return 'held';
+      const venue=await (await import('./shared-membership-cutover230')).captureRuntimeVenue230(env);
+      original.assertConsumed230Original(env,cap);if(venue.mode!=='enabled')return 'held';
+      const central=await import('./role-settlements');centralStarted=true;
+      const r=await central.queueAndSettleLaunchMembership230(env,cap,venue.venue,budget);
+      return r.state==='settled'?(r.reason==='fresh_server_confirmed'?'has-role':'granted'):r.state==='unknown'?'unknown':r.reason==='role_request_budget'?'budget':'held';
+    }catch{return centralStarted?'unknown':'held';}
+  }
+  if(oldSharedMemberProducerHeld230(env,env.GUILD_ID,env.ROLE_GUILD_MEMBER))return 'held';
   const dispatch=originalDispatch??captureBetaRoleDispatch(env),removalDispatch=dispatch.capture;
   if(betaGrantDispatchHeld(env,dispatch,env.GUILD_ID,env.ROLE_GUILD_MEMBER))return 'held';
   // .152: an optional backfill selection stays original across this writer's own awaits. Other callers retain their existing contract.
   const originalCapture=generationCapture===undefined?undefined:Object.freeze({subjectGeneration:generationCapture.subjectGeneration});
   const launchSource=generationCapture?.launchSource;
   const launchCurrent=()=>launchSource?launchMembershipCurrent(env,launchSource):Promise.resolve(true);
-  const launchBeforeDispatch=()=>{if(!launchMode.current())throw new LaunchVerificationHeld();if(launchSource)assertLaunchMembershipMode(env,launchSource);};
+  const launchBeforeDispatch=()=>{if(!launchMode.current())throw new LaunchVerificationHeld();if(launchSource)assertLaunchMembershipMode(env,launchSource);assertLegacyMemberDispatch230(env,env.ROLE_GUILD_MEMBER);};
   if(launchSource&&!await launchCurrent())return 'held';
   const context=generationCapture?.membershipContext;
   const originalContext=context===undefined?undefined:Object.freeze({central:context.central,targets:context.targets===null?null:Object.freeze({guild:context.targets.guild,current:context.targets.current,retired:context.targets.retired,transition:context.targets.transition})});
@@ -260,7 +284,7 @@ export async function revokeForReapply(env: Env, userId: string, source: string,
   const held=()=>betaRoleDispatchHeld(env,dispatch,env.GUILD_ID,env.ROLE_GUILD_MEMBER);
   if(held()&&betaSourceEpochState(dispatch.env,dispatch.capture).mode!=='active')return 'failed';
   if(durableServingRoles(env)){const central=await import('./role-settlements');if(held()&&betaSourceEpochState(dispatch.env,dispatch.capture).mode!=='active')return 'failed';const r=await central.settleMembershipRemoval(env,userId,'rename_hold',generationCapture,undefined,dispatch);return r.state==='settled'?'removed':r.reason==='removal_cause_withdrawn'?'not-held':'failed';}
-  if(held())return 'failed';
+  if(held()||oldSharedMemberProducerHeld230(env,env.GUILD_ID,env.ROLE_GUILD_MEMBER))return 'failed';
   const role = env.ROLE_GUILD_MEMBER;
   if (!role) return "not-held";
   let m: Awaited<ReturnType<typeof guildMember>>;
@@ -282,9 +306,9 @@ async function revokeHeld(env: Env, userId: string, role: string, source: string
   const dispatch=originalDispatch??{env,capture:removalDispatch},held=()=>betaRoleDispatchHeld(env,dispatch,env.GUILD_ID,role);
   if(held()&&betaSourceEpochState(dispatch.env,dispatch.capture).mode!=='active')return false;
   if(durableServingRoles(env)){if(role!==env.ROLE_GUILD_MEMBER)return false;const central=await import('./role-settlements');if(held()&&betaSourceEpochState(dispatch.env,dispatch.capture).mode!=='active')return false;return (await central.settleMembershipRemoval(env,userId,'rename_hold',generationCapture,budget,dispatch)).state==='settled';}
-  if(held())return false;
+  if(held()||oldSharedMemberProducerHeld230(env,env.GUILD_ID,role))return false;
   try {
-    await removeRole(env, userId, role, "olympus-verify: a rename Blizzard required; the account applies again", budget, true);
+    await removeRole(env, userId, role, "olympus-verify: a rename Blizzard required; the account applies again", budget, true,()=>assertLegacyMemberDispatch230(env,role));
     await audit(env, "system", source.endsWith(":after-grant") ? "role.revoked_after_hold" : "role.revoked_reapply", userId, { source });
     return true;
   } catch (e) {
@@ -301,9 +325,9 @@ export async function revokeForBan(env: Env, userId: string, role: string, sourc
   const dispatch=originalDispatch??{env,capture:removalDispatch},held=()=>betaRoleDispatchHeld(env,dispatch,env.GUILD_ID,role);
   if(held()&&betaSourceEpochState(dispatch.env,dispatch.capture).mode!=='active')return false;
   if(durableServingRoles(env)){if(role!==env.ROLE_GUILD_MEMBER)return false;const central=await import('./role-settlements');if(held()&&betaSourceEpochState(dispatch.env,dispatch.capture).mode!=='active')return false;return (await central.settleMembershipRemoval(env,userId,'ban',generationCapture,budget,dispatch)).state==='settled';}
-  if(held())return false;
+  if(held()||oldSharedMemberProducerHeld230(env,env.GUILD_ID,role))return false;
   try {
-    await removeRole(env, userId, role, "olympus-verify: banned from verifying; Guild Member removed", budget, true); // .95: mandatory: its retry is never refused
+    await removeRole(env, userId, role, "olympus-verify: banned from verifying; Guild Member removed", budget, true,()=>assertLegacyMemberDispatch230(env,role)); // .95: mandatory: its retry is never refused
     await audit(env, "system", source.endsWith(":after-grant") ? "role.revoked_after_ban" : "role.revoked_banned", userId, { source });
     return true;
   } catch (e) {
@@ -325,20 +349,21 @@ export async function revokeForBan(env: Env, userId: string, role: string, sourc
  */
 export async function reconcileBanned(env: Env, after: string, limit: number, budget?: CallBudget,originalDispatch?:BetaRoleDispatch): Promise<{ checked: string[]; revoked: string[]; held: string[]; failed: string[]; cursor: string }> {
   const dispatch=originalDispatch??captureBetaRoleDispatch(env),removalDispatch=dispatch.capture;
+  const captureGeneration=membershipTransitionEnabled(env)||durableServingRoles(env);
   const role = env.ROLE_GUILD_MEMBER;
   const out = { checked: [] as string[], revoked: [] as string[], held: [] as string[], failed: [] as string[], cursor: after };
   if (!role) return out;
   // .114: accounts under a reapply hold (a rename Blizzard required) join the same rotation: a removal that failed at the
   // decision, or a grant that landed after it, is undone here (Codex, log 18:47 UTC)
   const rows = await env.DB.prepare(
-    membershipTransitionEnabled(env)?`SELECT selected.discord_id,p.generation AS privacy_generation,p.state AS privacy_state,p.revision AS privacy_revision
+    captureGeneration?`SELECT selected.discord_id,p.generation AS privacy_generation,p.state AS privacy_state,p.revision AS privacy_revision
       FROM (SELECT m.discord_id FROM members m WHERE m.banned = 1 UNION SELECT h.discord_id FROM rename_holds h WHERE h.state = 'reapply') selected
       LEFT JOIN privacy_subjects p ON p.subject_id=selected.discord_id WHERE selected.discord_id > ?1 ORDER BY selected.discord_id LIMIT ?2`:`SELECT discord_id FROM (SELECT m.discord_id FROM members m WHERE m.banned = 1 UNION SELECT h.discord_id FROM rename_holds h WHERE h.state = 'reapply') WHERE discord_id > ?1 ORDER BY discord_id LIMIT ?2`,
   ).bind(after, limit).all<{ discord_id: string;privacy_generation:string|null;privacy_state:string|null;privacy_revision:number|null }>();
   let stopped = false;
   for (const r of rows.results) {
-    if(membershipTransitionEnabled(env)&&r.privacy_state&&r.privacy_state!=='active'){out.failed.push(r.discord_id);out.cursor=r.discord_id;continue;}
-    const originalCapture=membershipTransitionEnabled(env)?privacyCaptureFromColumns(r.discord_id,r):undefined;
+    if(captureGeneration&&r.privacy_state&&r.privacy_state!=='active'){out.failed.push(r.discord_id);out.cursor=r.discord_id;continue;}
+    const originalCapture=captureGeneration?privacyCaptureFromColumns(r.discord_id,r):undefined;
     // .90: a look and possibly a removal: stop before an account the run's budget cannot finish, the cursor at the last one done
     if ((membershipTransitionEnabled(env)?!!budget&&budget.limit-budget.attempts<17:!affords(budget, 2)) || !takeCall(budget)) {
       await budgetExhausted(env, budget!, "sweep:banned");
@@ -376,13 +401,13 @@ export async function removeIfBlocked(env: Env, userId: string, roles: readonly 
   const dispatch=originalDispatch??captureBetaRoleDispatch(env),held=()=>betaRoleDispatchHeld(env,dispatch,env.GUILD_ID,env.ROLE_GUILD_MEMBER);
   if(held()&&betaSourceEpochState(dispatch.env,dispatch.capture).mode!=='active')return null;
   if(durableServingRoles(env)){const central=await import('./role-settlements');if(held()&&betaSourceEpochState(dispatch.env,dispatch.capture).mode!=='active')return null;const r=await central.settleMembershipRemoval(env,userId,'blocking_role',generationCapture,budget,dispatch);return r.state==='settled'?'current-server-restriction':null;}
-  if(held())return null;
+  if(held()||oldSharedMemberProducerHeld230(env,env.GUILD_ID,env.ROLE_GUILD_MEMBER))return null;
   const role = env.ROLE_GUILD_MEMBER;
   if (!role || !roles.includes(role)) return null;
   const blocker = heldBlockingRole(env, roles);
   if (!blocker) return null;
   takeMandatory(budget); // .90/.95: counted (the caller reserved it); a removal while a restriction is held is never skipped
-  await removeRole(env, userId, role, "olympus-verify: Guild Member held back while a server restriction is on the account", budget, true);
+  await removeRole(env, userId, role, "olympus-verify: Guild Member held back while a server restriction is on the account", budget, true,()=>assertLegacyMemberDispatch230(env,role));
   await audit(env, "system", "role.blocked_removed", userId, { source, blockedBy: blocker });
   return blocker;
 }
