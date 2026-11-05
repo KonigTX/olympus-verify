@@ -79,7 +79,7 @@ async function cases(layout){const costs={};
   const f=await opened(layout);
   try {
    const prepared=await f.target('status','membership_rejection_v1');
-   eq(layout+' decision target exposes its original D1 deadline',prepared.expiresAt,T+300);
+   eq(layout+' decision target exposes its original D1 preparation and deadline',[prepared.preparedAt,prepared.expiresAt],[T,T+300]);
    clock=T+300;
    const response=await f.post('status',{status:'declined'},'membership_rejection_v1',prepared.targetToken);
    eq(layout+' original token exact deadline is an expiry refusal',[response.status,(await response.json()).error],[409,'target_expired']);

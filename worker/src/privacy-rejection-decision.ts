@@ -114,7 +114,7 @@ export async function membershipDecisionDetailKey(origin:MembershipDecisionOrigi
  const key=await reviewNoteKey(o,actor,nonce);
  original(origin,env);return key;
 }
-export async function membershipDecisionTargetToken(origin:MembershipDecisionOrigin,env:Env,route:DecisionRoute):Promise<Readonly<{targetToken:string|null;decisionAction:Action;decisionAvailable:boolean;expiresAt:number|null;reviewKey:string|null}>>{
+export async function membershipDecisionTargetToken(origin:MembershipDecisionOrigin,env:Env,route:DecisionRoute):Promise<Readonly<{targetToken:string|null;decisionAction:Action;decisionAvailable:boolean;preparedAt:number|null;expiresAt:number|null;reviewKey:string|null}>>{
  const o=original(origin,env),s=o.session;
  if(!s||o.method!=='GET')return held();
  const subjectKey=await privacySubjectKey(o.authEnv,o.id);original(origin,env);
@@ -122,7 +122,7 @@ export async function membershipDecisionTargetToken(origin:MembershipDecisionOri
  const snapshot=reviewRaw(data(row,'review_raw'));original(origin,env);const digest=await reviewDigest(snapshot);original(origin,env);
  const t=targetShape({session:s,actorNonce:row.actor_nonce,id:o.id,targetNonce:row.target_nonce,g:row.g,revision:row.revision,version:row.version,denied:row.denied,deniedAt:row.denied_at,app:row.app,proof:row.proof,prepared:row.prepared,expires:Math.min(Number(row.prepared)+300,s.e),decisionId:row.decision_id,action:o.action,route,subjectKey,reviewDigest:digest});
  const selected=route==='deny'||route==='undeny'?permanentDenialAction(t,route,data(row,'has_rejection')):{action:t.action,available:true};
- if(!selected.available)return Object.freeze({targetToken:null,decisionAction:selected.action,decisionAvailable:false,expiresAt:null,reviewKey:null});
+ if(!selected.available)return Object.freeze({targetToken:null,decisionAction:selected.action,decisionAvailable:false,preparedAt:null,expiresAt:null,reviewKey:null});
  const raw=b64u(new TextEncoder().encode(JSON.stringify({...t,action:selected.action})));
  // Scope an in-memory draft to the same actor and account birth. Only the target token authorizes a decision.
  const [mac,reviewKey]=await Promise.all([
@@ -130,7 +130,7 @@ export async function membershipDecisionTargetToken(origin:MembershipDecisionOri
   reviewNoteKey(o,s,t.targetNonce)
  ]);
  original(origin,env);const token=raw+'.'+mac;if(token.length>8192)return held();
- return Object.freeze({targetToken:token,decisionAction:selected.action,decisionAvailable:selected.available,expiresAt:t.expires,reviewKey});
+ return Object.freeze({targetToken:token,decisionAction:selected.action,decisionAvailable:selected.available,preparedAt:t.prepared,expiresAt:t.expires,reviewKey});
 }
 /** Verify once before readJson awaits. A negative/expired/unknown token never renews its native target. */
 export async function prepareMembershipDecision(origin:MembershipDecisionOrigin,env:Env):Promise<void>{

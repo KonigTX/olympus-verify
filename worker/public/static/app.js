@@ -5445,6 +5445,7 @@
       && S.signedIn && !S.denied && S.user === actor && actor?.isAdmin && JSON.stringify(actor) === actorState && decisionActorRevision === actorRevision;
     // Tokens precede the displayed detail. A stale view never prepares a replacement target at click time.
     const targets = new Map();
+    const reviewTime = () => globalThis.performance?.now?.() ?? Date.now();
     clear(body); add(body, h("p", { role: "status", text: "Opening the application…" }));
     let d, reviewKey;
     try {
@@ -5453,18 +5454,22 @@
         const action = targetRoute === "delete" ? "partial_delete" : "business_only";
         const permanentDenial = targetRoute === "deny" || targetRoute === "undeny";
         const policy = permanentDenial ? "&decisionPolicy=permanent_denial" : "";
+        const requestedAt = reviewTime();
         const prepared = await api("GET", `/api/admin/users/${encodeURIComponent(id)}/decision-target?route=${targetRoute}&decisionAction=${action}${policy}`, undefined, { live });
         if (!live()) return;
         if (targetRoute === "deny" && prepared?.decisionAvailable === false && prepared.targetToken === null) continue;
         const allowed = targetRoute === "deny" ? ["membership_rejection_v1"]
           : targetRoute === "undeny" ? ["business_only", "membership_reconsideration_v1"] : [action];
         if (!prepared || typeof prepared.targetToken !== "string" || !prepared.targetToken || prepared.targetToken.length > 8192
-          || !Number.isSafeInteger(prepared.expiresAt) || prepared.expiresAt <= 0
+          || !Number.isSafeInteger(prepared.preparedAt) || prepared.preparedAt <= 0 || !Number.isSafeInteger(prepared.expiresAt)
+          || prepared.expiresAt <= prepared.preparedAt || prepared.expiresAt - prepared.preparedAt > 300
           || typeof prepared.reviewKey !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(prepared.reviewKey)) throw new ApiError(409, { message: "The decision could not be prepared. Reload the application and review it again." });
         if (!allowed.includes(prepared.decisionAction)) throw new ApiError(409, { message: "The prepared decision did not match this action. Reload the application and review it again." });
         if (reviewKey && prepared.reviewKey !== reviewKey) throw new ApiError(409, { error: "review_changed" });
         reviewKey = prepared.reviewKey;
-        targets.set(targetRoute, Object.freeze({ token: prepared.targetToken, action: prepared.decisionAction, expiresAt: prepared.expiresAt }));
+        // Start before transport and round the D1 seconds down conservatively.
+        const deadline = requestedAt + (prepared.expiresAt - prepared.preparedAt - 1) * 1000;
+        targets.set(targetRoute, Object.freeze({ token: prepared.targetToken, action: prepared.decisionAction, deadline }));
       }
       d = await api("GET", `/api/admin/applications/${encodeURIComponent(id)}`, undefined, { live });
       if (!live()) return;
@@ -5493,7 +5498,7 @@
     const keptDraft = !!a && draft?.reviewKey === reviewKey;
     if (a) note.value = keptDraft ? draft.text : savedNote;
     let pending = false, spent = false;
-    const deadline = Math.min(...Array.from(targets.values(), target => target.expiresAt));
+    const deadline = Math.min(...Array.from(targets.values(), target => target.deadline));
     const decisionWindow = h("p", { class: "small muted" });
     const decisionNotice = h("p", { class: "small muted", role: "status",
       text: keptDraft ? "Your unsaved note was kept. Review it against this refreshed application before saving."
@@ -5502,7 +5507,7 @@
     const reload = h("button", { type: "button", class: "btn small", text: "Reload application",
       onclick: () => { if (live() && !pending) adminApplication(body, id, a && note.value !== savedNote ? { reviewKey, text: note.value } : null); } });
     const sync = () => {
-      const left = Math.max(0, deadline - nowSec());
+      const left = Math.max(0, Math.ceil((deadline - reviewTime()) / 1000));
       const unavailable = !live() || pending;
       for (const control of controls) control.disabled = unavailable || spent || left === 0;
       note.disabled = unavailable;
@@ -5513,12 +5518,12 @@
       return live() && !spent && left > 0;
     };
     const decide = async (targetRoute, makeBody, success) => {
-      if (!live() || pending || spent || nowSec() >= deadline) { sync(); return; }
+      if (!live() || pending || spent || reviewTime() >= deadline) { sync(); return; }
       pending = true; sync(); // Own the dialog as well as the write; a second click cannot open another.
       try {
         const payload = await makeBody();
         if (payload === null || !live()) return;
-        if (nowSec() >= deadline) {
+        if (reviewTime() >= deadline) {
           decisionNotice.textContent = "The review expired before you sent a decision. Reload the application to review it again.";
           return;
         }
