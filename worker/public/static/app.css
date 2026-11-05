@@ -479,7 +479,7 @@ a.lookup-result:hover, a.lookup-result:focus-visible { border-image-source: url(
   display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;
   box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
 }
-.savebar.static { position: static; box-shadow: none; }
+.savebar.static, .savebar.savebar-in-flow { position: static; box-shadow: none; }
 /* The full application action stays in document flow: no role card, consent or schedule cell sits behind it. */
 .savebar.apply-savebar { position: static; bottom: auto; box-shadow: none; scroll-margin-top: 110px; }
 .application-sections { padding: 10px 12px; margin: 0 0 18px; border: 1px solid var(--line); background: rgba(0,0,0,.25); }

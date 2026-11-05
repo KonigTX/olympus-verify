@@ -1000,10 +1000,21 @@
     disposeFocusInsets?.();
     const bar = app.querySelector(".topbar"), main = app.querySelector("main.shell");
     let savebars = new Set(main?.querySelectorAll(".savebar"));
+    const viewport = window.visualViewport;
     const update = () => {
       const top = pinnedBarHeight();
+      const stickyLimit = Math.max(0, (viewport?.height ?? window.innerHeight) - top) / 2;
       const bottom = Math.max(0, ...Array.from(savebars, node => {
-        const rules = getComputedStyle(node), height = node.getBoundingClientRect().height;
+        const height = node.getBoundingClientRect().height;
+        let rules = getComputedStyle(node);
+        const inFlow = node.classList.contains("savebar-in-flow");
+        if (inFlow || rules.position === "sticky") {
+          const oversized = height > stickyLimit;
+          if (oversized !== inFlow) {
+            node.classList.toggle("savebar-in-flow", oversized);
+            rules = getComputedStyle(node);
+          }
+        }
         return height && (rules.position === "sticky" || rules.position === "fixed") ? height + (parseFloat(rules.bottom) || 0) : 0;
       }));
       style.setProperty("--olympus-focus-top", `${top ? Math.ceil(top) + 12 : 0}px`);
@@ -1022,7 +1033,13 @@
     }) : null;
     changes?.observe(main, { childList: true, subtree: true });
     window.addEventListener("resize", update);
-    disposeFocusInsets = () => { changes?.disconnect(); observer?.disconnect(); window.removeEventListener("resize", update); };
+    viewport?.addEventListener("resize", update);
+    disposeFocusInsets = () => {
+      changes?.disconnect();
+      observer?.disconnect();
+      window.removeEventListener("resize", update);
+      viewport?.removeEventListener("resize", update);
+    };
     update();
   }
   /** .109: the reload notice and the receipt bar both sit over the page under the top bar; when both show they stack (in document order) instead of covering each other. */
