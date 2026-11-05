@@ -575,6 +575,10 @@
   const byKey = (list, key) => list.find((x) => x.key === key);
   const labelOf = (list, key, fallback) => (byKey(list, key) || {}).label || fallback || key || "—";
   const byDisplayLabel = (a, b) => a.label.localeCompare(b.label, "en");
+  const byClassDisplayLabel = (a, b) => {
+    const aClass = a.group === "class", bClass = b.group === "class";
+    return aClass && bClass ? byDisplayLabel(a, b) : Number(aClass) - Number(bClass);
+  };
   const classColor = (key) => (byKey(M().classes, key) || {}).color || "";
   /** A role key as people read it: a position, or "Class Lead (Mage)". */
   function roleName(key) {
@@ -4293,7 +4297,7 @@
         return tr;
       })));
     const heatBox = h("div");
-    const heatRole = h("select", { class: "narrow-select", "aria-label": "Which applications" }, h("option", { value: "", text: "Every open application" }), M().ballots.map((b) => h("option", { value: b.key, text: b.label, selected: A.heat === b.key })));
+    const heatRole = h("select", { class: "narrow-select", "aria-label": "Which applications" }, h("option", { value: "", text: "Every open application" }), [...M().ballots].sort(byClassDisplayLabel).map((b) => h("option", { value: b.key, text: b.label, selected: A.heat === b.key })));
     heatRole.addEventListener("change", () => { A.heat = heatRole.value; drawHeat(heatBox); });
     clear(body);
     add(body, [
@@ -4454,12 +4458,13 @@
         picker({ label: `${appointmentTitle(b)}: associate Discord account`, placeholder: "Search Discord by name or user ID…", allowTyped: false, allowSelf: true, appointmentOnly: true,
           onPick: person => { input.value = `<@${person.key}>`; namesOk.checked = false; characterPublication.checked = false; associationStatus.get(b.key).textContent = `${person.label}: eligible for association at the last check. Save checks again; review both consent boxes.`; } }),
         associationStatus.get(b.key));
-    const appointedGrid = group => h("div", { class: "appointed-grid" }, appointed.filter(([b]) => b.group === group).map(appointedRow));
+    const displayedAppointments = [...appointed].sort(([a], [b]) => byClassDisplayLabel(a, b));
+    const appointedGrid = group => h("div", { class: "appointed-grid" }, displayedAppointments.filter(([b]) => b.group === group).map(appointedRow));
     const appointmentDirectory203 = roleDirectory203();
     const appointmentFamilies203 = appointmentDirectory203
       ? [...appointmentDirectory203.families].sort(compareCouncilFamilies228(councilFamilyOrder228(appointmentDirectory203))) : [];
     const appointmentControls203 = appointmentDirectory203 ? appointmentFamilies203.map(family => {
-      const rows = appointed.filter(([office]) => family.sourceKeys.includes(office.key));
+      const rows = displayedAppointments.filter(([office]) => family.sourceKeys.includes(office.key));
       return rows.length ? h("details", {class:"appointment-family203", "data-appointment-family203":family.key},
         h("summary", null,h("span",{text:family.label}),h("span",{class:"badge muted",text:`${rows.length} separate display ${rows.length === 1 ? "record" : "records"}`})),
         h("div",{class:"appointed-grid"},rows.map(appointedRow))) : null;
@@ -4475,7 +4480,7 @@
     characterPublication.id = "appointed-characters-ok";
     const quietWas = new Set(s.noVote || []);
     const quiet = M().ballots.map((b) => [b, h("input", { type: "checkbox", checked: quietWas.has(b.key), "aria-label": `${b.label}: no public vote` })]);
-    const quietGrid = (group) => h("div", { class: "appointed-grid" }, quiet.filter(([b]) => b.group === group).map(([b, input]) =>
+    const quietGrid = (group) => h("div", { class: "appointed-grid" }, quiet.filter(([b]) => b.group === group).sort(([a], [b]) => byClassDisplayLabel(a, b)).map(([b, input]) =>
       h("label", { class: "check field quiet-row" }, input, h("span", { class: "small" }, posIcon(b.key, "s"), " ", b.label))));
     const settingsValues = () => ({
       namesOpenAt: fromLocalInput(namesAt.value), launchAt: fromLocalInput(launchAt.value), namesTimeConfirmed: confirmed.checked,
