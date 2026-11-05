@@ -8,8 +8,8 @@
     {
       "path": "worker/public/static/app.css",
       "mode": "100644",
-      "bytes": 88159,
-      "sha256": "e899f1ccbbe7262694c29493b78233d814d45449b547e31d88625199dd989a40"
+      "bytes": 87910,
+      "sha256": "a81770b7042b15810257d445c6c3b7a621d93df913787c150659806e9f54d485"
     },
     {
       "path": "worker/public/static/app.js",
@@ -4082,8 +4082,8 @@
     {
       "path": "worker/public/static/organization-view.js",
       "mode": "100644",
-      "bytes": 39986,
-      "sha256": "e8f20d32473862f265b711efd916630df689ea1584fa45f7d18d423c993e99a9"
+      "bytes": 40047,
+      "sha256": "964360e8c4c25118a07fc341e34ddb9d83e4362fae711d9e6e72678413b7bde9"
     },
     {
       "path": "worker/public/static/qr-beta-window-data.html",

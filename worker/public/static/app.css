@@ -1137,10 +1137,6 @@ html[data-stream-shield="on"] main.shell,html[data-stream-shield="on"] #app>.not
 .role-entry-body201 .btn { min-height: 44px; white-space: normal; max-width: 100%; }
 .reserved-seat201 { color: #d7c8a5; background: #332b20; }
 .reserved-explanation201 { border-left: 3px solid #bda259; padding-left: 10px; }
-.org-role-guide201 { min-width: 0; overflow-wrap: anywhere; }
-.org-role-guide201 summary { cursor: pointer; min-height: 44px; padding: 8px 0; }
-.org-role-guide201 .role-facts { display: block; }
-.org-role-guide201 .role-facts dd { margin-left: 0; }
 @media (max-width: 700px) {
   .role-directory-grid201 { grid-template-columns: minmax(0,1fr); padding: 8px; gap: 8px; }
   .role-section201 > summary { font-size: 17px; padding: 10px; }

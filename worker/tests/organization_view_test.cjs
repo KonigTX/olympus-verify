@@ -71,7 +71,7 @@ function open({ mobile = false, width = 800, officeAvailability = undefined, par
   vm.runInNewContext(source.replace("export function renderOrganization", "function renderOrganization") + ";globalThis.renderOrganization=renderOrganization;", sandbox, { filename: "organization-view.js" });
   // The shared directory implementation is exercised by the actual app suites.
   // This module fixture supplies its documented canonical ordinary link contract.
-  const dispose = sandbox.renderOrganization(main, model, { h, add: (el, nodes) => el.append(nodes), clear: el => el.replaceChildren(), posIcon: () => h("img"), parts, officeAvailability, roleDirectory203:directory203, allianceOverview205:overview205?()=>h('section',{class:'org-alliance'}):undefined, roleFamilyDirectory203:()=>h('div',{'data-shared-families203':'true'},directory203.families.map(row=>h('article',null,h('a',{href:'#/roles/'+row.key,text:row.label}),row.application&&officeAvailability?.[row.primaryKey]!==false?h('a',{'data-office-application':row.primaryKey,href:'#/vote/'+row.application.applicationTrack+'/'+encodeURIComponent(row.application.targetOffice||'new'),text:'Review ordinary role application'}):null))) });
+  const dispose = sandbox.renderOrganization(main, model, { h, add: (el, nodes) => el.append(nodes), clear: el => el.replaceChildren(), posIcon: () => h("img"), parts, officeAvailability, roleDirectory203:directory203, roleGuide201:key=>h('span',{'data-duplicate-guide-fixture':key}), allianceOverview205:overview205?()=>h('section',{class:'org-alliance'}):undefined, roleFamilyDirectory203:()=>h('div',{'data-shared-families203':'true'},directory203.families.map(row=>h('article',null,h('a',{href:'#/roles/'+row.key,text:row.label}),row.application&&officeAvailability?.[row.primaryKey]!==false?h('a',{'data-office-application':row.primaryKey,href:'#/vote/'+row.application.applicationTrack+'/'+encodeURIComponent(row.application.targetOffice||'new'),text:'Review ordinary role application'}):null))) });
   const flush = () => { while (frames.length) frames.shift()(); }; flush();
   const one = cls => main.all(n => n.classList.contains(cls))[0];
   const button = text => main.all(n => n.tagName === "BUTTON" && n.textContent === text)[0];
@@ -108,6 +108,11 @@ leader118.dispose();
 // Current labels describe these five standing records without rewriting the historical model.
 const nativeDepartmentKeys218 = ['office_04','office_48','office_55','office_75','office_90'];
 const rawOfficeCard218 = key => p.main.all(n => n.classList.contains('org-office-card') && n.getAttribute('data-office-key') === key)[0];
+check('every stable office register entry links to its canonical family without a duplicate full guide',
+  data.terms.every(term=>{
+    const card=rawOfficeCard218(term.officeKey),family=directory203.keyToFamily[term.officeKey];
+    return !!family&&card?.all(node=>node.getAttribute('href')==='#/roles/'+encodeURIComponent(family)).length===1;
+  }) && p.main.all(node=>node.getAttribute('data-duplicate-guide-fixture')).length===0);
 check(".218 the five native-standing office cards use a rank-reference label while retaining the exact raw model",
   modelNativeDepartmentKeys218() === nativeDepartmentKeys218.join('|')
   && nativeDepartmentKeys218.every(key => { const card = rawOfficeCard218(key); return card && card.children.some(n => n.tagName === 'P' && n.textContent === 'In-game rank reference') && !card.children.some(n => n.tagName === 'P' && n.textContent === 'Ten native rank slots'); })

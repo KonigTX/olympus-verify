@@ -298,7 +298,8 @@ export function renderOrganization(main, data, ui) {
       const li = h("li", { class: "org-office-card", "data-office-key": t.officeKey, "data-office-tier": t.tier }, h("button", { type: "button", class: "organization-term", text: family?.kind === "institution" ? family.label : t.label, onclick: () => select(t.nodeId, true, true, t) }), officeBadges(t), historicalAliases, historicalOfficeLabels,
         h("p", { class: "small", text: t.department === "Ten native rank slots" ? "In-game rank reference" : t.department }), h("p", { class: "small", text: t.note }), family?.kind === "institution" ? null : h("p", { class: "small muted", text: termPlacement(t) }),
         reservedTerm201(t) ? null : h("p", { class: "small muted", text: closed ? "This seat is occupied or closed to applications." : t.applicationEligible ? "Ordinary role application available; admission and any later standing are reviewed separately." : t.acquisition }),
-        ui.roleGuide201 ? h("details", {class:"org-role-guide201"},h("summary",{text:"Definition, responsibilities & expectations"}),ui.roleGuide201(t.officeKey)) : null);
+        h("a", { class: "btn small", href: family ? "#/roles/" + encodeURIComponent(family.key) : "#/roles",
+          "aria-label": "Read the full role guide for " + (family?.label || t.label), text: "Read the full role guide" }));
       group.append(li); termRows.push({t,li});
     }
     termList.append(h("section", { class: "org-office-tier-group", "data-tier-group": tier }, h("h3", { text: title + " · " + terms.length + " stable titles" }), group));
