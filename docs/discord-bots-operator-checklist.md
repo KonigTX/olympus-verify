@@ -1,6 +1,10 @@
 # Discord operator checklist: Verify and Forever
 
-## Current .221 preparation — 1 November 2026
+## Verify command inventory
+
+The latest retained authenticated registry readback in this audit is from 2 November 2026 at 23:01:48 UTC. It recorded 19 slash commands and one user-context command for Verify in Asmongold. The [command reference](guild-commands228.md) lists all twenty, separates the proposed .228 `/raid` registration from the recorded registry, and inventories buttons, dropdowns and forms. Current command visibility and role or channel overrides remain attended checks.
+
+## .221 preparation record — 1 November 2026
 
 The dated observations below remain history. The .219 operation registered15 Verify commands (six core plus nine guild utilities), and .220 changed the channel guidance without re-registering them. The .221 candidate prepares19: retain all six core entries and their permissions, retain the existing guide/event/raid/reference names, add `/olympus-status`, `/olympus-unlink`, `/olympus-privacy` and `/forever`, update `/workshop` to `search` and private-draft `order`, and append staff `release` and `role-sync` aliases. Only the exact qualified, action-time registration receipt establishes that they are live. `release` can close an open verification request and refuses an existing binding; explicit `unbind` remains a separate reviewed staff action. The namespaced account links open the normal authenticated website controls, and do not erase or unlink immediately. `/olympus-status` keeps the existing status workflow, including any already-authorized guarded role restoration.
 
@@ -24,9 +28,9 @@ Audit: 31 October 2026, accepted Verify .218. Checked means observed read-only, 
 
 The Bot page permission calculator is not a view of installed guild permissions. Read Server Settings → Integrations and channel overrides instead. No privileged-intent toggle, key, OAuth redirect, install or Portal setting was changed.
 
-## Slash commands and access
+## Slash commands and access observed on 31 October 2026
 
-- Verify in Asmongold: **six observed** registrations: /verify, /verify-status, /olympus-admin, /olympus-intros, /olympus-lookup, and the Olympus linked characters user-context command. The four staff/lookup entries show overrides; ordinary-member restrictions still need their own account acceptance.
+- Verify in Asmongold then showed six registrations: /verify, /verify-status, /olympus-admin, /olympus-intros, /olympus-lookup, and the Olympus linked characters user-context command. The four staff/lookup entries showed overrides. The later registry readback is recorded above.
 - Verify source bulk register also defines /olympus-qr, behind its separate QR phase gates. Its absence from the live six is disclosed, not silently fixed or treated as permission to activate QR.
 - Forever Test A: **three observed** /verify, /status, /unlink.
 - Forever Test B: **eight observed**: the same three plus /olympus-resync, /olympus-hold, /olympus-pending, /olympus-approve, /olympus-unapprove. Staff handlers recheck OFFICER_GUILD_ID and OFFICER_ROLE_IDS. A logged-in owner is not an ordinary-officer permission test.
