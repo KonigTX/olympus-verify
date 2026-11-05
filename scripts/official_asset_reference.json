@@ -14,8 +14,8 @@
     {
       "path": "worker/public/static/app.js",
       "mode": "100644",
-      "bytes": 765011,
-      "sha256": "c0f8382bcd328e1d32d3379ba224aee1ab0324e2ce1cb9f60e21f0bef84557b0"
+      "bytes": 763342,
+      "sha256": "ba91b39f4cb49ead42331ca660688e2241e4572c7069feb772b6edd618b917f0"
     },
     {
       "path": "worker/public/static/olympus-icon.png",
@@ -3830,8 +3830,8 @@
     {
       "path": "worker/public/static/app.js",
       "mode": "100644",
-      "bytes": 765011,
-      "sha256": "c0f8382bcd328e1d32d3379ba224aee1ab0324e2ce1cb9f60e21f0bef84557b0"
+      "bytes": 763342,
+      "sha256": "ba91b39f4cb49ead42331ca660688e2241e4572c7069feb772b6edd618b917f0"
     },
     {
       "path": "worker/public/static/rank-planner/app.js",
@@ -4076,14 +4076,14 @@
     {
       "path": "worker/public/static/organization-overview205.js",
       "mode": "100644",
-      "bytes": 22975,
-      "sha256": "6dfb18bc8e09a0c50b07c36960cea93665559657398cc086410e0654263144cb"
+      "bytes": 22323,
+      "sha256": "041eaa5d95bbb337075392ce900eb54ace1f810e963a857267f08cbd0f8e79aa"
     },
     {
       "path": "worker/public/static/organization-view.js",
       "mode": "100644",
-      "bytes": 40047,
-      "sha256": "964360e8c4c25118a07fc341e34ddb9d83e4362fae711d9e6e72678413b7bde9"
+      "bytes": 39843,
+      "sha256": "4e2eb1c0700931b8ee1625dadfce8b4f7eb3ec53c4934f040bf5670c8397a18b"
     },
     {
       "path": "worker/public/static/qr-beta-window-data.html",

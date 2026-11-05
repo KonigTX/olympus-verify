@@ -2454,26 +2454,11 @@
       return row ? {...term,applicationEligible:row.applicationEligible,reservedSeat201:row.reservedSeat201,acquisition:row.acquisition} : term;
     })};
     disposeOrganization = renderOrganization(main, currentData201, { h, add, clear, posIcon, parts, scrollToSection,
-      roleGuide201:(key, options = {}) => {
-        const office = office199(key), guides = M().roleGuides201 || {}, primary = office199(options.sharedWith);
-        const family = M().roleDirectory203?.families.find(item => item.key === options.familyKey || item.primaryKey === key);
-        const reporting = roleReporting218(office,family), primaryReporting = roleReporting218(primary,family);
-        const distinctBoundary = !options.association || guides[key]?.boundaries !== guides[options.sharedWith]?.boundaries;
-        return h("div", {"data-role-guide-key218":key},
-          !options.association && office?.department && office.department !== primary?.department ? h("p", {class:"small muted",text:roleDepartment218(office)}) : null,
-          !options.association && reporting && reporting !== primaryReporting ? h("p", {class:"role-reporting218",text:reporting}) : null,
-
-          options.association && office?.group === "native" ? officeBadge199(office) : null,
-          options.association && roleStanding218(family,guides,key) ? h("p", {class:"small role-standing218",text:roleStanding218(family,guides,key)}) : null,
-          options.canonical && family ? canonicalFamilyGuide219(family,guides)
-            : distinctBoundary ? guideBody201(guides[key],positionOf(key), {notesOnly:!!options.association,includeEligibility:false}) : null);
-      },
       roleGuides201:M().roleGuides201, officeFor219:office199, reservedNotice201, standingIntro218,
       allianceOverview205:renderAllianceOverview205,
       roleDirectory203:M().roleDirectory203,
-      roleFamilyDirectory203:() => applicationRoleDirectory201(next => { location.hash = `#/vote/${next.applicationTrack}/${encodeURIComponent(next.targetOffice || "new")}`; }, {}, {showCharacters:true}),
       officeAvailability: Object.fromEntries(offices199().map(row => [row.key, reservedKey201(row.key) || S.settings?.applicationsOpen === false || displayHolder(row.key) ? false : true])) });
-    add(main, writsPanel199("organization")); // The family directory keeps every original holder scope for the router's qualified reader.
+    add(main, writsPanel199("organization"));
   };
 
   // ---------------------------------------------------------------- home

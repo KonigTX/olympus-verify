@@ -87,9 +87,6 @@ export function renderAllianceOverview205(data, ui, onSelectNode) {
   function nodeButton(id, text) {
     return h("button", { type: "button", class: "btn small", text, onclick: () => onSelectNode?.(id) });
   }
-  function guide(key, options) {
-    return ui.roleGuide201 ? ui.roleGuide201(key, options) : h("a", { href: "#/roles/" + encodeURIComponent(ui.roleDirectory203.keyToFamily[key] || "rosetta-stone"), text: "Read the complete role guide" });
-  }
   function familyCard(row) {
     const family = row.family, node = nodes.get(row.nodeId), institution = family.kind === "institution", reserved = family.kind === "role" && family.tier !== "member_specialist";
     const rankRow219 = ui.officeFor219?.(family.primaryKey) || family.sourceKeys.map(key => ui.officeFor219?.(key)).find(row => row?.nativeRankOrdinal);
@@ -105,18 +102,13 @@ export function renderAllianceOverview205(data, ui, onSelectNode) {
     card.addEventListener("toggle", () => {
       if (!card.open || loaded) return;
       loaded = true;
-      body.append(guide(family.primaryKey, { canonical:true, familyKey:family.key }));
+      body.append(h("p", { text: ui.roleGuides201?.[family.primaryKey]?.definition || node.remit }));
       for (const [groupKey,title,kinds] of [["offices","Separate offices & remits",["office"]], ["specialisms","Regional & class duties",["region","class"]]]) {
         const variants = family.variants.filter(variant => kinds.includes(variant.presentation || (["region","class"].includes(variant.kind) ? variant.kind : "office")));
         if (!variants.length) continue;
-        const group = h("section", { class:"org-alliance-guide-group218", "data-alliance-guide-group218":groupKey }, h("h4", {text:title}));
-        for (const variant of variants) {
-          const variantBody = h("div"), disclosure = h("details", { "data-alliance-variant": variant.key }, h("summary", { text: variant.label }), variantBody);
-          let variantLoaded = false;
-          disclosure.addEventListener("toggle", () => { if (disclosure.open && !variantLoaded) { variantLoaded = true; variantBody.append(guide(variant.key, { association:groupKey === "associations", sharedWith:family.primaryKey, familyKey:family.key })); } });
-          group.append(disclosure);
-        }
-        body.append(group);
+        body.append(h("section", { class:"org-alliance-guide-group218", "data-alliance-guide-group218":groupKey }, h("h4", {text:title}),
+          h("ul", null, variants.map(variant => h("li", { "data-alliance-variant": variant.key },
+            h("a", { href: "#/roles/" + encodeURIComponent(variant.key), text: variant.label }))))));
       }
     });
     const searchable = row.searchText + " " + family.sourceKeys.map(key => JSON.stringify(ui.roleGuides201?.[key] || "")).join(" ").toLowerCase();
@@ -186,12 +178,12 @@ export function renderAllianceOverview205(data, ui, onSelectNode) {
   }
   const reset = h("button", { type: "button", class: "btn small", text: "Reset overview filters", onclick: () => { search.value = ""; rank.value = ""; guild.value = ""; describeBranch(); filter(); } });
   search.addEventListener("input", filter); rank.addEventListener("change", filter); guild.addEventListener("change", () => { describeBranch(); filter(); });
-  root.append(h("header", { class: "org-alliance-heading" }, h("p", { class: "eyebrow", text: "Command · portfolios · guilds · membership" }), h("h2", { text: "The Olympus Alliance at a glance" }), h("p", { text: "Explore the same organization from its leadership, departments and local guilds. Expand an individual role for its full definition, responsibilities, expectations and regional or class specialisms." })),
+  root.append(h("header", { class: "org-alliance-heading" }, h("p", { class: "eyebrow", text: "Command · portfolios · guilds · membership" }), h("h2", { text: "The Olympus Alliance at a glance" }), h("p", { text: "Explore leadership, departments and local guilds. Open a role family for its summary, reporting context and links to the complete guides in Roles." })),
     h("div", { class: "org-alliance-toolbar" }, h("label", { for: "org-alliance-search205", text: "Find a role" }), search, h("label", { for: "org-alliance-rank205", text: "Native rank" }), rank, h("label", { for: "org-alliance-guild205", text: "Guild context" }), guild, reset), status,
     h("p", { class: "org-alliance-legend small", text: "Leadership sets the common charter. Department columns organize work; horizontal placement gives no command authority. Justice and Audit retain independent review. Open the relationship map below for the exact reporting and coordination lines." }),
     groupSection("leadership", "org-alliance-sovereign", "The Leader / Guild Master holds the sovereign office. Founder recognition and patronage are distinct from an issued command or permission."),
     h("section", { class: "org-alliance-council" }, h("h3", { text: model.groups.find(row => row.key === "council").title }), councilRoster,
-      h("p", { text: "Every High Council role family is collected here, including its departmental heads. Expand a guide for the full mandate and expectations. Council appointments do not add native rank slots." }), groupCards("council")),
+      h("p", { text: "Every High Council role family is collected here, including its departmental heads. Follow its guide link for the full mandate and expectations. Council appointments do not add native rank slots." }), groupCards("council")),
     h("div", { class: "org-alliance-support" }, h("section", { class: "org-alliance-independent" }, h("h3", { text: "Justice & independent review" }),
       h("p", { text: "The Lord High Justiciar holds the individual High Council portfolio. Judicial case panels and the Bank Auditor conduct unconflicted reviews independently of the officer or Treasury custodian whose work is under review." }), councilReferences("justice"), groupCards("independent"))),
     groupSection("institutions", "org-alliance-institutions", "These are institutions and collective mandates, not extra Council seats or individual jobs. Their members, hearing panels and delegated powers require their own accepted appointments."),
