@@ -1,0 +1,89 @@
+'use strict';
+// Closed .230 -> a984 static predecessor only. Never evaluate reconstructed source.
+const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto');
+const sha=v=>crypto.createHash('sha256').update(v).digest('hex');
+const bytes=fs.readFileSync(path.join(__dirname,'fixtures/reviewed230-membership-source-contexts.json'));
+if(sha(bytes)!=='6c321621d7105b340895875c27024ae7f54aa4e54d8ff7b758c5e0ef5c80e7b2')throw Error('reviewed230 membership static contexts differ');
+const manifest=JSON.parse(bytes.toString('utf8'));
+const counts={'discord':1,'role-settlements':21,'roles':8,'roster':5,'interactions':3};
+if(manifest.schema!=='source230-exact-membership-static-inverse-v1'||manifest.currentSource!=='9f19969b2467da1878516ee686cd7efbbe4cd773'||manifest.predecessorSource!=='a984092fe2151cd00900cc3e51bdeac9d295fba1'||Object.keys(manifest.files).sort().join(',')!==Object.keys(counts).sort().join(','))throw Error('reviewed230 membership static scope differs');
+for(const[name,count]of Object.entries(counts)){const s=manifest.files[name];if(!s||s.edits.length!==count||![s.currentSHA256,s.predecessorSHA256].every(v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v))||![s.currentBytes,s.predecessorBytes].every(v=>Number.isSafeInteger(v)&&v>0))throw Error('reviewed230 membership hunk bounds differ');}
+const copy=manifest.copyProjection,need=(v,s)=>{if(!v)throw Error('reviewed230 copy '+s);};
+need(copy?.schema==='source230-paired-copy-only-v1'&&copy.guidePath==='/channels/810000000000000009/messages'&&copy.logPath==='/channels/810000000000000007/messages'&&copy.cacheSQL==='UPDATE seen_interactions SET response = ?2 WHERE id = ?1'&&copy.interactionId==='810000000000000905'&&copy.guides.length===2&&copy.buttons.length===3,'scope');
+for(const row of [...copy.guides,...copy.buttons,copy.held])need(row.count===1&&typeof row.current==='string'&&typeof row.predecessor==='string'&&sha(row.current)===row.currentSHA256&&sha(row.predecessor)===row.predecessorSHA256&&row.current!==row.predecessor,'whole payload seals');
+function inverse(name,raw){
+ const s=Object.hasOwn(manifest.files,name)?manifest.files[name]:null;
+ if(!s||typeof raw!=='string'||Buffer.byteLength(raw)!==s.currentBytes||sha(raw)!==s.currentSHA256)return null;
+ let original=raw;
+ for(const e of s.edits){if(e.count!==1||typeof e.from!=='string'||!e.from||typeof e.to!=='string'||e.from===e.to||original.split(e.from).length!==2)return null;original=original.replace(e.from,e.to);}
+ return Buffer.byteLength(original)===s.predecessorBytes&&sha(original)===s.predecessorSHA256?original:null;
+}
+function checks(sourceRoot){
+ const out={};
+ const guide=fs.readFileSync(path.join(sourceRoot,'guide.ts'));
+ out['guide:whole-current-copy-source']=guide.length===copy.guideSource.bytes&&sha(guide)===copy.guideSource.sha256;
+ for(const[name,s]of Object.entries(manifest.files)){
+  const raw=fs.readFileSync(path.join(sourceRoot,name+'.ts'),'utf8'),old=inverse(name,raw);
+  out[name+':whole-current-and-a984']=old!==null&&sha(old)===s.predecessorSHA256;
+  const probes=[['prefix','// unrelated230\n'+raw],['suffix',raw+'\n// unrelated230\n'],['CRLF',raw.replace(/\n/g,'\r\n')],['source whitespace',raw.replace('const ','const  ')]];
+  for(const[e,i]of s.edits.map((e,i)=>[e,i]))probes.push(['duplicated context '+i,raw.replace(e.from,e.from+e.from)],['changed context '+i,raw.replace(e.from,e.from+'// unreviewed230\n')]);
+  for(const[label,mutated]of probes)out[name+':refuses-'+label]=mutated!==raw&&inverse(name,mutated)===null;
+ }
+ return out;
+}
+// Comparison copies only: raw trace/response, SQL, non-text binds and runtime sources stay untouched.
+function copyTrace(trace,fresh,required={}){
+ need(Array.isArray(trace)&&typeof fresh==='boolean'&&Object.keys(required).every(k=>['guide','cache','held'].includes(k))&&Object.values(required).every(n=>n===0||n===1),'trace shape');
+ const seen={guide:0,cache:0,held:0},one=k=>{seen[k]++;need(seen[k]<=1,'duplicate '+k);};
+ const result=trace.map(e=>{
+  if(e?.tag!=='legacy')return e;
+  if(e.k==='http'&&e.method==='POST'&&e.path===copy.guidePath){
+   need(Object.keys(e).join(',')==='k,tag,method,path,body,reason'&&e.reason===null,'guide context');
+   const rows=copy.guides.filter(r=>e.body===r.current);need(rows.length===1,'guide payload');one('guide');return{...e,body:rows[0].predecessor};
+  }
+  if(e.k==='http'&&e.method==='POST'&&e.path===copy.logPath&&e.body===copy.held.current){
+   need(Object.keys(e).join(',')==='k,tag,method,path,body,reason'&&e.reason===null,'held context');one('held');return{...e,body:copy.held.predecessor};
+  }
+  if(e.k==='sql'&&e.sql===copy.cacheSQL&&Array.isArray(e.params)&&e.params[0]===copy.interactionId){
+   need(Object.keys(e).join(',')==='k,tag,sql,params'&&e.params.length===2,'cache context');
+   const rows=copy.buttons.filter(r=>r.fresh===fresh&&r.current===e.params[1]);need(rows.length===1,'cache payload');one('cache');return{...e,params:[e.params[0],rows[0].predecessor]};
+  }
+  return e;
+ });
+ for(const[k,n]of Object.entries(required))need(seen[k]===n,'required '+k);
+ return result;
+}
+function copyResponse(response,fresh,button){
+ if(!button)return response;
+ const raw=JSON.stringify(response),rows=copy.buttons.filter(r=>r.fresh===fresh&&r.current===raw);need(rows.length===1,'response payload');return JSON.parse(rows[0].predecessor);
+}
+function copyControls(){
+ const out={},refused=f=>{try{f();return false;}catch{return true;}},http=(p,body)=>({k:'http',tag:'legacy',method:'POST',path:p,body,reason:null});
+ for(const[row,i]of copy.guides.map((r,i)=>[r,i])){
+  const e=http(copy.guidePath,row.current),raw=JSON.stringify([e]);out['guide '+i+' exact paired output']=copyTrace([e],false,{guide:1})[0].body===row.predecessor&&JSON.stringify([e])===raw;
+  for(const[name,value]of [['duplicate',[e,e]],['changed payload',[{...e,body:e.body+' '}]],['changed endpoint',[{...e,path:e.path+'?x'}]],['changed method',[{...e,method:'PATCH'}]],['changed reason',[{...e,reason:'changed'}]],['extra metadata',[{...e,extra:true}]]])out['guide '+i+' refuses '+name]=refused(()=>copyTrace(value,false,{guide:1}));
+ }
+ for(const[row,i]of copy.buttons.map((r,i)=>[r,i])){
+  const e={k:'sql',tag:'legacy',sql:copy.cacheSQL,params:[copy.interactionId,row.current]},raw=JSON.stringify([e]);out['button '+i+' exact response and correlated cache']=copyTrace([e],row.fresh,{cache:1})[0].params[1]===row.predecessor&&JSON.stringify(copyResponse(JSON.parse(row.current),row.fresh,true))===row.predecessor&&JSON.stringify([e])===raw;
+  for(const[name,value]of [['duplicate',[e,e]],['changed SQL',[{...e,sql:e.sql+' '}]],['changed ID',[{...e,params:['810000000000000999',row.current]}]],['changed response',[{...e,params:[copy.interactionId,row.current+' ']}]],['extra bind',[{...e,params:[...e.params,0]}]],['extra metadata',[{...e,extra:true}]]])out['button '+i+' refuses '+name]=refused(()=>copyTrace(value,row.fresh,{cache:1}));
+  out['button '+i+' response mutant refused']=refused(()=>copyResponse({...JSON.parse(row.current),extra:true},row.fresh,true));
+ }
+ const held=http(copy.logPath,copy.held.current);out['held exact paired output']=copyTrace([held],false,{held:1})[0].body===copy.held.predecessor;
+ for(const[name,value]of [['duplicate',[held,held]],['changed payload',[{...held,body:held.body+' '}]],['changed endpoint',[{...held,path:held.path+'?x'}]],['changed reason',[{...held,reason:'changed'}]]])out['held refuses '+name]=refused(()=>copyTrace(value,false,{held:1}));
+ const untouched={k:'sql',tag:'legacy',sql:'SELECT 1',params:[1]};out['unrelated authority tuple retained by identity']=copyTrace([untouched],false)[0]===untouched;
+ return out;
+}
+/** Disposable static fixture input only; current runtime loaders never see this directory. */
+function withStaticView(sourceRoot,inspect){
+ const base=fs.realpathSync(os.tmpdir()),tmp=fs.mkdtempSync(path.join(base,'olympus-static230-'));
+ const owned=()=>{const p=fs.realpathSync(tmp);return p===path.resolve(tmp)&&path.dirname(p)===base&&path.basename(p).startsWith('olympus-static230-')&&!fs.lstatSync(p).isSymbolicLink();};
+ if(!owned())throw Error('Owned230 static fixture path');
+ try{
+  for(const name of [...Object.keys(counts),'privacy-global-serving-origin','treasury-cosmetic','treasury-reserved-roles']){
+   const raw=fs.readFileSync(path.join(sourceRoot,name+'.ts'),'utf8'),view=Object.hasOwn(counts,name)?inverse(name,raw):raw;
+   if(view===null)throw Error('Current230 static source differs: '+name);fs.writeFileSync(path.join(tmp,name+'.ts'),view,{flag:'wx'});
+  }
+  return inspect(tmp);
+ }finally{if(!owned())throw Error('Owned230 static cleanup path changed');fs.rmSync(tmp,{recursive:true});}
+}
+module.exports=Object.freeze({inverse,checks,withStaticView,copyTrace,copyResponse,copyControls});

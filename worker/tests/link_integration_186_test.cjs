@@ -23,6 +23,8 @@ const root = path.join(__dirname, "..");
 const entry = require("./helpers/privacy129_fixture.cjs");
 const subtle = globalThis.crypto.subtle;
 const sha = (b) => nodeCrypto.createHash("sha256").update(b).digest("hex");
+if(sha(fs.readFileSync(path.join(__dirname,'source230-membership-static-projection.cjs')))!=='32504d3693c7ba345662df9a2609febacabf729161101f0076f59c976fd32f27')throw Error('reviewed230 Link helper differs');
+const source230=require('./source230-membership-static-projection.cjs');
 // Upstream's web/test/fixtures/vectors.json at d03ea8a9 with every seed* field and the two derivable backend "token"
 // fields removed (its own "about" says so); pinned, so a changed fixture is a reviewed change. Each token is rebuilt here
 // exactly as upstream defines it: payload + "." + signature_b64url.
@@ -484,11 +486,13 @@ async function councillorLink(core, token, requester, issued, c) {
   const IMPORT = 'import { appendLinkBlock } from "./link"; // .186: the Olympus Link code, last in the two code replies; off, the very same string\n';
   const OPEN = "return reply(await appendLinkBlock(env, user,\n", CLOSE = '].join("\\n")),\n  );';
   const baselineSource = current.split(IMPORT).join("").split(OPEN).join("return reply(\n").split(CLOSE).join('].join("\\n"),\n  );');
-  const compatibility210=require('./reviewed_source_compat210.cjs'),historical210=compatibility210.originalLinkInteractions(current);
+  for(const[name,ok]of Object.entries(source230.checks(path.join(root,'src'))))check('.230 exact source static inverse '+name,ok);
+  const current229=source230.inverse('interactions',current);
+  const compatibility210=require('./reviewed_source_compat210.cjs'),historical210=compatibility210.originalLinkInteractions(current229);
   const historical185=historical210===null?null:historical210.split(IMPORT).join("").split(OPEN).join("return reply(\n").split(CLOSE).join('].join("\\n"),\n  );');
   check("reviewed current interactions reconstruct exact historical185 through finite contexts; Link still has one import and two wrappers",
     current.split(IMPORT).length === 2 && current.split(OPEN).length === 3 && current.split(CLOSE).length === 3 && historical210?.split(IMPORT).length===2&&historical210.split(OPEN).length===3&&historical210.split(CLOSE).length===3&&historical185!==null&&sha(historical185) === "7aaa95ef988728269747c704a2ea9552c205a3ca9ebdbb6655489e1d03419ff5", {currentLinkFreeSHA256:sha(baselineSource),historicalSHA256:historical185===null?null:sha(historical185)});
-  for(const drift of compatibility210.driftControls(current,'link'))check('reviewed Link source refuses '+drift.name,drift.refused);
+  for(const drift of compatibility210.driftControls(current229,'link'))check('reviewed Link source refuses '+drift.name,drift.refused);
   const verifyStubs = { "./review": { onVerified: async () => {}, approvePending: async () => ({}), denyPending: async () => ({}) }, "./dm": { notify: async () => {}, noticeBatch: () => ({ items: [] }), flushNotices: async () => {} } };
   const A = "111111111111111111", B = "222222222222222222", C = "333333333333333333", D = "444444444444444444";
   const NAMES = { [A]: "anna.member", [B]: "bert_member", [C]: "cara.member", [D]: "dora.member" };

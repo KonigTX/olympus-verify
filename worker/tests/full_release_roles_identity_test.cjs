@@ -201,7 +201,7 @@ async function runOnce(phase, profile, variant, scenario, refuse = false) {
   const twelve = db.prepare(`SELECT * FROM role_settlements WHERE role_id IN (${TWELVE.map(() => '?').join(',')}) ORDER BY id`).all(...TWELVE);
   const freshFailed = db.prepare("SELECT subject, details FROM audit WHERE actor='system' AND action='role.fresh_failed' ORDER BY id").all();
   db.close();
-  return { trace, response, twelve, errors, laneCalls: laneCalls.slice(), discord: JSON.parse(JSON.stringify(members)), freshFailed, patchReceipts:patchReceipts.slice() };
+  return { trace, response, twelve, errors, laneCalls: laneCalls.slice(), discord: JSON.parse(JSON.stringify(members)), freshFailed, patchReceipts:patchReceipts.slice(), comparisonScenario:scenario };
 }
 
 // --- comparison
@@ -253,6 +253,8 @@ const A6 = [
 ];
 const mask = (text) => A6.reduce((t, [re, to]) => t.replace(re, to), text);
 const digestOf = (r, masked = false) => {
+  // Exact paired public-copy comparison only; raw r.trace/r.response remain current.
+  if(!RECORD&&!DUMP)r={...r,trace:source230.copyTrace(r.trace,masked,{guide:r.comparisonScenario==='guide'?1:0,cache:r.comparisonScenario==='button'?1:0}),response:source230.copyResponse(r.response,masked,r.comparisonScenario==='button')};
   const legacy = JSON.stringify(legacyOf(r)), response = JSON.stringify(r.response);
   return { trace: sha(masked ? mask(legacy) : legacy), response: sha(masked ? mask(response) : response), twelve: sha(r.twelve), statements: legacyOf(r).filter((e) => e.k === 'sql').length, requests: legacyOf(r).filter((e) => e.k === 'http').length };
 };
@@ -353,12 +355,15 @@ if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 
 const source211 = require('./source211-historical-projection.cjs');
 if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'source227-role-historical-projection.cjs'))).digest('hex') !== 'c657132d9f48b27adeddb10dad3a72ae44e13fcdde6b8004e9cacccf88179305') throw Error('reviewed227 identity helper differs');
 const source227 = require('./source227-role-historical-projection.cjs');
+if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source230-membership-static-projection.cjs'))).digest('hex')!=='32504d3693c7ba345662df9a2609febacabf729161101f0076f59c976fd32f27')throw Error('reviewed230 identity helper differs');
+const source230=require('./source230-membership-static-projection.cjs');
 // .228 C09 reverses only two exact current sources for the original static seals.
 if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'source228-privacy-historical-projection.cjs'))).digest('hex') !== '1314b9a32a95348ae6092bcc5963cb16526ad8eecbc8bf1dcd7414dbff84324c') throw Error('reviewed228 C09 identity helper differs');
 const source228Privacy = require('./source228-privacy-historical-projection.cjs');
 function sourceDigest(name) {
   const raw=fs.readFileSync(path.join(SRC, name + '.ts'), 'utf8');
-  const original=RECORD?raw:source228Privacy.originalSource(name,source227.originalSource(name,raw));
+  const before230=['discord','role-settlements','roles','roster','interactions'].includes(name)?source230.inverse(name,raw):raw;
+  const original=RECORD?raw:source228Privacy.originalSource(name,source227.originalSource(name,before230));
   return original===null?null:source211.source211HistoricalDigest(name,original);
 }
 /** Static value imports among src/*.ts (type-only imports and dynamic import() excluded). */
@@ -409,22 +414,27 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
     return;
   }
   if (!PINS) throw Error('PINS not recorded');
-  const banSources=ban210.sourceChecks(SRC,PINS);
+  for(const[name,ok]of Object.entries(source230.checks(SRC)))check('.230 current→a984 exact static guard '+name,ok);
+  for(const[name,ok]of Object.entries(source230.copyControls()))check('.230 paired copy-only guard '+name,ok);
+  source230.withStaticView(SRC,static230=>{
+  const banSources=ban210.sourceChecks(static230,PINS);
   check('ban210 successor binds exact reviewed interactions source, finite paired fixture and unchanged historical PINS',Object.values(banSources).every(Boolean),banSources);
   const heldSources=held210.sourceChecks(SRC);
   check('RT06 held-verify successor binds exact full restore source and finite H4/H6/current fixture',Object.values(heldSources).every(Boolean),heldSources);
-  const recoverySources=recovery217.sourceChecks(SRC);
+  const recoverySources=recovery217.sourceChecks(static230);
   check('.217 recovery successor binds the exact current interactions source',Object.values(recoverySources).every(Boolean),recoverySources);
-  check('.227 static inverse binds all four whole current sources and refuses unrelated/context/line-ending drift',Object.values(source227.checks(SRC)).every(Boolean));
+  check('.227 static inverse binds all four whole current sources and refuses unrelated/context/line-ending drift',Object.values(source227.checks(static230)).every(Boolean));
   const treasury228=require('./source228-treasury-tier-projection.cjs');
-  check('.228 Treasury tier inverse binds the exact current and .224 sources and refuses unrelated changes',Object.values(treasury228.checks(SRC)).every(Boolean));
-  const {sources211,discord222,branch224,drift224}=treasury228.withStaticView(SRC,view=>({
+  check('.228 Treasury tier inverse binds the exact current and .224 sources and refuses unrelated changes',Object.values(treasury228.checks(static230)).every(Boolean));
+  const {sources211,discord222,branch224,drift224}=treasury228.withStaticView(static230,view=>({
     sources211:source211.sourceChecks(view,PINS),discord222:require('./source222-discord-type-projection.cjs').checks(view),
     branch224:require('./source224-branch-name-projection.cjs').checks(view),drift224:require('./source224-branch-name-projection.cjs').driftControls224(view),
   }));
   check('.224 identity retains original211 restrictions with exact222 erased-type and224 protected Branch-alias successors', Object.entries(sources211).filter(([key])=>!['discord:exact-reviewed-support','treasury-cosmetic:exact-reviewed-support'].includes(key)).every(([,ok])=>ok)&&sources211['discord:exact-reviewed-support']===false&&sources211['treasury-cosmetic:exact-reviewed-support']===false&&discord222.qualified&&discord222.negativeControls&&branch224.qualified&&branch224.negativeControls,{sources211,discord222,branch224});
   console.log('RETAINED211_DISCORD_RAW_SEAL false; finite222 type-only runtime parity '+discord222.qualified);
   for (const row of drift224) check('.211 identity reconstruction refuses ' + row.source + ' ' + row.name, row.refused);
+
+  });
 
   // --- static: whole reviewed .164 integrated sources; the lane modules are never part of a module-load cycle
   for (const name of PROTECTED) check(['role-settlements', 'privacy-global-serving-origin'].includes(name) ? `${name}.ts reconstructs accepted H16 through exact .211 contexts before unchanged historical whole seals` : SOURCE196_COMPAT[name] ? `${name}.ts reconstructs the reviewed .164 whole source through exact pinned .196 contextual reversals only` : `${name}.ts is byte-identical to the reviewed .164 integrated source`, sourceDigest(name) === PINS.files[name]);
@@ -441,7 +451,7 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
   // .198: the owner-approved absent empty duplicate changes three qualification
   // contexts only. Historical file seals and every dynamic trace below stay fixed.
   // Historical intermediate controls inspect reconstructed text only; no old code executes.
-  const role198Raw = source211.original211Source('role-settlements', source227.inverse('role-settlements',fs.readFileSync(path.join(SRC, 'role-settlements.ts'), 'utf8'))??'') ?? '', role198Pin = SOURCE198_ROLE_SETTLEMENTS;
+  const role198Raw = source211.original211Source('role-settlements', source227.inverse('role-settlements',source230.inverse('role-settlements',fs.readFileSync(path.join(SRC, 'role-settlements.ts'), 'utf8')))??'') ?? '', role198Pin = SOURCE198_ROLE_SETTLEMENTS;
   check('.198 role compatibility accepts only the exact raw source and three unique reviewed contexts', sha(role198Raw) === role198Pin.exactCurrentRawSHA256 && role198Pin.edits.length === 3 && role198Pin.edits.every(edit => edit.count === 1 && role198Raw.split(edit.from).length === 2) && source196HistoricalDigest('role-settlements', role198Raw) === PINS.files['role-settlements']);
   const role197Raw = role198Pin.edits.reduce((raw, edit) => raw.replace(edit.from, edit.to), role198Raw);
   check('.198 role compatibility reconstructs the entire accepted .197 source before all unchanged historical seals', sha(role197Raw) === role198Pin.exact197RawSHA256 && source196HistoricalDigest('role-settlements', role197Raw) === PINS.files['role-settlements']);
@@ -552,7 +562,8 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
           && !lane.some((e) => e.k === 'http' && [OFF, GL, RL].some((x) => e.path.includes('/roles/' + x))), lane.filter((e) => e.k === 'sql' && e.params.includes('role.fresh_config_held')));
       if (NEW_TEXT[scenario] && variant === 'configured') {
         const shown = JSON.stringify(r.trace) + JSON.stringify(r.response);
-        check(`${where}: the A6 text is ${open ? 'shown' : 'not shown before epochStart'}`, shown.includes(NEW_TEXT[scenario]) === open);
+        if(scenario==='button')check(`${where}: current progress and held-access instructions replace the automatic-role promise`, r.response.body.includes('Use **My status** to check your verification progress. Follow the current instructions, or ask an officer if access is on hold.')&&r.response.body.includes('**OLYMPUS PRIME**')&&!/follow(?:s)? automatically/.test(r.response.body));
+        else check(`${where}: the A6 text is ${open ? 'shown' : 'not shown before epochStart'}`, shown.includes(NEW_TEXT[scenario]) === open);
       }
     }
   }

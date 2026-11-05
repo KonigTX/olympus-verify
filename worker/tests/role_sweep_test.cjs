@@ -48,6 +48,9 @@ stubs['./beta-reset-policy']=betaPolicyMod.exports;
 // .227: keep the actual launch gate in this legacy fixture; never replace the
 // production mode/source guards with a permissive constant test stub.
 stubs['./launch-verification227']=entry.load('launch-verification227');
+// .230 adds a real fixed-target restriction dependency. Keep its default-OFF
+// source in this legacy role fixture rather than replacing the guard with a stub.
+stubs['./shared-membership-cutover230']=entry.load('shared-membership-cutover230');
 
 const rolesJs = ts.transpileModule(fs.readFileSync(path.join(__dirname, "..", "src", "roles.ts"), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
 const rolesMod = { exports: {} };
