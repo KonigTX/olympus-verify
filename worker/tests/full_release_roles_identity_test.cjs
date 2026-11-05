@@ -353,8 +353,12 @@ if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 
 const source211 = require('./source211-historical-projection.cjs');
 if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'source227-role-historical-projection.cjs'))).digest('hex') !== 'c657132d9f48b27adeddb10dad3a72ae44e13fcdde6b8004e9cacccf88179305') throw Error('reviewed227 identity helper differs');
 const source227 = require('./source227-role-historical-projection.cjs');
+// .228 C09 reverses only two exact current sources for the original static seals.
+if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'source228-privacy-historical-projection.cjs'))).digest('hex') !== '1314b9a32a95348ae6092bcc5963cb16526ad8eecbc8bf1dcd7414dbff84324c') throw Error('reviewed228 C09 identity helper differs');
+const source228Privacy = require('./source228-privacy-historical-projection.cjs');
 function sourceDigest(name) {
-  const raw=fs.readFileSync(path.join(SRC, name + '.ts'), 'utf8'),original=RECORD?raw:source227.originalSource(name,raw);
+  const raw=fs.readFileSync(path.join(SRC, name + '.ts'), 'utf8');
+  const original=RECORD?raw:source228Privacy.originalSource(name,source227.originalSource(name,raw));
   return original===null?null:source211.source211HistoricalDigest(name,original);
 }
 /** Static value imports among src/*.ts (type-only imports and dynamic import() excluded). */
@@ -424,6 +428,16 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
 
   // --- static: whole reviewed .164 integrated sources; the lane modules are never part of a module-load cycle
   for (const name of PROTECTED) check(['role-settlements', 'privacy-global-serving-origin'].includes(name) ? `${name}.ts reconstructs accepted H16 through exact .211 contexts before unchanged historical whole seals` : SOURCE196_COMPAT[name] ? `${name}.ts reconstructs the reviewed .164 whole source through exact pinned .196 contextual reversals only` : `${name}.ts is byte-identical to the reviewed .164 integrated source`, sourceDigest(name) === PINS.files[name]);
+  const erase228Raw = fs.readFileSync(path.join(SRC, 'privacy-serving-erase.ts'), 'utf8');
+  const jobs228Raw = fs.readFileSync(path.join(SRC, 'privacy-serving-jobs.ts'), 'utf8');
+  for (const [name, raw] of [['privacy-serving-erase', erase228Raw], ['privacy-serving-jobs', jobs228Raw]]) {
+    for (const {label, refused} of source228Privacy.controls(name, raw)) check('.228 C09 ' + name + ' refuses ' + label, refused);
+  }
+  check('.228 C09 static inverse refuses other source names and mismatched inputs',
+    source228Privacy.restore('privacy-serving-erase', jobs228Raw) === null
+    && source228Privacy.restore('privacy-serving-jobs', erase228Raw) === null
+    && source228Privacy.restore('other-source', erase228Raw) === null
+    && source228Privacy.originalSource('other-source', erase228Raw) === erase228Raw);
   // .198: the owner-approved absent empty duplicate changes three qualification
   // contexts only. Historical file seals and every dynamic trace below stay fixed.
   // Historical intermediate controls inspect reconstructed text only; no old code executes.
@@ -446,10 +460,10 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
   check('.198 role compatibility preserves exact raw line-ending custody', source196HistoricalDigest('role-settlements', role198Raw.replace(/\n/g, '\r\n')) === null);
   // .197: exact finite namespace15 compatibility must not admit any other source change.
   // These pure mutations run in this existing original198/CI suite before its unchanged dynamic oracles.
-  const erase197Raw = fs.readFileSync(path.join(SRC, 'privacy-serving-erase.ts'), 'utf8');
+  const erase197Raw = source228Privacy.restore('privacy-serving-erase', erase228Raw) ?? '';
   const erase197Guard = " const facts=originalClosedRecoveryCleanupAccount(selection,env);facts.check();const namespaces=communityDataNames().slice().sort();if(namespaces.length!==15||JSON.stringify(namespaces)!==\"[\\\"contributions\\\",\\\"councillor_verification\\\",\\\"departures\\\",\\\"directory\\\",\\\"discord_directory_visibility\\\",\\\"event_delivery\\\",\\\"event_reminders\\\",\\\"events\\\",\\\"news\\\",\\\"news_webhook\\\",\\\"privacy_access\\\",\\\"refs\\\",\\\"restrictions\\\",\\\"ruleset_publication\\\",\\\"trials\\\"]\")throw Error('closed_recovery_cleanup_namespace_incomplete');const registered=new WeakMap<object,OriginalClosedCleanupStep>();\n";
   const erase196Guard = " const facts=originalClosedRecoveryCleanupAccount(selection,env);facts.check();const namespaces=communityDataNames().slice().sort();if(namespaces.length!==13||JSON.stringify(namespaces)!==\"[\\\"contributions\\\",\\\"councillor_verification\\\",\\\"departures\\\",\\\"directory\\\",\\\"event_delivery\\\",\\\"event_reminders\\\",\\\"events\\\",\\\"news\\\",\\\"privacy_access\\\",\\\"refs\\\",\\\"restrictions\\\",\\\"ruleset_publication\\\",\\\"trials\\\"]\")throw Error('closed_recovery_cleanup_namespace_incomplete');const registered=new WeakMap<object,OriginalClosedCleanupStep>();\n";
-  check('.197 closed namespace projection accepts only the exact reviewed current raw source and unique guard', sha(erase197Raw) === 'aca1c0e136c1374b58235d5ec9cc8c9f02f3e209fc5b12e90881035ce98b4a12' && erase197Raw.split(erase197Guard).length === 2 && source196HistoricalDigest('privacy-serving-erase', erase197Raw) === PINS.files['privacy-serving-erase']);
+  check('.197 closed namespace projection accepts only the exact reviewed .197 raw source and unique guard', sha(erase197Raw) === 'aca1c0e136c1374b58235d5ec9cc8c9f02f3e209fc5b12e90881035ce98b4a12' && erase197Raw.split(erase197Guard).length === 2 && source196HistoricalDigest('privacy-serving-erase', erase197Raw) === PINS.files['privacy-serving-erase']);
   const erase196Raw = erase197Raw.replace(erase197Guard, erase196Guard);
   check('.197 closed namespace projection reconstructs the entire accepted .196 source before unchanged .164 seals', sha(erase196Raw) === 'ae7545ccdb4e49524d71b4fd0189b8a90d9d84f5768c44e30d89b622466124e8' && source196HistoricalDigest('privacy-serving-erase', erase196Raw) === PINS.files['privacy-serving-erase']);
   const erase197Mutations = [
