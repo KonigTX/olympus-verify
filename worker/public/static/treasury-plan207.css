@@ -107,7 +107,7 @@
   .tp207-actions > .btn { width: 100%; }
   .tp207-bars li { grid-template-columns: 2.8rem minmax(0, 1fr) 5.8rem; font-size: .7rem; }
 }
-@media (max-width: 180px) {
+@media (max-width: 220px) {
   .tp207-bars li { grid-template-columns: minmax(0, 1fr); }
   .tp207-bars li > :last-child { text-align: left; }
 }
