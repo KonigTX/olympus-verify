@@ -24,7 +24,7 @@ function before233(name,raw){
  if(!s)return raw;
  if(typeof raw!=='string'||Buffer.byteLength(raw)!==s.currentBytes||sha(raw)!==s.currentSHA256)return null;
  let original=raw;
- for(const e of s.edits){if(e.count!==1||typeof e.from!=='string'||!e.from||typeof e.to!=='string'||e.from===e.to||original.split(e.from).length!==2)return null;original=original.replace(e.from,e.to);}
+ for(const e of s.edits){if(e.count!==1||typeof e.from!=='string'||!e.from||typeof e.to!=='string'||e.from===e.to||original.split(e.from).length!==2)return null;original=original.replace(e.from,()=>e.to);}
  return Buffer.byteLength(original)===s.predecessorBytes&&sha(original)===s.predecessorSHA256?original:null;
 }
 function before232(name,raw){

@@ -20,7 +20,7 @@ if (crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'sour
 const source211 = require('./source211-historical-projection.cjs');
 if (crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source227-role-historical-projection.cjs'))).digest('hex') !== 'c657132d9f48b27adeddb10dad3a72ae44e13fcdde6b8004e9cacccf88179305') throw Error('reviewed227 lane helper differs');
 const source227 = require('./source227-role-historical-projection.cjs');
-if(crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source230-membership-static-projection.cjs'))).digest('hex')!=='ed78f9f42dae2453856011cfba1065fac001c7d2cacc602862c4ede8646ed762')throw Error('reviewed230 lane helper differs');
+if(crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source230-membership-static-projection.cjs'))).digest('hex')!=='eb38cbf11209b4ef56f052e5e54b117d6fffdbd40d764faa00aa5708468c5f63')throw Error('reviewed230 lane helper differs');
 const source230=require('./source230-membership-static-projection.cjs');
 const state=(b,p)=>JSON.stringify({limit:b.limit,attempts:b.attempts,calls:b.calls,retries:b.retries,exhausted:b.exhausted,parent:p});
 function apply(b,op){try{op(b);return 'ok';}catch(e){return 'throw:'+e.message;}}

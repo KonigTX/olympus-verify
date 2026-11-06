@@ -355,7 +355,7 @@ if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 
 const source211 = require('./source211-historical-projection.cjs');
 if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'source227-role-historical-projection.cjs'))).digest('hex') !== 'c657132d9f48b27adeddb10dad3a72ae44e13fcdde6b8004e9cacccf88179305') throw Error('reviewed227 identity helper differs');
 const source227 = require('./source227-role-historical-projection.cjs');
-if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source230-membership-static-projection.cjs'))).digest('hex')!=='ed78f9f42dae2453856011cfba1065fac001c7d2cacc602862c4ede8646ed762')throw Error('reviewed230 identity helper differs');
+if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source230-membership-static-projection.cjs'))).digest('hex')!=='eb38cbf11209b4ef56f052e5e54b117d6fffdbd40d764faa00aa5708468c5f63')throw Error('reviewed230 identity helper differs');
 const source230=require('./source230-membership-static-projection.cjs');
 // .228 C09 reverses only two exact current sources for the original static seals.
 if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'source228-privacy-historical-projection.cjs'))).digest('hex') !== '1314b9a32a95348ae6092bcc5963cb16526ad8eecbc8bf1dcd7414dbff84324c') throw Error('reviewed228 C09 identity helper differs');
