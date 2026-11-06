@@ -134,11 +134,10 @@ function A.Status()
   return { enabled=false, mode="hardware-pending", sound=p and p.sound~=false or false,
     held=state.held or "waiting for native data", pending=state.pendingAt~=nil, requested=state.requested==true }
 end
-function A.Request(reason)
+local function RequestWithFacts(reason, source)
   if reason~="whisper" and reason~="native-change" and reason~="periodic" and reason~="queue-check" then return false end
   if not pref() then return false end
-  if reason=="whisper" then pcall(API.ExportRoster) end
-  if reason~="whisper" and not facts() then return false end
+  if reason~="whisper" and not source then return false end
   local first=state.pendingAt==nil
   state.pendingAt=state.pendingAt or mono() or 0
   state.reason=state.reason=="whisper" and state.reason or reason
@@ -147,12 +146,19 @@ function A.Request(reason)
   UpdateAlert()
   return true
 end
-function A.NativeChanged()
-  local source=facts(); if not source then return end
+function A.Request(reason)
+  if reason~="whisper" and reason~="native-change" and reason~="periodic" and reason~="queue-check" then return false end
+  if not pref() then return false end
+  if reason=="whisper" then pcall(API.ExportRoster); return RequestWithFacts(reason) end
+  return RequestWithFacts(reason, facts())
+end
+local function NativeChangedWithFacts(source)
+  if not source then return end
   local p=pref(false)
-  if source.digest~=(state.digest or p and p.lastSyncedDigest) then A.Request("native-change") end
+  if source.digest~=(state.digest or p and p.lastSyncedDigest) then RequestWithFacts("native-change", source) end
   state.digest=source.digest
 end
+function A.NativeChanged() return NativeChangedWithFacts(facts()) end
 function A.RecordSync()
   local p,source=pref(),facts()
   if not p then return end
@@ -191,13 +197,14 @@ function A.Command(argument)
 end
 function A.Tick()
   if not state.active then return end
-  -- Cached native roster export only. No timer dispatches Sync, ReloadUI, invite, promote, purge or MOTD.
-  pcall(API.ExportRoster)
+  -- Throttled request only; its native roster event publishes the complete export.
+  -- No timer dispatches Sync, ReloadUI, invite, promote, purge or MOTD.
+  if type(API.RefreshRosterForPending235)=="function" then pcall(API.RefreshRosterForPending235) end
   local source,p=facts(),pref(false)
   if source then
-    A.NativeChanged()
+    NativeChangedWithFacts(source)
     local last=p and p.lastSyncAt or state.wallBoot
-    if type(last)=="number" and time()>=last and time()-last>=A.REFRESH_INTERVAL then A.Request("periodic") end
+    if type(last)=="number" and time()>=last and time()-last>=A.REFRESH_INTERVAL then RequestWithFacts("periodic", source) end
   end
   if state.pendingAt then state.held=state.requested and state.held or contextHeld(false) or "hardware click or keybind required" end
   UpdateAlert()

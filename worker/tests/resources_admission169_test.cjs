@@ -121,6 +121,19 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
   // .234 reverses only this exact verified character continuity release note.
+  // .235 reverses only this exact addon background CPU release note.
+  const release235 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".235\", date: \"2026-11-06\", lines: [",
+    "      \"The verification addon reuses unchanged roster snapshots to reduce background CPU use.\",",
+    "      \"Manual Sync and in-game verification keep their existing checks.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .235 prepend occurs once', originalNews.split(release235).length === 2);
+  originalNews = originalNews.replace(release235, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
   const release234 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
     "  {",

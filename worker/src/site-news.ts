@@ -78,6 +78,12 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".235", date: "2026-11-06", lines: [
+      "The verification addon reuses unchanged roster snapshots to reduce background CPU use.",
+      "Manual Sync and in-game verification keep their existing checks.",
+    ],
+  },
+  {
     build: ".234", date: "2026-11-06", lines: [
       "An old unproven character link no longer blocks a freshly verified character from using the nickname buttons.",
       "Current character proof, guild standing and Discord nickname permissions are still required.",
