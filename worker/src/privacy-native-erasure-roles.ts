@@ -3,6 +3,7 @@ import type {Env} from './env';
 import {rest,DiscordError} from './discord';
 import {BETA_RESET_GUILD_ID,BETA_RESET_ROLE_IDS} from './beta-reset-policy';
 import {parseNativeRoleMap} from './native-rank-adapter';
+import {parseNativeRankPolicy232,MANUAL_COUNCIL232} from './native-rank-reconciliation232';
 import {nativeErasureMode} from './privacy-native-mode';
 import {captureAccountErasureProof,currentAccountErasureProof,CURRENT_ERASURE_SQL,originalErasureJobBirthSql,PRIVACY_DB_NOW as NOW,type AccountErasureProof} from './privacy-serving-authority';
 import {captureRuntimeVenue230,assertRuntimeVenue230,runtimeVenue230Facts,oldSharedMemberProducerHeld230,SHARED_MEMBER230_GUILD,SHARED_MEMBER230_ROLE,type RuntimeVenue230} from './shared-membership-cutover230';
@@ -16,10 +17,11 @@ const ID=/^[1-9][0-9]{16,19}$/,HEX=/^[0-9a-f]{32}$/;
 const COUNCIL=Object.freeze([Object.freeze(['Olympus Council GM','Olympus Branch GM']),Object.freeze(['Olympus Council Officer','Olympus Branch Officer'])]);
 const ATTRIBUTED=Object.freeze(['roster_membership','verified_native_rank','roster_native_rank','verified_privileged_rank','roster_privileged_rank',
   'fresh_roster_membership','fresh_roster_rank','staff_roster_rank','guild_departure','ban','rename_hold','blocking_role','account_erasure','treasury_cosmetic','treasury_cosmetic_expiry',
-  'launch_membership230','launch_membership_compensation230','launch_membership_removal230','launch_membership_erasure230']);
+  'launch_membership230','launch_membership_compensation230','launch_membership_removal230','launch_membership_erasure230',
+  'launch_routine_membership232','native_rank_compensation232']);
 const KEYS=['DB','GUILD_ID','DISCORD_APP_ID','DISCORD_BOT_TOKEN','PRIVACY_NATIVE_ERASURE_ENABLED','PRIVACY_ERASURE_ENABLED',
   'ROLE_GUILD_MEMBER','MEMBERSHIP_RETIRED_ROLE_ID','ROLE_OFFICER','ROLE_GUILD_LEADER','ROLE_GUILD_MASTER','ROLE_RAID_LEADER','ROLE_MODERATOR',
-  'BLOCKING_ROLE_IDS','QR_NATIVE_ROLE_MAP','FULL_RELEASE_ROLES','TREASURY_COSMETIC_ROLES',
+  'BLOCKING_ROLE_IDS','QR_NATIVE_ROLE_MAP','FULL_RELEASE_ROLES','TREASURY_COSMETIC_ROLES','NATIVE_RANK_SYNC232',
   'SHARED_MEMBERSHIP230_MODE','SHARED_MEMBERSHIP230_CLOSURE_JSON','SHARED_MEMBERSHIP230_CLOSURE_SHA256','PRIVACY_WRITE_ADMISSION_ENABLED','PRIVACY_WRITE_ADMISSION_LAYOUT','PRIVACY_WRITE_ADMISSION_EPOCH','VERIFY_MEMBERSHIP_ONLY','VERIFY_NATIVE_SCOPE','MEMBERSHIP_ROLE_SETTLEMENT_ENABLED'] as const;
 type Role=Readonly<{id:string;name:string;position:number;permissions:bigint;managed:boolean}>;
 declare const receiptBrand:unique symbol;
@@ -33,7 +35,7 @@ const data=(o:unknown,k:string):unknown=>{if(!o||typeof o!=='object')throw Error
 const validId=(v:unknown):v is string=>typeof v==='string'&&ID.test(v)&&BigInt(v)<=18446744073709551615n;
 function capture(env:Env){
   const proto=Object.getPrototypeOf(env),slots=KEYS.map(k=>{const d=Object.getOwnPropertyDescriptor(env,k);if(!d&&k in env||d&&!Object.hasOwn(d,'value'))throw Error('native_role_configuration');return d?Object.freeze({...d}):undefined;});
-  const check=()=>{if(Object.getPrototypeOf(env)!==proto||!nativeErasureMode(env))throw Error('native_role_configuration_changed');for(let i=0;i<KEYS.length;i++){const d=Object.getOwnPropertyDescriptor(env,KEYS[i]!),old=slots[i];if(!old?!!d:!d||['value','get','set','writable','enumerable','configurable'].some(k=>!Object.is(old[k as keyof PropertyDescriptor],d[k as keyof PropertyDescriptor])))throw Error('native_role_configuration_changed');}};
+  const check=()=>{if(Object.getPrototypeOf(env)!==proto||!nativeErasureMode(env))throw Error('native_role_configuration_changed');for(let i=0;i<KEYS.length;i++){const d=Object.getOwnPropertyDescriptor(env,KEYS[i]!),old=slots[i];if(!old?!!d||KEYS[i]! in env:!d||['value','get','set','writable','enumerable','configurable'].some(k=>!Object.is(old[k as keyof PropertyDescriptor],d[k as keyof PropertyDescriptor])))throw Error('native_role_configuration_changed');}};
   const text=(k:typeof KEYS[number])=>{const d=slots[KEYS.indexOf(k)],v=d?.value;if(v!==undefined&&typeof v!=='string')throw Error('native_role_configuration');return v as string|undefined;};
   check();return {check,text};
 }
@@ -42,6 +44,12 @@ function configuredTargets(text:(k:typeof KEYS[number])=>string|undefined,guild:
   for(const k of ['ROLE_GUILD_MEMBER','MEMBERSHIP_RETIRED_ROLE_ID','ROLE_OFFICER','ROLE_GUILD_LEADER','ROLE_GUILD_MASTER','ROLE_RAID_LEADER'] as const){const id=text(k);if(id){if(!validId(id))throw Error('native_role_configuration');out.add(id);}}
   if(!validId(text('ROLE_GUILD_MEMBER')))throw Error('native_role_configuration');
   const qr=text('QR_NATIVE_ROLE_MAP');if(qr){const map=parseNativeRoleMap(qr);if(JSON.stringify({profile:map.profile,roles:map.roles})!==qr)throw Error('native_role_configuration');for(const id of map.roles)out.add(id);}
+  // Even a disabled, explicitly retained policy names roles the account may
+  // still hold. It supplies cleanup attribution, never native/staff authority.
+  const native=text('NATIVE_RANK_SYNC232');if(native&&native!=='off'){
+    const policy=parseNativeRankPolicy232(native);if(policy.guildId!==guild)throw Error('native_role_configuration');
+    for(const rank of policy.ranks)out.add(rank.roleId);
+  }
   const full=text('FULL_RELEASE_ROLES');if(full){if(full.length>1024)throw Error('native_role_configuration');const v=JSON.parse(full);if(!v||typeof v!=='object'||Array.isArray(v)||Object.keys(v).join(',')!=='version,epoch,epochStart,grants,membership,native'||v.version!==1||typeof v.epoch!=='string'||!/^olympus-full-release-[a-z0-9-]{1,32}$/.test(v.epoch)||!Number.isSafeInteger(v.epochStart)||v.epochStart<1792688400||typeof v.grants!=='boolean'||!Array.isArray(v.native)||v.native.length!==10||JSON.stringify(v)!==full)throw Error('native_role_configuration');const ids=[v.membership,...v.native];if(!ids.every(validId)||new Set(ids).size!==11)throw Error('native_role_configuration');for(const id of ids)out.add(id);}
   const treasury=text('TREASURY_COSMETIC_ROLES');if(treasury){if(treasury.length>1024)throw Error('native_role_configuration');const v=JSON.parse(treasury);if(!v||typeof v!=='object'||Array.isArray(v)||Object.keys(v).join(',')!=='version,guildId,applicationId,seasonStartsAt,roles'||v.version!==1||v.guildId!==guild||v.applicationId!==text('DISCORD_APP_ID')||!Number.isSafeInteger(v.seasonStartsAt)||v.seasonStartsAt<1||!v.roles||typeof v.roles!=='object'||Array.isArray(v.roles)||Object.keys(v.roles).join(',')!=='tithePayer,patron,benefactor'||JSON.stringify(v)!==treasury)throw Error('native_role_configuration');const ids=Object.values(v.roles);if(!ids.every(validId)||new Set(ids).size!==3)throw Error('native_role_configuration');for(const id of ids)out.add(id as string);}
   return out;
@@ -85,7 +93,7 @@ export async function cleanupNativeErasureRoles(env:Env,input:AccountErasureProo
     const history=await env.DB.prepare(`SELECT DISTINCT role_id FROM role_settlements WHERE subject=?2 AND guild_id=?5 AND purpose IN(${ATTRIBUTED.map(literal).join(',')}) AND ${CURRENT_ERASURE_SQL} AND EXISTS(SELECT 1 FROM privacy_serving_jobs j WHERE j.operation_id=?1 AND ${originalErasureJobBirthSql(p)}) LIMIT 65`).bind(...values,env.GUILD_ID).all<{role_id:string}>();check();
     if(history.results.length>MAX_TARGETS)return result('held','native_role_attribution_limit');for(const row of history.results){const id=data(row,'role_id');if(!validId(id))return result('held','native_role_attribution_invalid');targets.add(id);}
     if(targets.size>MAX_TARGETS)return result('held','native_role_attribution_limit');attributed=targets.size;
-    const protectedRoles=new Set([env.GUILD_ID,env.DISCORD_APP_ID,binding.text('ROLE_MODERATOR')??'',...(binding.text('BLOCKING_ROLE_IDS')??'').split(',').map(x=>x.trim())]);
+    const protectedRoles=new Set([env.GUILD_ID,env.DISCORD_APP_ID,MANUAL_COUNCIL232,binding.text('ROLE_MODERATOR')??'',...(binding.text('BLOCKING_ROLE_IDS')??'').split(',').map(x=>x.trim())]);
     if([...targets].some(id=>protectedRoles.has(id)))return result('held','native_role_protected_collision');
     targetJSON=JSON.stringify([...targets].sort());nonce=random();
     const authority=`${CURRENT_ERASURE_SQL} AND EXISTS(SELECT 1 FROM privacy_serving_jobs j WHERE j.operation_id=?1 AND ${originalErasureJobBirthSql(p)})`;

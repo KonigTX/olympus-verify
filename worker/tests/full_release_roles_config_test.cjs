@@ -177,9 +177,11 @@ const cap=e=>F.captureLaneConfig(e);
   &&F.FRESH_EFFECT_MIN_LEFT===8&&F.FRESH_RECONCILE_MIN_LEFT===4&&F.FRESH_CLAIM_MIN_LEFT===2&&F.STAFF_MIN_ENTRY===20&&F.LEGACY_BAN_ALLOWANCE===16&&F.FRESH_CONFIG_MAX_BYTES===1024
   &&F.LANE_OBSERVED_PRESENT_ENABLED===false&&F.FRESH_LEASE_KEY==='fullReleaseRolesPass');
  {const s=src('full-release-roles.ts');const imports=Array.from(s.matchAll(/^import\s[^;]*?from\s+'([^']+)'/gm),m=>m[1]).sort();
-  check('full-release-roles.ts imports only pure modules',imports.join()==='./account-generation-contracts,./beta-reset-policy,./env,./native-rank-adapter,./privacy-serving-authority,./qr-phase1');
+  check('full-release-roles.ts imports only the exact approved modules including pure current-profile selection',imports.join()==='./account-generation-contracts,./beta-reset-policy,./env,./native-rank-adapter,./native-rank-reconciliation232,./privacy-serving-authority,./qr-phase1');
   const code=ts.transpileModule(s,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,removeComments:true}}).outputText;
   check('full-release-roles.ts makes no D1, HTTP or async call',!/\.prepare\(|\.batch\(|fetch\(|\bawait\b|\basync\b|\.DB\b/.test(code));
+  const profile232=ts.transpileModule(src('native-rank-reconciliation232.ts'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,removeComments:true}}).outputText;
+  check('new current-profile dependency itself imports nothing and makes no D1/HTTP/async call',!/require\(|\.prepare\(|\.batch\(|fetch\(|\bawait\b|\basync\b|\.DB\b/.test(profile232));
   check('the capture reads every key it documents',F.LANE_CONFIG_KEYS.length===24&&['FULL_RELEASE_ROLES','STAFF_TEN_RANK_ROLES','DISCORD_BOT_TOKEN','MEMBERSHIP_RETIRED_ROLE_ID','INTROS_ROLES','QR_BETA_FERN_EXCEPTION_ENABLED','PRIVACY_ERASURE_ENABLED','PRIVACY_NATIVE_ERASURE_ENABLED','LINKS_NOT_BEFORE_CLOCK_GATED'].every(k=>F.LANE_CONFIG_KEYS.includes(k)));}
  {const e=src('env.ts');check('env.ts gains the two type-only optional fields',/^  FULL_RELEASE_ROLES\?: string;/m.test(e)&&/^  STAFF_TEN_RANK_ROLES\?: string;/m.test(e)&&!/FULL_RELEASE_ROLES[^?]*=/.test(e.split('\n').filter(l=>!l.includes('//')).join('\n')));}
  console.log(`\n${passed} checks passed`);

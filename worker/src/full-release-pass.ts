@@ -62,6 +62,13 @@ export function freshAdmission(count:StatementCount,limit:number):Admission{
  const per=(count.factor??1)+(count.protocol?4:0);
  return Object.freeze({count:Object.freeze({get used(){return count.used;},factor:per}),limit});
 }
+/** .232 bounds already count every Native protocol statement. Retain the same
+ * live physical counter without the historical logical x5 conversion. An
+ * unsupported counter is zero capacity, never an uncounted fallback. */
+export function nativeAdmission232(count:StatementCount,limit:number):Admission{
+ const qualified=count.protocol===true&&count.factor===1&&Number.isSafeInteger(count.used)&&count.used>=0&&Number.isSafeInteger(limit)&&limit>=0&&limit<=700;
+ return Object.freeze({count:Object.freeze({get used(){return count.used;},factor:1}),limit:qualified?limit:0});
+}
 /** settleLaneBan: privacy, ban and custody reads, the spent count and reader, and one removal of 11 fresh + 3 staff roles. */
 export const FRESH_BAN_STATEMENTS=5+freshSpentStatements(24)+freshRemovalStatements(2,24);
 
@@ -119,6 +126,44 @@ type Visit='done'|'budget'|'statements';
 type FreshState={r:string;d:string;g:string;s:string;p:string;k:0|1;h:number|null};
 export type FreshPassCounts={visits:number;removed:number;settled:number;confirmed:number;unknown:number;held:number;failed:number;linkMissing:number;requests:number;statements:number};
 export type FreshPassResult=Readonly<{state:'skipped'|'held'|'done'|'failed';reason:string;counts:Readonly<FreshPassCounts>}>;
+export const NATIVE_SUBJECT232_STATEMENTS=180;
+export const NATIVE_OPEN232_STATEMENTS=13; // four protocol reads (2 each) plus one lease write (5).
+export const NATIVE_CLOSE232_STATEMENTS=15; // state audit, refused-state fallback audit, owned lease release: 5 each.
+export type NativeSubject232Result=Readonly<{state:Settlement['state'];reason:string;requests:number;base:Settlement|null;rank:Readonly<{state:Settlement['state'];reason:string;outcomes:readonly Settlement[]}>|null}>;
+/** Immediate post-verification hook and ordinary account visit use the same
+ * source-owned issuer. No opaque capability escapes this owned invocation. */
+export async function runNativeSubject232(env:Env,subject:string,calls:CallBudget,maxJobs:1|2=2):Promise<NativeSubject232Result>{
+ const start=calls.attempts;let base:Settlement|null=null,rank:NativeSubject232Result['rank']=null;
+ const done=(state:Settlement['state'],reason:string):NativeSubject232Result=>Object.freeze({state,reason,requests:calls.attempts-start,base,rank});
+ const M=await import('./routine-membership-authority232'),authority=await M.captureRoutineMembership232(env,subject);
+ if(!authority)return done('held','native232_original_identity_or_source_held');
+ try{const V=await import('./shared-membership-cutover230'),selection=await V.captureRuntimeVenue230(env);if(selection.mode!=='enabled')return done('held','native232_venue_held');
+  const effect=M.routineMembership232Environment(env,authority),f=M.routineMembership232Facts(authority),child=laneChildBudget(calls,FRESH_GRANT_CHILD_CAP);
+  base=await R.queueAndSettleRoutineMembership232(effect,authority,selection.venue,child);
+  if(base.state!=='settled'&&f.cause==='eligible'&&!base.reason.startsWith('native232_restriction_'))return done(base.state,base.reason);
+  rank=await R.reconcileNativeRanks232(effect,authority,selection.venue,child,maxJobs);return done(rank.state,rank.reason);
+ }catch{return done('held','native232_original_admission_held');}
+ finally{M.closeRoutineMembership232(authority);}
+}
+/** The original verification writer has already handled shared access. This
+ * follow-up still captures new Native authority and rechecks actual base
+ * presence for every rank PUT; an outcome string is only a scheduling hint. */
+export async function runVerifiedRank232(env:Env,subject:string,calls:CallBudget):Promise<NativeSubject232Result>{
+ const start=calls.attempts;let rank:NativeSubject232Result['rank']=null,base:NativeSubject232Result['base']=null;
+ const done=(state:Settlement['state'],reason:string):NativeSubject232Result=>Object.freeze({state,reason,requests:calls.attempts-start,base,rank});
+ const M=await import('./routine-membership-authority232'),authority=await M.captureRoutineMembership232(env,subject);
+ if(!authority)return done('held','native232_original_identity_or_source_held');
+ try{const V=await import('./shared-membership-cutover230'),selection=await V.captureRuntimeVenue230(env);if(selection.mode!=='enabled')return done('held','native232_venue_held');
+  const effect=M.routineMembership232Environment(env,authority),child=laneChildBudget(calls,FRESH_GRANT_CHILD_CAP);
+  rank=await R.reconcileNativeRanks232(effect,authority,selection.venue,child);
+  if(rank.reason==='native232_restriction_cleanup_pending'){
+   base=await R.queueAndSettleRoutineMembership232(effect,authority,selection.venue,child);
+   if(base.state==='settled'||base.reason.startsWith('native232_restriction_'))rank=await R.reconcileNativeRanks232(effect,authority,selection.venue,child);
+  }
+  return done(rank.state,rank.reason);
+ }catch{return done('held','native232_original_admission_held');}
+ finally{M.closeRoutineMembership232(authority);}
+}
 type Ctx={env:Env;cap:LaneCapture;parent:CallBudget;trigger:FreshTrigger;clock:ReturnType<typeof L.laneClock>;snapshot:number|null;tenRank:boolean;D:string|null;
  admit:(n:number)=>boolean;counts:FreshPassCounts;refs:Map<string,PrivacyReference>;linkAudited:boolean;effects:number;stop:string;
  freshCover:readonly string[];staffCover:readonly string[]};
@@ -397,6 +442,7 @@ async function presenceStep(x:Ctx,st:FreshState){
  * (countStatements); without it each bound is reserved against FRESH_SWEEP_STATEMENTS less reserve (what the caller already
  * ran in this invocation, e.g. the /queue route). cap: captured before any await. */
 export async function runFreshPass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admission;reserve?:number}>,trigger:FreshTrigger,cap:LaneCapture):Promise<FreshPassResult>{
+ if(cap?.native232?.present)return runNative232Pass(env,io,trigger,cap);
  const counts=emptyCounts(),t=now(),done=(state:FreshPassResult['state'],reason:string):FreshPassResult=>Object.freeze({state,reason,counts:Object.freeze({...counts})});
  if(!cap||!cap.configured||!io||!io.calls||trigger!=='watcher'&&trigger!=='ingest')return done('skipped','not_configured');
  const clock=L.laneClock(cap,t),open=clock.fresh||clock.staff,held=cap.fresh==='held'||cap.staff==='held';
@@ -456,6 +502,62 @@ export async function runFreshPass(env:Env,io:Readonly<{calls:CallBudget;adm?:Ad
  }finally{
   if(lease)try{await env.DB.prepare(L.FRESH_LEASE_RELEASE).bind(lease).run();}catch{/* it expires after FRESH_LEASE_SECONDS */}
  }
+}
+
+/** The current named-profile branch reuses this lane's lease, cursors, statement
+ * admission and shared request budget. It never feeds new rows to old ten-rank
+ * consumers, nor treats an old unknown as a completed transition. */
+async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admission;reserve?:number}>,trigger:FreshTrigger,cap:LaneCapture):Promise<FreshPassResult>{
+ const counts=emptyCounts(),t=now(),done=(state:FreshPassResult['state'],reason:string):FreshPassResult=>Object.freeze({state,reason,counts:Object.freeze({...counts})}),selected=cap.native232;
+ if(!selected||selected.mode!=='enabled'||!selected.policy||!cap.current())return done('held','native232_configuration_held');
+ if(!io?.calls||trigger!=='watcher'&&trigger!=='ingest')return done('held','invalid_operation');
+ if(trigger==='watcher'&&t-lastFreshLocal<L.FRESH_INTERVAL_SECONDS)return done('skipped','throttled');
+ const adm=io.adm??null,local={used:0},startUsed=adm?adm.count.used:0,limit=FRESH_SWEEP_STATEMENTS-Math.max(0,Math.min(FRESH_SWEEP_STATEMENTS,io.reserve??0));
+ // The Native issuer and up to base + two rank visits include original-result
+ // reads, every final admission and one owned compensation. Measured fixtures
+ // must stay within this conservative physical-statement reservation.
+ const subjectBound=NATIVE_SUBJECT232_STATEMENTS,admit=(n:number)=>{if(adm)return room(adm,NATIVE_CLOSE232_STATEMENTS)>=n;if(local.used+n+NATIVE_CLOSE232_STATEMENTS>limit)return false;local.used+=n;return true;};
+ let lease:string|null=null;
+ try{
+  if(!admit(NATIVE_OPEN232_STATEMENTS))return done('held','statement_budget');
+  const recent=await env.DB.prepare(L.FRESH_INTERVAL_SELECT).first<{ts:number;action:string;snapshot_id:number|null}>(),snapshot=(await env.DB.prepare(L.NEWEST_SNAPSHOT_SELECT).first<{id:number|null}>())?.id??null;
+  if(recent&&(trigger==='watcher'||recent.snapshot_id===snapshot))return done('skipped','interval');
+  if(!cap.current())return done('held','lane_configuration_changed');lastFreshLocal=t;
+  lease=L.freshLeaseValue(t+L.FRESH_LEASE_SECONDS,randomGeneration());if(!await env.DB.prepare(L.FRESH_LEASE_ACQUIRE).bind(lease).first()){lease=null;return done('skipped','lease_held');}
+  const st=parseState((await env.DB.prepare(L.FRESH_STATE_SELECT).first<{details:string|null}>())?.details),M=await import('./routine-membership-authority232'),V=await import('./shared-membership-cutover230');
+  const window=(await env.DB.prepare(L.NATIVE232_WALK_SELECT).bind(cap.guild,st.g,L.FRESH_WALK_WINDOW,selected.policy.privileged?1:0).all<{subject:string;top_rank:number|null;urgent:number}>()).results;
+  const refs:PrivacyReference[]=[];let visited=0,stop='';
+  for(const row of window){
+   if(visited>=L.FRESH_GRANT_SUBJECTS_PER_PASS)break;
+   if(!ID.test(row.subject)){st.g=row.subject;continue;}
+   if(!cap.current()){stop='lane_configuration_changed';break;}
+   if(laneRoom(io.calls)<8){stop='role_request_budget';break;}if(!admit(subjectBound)){stop='statement_budget';break;}
+   const start=io.calls.attempts;visited++;counts.visits++;
+   const privacy=await readPrivacySubject(env,row.subject),reference={subject:row.subject,capture:privacy};
+   const authority=await M.captureRoutineMembership232(env,row.subject);
+   if(!authority){counts.held++;st.g=row.subject;await audit(env,'system','role.native232_attempt',row.subject,{n:snapshot,rank:row.top_rank,result:'source_held'},reference);continue;}
+   try{
+   const f=M.routineMembership232Facts(authority),effect=M.routineMembership232Environment(env,authority),selectedVenue=await V.captureRuntimeVenue230(env);
+   if(selectedVenue.mode!=='enabled'){counts.held++;st.g=row.subject;continue;}
+   M.assertRoutineMembership232(effect,authority);refs.push(reference);
+   const child=laneChildBudget(io.calls,FRESH_GRANT_CHILD_CAP),base=await R.queueAndSettleRoutineMembership232(effect,authority,selectedVenue.venue,child);
+   if(base.state==='settled')counts.settled++;else if(base.state==='unknown')counts.unknown++;else counts.held++;
+   // A known existing/manual base is sufficient access, but never deletion
+   // custody. No rank grant may run before this current base admission.
+   if(base.state==='settled'||f.cause!=='eligible'||base.reason.startsWith('native232_restriction_')){
+    const rank=await R.reconcileNativeRanks232(effect,authority,selectedVenue.venue,child);
+    for(const outcome of rank.outcomes){if(outcome.state==='settled'){counts.settled++;if(outcome.reason==='native232_delete_acknowledged_and_confirmed')counts.removed++;}else if(outcome.state==='unknown')counts.unknown++;else counts.held++;}
+   }
+   counts.requests+=io.calls.attempts-start;st.g=row.subject;await audit(effect,'system','role.native232_attempt',row.subject,{n:snapshot,rank:f.primary?.index??null,result:base.state},reference);
+   }finally{M.closeRoutineMembership232(authority);}
+  }
+  if(!window.length||window.length<L.FRESH_WALK_WINDOW&&visited>=window.length)st.g='';
+  const details={r:st.r,d:st.d,g:st.g,s:st.s,p:st.p,k:st.k,h:st.h,n:snapshot,profile:'olympus-prime-live-20261105-v1',stop:stop||null,visits:counts.visits,settled:counts.settled,unknown:counts.unknown,held:counts.held,attempts:counts.requests};
+  const stored=await env.DB.prepare(STATE_AUDIT).bind(now(),L.FRESH_AUDIT.state,trigger,JSON.stringify(refs.length?{...details,_privacySubjectIds:refs.map(r=>r.subject)}:details),JSON.stringify(refs.map(r=>({id:r.subject,g:r.capture?.subjectGeneration??null})))).run();
+  if(!Number(stored?.meta?.changes??0))await audit(env,'system',L.FRESH_AUDIT.tick,trigger,{n:snapshot,profile:'olympus-prime-live-20261105-v1',stop:stop||null});
+  counts.statements=adm?adm.count.used-startUsed:local.used;return done('done',stop||'native232_pass_complete');
+ }catch{return done('failed','native232_pass_failed');}
+ finally{if(lease)try{await env.DB.prepare(L.FRESH_LEASE_RELEASE).bind(lease).run();}catch{/* Original lease expires; no fallback parallel producer. */}}
 }
 
 export type FreshBanResult=Readonly<{state:Settlement['state'];reason:string;removed:number;unknown:number;attempts:number}>;

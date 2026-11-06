@@ -203,6 +203,20 @@ function memberRoleResult230(outcome:GrantOutcome|undefined) {
   return {pendingConsumed:true,inviteQueued:false,roleOutcome,roleGranted:roleOutcome==='granted'||roleOutcome==='observed-present'};
 }
 
+/** A successful native verification gets a bounded direct rank visit rather
+ * than waiting behind the periodic account rotation. Shared access is still
+ * granted only by its original writer; a rank hold never invents a base ACK. */
+async function verifiedRankResult232(env:Env,subject:string,outcome:GrantOutcome|undefined):Promise<Readonly<{rankOutcome?:string;rankReason?:string;roleGranted?:false;roleOutcome?:'held'|'unknown'}>>{
+  const N=await import('./native-rank-reconciliation232'),selection=N.captureNativeRankConfig232(env);
+  if(!selection.present)return {};
+  if(selection.mode!=='enabled'||outcome!=='granted'&&outcome!=='has-role')return {rankOutcome:'held',rankReason:'native232_membership_or_configuration_held'};
+  try{
+    const pass=await import('./full-release-pass'),result=await pass.runVerifiedRank232(env,subject,callBudget(env));
+    const reason=result.rank?.reason??result.reason,baseWithdrawn=result.base?.reason==='native232_delete_acknowledged_and_confirmed'||reason==='native232_shared_access_required_first';
+    return {rankOutcome:result.rank?.state??result.state,rankReason:reason,...result.base?.state==='unknown'?{roleGranted:false as const,roleOutcome:'unknown' as const}:baseWithdrawn?{roleGranted:false as const,roleOutcome:'held' as const}:{}};
+  }catch{return {rankOutcome:'held',rankReason:'native232_followup_held'};}
+}
+
 /** A player GUID as the client writes it ("Player-4613-0ABCDEF0"), or null. */
 export function playerGuid(v: unknown): string | null {
   const g = guidOf(v);
@@ -316,6 +330,13 @@ async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,r
   const launchRefusal = launchVerificationRefusal(launch, { current, exportedAt: onRoster?.exportedAt ?? null, rosterGuid, whisperGuid,source:onRoster?.source??null,nativeMembership:launch.mode==='legacy'||nativeMembership?.member===true }, now());
   if (launchRefusal) {
     if(launchRefusal.result!=='membership_not_confirmed')return json(launchRefusal,503);
+    // 5 Nov 2026: a late roster/proof is not a native statement of absence. In
+    // the observed exchange the fresh roster arrived three seconds after the
+    // whisper; consuming its request here made a recoverable delay permanent.
+    // Only the original authenticated negative proof may close this request.
+    // Missing/stale/unmatched inputs retain every grant fence and the request.
+    if(nativeMembership?.member!==false)return json({...launchRefusal,result:'membership_source_pending',
+      error:'Verification is waiting for fresh, trusted guild membership data. Your request remains open. No role or invite was issued.'},503);
     // A definitive refusal closes only this original request, so Get my code can
     // issue a new nonce. No character, review, invite or role is created here.
     // A lost/changed Native result is unknown, never acknowledged as a refusal.
@@ -438,9 +459,10 @@ async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,r
     // An already linked member may have lost their Discord role. A newly proved
     // native source can reach the existing writer; never replay an unknown intent.
     const roleOutcome=launchSource?await promote(env,pending.discord_id,nameKey,name,undefined,whisperGuid,undefined,privacyCapture,roleDispatch,launchSource,originalConsumed230):undefined;
+    const rankResult=launchSource?await verifiedRankResult232(env,pending.discord_id,roleOutcome):{};
     await audit(env, "watcher", "verify.already_linked", name, { discordId: pending.discord_id, source: body.source },reference);
     if(launchSource&&!await launchMembershipCurrent(env,launchSource))return json({result:'outcome_unknown',pendingConsumed:true,roleOutcome:'unknown',inviteQueued:false},503);
-    return json({ result: "member", discordId: pending.discord_id, name,...(launchSource?memberRoleResult230(roleOutcome):{}) });
+    return json({ result: "member", discordId: pending.discord_id, name,...(launchSource?memberRoleResult230(roleOutcome):{}),...rankResult });
   }
   await audit(env, "watcher", "verify.confirmed", name, { discordId: pending.discord_id, source: body.source, officer: body.officer, ticket, guid: whisperGuid },reference);
   await logLine(env, `✅ verify: **${name}** confirmed in game (${body.source}${ticket ? ", request code" : ""}) for <@${pending.discord_id}>.`,[reference!]);
@@ -453,8 +475,9 @@ async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,r
     // character to them. The GUID is taken only from a very fresh export; otherwise the next export pins it.
     await audit(env, "watcher", "verify.already_member", name, { discordId: pending.discord_id, source: body.source },reference);
     const roleOutcome=await promote(env, pending.discord_id, nameKey, name, undefined, whisperGuid ?? (now() - onRoster.exportedAt <= ROSTER_PIN_WITHIN ? onRoster.guid : null),undefined,privacyCapture,roleDispatch,launchSource??undefined,originalConsumed230);
+    const rankResult=launchSource?await verifiedRankResult232(env,pending.discord_id,roleOutcome):{};
     if(launchSource&&!await launchMembershipCurrent(env,launchSource))return json({result:'outcome_unknown',pendingConsumed:true,roleOutcome:'unknown',inviteQueued:false},503);
-    return json({ result: "member", discordId: pending.discord_id, name,...(launchSource?memberRoleResult230(roleOutcome):{}) });
+    return json({ result: "member", discordId: pending.discord_id, name,...(launchSource?memberRoleResult230(roleOutcome):{}),...rankResult });
   }
   if (onRoster) await audit(env, "watcher", "verify.roster_not_current", name, { exportedAt: onRoster.exportedAt },reference);
   await onVerified(env, resolved, body.source,privacyCapture);

@@ -6,6 +6,7 @@ import copy
 import contextlib
 import io
 import json
+import hashlib
 import sys
 import tempfile
 import time
@@ -33,13 +34,16 @@ class NativeMembershipTests(unittest.TestCase):
         self.code = codes.code_for(SECRET, NAME, codes.day_bucket(datetime.now(timezone.utc)))
         self.w = watcher.Watcher(dict(wow_dir=str(self.root), account='LOCAL_TEST', worker_url='https://test.invalid', watcher_token='test-token', verify_secret=SECRET, officer_character='Fern Melder', membership_only=True, state_file=str(self.root / 'state.json')))
         self.calls = []
-        self.w.worker.call = lambda method, path, body=None, retries=3: (self.calls.append((path, body)) or (True, {'result': 'ok'}))
+        self.w.worker.call = lambda method, path, body=None, retries=3: (self.calls.append((path, body)) or (True, {'trusted': True, 'snapshot': 1, 'members': len(body['members'])} if path == '/ingest/roster' else {'result': 'ok'}))
+        self.w.forward_roster(dict(exportedAt=self.at, total=1, nativeGuild='OLYMPUS PRIME', nativeRealm='Synthetic Realm',
+                                  members=[dict(name=NAME, guid=GUID, rank='Member', rankIndex=7, level=60)]))
+        self.calls.clear()
 
     def tearDown(self):
         self.tmp.cleanup()
 
     def proof(self, **changes):
-        value = dict(version=1, member=True, observedAt=self.at, scopeHash='a' * 16)
+        value = dict(version=1, member=True, observedAt=self.at, scopeHash=hashlib.sha256(b'native-scope|1|OLYMPUS PRIME|Synthetic Realm').hexdigest()[:16])
         value.update(changes)
         value['mac'] = membership_mac(SECRET, NAME, GUID, self.code, value)
         return value

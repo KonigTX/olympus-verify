@@ -131,5 +131,31 @@ do
   check("legacy mode retains its old event shape and never emits OLVm", event.nativeMembership == nil and #f.notes() == 0)
   check("legacy mode retains its original explicit invite workflow", #f.e.OlympusVerifyDB.queue == 1)
 end
+do
+  local f, reloads = fixture(), 0
+  f.e.ReloadUI = function() reloads = reloads + 1 end
+  f.whisper()
+  check("strict local capture visibly requires the supported exchange", f.e.OlympusVerifyAPI.Status().verificationExchange == "sync-needed")
+  local notice = f.e.OlympusVerifyDB.verificationExchange
+  local fields = 0; for _ in pairs(notice) do fields = fields + 1 end
+  check("pending exchange stores only phase and time, no code or identity", fields == 2 and notice.capturedAt == f.e.NOW)
+  check("receiving a verification never reloads unattended", reloads == 0)
+  f.e.OlympusVerifyAPI.Sync()
+  check("explicit Sync makes exactly one reload request", reloads == 1)
+  check("a reload request is not claimed as a Worker acknowledgement", f.e.OlympusVerifyAPI.Status().verificationExchange == "sync-requested")
+  check("Sync retains the original captured native proof", f.e.OlympusVerifyDB.events[#f.e.OlympusVerifyDB.events].nativeMembership.observedAt == f.e.NOW)
+end
+do
+  local f = fixture()
+  local first, code = f.whisper()
+  local firstAt, firstMAC = first.nativeMembership.observedAt, first.nativeMembership.mac
+  local before, calls = #f.e.OlympusVerifyDB.events, f.membershipCalls
+  f.e.NOW = f.e.NOW + 601
+  local fresh = f.whisper(nil, nil, code)
+  check("busy601 same genuine code/GUID whisper appends a new original event", #f.e.OlympusVerifyDB.events == before + 1 and fresh.code == code and fresh.guid == first.guid)
+  check("busy601 fresh whisper reruns native membership API", f.membershipCalls > calls)
+  check("busy601 new proof has current observation and distinct MAC", fresh.nativeMembership and fresh.nativeMembership.observedAt == firstAt + 601 and fresh.nativeMembership.mac ~= firstMAC)
+  check("busy601 old proof is never retimestamped or mutated", first.nativeMembership.observedAt == firstAt and first.nativeMembership.mac == firstMAC)
+end
 print(string.format("%d passed, %d failed", passed, failed))
 if failed > 0 then os.exit(1) end

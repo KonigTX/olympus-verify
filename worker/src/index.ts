@@ -676,7 +676,7 @@ async function queueFreshRoles(env: Env, lane: LaneCapture, parent: CallBudget,r
   try { await sweepMemberRoles(env, "watcher", parent,roleDispatch); } catch { /* never thrown; the pass still runs */ }
   const pass = await import('./full-release-pass');
   let counted = env, adm: Admission | undefined;
-  try { const count = { used: 0 }; counted = countStatements(env, count); adm = pass.freshAdmission(count, pass.FRESH_SWEEP_STATEMENTS - QUEUE_ROUTE_STATEMENTS); }
+  try { const count = { used: 0 }; counted = countStatements(env, count); adm = lane.native232?.present ? pass.nativeAdmission232(count, pass.FRESH_SWEEP_STATEMENTS - QUEUE_ROUTE_STATEMENTS) : pass.freshAdmission(count, pass.FRESH_SWEEP_STATEMENTS - QUEUE_ROUTE_STATEMENTS); }
   catch { counted = env; adm = undefined; }
   await pass.runFreshPass(counted, { calls: parent, adm, reserve: QUEUE_ROUTE_STATEMENTS }, 'watcher', lane);
 }
@@ -687,7 +687,7 @@ async function freshRegistrationRefused(env: Env, trigger: string): Promise<void
 }
 
 /** Bumped with every change that needs a redeploy, so GET /health shows which build is live. */
-const BUILD = "2026-11-05.231 D1 membership compatibility";
+const BUILD = "2026-11-05.232 Roster and rank role reconciliation";
 
 /**
  * Presence of each secret (never the value) and a D1 round trip — enough to tell a missing `wrangler secret put` from a

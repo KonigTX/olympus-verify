@@ -120,6 +120,22 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .232 reverses only this exact roster/rank reconciliation preparation note.
+  const release232 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".232\", date: \"2026-11-05\", lines: [",
+    "      \"Native rank checks use the current guild ladder and keep shared guild access alongside the correct rank label.\",",
+    "      \"Keep verification codes pending until the exchange is acknowledged; refreshing roster evidence does not consume them.\",",
+    "      \"The current named ladder includes Stewart; its new rank label grants no extra staff powers.\",",
+    "      \"Native ranks do not create Council appointments. Uncertain roster or provider outcomes keep role changes on hold.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .232 prepend occurs once', originalNews.split(release232).length === 2);
+  originalNews = originalNews.replace(release232, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+
   // .231 reverses only this exact D1 compatibility release note.
   const release231 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

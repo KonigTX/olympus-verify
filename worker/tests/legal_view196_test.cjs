@@ -93,6 +93,12 @@ const reply = text => new Response(text, { headers: { 'Content-Type': 'text/html
     ]) {
       let selected=privacy.slice(privacy.indexOf(start),privacy.indexOf(end));
       if(start==='<h2>Getting rid of it</h2>'){
+        // .232 adds only this disclosed operational-custody paragraph. Bind the whole current
+        // section and its unique exact context before recovering the unchanged historical pins.
+        const roleSync232='<p><strong>Guild role synchronization.</strong> Fresh officer roster exports and verified character links support shared guild access and the appropriate native rank label. The service records the account generation, character identity, roster reference, role target and operation outcome so later promotions, demotions and confirmed departures can update bot-managed roles. An acknowledged grant remains operational custody while its role may need removal; it is not discarded merely because it is a year old. Eligible observations and completed grant/removal pairs use bounded cleanup after 365 days. Unknown effects stay held for review. Observing an existing role does not make it a bot-owned grant, and routine synchronization does not remove independent manual appointments. Account erasure uses its separate role-cleanup process described above.</p>\n';
+        assert.equal(sha(selected),'6477ec219a64937797117bbd9b7720d6713b0c92a97290cbe2269896432e13cc');
+        assert.equal(selected.split(roleSync232).length,2);
+        selected=selected.replace(roleSync232,'');
         const explicitSafetyPurpose="Its purpose is to recognize the same account if it tries to evade that original guild-application or membership rejection after erasure. It is a keyed, pseudonymous safety record, not anonymous data or a guarantee of complete account unlinking. ";
         const previousRetention="For your own rejected guild application or membership, erasure retains a keyed, minimized account marker with the fixed reason and original decision date for up to 365 days from that decision. ";
         const currentRetention="When a verified original guild rejection qualifies for retention, erasure can retain a keyed, minimized account marker with the fixed reason and original decision date for up to 365 days from that decision. ";

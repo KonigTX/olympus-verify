@@ -35,7 +35,7 @@ local SECRET = cfg.secret
 -- 0.6.12: the example's placeholder is public, so a Config.lua copied without replacing it must not accept codes made from it.
 if type(SECRET) ~= "string" or SECRET == "" or string.find(SECRET, "^REPLACE_WITH_") then SECRET = nil end
 local secretWarned = false  -- 0.6.12: say once per session, not on every whisper, that codes cannot be checked
-local SOURCE_VERSION = "0.6.17" -- Keep this source fallback and OlympusVerify.toc aligned.
+local SOURCE_VERSION = "0.6.18" -- Keep this source fallback and OlympusVerify.toc aligned.
 local VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version"))
   or (GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version")) or SOURCE_VERSION
 local SET_NOTES = cfg.setNotes == true  -- SetNote is forbidden for addons on the Forever beta; leave false there
@@ -377,14 +377,16 @@ local function HandleCode(source, sender, text, guid)
   Event({ type = source, name = base, target = sender, code = code, ok = ok, inGuild = eventMember, kind = kind, guid = guid, nativeMembership = nativeMembership })
   if ok then
     if cfg.membershipOnly == true then
+      OlympusVerifyDB.verificationExchange = { phase = "sync-needed", capturedAt = time() }
+      if source == "whisper" and nativeMembership and OlympusVerifyAutoSync then OlympusVerifyAutoSync.Request("whisper") end
       -- .227: a valid code proves control, not current guild membership. Keep the old invite workflow opt-in.
-      Print(string.format("%s from %s: code confirmed; Worker membership confirmation pending. No invite queued.", source, base))
+      Print(string.format("%s from %s: code confirmed locally. Use /olv sync (Sync & reload) to send the proof and current roster; then check the Watcher result. No invite queued.", source, base))
       if source == "whisper" then
         if (lastReply[key] or 0) + REPLY_RATE <= time() then
           lastReply[key] = time()
           local reply = "Olympus: code received; a current approved Olympus roster could not be confirmed. No role or invite was granted. Retry once the roster is available or use your sister guild's QR verification."
           if nativeMembership and nativeMembership.member then
-            reply = "Olympus: code and current guild membership observed. Discord access still needs the Worker's roster and account checks; this whisper alone grants no role or invite."
+            reply = "Olympus: code and current guild membership observed. The officer must Sync & reload to send the proof and roster. Discord access awaits the Worker's account/access checks; no role or invite is confirmed here."
           elseif nativeMembership and nativeMembership.member == false then
             reply = "Olympus: you are not on this officer's current guild roster; no role was granted. For an Olympus sister guild, use its QR verification. Otherwise join an affiliated guild, then request a fresh code."
           end
@@ -610,6 +612,7 @@ ExportRoster = function(force, rosterAlreadyAsked)
     return nil
   end
   OlympusVerifyDB.roster = { exportedAt = now, members = members, total = total, online = online, nativeGuild = nativeGuild, nativeRealm = nativeRealm }
+  if cfg.membershipOnly == true and OlympusVerifyAutoSync then OlympusVerifyAutoSync.NativeChanged() end
   return #members
 end
 
@@ -3114,6 +3117,10 @@ OlympusVerifyAPI = {
   -- the newest OlympusQueue.lua (Discord approvals) -- the two things WoW only exchanges at a reload. From a click only.
   Sync = function()
     ExportRoster(true)
+    if OlympusVerifyAutoSync then OlympusVerifyAutoSync.RecordSync() end
+    if cfg.membershipOnly == true and OlympusVerifyDB.verificationExchange then
+      OlympusVerifyDB.verificationExchange = { phase = "sync-requested", capturedAt = OlympusVerifyDB.verificationExchange.capturedAt, requestedAt = time() }
+    end
     local reload = (C_UI and C_UI.Reload) or rawget(_G, "ReloadUI")
     if reload then reload() else Print("this client offers no reload call — type /reload.") end
   end,
@@ -3134,6 +3141,8 @@ OlympusVerifyAPI = {
       secret = SECRET and true or false,
       chatLogging = (LoggingChat and LoggingChat()) and true or false,
       flushLog = FLUSH_LOG,
+      verificationExchange = type(db.verificationExchange) == "table" and db.verificationExchange.phase or nil,
+      autoSync = OlympusVerifyAutoSync and OlympusVerifyAutoSync.Status() or nil,
       notes = SET_NOTES and not notesForbidden,
       queued = QueuedCount(),
       queue = db.queue or {},
@@ -3168,6 +3177,36 @@ OlympusVerifyAPI = {
     }
   end,
 }
+
+-- Read-only facts for the optional reload scheduler; no roster, role or invite authority.
+function OlympusVerifyAPI.AutoSyncFacts()
+  local db = OlympusVerifyDB
+  local r = db and db.roster
+  local guild, realm = Presence.NativeRosterScope()
+  local ownGuid = UnitGUID and Presence.Readable(UnitGUID("player"))
+  if cfg.membershipOnly ~= true or not IsInGuild or IsInGuild() ~= true or not guild or not realm or not Presence.IsGuid(ownGuid) or not Presence.MyName()
+    or not r or r.nativeGuild ~= guild or r.nativeRealm ~= realm or type(r.exportedAt) ~= "number"
+    or r.exportedAt > time() or time() - r.exportedAt > 75 or type(r.members) ~= "table" or #r.members ~= r.total
+    or type(r.total) ~= "number" or r.total < 1 or r.total > 1000 or r.total ~= math.floor(r.total) then return nil end
+  local upper = string.upper(guild)
+  if upper ~= "OLYMPUS PRIME" and upper ~= "OLYMPUS" and upper ~= "OLYMPUS I" then return nil end
+  local parts, own = { "G" .. #guild .. ":" .. guild, "R" .. #realm .. ":" .. realm, "T" .. tostring(r.total) }, 0
+  for _, row in ipairs(r.members) do
+    if row.guid == ownGuid then own = own + 1 end
+    local fields = {}
+    for _, key in ipairs({ "name", "full", "guid", "rank", "rankIndex", "level", "class", "note", "onote", "lastOnline" }) do
+      local value = row[key]
+      if type(issecretvalue) == "function" and issecretvalue(value) then return nil end
+      local text = value == nil and "nil" or type(value) .. ":" .. tostring(value)
+      if #text > 1024 then return nil end
+      fields[#fields + 1] = tostring(#text) .. ":" .. text
+    end
+    parts[#parts + 1] = "M" .. table.concat(fields)
+  end
+  if own ~= 1 then return nil end
+  table.sort(parts)
+  return { strict = true, exportedAt = r.exportedAt, digest = L.sha256hex(table.concat(parts, "|")) }
+end
 
 -- ---------------------------------------------------------------- events
 -- ---------------------------------------------------------------- diagnostics (27 Sep): read-only
@@ -3600,6 +3639,9 @@ SlashCmdList.OLYMPUSVERIFY = function(msg)
   local db = OlympusVerifyDB
   if cmd == "diagnostics" then
     Diag.Launch((msg or ""):match("^%s*%S+%s+(.-)%s*$") == "scope")
+  elseif cmd == "autosync" then
+    if OlympusVerifyAutoSync then OlympusVerifyAutoSync.Command((msg or ""):match("^%s*%S+%s*(.-)%s*$"))
+    else Print("auto sync module is not loaded; restart after updating the addon.") end
   elseif cmd == "launch" or cmd == "promote" or cmd == "buffer" or cmd == "motd" then
     local launch = OlympusLaunch229
     local argument = string.match(msg or "", "^%s*%S+%s+(.-)%s*$") or ""

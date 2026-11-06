@@ -523,7 +523,7 @@ export type FreshIngest = Readonly<{ cap: LaneCapture; defer: (label: string, wo
  * or /queue poll runs the pass instead. */
 async function deferFreshIngest(env: Env, counted: Env, count: StatementCount, holder: { calls?: CallBudget }, fresh: FreshIngest): Promise<void> {
   try {
-    fresh.defer("fresh_roles_ingest", () => import("./full-release-pass").then((m) => m.runFreshPass(counted, { calls: holder.calls ?? callBudget(env), adm: m.freshAdmission(count, ROSTER_INGEST_STATEMENTS) }, "ingest", fresh.cap)));
+    fresh.defer("fresh_roles_ingest", () => import("./full-release-pass").then((m) => m.runFreshPass(counted, { calls: holder.calls ?? callBudget(env), adm: fresh.cap.native232?.present ? m.nativeAdmission232(count, ROSTER_INGEST_STATEMENTS) : m.freshAdmission(count, ROSTER_INGEST_STATEMENTS) }, "ingest", fresh.cap)));
   } catch {
     try {
       await audit(counted, "system", "role.fresh_failed", "ingest", { error: "registration_refused" }); // full-release-roles FRESH_AUDIT.failed

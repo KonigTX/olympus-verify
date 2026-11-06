@@ -15,6 +15,7 @@ import { NATIVE_RANKS } from './qr-phase1';
 import { parseNativeRoleMap,privilegedNativeMap } from './native-rank-adapter';
 import { BETA_RESET_CUTOFF,BETA_RESET_ROLE_IDS } from './beta-reset-policy';
 import { intVar } from './env';
+import {captureNativeRankConfig232,NATIVE_STAFF232,type NativeRankCapture232} from './native-rank-reconciliation232';
 
 // --- purposes (role_settlements.purpose has no CHECK, schema.sql:980-988). .160 never acts on them: settleRoleIntent
 // holds at :272, reconcileRemovalReceipt refuses at :351, continuation and the website batch select old purposes only.
@@ -79,6 +80,22 @@ export const FRESH_EPOCH_FLOOR=BETA_RESET_CUTOFF;
 export const FRESH_CONFIG_MAX_BYTES=1024;
 /** Codex-gated (activation gate 0): without acceptance a present spent row that is not current stays unknown. */
 export const LANE_OBSERVED_PRESENT_ENABLED=false;
+/** Selection hints only; the original routine issuer supplies all authority.
+ * Current verified lineage is required even for the urgent worklist, so an
+ * unlinked 900-person native roster cannot bury a newly changed linked member.
+ * Failed work backs off for one interval; the source snapshot/rank are retained
+ * in an attributable audit. The secondary cursor fairly checks provider drift. */
+export const NATIVE232_WALK_SELECT=`WITH candidates AS (
+ SELECT DISTINCT c.discord_id AS subject FROM characters c WHERE c.discord_id IS NOT NULL AND c.status NOT IN('unbound','denied')
+ AND EXISTS(SELECT 1 FROM role_settlements a WHERE a.subject=c.discord_id AND a.guild_id=?1 AND a.native_guid=c.guid AND a.desired=1 AND a.state='settled'
+ AND ((a.purpose='launch_membership230' AND a.reason IN('launch230_put_acknowledged_and_confirmed','launch230_current_role_observed')) OR (a.native_profile='olympus-prime-live-20261105-v1' AND a.reason IN('native232_put_acknowledged_and_confirmed','native232_observed_without_dispatch'))))
+ UNION SELECT DISTINCT subject FROM role_settlements WHERE guild_id=?1 AND native_profile='olympus-prime-live-20261105-v1'),facts AS (
+ SELECT subject,(SELECT MIN(r.rank_index) FROM characters c JOIN roster_members r ON r.guid=c.guid AND r.name_key=c.name_key WHERE c.discord_id=candidates.subject AND c.status='member' AND r.snapshot_id=(SELECT MAX(id) FROM roster_snapshots)) AS top_rank,
+ (SELECT native_rank FROM role_settlements r WHERE r.subject=candidates.subject AND r.guild_id=?1 AND r.native_profile='olympus-prime-live-20261105-v1' AND r.purpose='fresh_roster_rank' AND r.desired=1 AND r.state='settled' ORDER BY r.created_at DESC,r.rowid DESC LIMIT 1) AS last_rank,
+ COALESCE((SELECT MAX(ts) FROM audit WHERE actor='system' AND action='role.native232_attempt' AND subject=candidates.subject),0) AS last_attempt,
+ EXISTS(SELECT 1 FROM members WHERE discord_id=candidates.subject AND banned=1) OR EXISTS(SELECT 1 FROM site_users WHERE discord_id=candidates.subject AND denied=1) OR EXISTS(SELECT 1 FROM rename_holds WHERE discord_id=candidates.subject AND state='reapply') AS restricted
+ FROM candidates),work AS (SELECT *,CASE WHEN (top_rank IS NOT last_rank OR restricted OR (?4=1 AND top_rank IN(0,3,5) AND NOT EXISTS(SELECT 1 FROM role_settlements staff WHERE staff.subject=facts.subject AND staff.guild_id=?1 AND staff.native_profile='olympus-prime-live-20261105-v1' AND staff.purpose='staff_roster_rank' AND staff.native_rank=facts.top_rank AND staff.desired=1 AND staff.state='settled'))) AND last_attempt<=${DB_NOW}-${FRESH_INTERVAL_SECONDS} THEN 1 ELSE 0 END AS urgent FROM facts)
+ SELECT subject,top_rank,urgent FROM work ORDER BY urgent DESC,CASE WHEN urgent THEN last_attempt ELSE CASE WHEN subject>?2 THEN 0 ELSE 1 END END,subject LIMIT ?3`;
 
 // --- configuration capture (A1, Q6). Synchronous, descriptor-based: an accessor or inherited key is never invoked.
 export const LANE_CONFIG_KEYS=Object.freeze(['FULL_RELEASE_ROLES','STAFF_TEN_RANK_ROLES','LINKS_NOT_BEFORE','LINKS_NOT_BEFORE_CLOCK_GATED','ROSTER_MIN_MEMBERS','ROSTER_MAX_SHRINK_PCT',
@@ -94,6 +111,7 @@ export type LaneStaffEntry=Readonly<{idx:number;name:string;role:string}>;
  * current() is a descriptor witness over every key read; it never throws. Nothing re-reads env configuration later.
  */
 export type LaneCapture=Readonly<{
+ native232?:NativeRankCapture232;
  configured:boolean;fresh:LaneFreshMode;staff:LaneStaffMode;freshReason:string;staffReason:string;
  raw:string|null;cfg:LaneFreshConfig|null;freshIds:readonly string[];guild:string;appId:string;
  floor:number;shrink:number;callLimit:number;linksNotBefore:number;
@@ -146,6 +164,18 @@ function freshTierR(raw:string,text:(k:LaneKey)=>string|undefined):FreshCheck{
  return {cfg:Object.freeze({version:1,epoch:r.epoch,epochStart:r.epochStart,grants:r.grants,membership:r.membership as string,native:Object.freeze((r.native as string[]).slice())}),reason:''};
 }
 export function captureLaneConfig(env:unknown):LaneCapture{
+ const native232=captureNativeRankConfig232(env);
+ if(native232.present){
+  // A selected new named profile owns the overlapping producer venue. Old raw
+  // FULL_RELEASE/QR values remain historical; no old queued row is relabelled.
+  const prior=LANE_CONFIG_KEYS.map(k=>laneSlot(env,k)),text=(k:LaneKey)=>slotText(prior[LANE_CONFIG_KEYS.indexOf(k)]!);
+  const current=()=>native232.current()&&prior.every((s,i)=>sameSlot(s,laneSlot(env,LANE_CONFIG_KEYS[i]!)));
+  const policy=native232.policy,staffIds=Object.freeze(Object.values(NATIVE_STAFF232));
+  return Object.freeze({native232,configured:true,fresh:'absent',staff:'absent',freshReason:'native232_selected',staffReason:'native232_selected',raw:null,cfg:null,
+   freshIds:Object.freeze([]),guild:typeof text('GUILD_ID')==='string'?text('GUILD_ID') as string:'',appId:typeof text('DISCORD_APP_ID')==='string'?text('DISCORD_APP_ID') as string:'',
+   floor:intVar(text('ROSTER_MIN_MEMBERS')??undefined,0),shrink:intVar(text('ROSTER_MAX_SHRINK_PCT')??undefined,10),callLimit:Math.min(50,Math.max(4,intVar(text('ROLE_CALL_BUDGET')??undefined,40))),
+   linksNotBefore:0,staffIds,managedStaff:Object.freeze(policy?.privileged?staffIds.slice():[]),staffMap:Object.freeze([]),blocking:Object.freeze(list(text('BLOCKING_ROLE_IDS')??undefined)),current});
+ }
  const slots=LANE_CONFIG_KEYS.map(k=>laneSlot(env,k));
  const slot=(k:LaneKey)=>slots[LANE_CONFIG_KEYS.indexOf(k)]!;
  const current=()=>{try{for(let i=0;i<LANE_CONFIG_KEYS.length;i++)if(!sameSlot(slots[i]!,laneSlot(env,LANE_CONFIG_KEYS[i]!)))return false;return true;}catch{return false;}};

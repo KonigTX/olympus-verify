@@ -1,5 +1,5 @@
 'use strict';
-// Closed .230 -> a984 static predecessor only. Never evaluate reconstructed source.
+// Closed .232 -> .231 -> .230 -> a984 static predecessor only. Never evaluate reconstructed source.
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto');
 const sha=v=>crypto.createHash('sha256').update(v).digest('hex');
 const bytes=fs.readFileSync(path.join(__dirname,'fixtures/reviewed230-membership-source-contexts.json'));
@@ -8,26 +8,47 @@ const manifest=JSON.parse(bytes.toString('utf8'));
 const counts={'discord':1,'role-settlements':21,'roles':8,'roster':5,'interactions':3};
 if(manifest.schema!=='source230-exact-membership-static-inverse-v1'||manifest.currentSource!=='9f19969b2467da1878516ee686cd7efbbe4cd773'||manifest.predecessorSource!=='a984092fe2151cd00900cc3e51bdeac9d295fba1'||Object.keys(manifest.files).sort().join(',')!==Object.keys(counts).sort().join(','))throw Error('reviewed230 membership static scope differs');
 for(const[name,count]of Object.entries(counts)){const s=manifest.files[name];if(!s||s.edits.length!==count||![s.currentSHA256,s.predecessorSHA256].every(v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v))||![s.currentBytes,s.predecessorBytes].every(v=>Number.isSafeInteger(v)&&v>0))throw Error('reviewed230 membership hunk bounds differ');}
+const bytes232=fs.readFileSync(path.join(__dirname,'fixtures/reviewed232-native-rank-source-contexts.json'));
+if(sha(bytes232)!=='6f61431f7d91774de1c64e341e334c7c688cd44f022e3758e7c860726ece0af2')throw Error('reviewed232 native rank static contexts differ');
+const stage232=JSON.parse(bytes232.toString('utf8')),counts232={'role-settlements':11,'roster':1};
+if(stage232.schema!=='source232-exact-native-rank-static-inverse-v1'||stage232.currentSource!=='95e8f65d64390bc6cdbfea8d4a880bd31fa38c9d'||stage232.predecessorSource!=='44c2dedcd9ab8ac9eab73849645c4ecba0e62282'||Object.keys(stage232.files).sort().join(',')!==Object.keys(counts232).sort().join(','))throw Error('reviewed232 static scope differs');
+for(const[name,count]of Object.entries(counts232)){const s=stage232.files[name],prior=manifest.files[name];if(!s||s.edits.length!==count||s.predecessorSHA256!==prior.currentSHA256||s.predecessorBytes!==prior.currentBytes||![s.currentSHA256,s.predecessorSHA256].every(v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v))||![s.currentBytes,s.predecessorBytes].every(v=>Number.isSafeInteger(v)&&v>0))throw Error('reviewed232 static hunk or predecessor bounds differ');}
+function before232(name,raw){
+ const s=Object.hasOwn(stage232.files,name)?stage232.files[name]:null;
+ if(!s)return raw;
+ if(typeof raw!=='string'||Buffer.byteLength(raw)!==s.currentBytes||sha(raw)!==s.currentSHA256)return null;
+ let original=raw;
+ for(const e of s.edits){if(e.count!==1||typeof e.from!=='string'||!e.from||typeof e.to!=='string'||e.from===e.to||original.split(e.from).length!==2)return null;original=original.replace(e.from,e.to);}
+ return Buffer.byteLength(original)===s.predecessorBytes&&sha(original)===s.predecessorSHA256?original:null;
+}
 const copy=manifest.copyProjection,need=(v,s)=>{if(!v)throw Error('reviewed230 copy '+s);};
 need(copy?.schema==='source230-paired-copy-only-v1'&&copy.guidePath==='/channels/810000000000000009/messages'&&copy.logPath==='/channels/810000000000000007/messages'&&copy.cacheSQL==='UPDATE seen_interactions SET response = ?2 WHERE id = ?1'&&copy.interactionId==='810000000000000905'&&copy.guides.length===2&&copy.buttons.length===3,'scope');
 for(const row of [...copy.guides,...copy.buttons,copy.held])need(row.count===1&&typeof row.current==='string'&&typeof row.predecessor==='string'&&sha(row.current)===row.currentSHA256&&sha(row.predecessor)===row.predecessorSHA256&&row.current!==row.predecessor,'whole payload seals');
-function inverse(name,raw){
+function inverse230(name,raw){
  const s=Object.hasOwn(manifest.files,name)?manifest.files[name]:null;
  if(!s||typeof raw!=='string'||Buffer.byteLength(raw)!==s.currentBytes||sha(raw)!==s.currentSHA256)return null;
  let original=raw;
  for(const e of s.edits){if(e.count!==1||typeof e.from!=='string'||!e.from||typeof e.to!=='string'||e.from===e.to||original.split(e.from).length!==2)return null;original=original.replace(e.from,e.to);}
  return Buffer.byteLength(original)===s.predecessorBytes&&sha(original)===s.predecessorSHA256?original:null;
 }
+function inverse(name,raw){return inverse230(name,before232(name,raw));}
 function checks(sourceRoot){
  const out={};
  const guide=fs.readFileSync(path.join(sourceRoot,'guide.ts'));
  out['guide:whole-current-copy-source']=guide.length===copy.guideSource.bytes&&sha(guide)===copy.guideSource.sha256;
+ for(const[name,s]of Object.entries(stage232.files)){
+  const raw=fs.readFileSync(path.join(sourceRoot,name+'.ts'),'utf8'),old=before232(name,raw);
+  out['232:'+name+':whole-current-and-44c']=old!==null&&sha(old)===s.predecessorSHA256;
+  const probes=[['prefix','// unrelated232\n'+raw],['suffix',raw+'\n// unrelated232\n'],['CRLF',raw.replace(/\n/g,'\r\n')],['source whitespace',raw.replace('const ','const  ')]];
+  for(const[e,i]of s.edits.map((e,i)=>[e,i]))probes.push(['duplicated context '+i,raw.replace(e.from,e.from+e.from)],['changed context '+i,raw.replace(e.from,e.from+'// unreviewed232\n')]);
+  for(const[label,mutated]of probes)out['232:'+name+':refuses-'+label]=mutated!==raw&&inverse(name,mutated)===null;
+ }
  for(const[name,s]of Object.entries(manifest.files)){
   const raw=fs.readFileSync(path.join(sourceRoot,name+'.ts'),'utf8'),old=inverse(name,raw);
   out[name+':whole-current-and-a984']=old!==null&&sha(old)===s.predecessorSHA256;
-  const probes=[['prefix','// unrelated230\n'+raw],['suffix',raw+'\n// unrelated230\n'],['CRLF',raw.replace(/\n/g,'\r\n')],['source whitespace',raw.replace('const ','const  ')]];
-  for(const[e,i]of s.edits.map((e,i)=>[e,i]))probes.push(['duplicated context '+i,raw.replace(e.from,e.from+e.from)],['changed context '+i,raw.replace(e.from,e.from+'// unreviewed230\n')]);
-  for(const[label,mutated]of probes)out[name+':refuses-'+label]=mutated!==raw&&inverse(name,mutated)===null;
+  const current230=before232(name,raw),probes=typeof current230==='string'?[['prefix','// unrelated230\n'+current230],['suffix',current230+'\n// unrelated230\n'],['CRLF',current230.replace(/\n/g,'\r\n')],['source whitespace',current230.replace('const ','const  ')]]:[];
+  for(const[e,i]of s.edits.map((e,i)=>[e,i]))if(typeof current230==='string')probes.push(['duplicated context '+i,current230.replace(e.from,e.from+e.from)],['changed context '+i,current230.replace(e.from,e.from+'// unreviewed230\n')]);
+  for(const[label,mutated]of probes)out[name+':refuses-'+label]=mutated!==current230&&inverse230(name,mutated)===null;
  }
  return out;
 }
