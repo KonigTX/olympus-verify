@@ -94,10 +94,11 @@ check(#OlympusVerifyDB.queue == 3, "three real applicants queued from the queue 
 
 -- A spy in front of the real handler: it IS "the original" as far as the preview file is concerned, and it shows
 -- exactly what the wrapper forwards.
-local realSlash = SlashCmdList.OLYMPUSVERIFY
+local stableDispatcher = SlashCmdList.OLYMPUSVERIFY
+local realSlash = OlympusVerifySlash234.Snapshot("OLYMPUSVERIFY")
 local forwarded = {}
 local function spy(...) forwarded[#forwarded + 1] = { n = select("#", ...), ... }; return realSlash(...) end
-SlashCmdList.OLYMPUSVERIFY = spy
+OlympusVerifySlash234.Extend("OLYMPUSVERIFY", "preview_test_spy", function(previous) realSlash = previous; return spy end)
 
 local origAPI, origGlobals = {}, {}
 for k, v in pairs(API) do if type(v) == "function" then origAPI[k] = v end end
@@ -118,7 +119,7 @@ for _, c in ipairs(READONLY) do baseline[c] = output(realSlash, c) end
 -- ---------------------------------------------------------------- loading the preview file
 assert(loadfile("OlympusVerify/OlympusVerifyPreview.lua"))("OlympusVerify", {})
 local wrapper = SlashCmdList.OLYMPUSVERIFY
-check(type(wrapper) == "function" and not rawequal(wrapper, spy), "the /olv wrapper is installed at load")
+check(type(wrapper) == "function" and rawequal(wrapper, stableDispatcher) and not rawequal(OlympusVerifySlash234.Snapshot("OLYMPUSVERIFY"), spy), "the preview wrapper is installed inside the stable /olv dispatcher at load")
 for k, v in pairs(origAPI) do check(rawequal(API[k], v), "API." .. k .. " untouched by loading") end
 for k, v in pairs(origGlobals) do check(rawequal(_G[k], v), k .. " untouched by loading") end
 check(UI.preview == nil and OlympusVerifyPreview.State() == nil, "preview starts off")
@@ -365,6 +366,7 @@ check(rawequal(OlympusVerify_Flush, origGlobals.OlympusVerify_Flush), "after off
 
 print("== guards ==")
 local function sandbox(hidden, extra)
+  hidden.OlympusVerifySlash234 = true -- These are legacy fake-API fixtures, not the parent client registry.
   local env = setmetatable(extra, { __index = function(_, k) if hidden[k] then return nil end return _G[k] end })
   local chunk = assert(loadfile("OlympusVerify/OlympusVerifyPreview.lua"))
   setfenv(chunk, env)

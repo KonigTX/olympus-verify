@@ -160,22 +160,31 @@ function OlympusVerifyBrowser.Command(message)
  local code=message:match('^browser ([0-9a-f]+)$');if not code then say('Use /olv browser <challenge>, or /olv browser beta enable then /olv browser beta <original envelope>. /olv browser beta off closes beta mode. Members whisper !olympus <code>.');return false end
  local ok,reason=OlympusVerifyBrowser.SetChallenge(code);say(ok and 'Challenge ready for five minutes; keep this game and browser open.' or reason);return ok
 end
-SlashCmdList.OLYMPUSBROWSER=OlympusVerifyBrowser.Command
 -- Preserve the accepted roster panel's /olv dispatcher and Olympus Guild's /oly alias.
 local function olympusInstalled()
- if type(SlashCmdList.OLYMPUS)=='function' then return true end
+ if type(SlashCmdList)=='table' then
+  local ok,handler=pcall(function() return SlashCmdList.OLYMPUS end)
+  if not ok or type(handler)=='function' then return true end
+ end
  local exists=C_AddOns and C_AddOns.DoesAddOnExist
  if type(exists)=='function' then local ok,yes=pcall(exists,'Olympus');return not ok or yes~=false end
  local info=(C_AddOns and C_AddOns.GetAddOnInfo) or GetAddOnInfo
  if type(info)=='function' then local ok,name=pcall(info,'Olympus');return not ok or name~=nil end
  return true
 end
-if not olympusInstalled() then SLASH_OLYMPUSBROWSER1='/oly' end
-local previousSlash=SlashCmdList.OLYMPUSVERIFY
-if type(previousSlash)=='function' then
- SlashCmdList.OLYMPUSVERIFY=function(message,...)
+local slashRegistry=OlympusVerifySlash234
+local registryReady=type(slashRegistry)=='table' and type(slashRegistry.Register)=='function' and type(slashRegistry.Extend)=='function'
+if not registryReady and type(SlashCmdList)=='table' and SlashCmdList.OLYMPUSBROWSER==nil then SlashCmdList.OLYMPUSBROWSER=OlympusVerifyBrowser.Command end
+if not olympusInstalled() then
+ if registryReady then slashRegistry.Register('OLYMPUSBROWSER',{'/oly'},OlympusVerifyBrowser.Command)
+ elseif type(SlashCmdList)=='table' then SLASH_OLYMPUSBROWSER1='/oly';SlashCmdList.OLYMPUSBROWSER=OlympusVerifyBrowser.Command end
+end
+local function wrapBrowserSlash(previous)
+ return function(message,...)
   if type(message)=='string' and (message:match('^%s*browser[%s]') or message:match('^%s*browser%s*$')) then return OlympusVerifyBrowser.Command(message:match('^%s*(.-)%s*$')) end
-  return previousSlash(message,...)
+  return previous(message,...)
  end
 end
+if registryReady then slashRegistry.Extend('OLYMPUSVERIFY','browser',wrapBrowserSlash)
+elseif type(SlashCmdList)=='table' and type(SlashCmdList.OLYMPUSVERIFY)=='function' then SlashCmdList.OLYMPUSVERIFY=wrapBrowserSlash(SlashCmdList.OLYMPUSVERIFY) end
 OlympusVerifyBrowser.Clear=function() clear(true) end

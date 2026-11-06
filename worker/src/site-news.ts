@@ -78,6 +78,12 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".234", date: "2026-11-06", lines: [
+      "An old unproven character link no longer blocks a freshly verified character from using the nickname buttons.",
+      "Current character proof, guild standing and Discord nickname permissions are still required.",
+    ],
+  },
+  {
     build: ".233", date: "2026-11-06", lines: [
       "Use one Olympus rank at a time, with guild access provided by that rank. Uncertain evidence keeps changes on hold.",
       "Verified members can choose a character-and-guild nickname and restore their previous server nickname.",

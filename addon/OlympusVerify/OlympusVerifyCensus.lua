@@ -196,13 +196,18 @@ function C.Command(arg)
   if arg=='export' then local wire,s=C.Export(); if wire then show(s,wire) else say(s) end; return end
   say('/olv census on | preview | export | off. Optional upstream method required; no upload.')
 end
-local previous=SlashCmdList and SlashCmdList.OLYMPUSVERIFY
-if type(previous)=='function' then
-  SlashCmdList.OLYMPUSVERIFY=function(msg,...)
+local function wrapCensusSlash(previous)
+  return function(msg,...)
     local arg=type(msg)=='string' and msg:match('^%s*census%s*(.-)%s*$')
     if arg then return C.Command(arg) end
     return previous(msg,...)
   end
+end
+local slashRegistry=OlympusVerifySlash234
+if type(slashRegistry)=='table' and type(slashRegistry.Extend)=='function' then
+  slashRegistry.Extend('OLYMPUSVERIFY','census',wrapCensusSlash)
+elseif type(SlashCmdList)=='table' and type(SlashCmdList.OLYMPUSVERIFY)=='function' then
+  SlashCmdList.OLYMPUSVERIFY=wrapCensusSlash(SlashCmdList.OLYMPUSVERIFY)
 end
 if type(CreateFrame)=='function' then
   local events=CreateFrame('Frame')

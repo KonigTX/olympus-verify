@@ -41,6 +41,7 @@ SUITES = {
     "launch_diagnostics229": (TESTS, Path("test_launch_diagnostics229.lua")),
     "launch_operations229": (TESTS, Path("test_launch_operations229.lua")),
     "auto_sync232": (TESTS, Path("test_auto_sync232.lua")),
+    "slash_registration234": (TESTS, Path("test_slash_registration234.lua")),
     "officer_invites233": (TESTS, Path("test_officer_invites233.lua")),
 }
 
@@ -48,7 +49,7 @@ SUITES = {
 def input_hashes() -> dict[str, str]:
     paths = [
         ADDON / "OlympusVerify" / name
-        for name in ("OlympusVerify.lua", "OlympusVerifyUI.lua", "OlympusVerifyAutoSync.lua", "OlympusVerifyPreview.lua", "OlympusVerifyRoster.lua", "OlympusVerifyGuild.lua", "OlympusVerifyRanks.lua", "OlympusVerify.toc", "OlympusVerifyLists.lua", "Libs/OlympusHmac.lua", "Libs/OlympusQr.lua", "OlympusVerifyBrowser.lua", "OlympusVerifyTreasury.lua", "OlympusLaunchQueue.lua", "OlympusVerifyLaunch229.lua", "OlympusVerifyOfficerInvites233.lua")
+        for name in ("OlympusVerify.lua", "OlympusVerifyUI.lua", "OlympusVerifyAutoSync.lua", "OlympusVerifyPreview.lua", "OlympusVerifyRoster.lua", "OlympusVerifyGuild.lua", "OlympusVerifyRanks.lua", "OlympusVerify.toc", "OlympusVerifyLists.lua", "Libs/OlympusHmac.lua", "Libs/OlympusQr.lua", "OlympusVerifyBrowser.lua", "OlympusVerifyCensus.lua", "OlympusVerifyTreasury.lua", "OlympusLaunchQueue.lua", "OlympusVerifyLaunch229.lua", "OlympusVerifyOfficerInvites233.lua")
     ]
     paths.extend([TESTS / "wow_mock.lua", Path(__file__).resolve()])
     paths.extend(cwd / script for cwd, script in SUITES.values())

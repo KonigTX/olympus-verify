@@ -37,7 +37,7 @@ local SECRET = cfg.secret
 -- 0.6.12: the example's placeholder is public, so a Config.lua copied without replacing it must not accept codes made from it.
 if type(SECRET) ~= "string" or SECRET == "" or string.find(SECRET, "^REPLACE_WITH_") then SECRET = nil end
 local secretWarned = false  -- 0.6.12: say once per session, not on every whisper, that codes cannot be checked
-local SOURCE_VERSION = "0.6.19" -- Keep this source fallback and OlympusVerify.toc aligned.
+local SOURCE_VERSION = "0.6.20" -- Keep this source fallback and OlympusVerify.toc aligned.
 local VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version"))
   or (GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version")) or SOURCE_VERSION
 local SET_NOTES = cfg.setNotes == true  -- SetNote is forbidden for addons on the Forever beta; leave false there
@@ -3646,8 +3646,90 @@ frame:SetScript("OnEvent", function(self, event, ...)
 end)
 
 -- ---------------------------------------------------------------- slash commands
-SLASH_OLYMPUSVERIFY1 = "/olv"
-SlashCmdList.OLYMPUSVERIFY = function(msg)
+-- .234 (6 Nov2026): chat UI can install its real slash table after this addon.
+-- Keep a stable dispatcher so Blizzard's cached function and later public wrappers
+-- see the same chain. Never manufacture SlashCmdList or replace a foreign alias.
+if OlympusVerifySlash234 == nil then
+  OlympusVerifySlash234 = (function()
+    local entries = {}
+    local function aliasesCurrent(entry)
+      local own, wanted = {}, {}
+      for i, alias in ipairs(entry.aliases) do own["SLASH_" .. entry.key .. i] = alias; wanted[string.lower(alias)] = true end
+      local prefix = "SLASH_" .. entry.key
+      for key, value in pairs(_G) do
+        if type(key) == "string" then
+          if key:match("^" .. prefix .. "%d+$") and (type(value) ~= "string" or not own[key] or string.lower(value) ~= own[key]) then return false end
+          if key:match("^SLASH_.+%d+$") and type(value) == "string" and wanted[string.lower(value)] and not own[key] then return false end
+        end
+      end
+      return true
+    end
+    local function install(entry)
+      local ok, ready = pcall(function()
+        local registry = rawget(_G, "SlashCmdList")
+        if type(registry) ~= "table" or not entry.chain then return false end
+        local current = registry[entry.key]
+        if current ~= nil and current ~= entry.dispatch then return false end
+        if not aliasesCurrent(entry) then return false end
+        for i, alias in ipairs(entry.aliases) do
+          local name = "SLASH_" .. entry.key .. i
+          if rawget(_G, name) == nil then _G[name] = alias end
+        end
+        if current == nil then registry[entry.key] = entry.dispatch end
+        return registry[entry.key] == entry.dispatch
+      end)
+      return ok and ready == true
+    end
+    local function rebuild(entry)
+      local chain = entry.base
+      for _, wrapper in ipairs(entry.wrappers) do
+        local ok, nextHandler = pcall(wrapper.build, chain)
+        if not ok or type(nextHandler) ~= "function" then return false end
+        chain = nextHandler
+      end
+      entry.chain = chain
+      return true
+    end
+    local R = {}
+    function R.Register(key, aliases, handler)
+      if type(key) ~= "string" or not key:match("^[A-Z_]+$") or type(aliases) ~= "table" or #aliases < 1 or #aliases > 4 or type(handler) ~= "function" then return false end
+      local copy, seen = {}, {}
+      for i, alias in ipairs(aliases) do
+        if type(alias) ~= "string" or not alias:match("^/[A-Za-z][A-Za-z0-9]*$") or seen[string.lower(alias)] then return false end
+        copy[i], seen[string.lower(alias)] = string.lower(alias), true
+      end
+      local entry = entries[key]
+      if entry then return entry.base == handler and install(entry) or false end
+      entry = { key=key, aliases=copy, base=handler, chain=handler, wrappers={} }
+      entry.dispatch = function(...) return entry.chain(...) end
+      entries[key] = entry
+      return install(entry)
+    end
+    function R.Extend(key, id, build)
+      local entry = entries[key]
+      if not entry or type(id) ~= "string" or not id:match("^[a-z0-9_]+$") or type(build) ~= "function" then return false end
+      for _, old in ipairs(entry.wrappers) do if old.id == id then return false end end
+      entry.wrappers[#entry.wrappers+1] = { id=id, build=build }
+      if not rebuild(entry) then table.remove(entry.wrappers); return false end
+      install(entry)
+      return true
+    end
+    function R.Snapshot(key) return entries[key] and entries[key].chain end
+    function R.Retry()
+      local ready = true
+      for _, entry in pairs(entries) do if not install(entry) then ready = false end end
+      return ready
+    end
+    local events = CreateFrame("Frame")
+    events:RegisterEvent("ADDON_LOADED")
+    events:RegisterEvent("PLAYER_LOGIN")
+    events:SetScript("OnEvent", function() R.Retry() end)
+    return R
+  end)()
+end
+
+if type(OlympusVerifySlash234) == "table" and type(OlympusVerifySlash234.Register) == "function" then
+OlympusVerifySlash234.Register("OLYMPUSVERIFY", {"/olv"}, function(msg)
   local cmd = string.lower(string.match(msg or "", "^%s*(%S*)") or "")
   local db = OlympusVerifyDB
   if cmd == "diagnostics" then
@@ -3842,4 +3924,5 @@ SlashCmdList.OLYMPUSVERIFY = function(msg)
   else
     Print("unknown command — /olv status lists them.")
   end
+end)
 end

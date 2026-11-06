@@ -120,6 +120,19 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .234 reverses only this exact verified character continuity release note.
+  const release234 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".234\", date: \"2026-11-06\", lines: [",
+    "      \"An old unproven character link no longer blocks a freshly verified character from using the nickname buttons.\",",
+    "      \"Current character proof, guild standing and Discord nickname permissions are still required.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .234 prepend occurs once', originalNews.split(release234).length === 2);
+  originalNews = originalNews.replace(release234, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
   // .233 reverses only this exact unified ranks and officer actions release note.
   const release233 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

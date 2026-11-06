@@ -348,11 +348,16 @@ events:SetScript("OnUpdate", function(_, dt)
   local ok = pcall(Paint); if not ok then HideAll() end -- unreadable/unsupported client data never invents a status
 end)
 
-local previous = SlashCmdList and SlashCmdList.OLYMPUSVERIFY
-if type(previous) == "function" then
-  SlashCmdList.OLYMPUSVERIFY = function(msg, ...)
+local function wrapGuildSlash(previous)
+  return function(msg, ...)
     local arg = type(msg) == "string" and msg:match("^%s*olympus%s*(.-)%s*$")
     if arg then if Preview() then Say("Leave preview before reading an optional bridge."); return end; return G.OlympusCommand(arg) end
     return previous(msg, ...)
   end
+end
+local slashRegistry = OlympusVerifySlash234
+if type(slashRegistry) == "table" and type(slashRegistry.Extend) == "function" then
+  slashRegistry.Extend("OLYMPUSVERIFY", "guild", wrapGuildSlash)
+elseif type(SlashCmdList) == "table" and type(SlashCmdList.OLYMPUSVERIFY) == "function" then
+  SlashCmdList.OLYMPUSVERIFY = wrapGuildSlash(SlashCmdList.OLYMPUSVERIFY)
 end

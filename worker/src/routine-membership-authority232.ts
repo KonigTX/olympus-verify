@@ -48,10 +48,10 @@ function graph(input:unknown):()=>void{
  * Descendant own .232 ACKs retain that identity through ordinary pending expiry. */
 const byteHex=(column:string,size:number)=>`((typeof(${column})='text' AND length(${column})=${size}) AND (length(CAST(${column} AS BLOB))=${size} AND instr(${column},char(0))=0 AND ${column} NOT GLOB '*[^0-9a-f]*'))`;
 const rankName232='CASE a.native_rank '+NATIVE_RANK_NAMES232.map((name,index)=>`WHEN ${index} THEN '${name}'`).join(' ')+' END';
-const ANCHOR=(policy:string,canonical="'null'")=>`((a.subject=c.discord_id AND a.subject_generation IS p.generation AND a.guild_id='${NATIVE_GUILD232}')
+const ANCHOR=(policy:string,canonical="'null'",cutoff='0')=>`((a.subject=c.discord_id AND a.subject_generation IS p.generation AND a.guild_id='${NATIVE_GUILD232}')
  AND (a.native_guid=c.guid AND a.desired=1 AND a.state='settled') AND (typeof(a.checked_at)='integer' AND a.checked_at>=a.created_at AND a.checked_at<a.expires_at)
  AND ((typeof(a.created_at)='integer' AND typeof(a.expires_at)='integer') AND (a.expires_at>a.created_at AND a.expires_at<=a.created_at+300))
- AND (a.created_at>=c.bound_at AND a.created_at>=c.verified_at AND a.created_at<=CAST(strftime('%s','now') AS INTEGER))
+ AND (a.created_at>=c.bound_at AND a.created_at>=c.verified_at AND a.created_at>=${cutoff} AND a.created_at<=CAST(strftime('%s','now') AS INTEGER))
  AND (${byteHex('a.id',32)} AND ${byteHex('a.request_digest',64)}))
  AND ((a.purpose='launch_membership230' AND a.native_profile='prime-native-230' AND a.role_id='${SHARED_MEMBER232}' AND a.native_rank IS NULL AND a.native_rank_name IS NULL
  AND ((a.attempts=1 AND ${byteHex('a.claim_nonce',32)} AND a.reason='launch230_put_acknowledged_and_confirmed')
@@ -64,7 +64,7 @@ const ANCHOR=(policy:string,canonical="'null'")=>`((a.subject=c.discord_id AND a
  OR (a.purpose='launch_routine_membership232' AND a.attempts=0 AND a.claim_nonce IS NULL AND a.reason='native232_observed_without_dispatch'))))
  OR ((a.subject=c.discord_id AND a.subject_generation IS p.generation AND a.guild_id='${NATIVE_GUILD232}')
  AND (a.native_guid=c.guid AND a.desired=1 AND a.state='settled' AND a.purpose IN('canonical_identity233','canonical_consumed233','canonical_routine233') AND a.native_profile='${CANONICAL_PROFILE233}')
- AND (${byteHex('a.id',32)} AND ${byteHex('a.request_digest',64)} AND a.created_at>=c.bound_at AND a.created_at>=c.verified_at AND a.created_at<=CAST(strftime('%s','now') AS INTEGER))
+ AND (${byteHex('a.id',32)} AND ${byteHex('a.request_digest',64)} AND a.created_at>=c.bound_at AND a.created_at>=c.verified_at AND a.created_at>=${cutoff} AND a.created_at<=CAST(strftime('%s','now') AS INTEGER))
  AND (typeof(a.checked_at)='integer' AND a.checked_at>=a.created_at AND a.checked_at<a.expires_at AND a.expires_at>a.created_at AND a.expires_at<=a.created_at+300)
  AND (typeof(a.native_rank)='integer' AND a.native_rank BETWEEN 0 AND 9 AND a.native_rank_name=(${rankName232}))
  AND a.role_id IN(SELECT json_extract(j.value,'$.roleId') FROM json_each(${canonical},'$.ranks') j)
@@ -75,7 +75,7 @@ const ROWS=`COALESCE((SELECT json_group_array(json_array(name_key,guid,rank,rank
  (SELECT name_key,guid,rank,rank_index FROM roster_members WHERE snapshot_id=s.id ORDER BY name_key)), '[]')`;
 const LINKS=`COALESCE((SELECT json_group_array(json_array(name_key,guid,status,bound_at,verified_at,source,anchor_id)) FROM
  (SELECT c.name_key,c.guid,c.status,c.bound_at,c.verified_at,c.source,
- (SELECT a.id FROM role_settlements a WHERE ${ANCHOR('?2','?3')} ORDER BY a.created_at DESC,a.id LIMIT 1) AS anchor_id
+ (SELECT a.id FROM role_settlements a WHERE ${ANCHOR('?2','?3','?4')} ORDER BY a.created_at DESC,a.id LIMIT 1) AS anchor_id
  FROM characters c WHERE c.discord_id=?1 AND c.status NOT IN('unbound','denied') ORDER BY c.name_key)), '[]')`;
 const STANDING=`json_array(COALESCE((SELECT banned FROM members WHERE discord_id=?1),0),
  COALESCE((SELECT denied FROM site_users WHERE discord_id=?1),0),EXISTS(SELECT 1 FROM rename_holds WHERE discord_id=?1 AND state='reapply'))`;
@@ -87,6 +87,13 @@ const READ=`SELECT CAST(strftime('%s','now') AS INTEGER) AS at,p.generation,p.st
  COALESCE((SELECT member_count FROM roster_snapshots old WHERE old.id<s.id AND old.complete=1 AND old.trusted=1 AND old.source=s.source ORDER BY old.id DESC LIMIT 1),s.member_count) AS previous_count,
  ${ROWS} AS rows_json,${LINKS} AS links_json,${STANDING} AS standing_json,NOT EXISTS(${GUID_CONFLICTS}) AS guid_unique
  FROM roster_snapshots s LEFT JOIN privacy_subjects p ON p.subject_id=?1 WHERE s.id=(SELECT MAX(id) FROM roster_snapshots)`;
+/** Closed canonical-only exclusion, repeated against the original pinned source.
+ * No excluded link supplies an anchor, eligible character or departure cause. */
+const INERT_LEGACY=(canonical:string,cutoff:string)=>`(((json_extract(${canonical},'$.enabled')=1 AND c.status='member')
+ AND (typeof(c.bound_at)='integer' AND c.bound_at>0 AND c.bound_at<${cutoff}))
+ AND ((typeof(c.verified_at)='integer' AND c.verified_at>=c.bound_at AND c.verified_at<${cutoff})
+ AND (c.source IN('whisper','mail') AND json_extract(j.value,'$[6]') IS NULL AND a.id IS NULL))
+ AND NOT EXISTS(SELECT 1 FROM roster_members legacy WHERE legacy.snapshot_id=s.id AND (legacy.name_key=c.name_key OR legacy.guid=c.guid)))`;
 type SourceRow={at:number;generation:string|null;state:string|null;id:number;exported_at:number;source:string;member_count:number;complete:number;trusted:number;previous_count:number;rows_json:string;links_json:string;standing_json:string;guid_unique:number};
 
 export async function captureRoutineMembership232(env:Env,subject:string):Promise<RoutineMembership232|null>{
@@ -101,9 +108,10 @@ export async function captureRoutineMembership232(env:Env,subject:string):Promis
   if(!sourceDB||env.GUILD_ID!==NATIVE_GUILD232||env.ROLE_GUILD_MEMBER!==SHARED_MEMBER232||env.VERIFY_MEMBERSHIP_ONLY!=='true'||env.SHARED_MEMBERSHIP230_MODE!=='enabled')return null;
   let active=true;
   const db=privacyProviderCustodyDatabase(env),check=()=>{configCheck();if(!active||!selection.current()||!canonical.current()||!launch.current()||Object.getOwnPropertyDescriptor(env,'DB')?.value!==sourceDB)return held();};check();
-  const results=await db.batch([db.prepare(READ).bind(subject,selection.raw,canonical.mode==='enabled'?canonical.raw:'null')]);const resultCheck=graph(results);check();
+  const cutoff=linksNotBefore(env);
+  const results=await db.batch([db.prepare(READ).bind(subject,selection.raw,canonical.mode==='enabled'?canonical.raw:'null',cutoff)]);const resultCheck=graph(results);check();
   if(results.length!==1||results[0]?.success!==true||results[0].results.length!==1)return null;
-  const row=results[0].results[0] as SourceRow;const at=row.at,cutoff=linksNotBefore(env),floor=intVar(env.ROSTER_MIN_MEMBERS,0),shrink=intVar(env.ROSTER_MAX_SHRINK_PCT,10);
+  const row=results[0].results[0] as SourceRow;const at=row.at,floor=intVar(env.ROSTER_MIN_MEMBERS,0),shrink=intVar(env.ROSTER_MAX_SHRINK_PCT,10);
   if(!Number.isSafeInteger(at)||at<1||!Number.isSafeInteger(row.id)||row.id<1||!Number.isSafeInteger(row.exported_at)||row.exported_at>at||row.exported_at<=at-600||row.exported_at<cutoff||row.source!==scope||row.complete!==1||row.trusted!==1||row.guid_unique!==1||row.state!==null&&row.state!=='active'||row.generation!==null&&(row.generation.length!==32||!HEX32.test(row.generation)))return null;
   const rows=JSON.parse(row.rows_json) as unknown[][],links=JSON.parse(row.links_json) as unknown[][],standing=JSON.parse(row.standing_json) as number[];
   if(!Array.isArray(rows)||rows.length!==row.member_count||rows.length<floor||rows.length>1000||!Number.isSafeInteger(row.previous_count)||(row.previous_count-rows.length)*100>shrink*row.previous_count||!Array.isArray(links)||!links.length||links.length>100||standing.length!==3||standing.some(v=>v!==0&&v!==1))return null;
@@ -118,18 +126,27 @@ export async function captureRoutineMembership232(env:Env,subject:string):Promis
    if(typeof guid!=='string'||guid!==guid.trim()||!GUID.test(guid)||byGuid.has(guid))return null;
    byGuid.set(guid,Object.freeze({guid,nameKey:key,rank:rank as string,index}));
   }
-  const eligible:Readonly<{guid:string;nameKey:string;rank:string;index:number}>[]=[],seenLinks=new Set<string>();
+  const eligible:Readonly<{guid:string;nameKey:string;rank:string;index:number}>[]=[],seenLinks=new Set<string>();let qualifiedLinks=0;
   for(const l of links){if(!Array.isArray(l)||l.length!==7)return null;const [key,guid,status,bound,verified,source,anchor]=l;
    // An unfinished alt is not a verified native identity. Freeze its state for
    // this operation, but it neither outranks nor blocks an already verified main.
    if(status==='verified'||status==='queued')continue;
-   if(typeof key!=='string'||typeof guid!=='string'||guid!==guid.trim()||!GUID.test(guid)||seenLinks.has(guid)||typeof bound!=='number'||!Number.isSafeInteger(bound)||bound<1||bound>at||typeof verified!=='number'||!Number.isSafeInteger(verified)||verified<Math.max(1,cutoff,bound)||verified>at||!['whisper','mail'].includes(String(source))||typeof anchor!=='string'||anchor.length!==32||!HEX32.test(anchor)||!['member','left_pending','left'].includes(String(status)))return null;
-   seenLinks.add(guid);const native=byGuid.get(guid);if(native){if(native.nameKey!==key||status!=='member')return null;eligible.push(native);}
+   if(typeof key!=='string'||!key||typeof guid!=='string'||guid!==guid.trim()||!GUID.test(guid)||seenLinks.has(guid)||typeof bound!=='number'||!Number.isSafeInteger(bound)||bound<1||bound>at||typeof verified!=='number'||!Number.isSafeInteger(verified)||verified<bound||verified>at||!['whisper','mail'].includes(String(source))||!['member','left_pending','left'].includes(String(status)))return null;
+   seenLinks.add(guid);const native=byGuid.get(guid);
+   // .234: an absent prelaunch link is inert, not departure/identity/ownership.
+   // Keep its exact row in the captured graph; it may not jam an independently
+   // proved current character. A matching/unknown native name or GUID still holds.
+   if(canonical.mode==='enabled'&&status==='member'&&bound<cutoff&&verified<cutoff&&anchor===null&&!native&&!names.has(key))continue;
+   // Reverification deliberately preserves a character's original link clocks.
+   // Admission is established by the source-owned anchor's post-cutoff birth,
+   // required in READ and at every later admission, not by rewriting those clocks.
+   if(verified<Math.max(1,canonical.mode==='enabled'?bound:cutoff,bound)||typeof anchor!=='string'||anchor.length!==32||!HEX32.test(anchor))return null;
+   qualifiedLinks++;if(native){if(native.nameKey!==key||status!=='member')return null;eligible.push(native);}
    // left_pending is the first missing export, not the existing lifecycle's
    // confirmed departure. It cannot strip access or lower another alt's rank.
    else if(status!=='left'||unknownGuidKeys.has(key))return null;
   }
-  if(!seenLinks.size)return null; // Unfinished alts alone prove neither identity nor departure.
+  if(!qualifiedLinks)return null; // Unfinished/inert legacy links prove neither identity nor departure.
   eligible.sort((a,b)=>a.index-b.index||(a.guid<b.guid?-1:a.guid>b.guid?1:0));
   const cause:RoutineMembership232Facts['cause']=standing[0]===1||standing[1]===1?'ban':standing[2]===1?'rename_hold':eligible.length?'eligible':'departure';
   const primary=cause==='eligible'?eligible[0]!:null,deadline=Math.min(at+300,row.exported_at+600);
@@ -163,7 +180,7 @@ export function routineMembership232Predicate(env:Env,cap:RoutineMembership232,s
    LEFT JOIN role_settlements a ON a.id=json_extract(j.value,'$[6]')
    WHERE CASE WHEN (c.name_key IS NOT NULL AND c.status=json_extract(j.value,'$[2]') AND c.bound_at=json_extract(j.value,'$[3]'))
    AND (c.verified_at IS json_extract(j.value,'$[4]') AND c.source IS json_extract(j.value,'$[5]'))
-   AND (c.status IN('verified','queued') OR (${ANCHOR(q(12),q(13))})) THEN 0 ELSE 1 END=1)
+   AND (c.status IN('verified','queued') OR (${ANCHOR(q(12),q(13),q(10))}) OR (${INERT_LEGACY(q(13),q(10))})) THEN 0 ELSE 1 END=1)
   AND COALESCE((SELECT member_count FROM roster_snapshots old WHERE old.id<s.id AND old.complete=1 AND old.trusted=1 AND old.source=s.source ORDER BY old.id DESC LIMIT 1),s.member_count)=${q(11)})`,
  values:r.values,next:start+r.values.length});
 }
