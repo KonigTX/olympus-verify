@@ -19,6 +19,7 @@ import {originalPrivacyStatementGroupProjection} from './privacy-serving-authori
 import './community-routes';
 import {qrErasureCustodyClearSql} from './qr-phase1-data';
 import { communityDataNames,communityEraseStatements } from './community-context';
+import { nicknameErasureAssertion233 } from './member-nickname-data233';
 import {communityScopedEraseStatements} from './community-data-registry';
 import { mentionDeletes, mentionExactReferenceSql } from './site-admin';
 import { servingPrivacyCatalogAndStaffCustody } from './privacy-business-catalog';
@@ -195,7 +196,7 @@ async function completeServingAccount(env:Env,p:AccountErasureProof,role:MemberR
  const configured=globalServingMode(env)==='configured',originalJob=configured?await captureOriginalAccountErasureJobRead(env,p,attempt):null;if(originalJob&&originalErasureJobReadFacts(originalJob).companion.markerKey!==markerKey)throw Error('privacy_original_marker_key_changed');
  const statements:D1PreparedStatement[]=[before,...(originalJob?[originalAccountErasureCompanionGuardStatement(env,originalJob)]:[]),
  env.DB.prepare("UPDATE privacy_serving_jobs SET state='erasing',role_checked_at=?2,staff_access=?3,hold_reason=NULL WHERE operation_id=?1 AND state IN('waiting_role','held')").bind(p.operationId,role.checkedAt,role.staffAccess),
- ...fixedAccountCleanupStatements(env,p,markerKey,rejectionMarker),
+ ...fixedAccountCleanupStatements(env,p,markerKey,rejectionMarker,native),
  // Replay identity has a fixed 366-day purpose window; private recovery copies have their own operator custody.
  env.DB.prepare(`INSERT INTO privacy_restore_replay(operation_id,subject_id,retired_generation,erased_at,retain_until,scope)
  SELECT ?1,?2,?3,${PRIVACY_DB_NOW},${PRIVACY_DB_NOW}+${PRIVACY_REPLAY},'serving_account'
@@ -238,7 +239,7 @@ function characterReferenceScrub(env:Env,id:string):D1PreparedStatement{
 }
 
 /** Same source cleanup bodies for serving completion and independently authorized CLOSED recovery. */
-function fixedAccountCleanupStatements(env:Env,p:Readonly<{subject:string;subjectGeneration:string}>,markerKey:string|null,rejectionMarker:readonly D1PreparedStatement[]):D1PreparedStatement[]{
+function fixedAccountCleanupStatements(env:Env,p:Readonly<{subject:string;subjectGeneration:string}>,markerKey:string|null,rejectionMarker:readonly D1PreparedStatement[],nativeNicknameRedacted=false):D1PreparedStatement[]{
  const target='?1';
  const groupedShape=(a:string)=>`CASE WHEN NOT json_valid(${a}.details) THEN 0
  WHEN json_type(${a}.details)<>'object' THEN 0
@@ -279,7 +280,13 @@ function fixedAccountCleanupStatements(env:Env,p:Readonly<{subject:string;subjec
  env.DB.prepare(`UPDATE community_privacy_cases SET subject_hint=CASE WHEN subject_hint=?1 THEN NULL ELSE subject_hint END,
  character_hint=CASE WHEN character_hint IN(SELECT name FROM characters WHERE discord_id=?1) OR character_hint IN(SELECT name_key FROM characters WHERE discord_id=?1) THEN NULL ELSE character_hint END
  WHERE subject_hint=?1 OR character_hint IN(SELECT name FROM characters WHERE discord_id=?1) OR character_hint IN(SELECT name_key FROM characters WHERE discord_id=?1)`).bind(p.subject),
- ...mentionDeletes(env,p.subject), ...communityEraseStatements(env,p.subject),
+ ...mentionDeletes(env,p.subject), ...(nativeNicknameRedacted
+  // Only completeServingAccount's private Native path reaches this branch,
+  // after the same original job's guarded pre-ambiguity nickname redaction.
+  // Late nickname receipts use the original raw-value CAS, so redaction also
+  // invalidates their write. Still reject any unexpected value in this batch.
+  ? [...communityScopedEraseStatements(env,p.subject,communityDataNames().filter(name=>name!=='member_nickname')),nicknameErasureAssertion233(env,p.subject)]
+  : communityEraseStatements(env,p.subject)),
  // Structured cleanup can leave malformed arrays, duplicate keys or free text. Never silently
  // erase another owner's text, or commit our terminal receipt while this attributable ID remains.
  env.DB.prepare(`SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM site_applications

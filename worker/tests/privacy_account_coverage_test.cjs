@@ -30,7 +30,7 @@ async function coverageReview(){
  const disabledHtml=coverage.accountDataCoverageHtml(false);
  const settingsRow=text=>new RegExp('<tr data-account-store="site_settings">([\\s\\S]*?)</tr>').exec(text)?.[1]||'';
  const identifySettings=manifest.stores.find(r=>r.store==='site_settings'),ordinarySettings=coverage.accountDataCoverage('ordinary').stores.find(r=>r.store==='site_settings');
- eq('identify settings select only new owned metadata plus original separate history',[identifySettings.coverage,identifySettings.selectedInThisFile,Array.from(identifySettings.collections)],['selected',true,['community.discord_directory_visibility','community.news_webhook.deliveries','site.settingUpdates']]);
+ eq('identify settings select exact owned metadata including private nickname plus original separate history',[identifySettings.coverage,identifySettings.selectedInThisFile,Array.from(identifySettings.collections)],['selected',true,['community.discord_directory_visibility','community.news_webhook.deliveries','community.member_nickname.preference','site.settingUpdates']]);
  eq('ordinary settings select own fields, bounded webhook metadata and separate setting history',[ordinarySettings.coverage,ordinarySettings.selectedInThisFile,Array.from(ordinarySettings.collections)],['selected',true,['aggregate singleton','site.settingUpdates','community.news_webhook.deliveries']]);
  ok('ordinary settings description limits selection to exact own offices and excludes counterparts',ordinarySettings.description.includes('your exact supported native-rank or extended-office account-publication associations')&&ordinarySettings.description.includes('account-bound Discord-directory suppression choice')&&ordinarySettings.description.includes('notice bodies and counterparts are withheld'));
  ok('default identify HTML selects bounded metadata without advertising ordinary association fields',settingsRow(html).includes('Selected own fields')&&settingsRow(html).includes('complete/truncated')&&!settingsRow(html).includes('account-publication association'));
@@ -158,7 +158,7 @@ async function coverageReview(){
   const f=fixture();await subject(f);await seedOwnSettings(f);f.env.PRIVACY_ERASURE_ENABLED='false';
   const connection=await connect(f),frm=await form(f,connection),beforeCalls=calls.length;
   // Derive the exact inert packed source SQL through the original Native fixture port; no statement is executed here.
-  const failedPlan196=registry.communityPackedExportPlan({...f.env,DB:f.native},A,['discord_directory_visibility','news_webhook']);
+  const failedPlan196=registry.communityPackedExportPlan({...f.env,DB:f.native},A,['discord_directory_visibility','news_webhook','member_nickname']);
   eq('identify failure fixture selects exactly one packed source statement',failedPlan196.statements.length,1);
   const failedSql196=failedPlan196.statements[0].sql;if(typeof failedSql196!=='string'||!failedSql196)throw Error('packed source SQL not exposed by original Native fixture');
   let injected196=0;f.hooks.statement=sql=>{if(sql===failedSql196){injected196++;throw Error('synthetic original selected metadata read failure');}};
@@ -205,7 +205,7 @@ async function coverageReview(){
   const r=await index.fetch(frm.request({collection:'copy',cursor:''}),{...f.env,DB:native},{waitUntil:p=>pending.push(p)});
   const body=await fullRequestResult('identify /privacy/access/export installed full-index',r,statements,batches,pending);
   const settings=body.coverage.storeInventory.stores.find(r=>r.store==='site_settings');
-  eq('actual identify export selects only new own setting metadata',[settings.coverage,settings.selectedInThisFile,settings.collections],['selected',true,['community.discord_directory_visibility','community.news_webhook.deliveries','site.settingUpdates']]);
+  eq('actual identify export selects exact own setting metadata including private nickname',[settings.coverage,settings.selectedInThisFile,settings.collections],['selected',true,['community.discord_directory_visibility','community.news_webhook.deliveries','community.member_nickname.preference','site.settingUpdates']]);
   ok('actual identify copy has no ordinary appointment publication section',!Object.hasOwn(body.site||{},'appointmentPublications'));
   eq('full-index identify original download succeeds',r.status,200);eq('full-index identify own original identity',body.identity.discordId,A);
   eq('full-index identify actual curated copy remains partial',body.coverage.kind,'curated_partial');eq('full-index identify erasure never claimed',body.coverage.completeErasure,false);

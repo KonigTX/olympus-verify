@@ -29,6 +29,14 @@ const check=(name,v)=>{assert.equal(v,true,name);n++;console.log('PASS '+name);}
   if(k==='erasure')check('actual admitted erasure removes original and requested nickname values',s.patches===1&&r.stored===null);
   costs[k]={trips:wires.length,physicalSQL:wires.flatMap(w=>packets(w.requestBody)).length,http:http.filter(x=>x.kind===k).length};check(k+' remains bounded under100 params per statement',wires.flatMap(w=>packets(w.requestBody)).every(p=>(p.params?.length??0)<100));
  }
+ const priorHTTP=http.length,erased=await mf.dispatchFetch('http://fixture.invalid/erasure-assertions',{method:'POST'}),erasedText=await erased.text();fs.writeFileSync(path.join(out,'erasure-assertions.json'),erasedText);assert.equal(erased.status,200,'actual erasure assertion callback');const er=JSON.parse(erasedText);
+ check('Native terminal single assertion accepts exact retained erased-unknown marker',er.actualLocalWorkerdD1&&er.guardSuccess&&er.redacted==='{"v":1,"state":"erased_unknown"}');
+ check('late original PATCH receipt raw-value CAS changes zero rows after redaction',er.lateChanges===0&&er.lateRows===0&&er.afterLate===er.redacted);
+ check('unexpected original private value refuses terminal transaction and rolls back prior write',er.negatives[0].held&&er.negatives[0].rolledBack);
+ check('semantically similar but nonexact marker refuses and rolls back terminal write',er.negatives[1].held&&er.negatives[1].rolledBack);
+ check('Native terminal assertion also accepts exact own-key absence',er.absentSuccess);
+ check('unknown original effect remains a nonretry marker after all assertion controls',er.retained===er.redacted&&state.get('unknown').patches===1);
+ check('terminal assertion controls neither dispatch HTTP nor change logical Native control',http.length===priorHTTP&&er.controlUnchanged);
  const identify=await mf.dispatchFetch('http://fixture.invalid/identify-copy',{method:'POST'}),identifyText=await identify.text();fs.writeFileSync(path.join(out,'identify-copy.json'),identifyText);assert.equal(identify.status,200,'actual identify-only callback');const copy=JSON.parse(identifyText),copyWires=copy.wires.slice(copy.from,copy.to),copySQL=copyWires.flatMap(w=>packets(w.requestBody));
  check('actual identify-only OAuth original grant exports only own saved nickname',copy.actualLocalWorkerdD1&&copy.originalIdentifyOnlyOAuth&&copy.status===200&&copy.preference.previousNickname==='Original copy'&&copy.containsCounterpart===false&&copy.coverage==='curated_partial');
  check('actual identify export keeps original98 physical SQL below100',copySQL.length===98&&copySQL.length<100);

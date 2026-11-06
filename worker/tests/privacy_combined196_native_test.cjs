@@ -3,7 +3,11 @@
 // index, session issuer, registered copy and original erasure continuation run.
 const fs=require('node:fs'),path=require('node:path'),Module=require('node:module'),crypto=require('node:crypto');
 const original=path.join(__dirname,'privacy_native_erasure_mode_test.cjs'),bytes=fs.readFileSync(original),marker='(async()=>{\n // .174:';
-const setup=bytes.toString('utf8');if(setup.split(marker).length!==2)throw Error('combined196_original_setup_boundary');
+const originalSetup=bytes.toString('utf8');if(originalSetup.split(marker).length!==2)throw Error('combined196_original_setup_boundary');
+// A test-only observer follows the unchanged counter at the actual physical Native emission.
+// It changes no SQL, parameters, transport, counter or execution ordering.
+const emission='f.physicalStatements++;';if(originalSetup.split(emission).length!==2)throw Error('combined196_physical_counter_boundary');
+const setup=originalSetup.replace(emission,emission+"(f.statementTrace??=[]).push({sha256:require('node:crypto').createHash('sha256').update(sql).digest('hex'),bytes:Buffer.byteLength(sql),parameters:values.length,sql:sql.length<=2000?sql:null});");
 const loaded=new Map(),read=fs.readFileSync;fs.readFileSync=function(file,...rest){const value=Reflect.apply(read,this,[file,...rest]);if(typeof file==='string'&&file.endsWith('.ts')&&file.includes(path.sep+'src'+path.sep))loaded.set(file,Buffer.isBuffer(value)?Buffer.from(value):Buffer.from(value));return value;};
 globalThis.__combined196={loaded,read,fixtureSHA256:crypto.createHash('sha256').update(bytes).digest('hex'),sha:value=>crypto.createHash('sha256').update(value).digest('hex'),result:process.env.COMBINED196_RESULT_FILE};
 async function combined196(){
@@ -15,7 +19,7 @@ async function combined196(){
  const metadata=(f,tag,who)=>{const n=tag.padEnd(22,'x'),operation='news_webhook_v1:'+n+':'+tag.charCodeAt(0).toString(16).repeat(21),account=f.raw('SELECT account_incarnation FROM site_users WHERE discord_id=?',who),subject=f.raw('SELECT generation FROM privacy_subjects WHERE subject_id=?',who);return {v:1,id:n,revision:1,operation,payloadHash:'1'.repeat(64),configHash:f.webhookHash??'2'.repeat(64),credentialPin:f.webhookPin??'A'.repeat(43),guild:GUILD,channel:CHANNEL,webhook:'1551234567890123491',actor:who,birth:account.account_incarnation,generation:subject.generation,createdAt:clock-100,noticeUntil:clock+86400,retainUntil:clock-100+authority.PRIVACY_REPLAY};};
  let caseNumber=0;
  for(const kind of ['directory_only','webhook_only','combined_known','combined_inactive','combined_unknown','ambiguous_note','malformed_visibility','scoped_batch_failure']){
-  const f=fixture();clock+=900+3600*caseNumber++;const cookie=await f.signIn(ID);await f.signIn(OTHER);await seedPersonal(f,{roles:0});
+  const f=fixture(),originalJob=f.job;f.job=async(...args)=>{const start=f.statementTrace?.length??0;try{return await originalJob(...args);}finally{const measured=f.measurements.at(-1);if(measured)measured.statementTrace=f.statementTrace.slice(start);}};clock+=900+3600*caseNumber++;const cookie=await f.signIn(ID);await f.signIn(OTHER);await seedPersonal(f,{roles:0});
   Object.assign(f.env,{COMMUNITY_FEATURES:'directory,contributions',CONTRIBUTIONS_MODE:'ledger',CONTRIBUTIONS_SCOPE:'olympus',CONTRIBUTIONS_RETENTION_DAYS:'90'});
   const sourceSchema=JSON.stringify(f.rows("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name"));
   if(kind==='combined_known'||kind==='combined_inactive'){
@@ -79,6 +83,7 @@ async function combined196(){
   if(kind==='malformed_visibility')expect(kind+' malformed registered map remains unchanged',f.raw("SELECT value FROM site_settings WHERE key='discordDirectoryHidden'")?.value===JSON.stringify({[ID]:'not-an-incarnation'}));
   if(kind==='scoped_batch_failure')expect(kind+' failed last scoped plan rolls earlier map and actor projections back atomically',Object.hasOwn(JSON.parse(f.raw("SELECT value FROM site_settings WHERE key='discordDirectoryHidden'").value),ID)&&f.rows("SELECT value FROM site_settings WHERE key GLOB 'newsWebhook:*'").every(r=>JSON.parse(r.value).actor===ID));
   if(kind==='combined_known'||kind==='combined_inactive')expect(kind+' actual configured cleanup removes only one known pointer with sending disabled',f.rows("SELECT state FROM privacy_provider_messages WHERE operation_id LIKE 'news_webhook_v1:%'").filter(r=>r.state==='removed').length===1&&f.http.filter(h=>h.method==='DELETE'&&h.url.includes('/webhooks/')).length===1);
+  expect(kind+' physical trace observes every actual counter increment exactly once',f.measurements.every(m=>m.statementTrace.length===m.statements),f.measurements.map(m=>({statements:m.statements,trace:m.statementTrace.length})));
   const maximum=Math.max(0,...f.measurements.map(r=>r.statements));expect(kind+' measured full original job remains within196 physical',(!known||f.measurements.some(r=>r.outcome.completed===1))&&maximum>0&&maximum<=196,{maximum,measurements:f.measurements});
   results.push({kind,copyStatus:copy.status,copyPhysical,jobState:job?.state,holdReason:job?.hold_reason,measurements:f.measurements,schemaUnchanged:JSON.stringify(f.rows("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name"))===sourceSchema,roleUnknown:kind==='combined_unknown'?f.raw('SELECT state FROM role_settlements WHERE id=?','9'.repeat(32)):null});f.close();
  }

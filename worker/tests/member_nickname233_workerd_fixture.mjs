@@ -1,6 +1,6 @@
 // Genuine local Workerd/D1 and actual opaque issuer. All remote transport is local-mocked.
 import {handleNicknameInteraction233,NICKNAME_USE233,NICKNAME_RESET233} from '../src/member-nickname233.ts';
-import {nicknameEraseStatements233,nicknameKey233} from '../src/member-nickname-data233.ts';
+import {nicknameEraseStatements233,nicknameErasureAssertion233,nicknameKey233} from '../src/member-nickname-data233.ts';
 import {createPrivacyWriteAdmissionDatabase} from '../src/privacy-write-admission.ts';
 import {CANONICAL_RANKS233,CANONICAL_PROFILE233} from '../src/canonical-ranks233.ts';
 import {NATIVE_RANK_NAMES232,NATIVE_RANK_PROFILE232,NATIVE_STEWART_ROLE232,MIRROR_BY_NAME232,NATIVE_SCOPE232} from '../src/native-rank-reconciliation232.ts';
@@ -9,6 +9,30 @@ import {exportPrivacyAccess} from '../src/privacy-access-export.ts';
 const method=(o,k)=>{for(let p=o;p;p=Object.getPrototypeOf(p)){const d=Object.getOwnPropertyDescriptor(p,k);if(d){if(!Object.hasOwn(d,'value')||typeof d.value!=='function')throw Error('original_method');return d.value;}}throw Error('original_method');};
 export function nicknameFixture233(seed){const started=new Set(),states=new Map();let serial=0;return {async fetch(request,bindings){
  const kind=new URL(request.url).pathname.slice(1),kinds=['use','unknown','refused','higher','erasure','copy'];
+ if(kind==='erasure-assertions'&&request.method==='POST'&&states.has('unknown')&&!started.has(kind)){
+  started.add(kind);const {env,wires,db}=states.get('unknown'),subject=seed.tables.find(t=>t.name==='pending').rows[0].discord_id,key=nicknameKey233(subject);
+  const before=await db.prepare('SELECT epoch,mode,active,nonce,purpose FROM privacy_write_admission').first(),start=wires.length;
+  const original=await env.DB.prepare('SELECT value FROM site_settings WHERE key=?1').bind(key).first();
+  await env.DB.batch(nicknameEraseStatements233(env,subject));
+  const redacted=await env.DB.prepare('SELECT value FROM site_settings WHERE key=?1').bind(key).first();
+  const guard=await env.DB.batch([nicknameErasureAssertion233(env,subject)]);
+  // Exact source receipt-CAS shape: a late original PATCH result cannot replace
+  // the marker after that same raw dispatch record was redacted.
+  const late=await env.DB.prepare('UPDATE site_settings SET value=?3 WHERE key=?1 AND value=?2 RETURNING key').bind(key,original.value,JSON.stringify({...JSON.parse(original.value),state:'acknowledged'})).all();
+  const afterLate=await env.DB.prepare('SELECT value FROM site_settings WHERE key=?1').bind(key).first(),negatives=[];
+  for(const value of [original.value,'{"state":"erased_unknown","v":1}']){
+   await env.DB.prepare('UPDATE site_settings SET value=?2 WHERE key=?1').bind(key,value).run();
+   const old=await env.DB.prepare('SELECT value,updated_at FROM site_settings WHERE key=?1').bind(key).first();let held=false;
+   try{await env.DB.batch([env.DB.prepare('UPDATE site_settings SET updated_at=updated_at+1 WHERE key=?1').bind(key),nicknameErasureAssertion233(env,subject)]);}catch{held=true;}
+   const current=await env.DB.prepare('SELECT value,updated_at FROM site_settings WHERE key=?1').bind(key).first();negatives.push({held,rolledBack:JSON.stringify(old)===JSON.stringify(current)});
+  }
+  await env.DB.prepare('UPDATE site_settings SET value=?2 WHERE key=?1').bind(key,redacted.value).run();
+  const retained=await env.DB.prepare('SELECT value FROM site_settings WHERE key=?1').bind(key).first();
+  await env.DB.prepare('DELETE FROM site_settings WHERE key=?1').bind(key).run();const absent=await env.DB.batch([nicknameErasureAssertion233(env,subject)]);
+  await env.DB.prepare('INSERT INTO site_settings(key,value,updated_at)VALUES(?1,?2,?3)').bind(key,retained.value,seed.now).run();
+  const after=await db.prepare('SELECT epoch,mode,active,nonce,purpose FROM privacy_write_admission').first();
+  return Response.json({actualLocalWorkerdD1:true,start,end:wires.length,wires,redacted:redacted.value,guardSuccess:guard.every(r=>r.success===true),lateChanges:late.meta?.changes,lateRows:late.results.length,afterLate:afterLate.value,negatives,retained:retained.value,absentSuccess:absent.every(r=>r.success===true),controlUnchanged:JSON.stringify(before)===JSON.stringify(after)});
+ }
  if(kind==='identify-copy'&&request.method==='POST'&&states.has('copy')&&!started.has(kind)){
   started.add(kind);const {env,wires}=states.get('copy'),BASE='https://'+env.SITE_HOST;
   const initial=await privacyAccessPage(new Request(BASE+'/privacy/access'),env),html=await initial.text(),section=/<form method="post" action="\/privacy\/signin">([\s\S]*?)<\/form>/.exec(html),csrf=/name="csrf" value="([^"]+)"/.exec(section[1])[1];
@@ -35,7 +59,7 @@ export function nicknameFixture233(seed){const started=new Set(),states=new Map(
  const native=JSON.stringify({version:1,enabled:true,profile:NATIVE_RANK_PROFILE232,guildId:G,nativeGuild:NATIVE_SCOPE232.guild,nativeRealm:NATIVE_SCOPE232.realm,membershipRole:'1552077551839617104',ranks:NATIVE_RANK_NAMES232.map((name,index)=>({index,name,roleId:name==='Stewart'?NATIVE_STEWART_ROLE232:MIRROR_BY_NAME232[name]})),privileged:true});
  const env={...seed.config,GUILD_ID:G,CANONICAL_RANKS233:canonical,NATIVE_RANK_SYNC232:native,VERIFY_NATIVE_SCOPE:JSON.stringify({version:1,...NATIVE_SCOPE232}),DISCORD_BOT_TOKEN:seed.config.DISCORD_BOT_TOKEN+'-'+kind,ROSTER_MIN_MEMBERS:'1',SITE_HOST:'nickname233.example',DISCORD_CLIENT_SECRET:'nickname233-synthetic-oauth-client',COOKIE_SECRET:'nickname233-synthetic-cookie-secret-0123456789',DB:createPrivacyWriteAdmissionDatabase(db,'writer','recorded-live-pre-seal-20261017',seed.config.PRIVACY_WRITE_ADMISSION_EPOCH)};
  const invoke=async action=>{let work;const response=handleNicknameInteraction233(env,{type:3,id:String(1550000000000000000n+BigInt(++serial)),token:'original_synthetic_ephemeral_token_'+kind,guild_id:G,member:{user:{id:subject},roles:[]},data:{custom_id:action==='reset'?NICKNAME_RESET233:NICKNAME_USE233}},(label,callback)=>{if(label!=='interaction_nickname233')throw Error('source_callback_label');work=callback;});if(work)await work();return response;};
- let error=null;const start=wires.length;try{await invoke('use');if(kind==='unknown')await invoke('reset');if(kind==='use')await invoke('reset');if(kind==='erasure')await env.DB.batch(nicknameEraseStatements233(env,subject));}catch(e){error=String(e?.message||e);}const end=wires.length;states.set(kind,{env,wires});
+ let error=null;const start=wires.length;try{await invoke('use');if(kind==='unknown')await invoke('reset');if(kind==='use')await invoke('reset');if(kind==='erasure')await env.DB.batch(nicknameEraseStatements233(env,subject));}catch(e){error=String(e?.message||e);}const end=wires.length;states.set(kind,{env,wires,db});
  if(kind==='copy')await env.DB.prepare("INSERT INTO site_settings(key,value,updated_at)SELECT ?1,json_set(value,'$.previous','FOREIGN_NICKNAME','$.desired','FOREIGN_NICKNAME'),updated_at FROM site_settings WHERE key=?2").bind(nicknameKey233('222222222222222222'),nicknameKey233(subject)).run();
  const stored=await db.prepare('SELECT value FROM site_settings WHERE key=?1').bind(nicknameKey233(subject)).first(),after=await db.prepare('SELECT type,name,sql FROM sqlite_master ORDER BY type,name').all(),control=await db.prepare('SELECT epoch,mode,active,nonce,purpose FROM privacy_write_admission').first();
  return Response.json({actualLocalWorkerdD1:true,clockOverride:false,sourceCallbackOverride:false,rosterRows:907,kind,error,wires,start,end,stored:stored?.value??null,schemaUnchanged:JSON.stringify(before.results)===JSON.stringify(after.results),controlUnchanged:JSON.stringify(controlBefore)===JSON.stringify(control),providerCalls:0});

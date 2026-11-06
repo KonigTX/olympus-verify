@@ -44,6 +44,14 @@ export function nicknameEraseStatements233(env:Env,subject:string):D1PreparedSta
  AND CASE WHEN NOT json_valid(value) THEN 1 WHEN json_type(value)<>'object' THEN 1 WHEN COALESCE(json_extract(value,'$.state'),'') IN('acknowledged','applied','refused') THEN 0 ELSE 1 END`).bind(key),
  env.DB.prepare(`DELETE FROM site_settings WHERE key=?1 AND CASE WHEN NOT json_valid(value) THEN 0 WHEN json_type(value)<>'object' THEN 0 ELSE COALESCE(json_extract(value,'$.state'),'') IN('acknowledged','applied','refused') END`).bind(key),
  ];}
+/** The private Native terminal path already redacted this exact subject under
+ * its original job guard. Recheck that fact atomically, without repeating both
+ * erasers. Any reappearing value refuses the entire terminal transaction. */
+export function nicknameErasureAssertion233(env:Env,subject:string):D1PreparedStatement{
+ return env.DB.prepare(`SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM site_settings WHERE key=?1
+ AND value IS NOT '{"v":1,"state":"erased_unknown"}') THEN 1
+ ELSE json_extract('nickname_terminal_redaction_held','$') END AS current`).bind(nicknameKey233(subject));
+}
 export function nicknameExportPlan233(env:Env,subject:string):ExportPlan{return {
  statements:[env.DB.prepare('SELECT value FROM site_settings WHERE key=?1').bind(nicknameKey233(subject))],
  shape:r=>({preference:nicknameOwnProjection233((r[0]?.results[0] as {value?:unknown}|undefined)?.value)}),
