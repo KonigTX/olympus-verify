@@ -124,6 +124,7 @@ WHISPERS = {}
 SendChatMessage = function(text, chan, _, to) table.insert(WHISPERS, { text = text, to = to }) end
 hooksecurefunc = function() end
 GetBuildInfo = function() return "1.15.x", "0", "", 11509 end
+OlympusVerifySlash234 = nil -- Each new mock is a fresh client, not a duplicate main-file load.
 UISpecialFrames, SlashCmdList = {}, {}
 ERR_GUILD_REMOVE_SS = "%s has been kicked out of the guild by %s."
 C_Timer = { NewTicker = function(_, fn) return { Cancel = function() end } end, After = function() end }

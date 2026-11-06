@@ -33,7 +33,9 @@
   the panel, "/olv preview" says so and changes nothing. ]]
 
 local API = OlympusVerifyAPI
-local originalSlash = type(SlashCmdList) == "table" and SlashCmdList.OLYMPUSVERIFY or nil
+local slashRegistry = OlympusVerifySlash234
+local registryReady = type(slashRegistry) == "table" and type(slashRegistry.Snapshot) == "function" and type(slashRegistry.Extend) == "function"
+local originalSlash = registryReady and slashRegistry.Snapshot("OLYMPUSVERIFY") or type(SlashCmdList) == "table" and SlashCmdList.OLYMPUSVERIFY or nil
 -- Nothing to preview without the API, and nothing to route "/olv preview" through without the handler. A second copy
 -- of this file (a duplicated TOC line) would wrap the first wrapper and keep its own originals, which are stand-ins
 -- whenever the first copy is on: refuse it.
@@ -823,7 +825,11 @@ local function Handler(msg, ...)
   end
   Say(string.format("'/olv %s' is disabled while preview is on — type %s first.", cmd, Cmd("/olv preview off")))
 end
-SlashCmdList.OLYMPUSVERIFY = Handler
+if registryReady then
+  slashRegistry.Extend("OLYMPUSVERIFY", "preview", function(previous) originalSlash = previous; return Handler end)
+elseif type(SlashCmdList) == "table" then
+  SlashCmdList.OLYMPUSVERIFY = Handler
+end
 
 -- For the panel and the tests. Nothing here reaches past the checks above.
 OlympusVerifyPreview = {

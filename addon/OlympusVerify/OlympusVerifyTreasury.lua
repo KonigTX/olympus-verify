@@ -337,11 +337,17 @@ OlympusVerifyTreasury = {
       storage = "SavedVariables writes at client reload/logout; chat log may buffer", automaticCredit = false }
   end,
 }
-SLASH_OLYMPUSTREASURY1 = "/olvtreasury"
-SlashCmdList.OLYMPUSTREASURY = function()
+local function TreasurySlash()
   local status = OlympusVerifyTreasury.Status()
   printLine(string.format("%d confirmed local receipts; %d observations without credit; collector %s (%s).",
     status.confirmedLocal, status.unconfirmed, status.recipient, status.enabled and "this character" or "not active on this character"))
   printLine("Read-only tracking; no automatic tithe credit. SavedVariables reaches disk at /reload/logout; chat-log delivery may be delayed.")
   printLine("Local named receipts expire after 30 days from the original event. Export/review them before expiry; delivery does not renew retention.")
+end
+local slashRegistry = OlympusVerifySlash234
+if type(slashRegistry) == "table" and type(slashRegistry.Register) == "function" then
+  slashRegistry.Register("OLYMPUSTREASURY", {"/olvtreasury"}, TreasurySlash)
+elseif type(SlashCmdList) == "table" then
+  SLASH_OLYMPUSTREASURY1 = "/olvtreasury"
+  SlashCmdList.OLYMPUSTREASURY = TreasurySlash
 end
