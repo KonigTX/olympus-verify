@@ -1,4 +1,5 @@
 import {captureBetaRoleDispatch,type BetaRoleDispatch} from './beta-reset-policy';
+import { NICKNAME_SETTINGS_FILTER233 } from './member-nickname-data233';
 /**
  * The guild site's admin API (build .41, .43, .45): SITE_ADMINS only, checked by site-api.ts on every call before it
  * gets here. This is the only code that ever counts votes.
@@ -242,7 +243,7 @@ async function overview(env: Env) {
 }
 
 async function saveSettings(env: Env, actor: string, body: Record<string, unknown>): Promise<Response> {
-  const read = await env.DB.prepare("SELECT key, value FROM site_settings WHERE key < 'newsWebhook:' OR key >= 'newsWebhook;'").all<{ key: string; value: string }>();
+  const read = await env.DB.prepare("SELECT key, value FROM site_settings WHERE (key < 'newsWebhook:' OR key >= 'newsWebhook;') AND "+NICKNAME_SETTINGS_FILTER233).all<{ key: string; value: string }>();
   const cur = settingsFrom(env, read.results);
   const storedValues = new Map(read.results.map((r) => [r.key, r.value]));
   const next: Partial<Record<keyof SiteSettings, string>> = {};

@@ -17,6 +17,7 @@ from unittest.mock import patch
 sys.path.insert(0, os.environ.get('WATCHER_TEST_SOURCE', str(Path(__file__).resolve().parents[1])))
 import watcher
 import codes
+import officer_invites233
 from custody_recovery import StateLease
 from native_membership227 import membership_mac
 
@@ -584,6 +585,167 @@ class VerificationExchangeTests(unittest.TestCase):
         self.w.flush_outbox()
         self.assertEqual(len(self.calls), 1)
         self.assertIs(self.w.state.d['outbox'][0], item)
+
+
+    def invite_body233(self):
+        p = dict(version=233, proofId='1' * 32, fullName=NAME, unitGuid=GUID, unitFullName=NAME,
+                 whisperAt=self.at, requestedAt=self.at, observedAt=self.at,
+                 scopeHash=hashlib.sha256(('native-scope|1|' + GUILD + '|' + REALM).encode()).hexdigest()[:16],
+                 guildState='unguilded', source=officer_invites233.SOURCE, before='2' * 64, after='3' * 64)
+        body = dict(character=NAME, code=self.code, guid=GUID, source='whisper', nativeInvite=p)
+        p['mac'] = officer_invites233.proof_mac(SECRET, body)
+        return body
+
+    def invite_admit233(self):
+        roster = self.roster()
+        roster['members'] = roster['members'][:1]
+        roster['total'] = 1
+        self.w.forward_roster(roster)
+        self.assertTrue(self.w.officer_invite_roster_ready(self.invite_body233()))
+        self.calls.clear()
+
+    def invite_receipt233(self, body, held=False):
+        result = dict(protocol=officer_invites233.PROTOCOL, proofId=body['nativeInvite']['proofId'],
+                      result='held' if held else 'queued', reason='knight-standing-required' if held else 'knight-unguilded',
+                      inviteQueued=not held, roleGranted=False, pendingConsumed=False)
+        if not held:
+            result.update(queueId=1, expiresAt=body['nativeInvite']['observedAt'] + 60)
+        return result
+
+    def test_officer233_positive_original_dedicated_once_and_no_role_authority(self):
+        self.invite_admit233()
+        body = self.invite_body233()
+        def response(method, path, original=None, retries=3):
+            self.calls.append((method, path, copy.deepcopy(original), retries))
+            return True, self.invite_receipt233(original)
+        self.w.worker.call = response
+        self.w.forward_officer_invite(body)
+        self.w.forward_events([dict(type='officer_invite_proof', body=body)])
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(self.calls[0], ('POST', officer_invites233.PATH, body, 1))
+        self.assertEqual(self.w.state.d['outbox'], [])
+        self.assertFalse(self.w.state.was_seen(self.w.code_key('w', NAME, self.code)))
+
+    def test_officer233_raw_false_chat_and_saved_event_do_not_spend_membership(self):
+        self.invite_admit233()
+        proof = dict(self.proof(), member=False)
+        proof['mac'] = membership_mac(SECRET, NAME, GUID, self.code, proof)
+        line = self.line().replace(' 1 ', ' 0 ').replace(self.proof()['mac'], proof['mac'])
+        self.w.handle_chat_line(line)
+        self.w.forward_events([dict(type='whisper', name=NAME, guid=GUID, code=self.code, ok=True, ts=self.at, nativeMembership=proof)])
+        self.assertEqual((self.calls, self.w.state.d['outbox']), ([], []))
+        self.assertFalse(self.w.state.was_seen(self.w.code_key('w', NAME, self.code)))
+
+    def test_officer233_no_original_roster_ack_never_reserves_or_dispatches(self):
+        with self.assertRaises(watcher.VerificationDeferred):
+            self.w.forward_officer_invite(self.invite_body233())
+        self.assertEqual((self.calls, self.w.state.d['outbox']), ([], []))
+
+    def test_officer233_malformed_proofs_never_enter_transport(self):
+        self.invite_admit233()
+        for key, value in [('guildState', 'unknown'), ('unitGuid', 'Player-1-00000000'), ('unitFullName', 'Other'), ('after', '2' * 64), ('mac', '0' * 32), ('observedAt', self.at - 60)]:
+            body = self.invite_body233()
+            body['nativeInvite'][key] = value
+            self.w.forward_officer_invite(body)
+        self.assertEqual((self.calls, self.w.state.d['outbox']), ([], []))
+
+    def test_officer233_actual_local_pause_retains_unattempted_then_sends_once(self):
+        self.invite_admit233()
+        self.w.worker._pause_data()['worker_retry_at'] = self.at + 30
+        self.w.forward_officer_invite(self.invite_body233())
+        item = self.w.state.d['outbox'][0]
+        self.assertFalse(self.w._verification_originals[id(item)]['attempted'])
+        self.assertEqual(self.calls, [])
+        self.w.worker._pause_data()['worker_retry_at'] = 0
+        self.w.worker.call = lambda method, path, body=None, retries=3: (self.calls.append((method, path, body, retries)) or (True, self.invite_receipt233(body)))
+        self.w.flush_outbox()
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(self.w.state.d['outbox'], [])
+
+    def test_officer233_exact_held200_finishes_local_delivery_without_membership_claim(self):
+        self.invite_admit233()
+        self.w.worker.call = lambda method, path, body=None, retries=3: (True, self.invite_receipt233(body, held=True))
+        self.w.forward_officer_invite(self.invite_body233())
+        self.assertEqual(self.w.state.d['outbox'], [])
+        self.assertFalse(self.w.state.was_seen(self.w.code_key('w', NAME, self.code)))
+
+    def test_officer233_generic_success_is_unknown_and_never_resent(self):
+        self.invite_admit233()
+        self.w.worker.call = lambda *a, **k: (self.calls.append((a, k)) or (True, {'result': 'ok'}))
+        self.w.forward_officer_invite(self.invite_body233())
+        item = self.w.state.d['outbox'][0]
+        self.assertTrue(self.w._verification_originals[id(item)]['attempted'])
+        self.at += 61; self.now.return_value = self.at
+        self.w.flush_outbox()
+        self.assertEqual(len(self.calls), 1)
+        self.assertIs(self.w.state.d['outbox'][0], item)
+
+    def test_officer233_unknown_transport_holds_original_and_blocks_later_member(self):
+        self.invite_admit233()
+        self.w.worker.call = lambda *a, **k: (self.calls.append((a, k)) or (False, None))
+        self.w.forward_officer_invite(self.invite_body233())
+        item = self.w.state.d['outbox'][0]
+        self.w.forward_roster(self.roster(self.at + 1))
+        with self.assertRaises(watcher.VerificationDeferred):
+            self.w.forward_events([dict(type='whisper', name=NAME, guid=GUID, code=self.code, ok=True, ts=self.at, nativeMembership=self.proof())])
+        self.w.flush_outbox()
+        self.assertIs(self.w.state.d['outbox'][0], item)
+        self.assertEqual(len([x for x in self.calls if x[0][1] == officer_invites233.PATH]), 1)
+        self.assertEqual(len([x for x in self.calls if x[0][1] == '/ingest/verify']), 0)
+
+    def test_officer233_prior_unknown_or_refused_fifo_is_never_skipped_or_relabelled(self):
+        for refused in (False, True):
+            with self.subTest(refused=refused):
+                self.w = watcher.Watcher(dict(self.cfg, state_file=str(self.root / ('separate' + str(refused) + '.json'))))
+                self.w.worker.call = self.transport
+                self.invite_admit233()
+                self.w.worker.call = lambda *a, **k: (False, None)
+                self.w.post('/ingest/events', {'events': []}, 'older uncertain')
+                item = self.w.state.d['outbox'][0]
+                if refused: item['refusal_status'] = 403
+                before = copy.deepcopy(item)
+                self.calls.clear()
+                self.w.worker.call = lambda *a, **k: (False, None)
+                self.w.forward_officer_invite(self.invite_body233())
+                self.w.flush_outbox()
+                self.assertEqual(item, before)
+                self.assertIs(self.w.state.d['outbox'][0], item)
+                self.assertEqual([x for x in self.calls if x[1] == officer_invites233.PATH], [])
+
+    def test_officer233_restart_cannot_acquire_fresh_original_or_resend(self):
+        self.invite_admit233()
+        self.w.worker.call = lambda *a, **k: (False, None)
+        self.w.forward_officer_invite(self.invite_body233())
+        self.w = watcher.Watcher(self.cfg)
+        self.w.worker.call = self.transport
+        self.calls.clear()
+        self.w.flush_outbox()
+        self.assertTrue(self.w.state.d['outbox'])
+        self.assertEqual(self.calls, [])
+
+    def test_officer233_only_exact_unattempted_expired_original_can_retire_locally(self):
+        self.invite_admit233()
+        self.w.worker._pause_data()['worker_retry_at'] = self.at + 120
+        body = self.invite_body233()
+        self.w.forward_officer_invite(body)
+        key = 'officer-invite233:' + body['nativeInvite']['proofId']
+        self.assertTrue(self.w.state.was_seen(key))
+        self.at += 60; self.now.return_value = self.at
+        self.w.flush_outbox()
+        self.assertEqual(self.w.state.d['outbox'], [])
+        self.assertFalse(self.w.state.was_seen(key))
+        self.assertEqual(self.calls, [])
+
+    def test_officer233_mutated_unattempted_original_cannot_expire_or_send(self):
+        self.invite_admit233()
+        self.w.worker._pause_data()['worker_retry_at'] = self.at + 120
+        self.w.forward_officer_invite(self.invite_body233())
+        item = self.w.state.d['outbox'][0]
+        item['body']['nativeInvite']['observedAt'] -= 1
+        self.at += 61; self.now.return_value = self.at
+        self.w.flush_outbox()
+        self.assertIs(self.w.state.d['outbox'][0], item)
+        self.assertEqual(self.calls, [])
 
 
 if __name__ == '__main__':

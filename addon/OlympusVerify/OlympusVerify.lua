@@ -29,13 +29,15 @@ local L = OlympusHmac
 local cfg = OlympusVerifyConfig or {}
 
 BINDING_HEADER_OLYMPUSVERIFY = "Olympus Verify"
+BINDING_NAME_OLYMPUSVERIFY_SYNC = "Sync verification (hardware reload)"
+BINDING_NAME_OLYMPUSVERIFY_OFFICER_NEXT = "Next officer action"
 BINDING_NAME_OLYMPUSVERIFY_FLUSH = cfg.membershipOnly == true and "Invite queue (held: verification only)" or "Send queued guild invites"
 
 local SECRET = cfg.secret
 -- 0.6.12: the example's placeholder is public, so a Config.lua copied without replacing it must not accept codes made from it.
 if type(SECRET) ~= "string" or SECRET == "" or string.find(SECRET, "^REPLACE_WITH_") then SECRET = nil end
 local secretWarned = false  -- 0.6.12: say once per session, not on every whisper, that codes cannot be checked
-local SOURCE_VERSION = "0.6.18" -- Keep this source fallback and OlympusVerify.toc aligned.
+local SOURCE_VERSION = "0.6.19" -- Keep this source fallback and OlympusVerify.toc aligned.
 local VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version"))
   or (GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version")) or SOURCE_VERSION
 local SET_NOTES = cfg.setNotes == true  -- SetNote is forbidden for addons on the Forever beta; leave false there
@@ -375,6 +377,9 @@ local function HandleCode(source, sender, text, guid)
   local eventMember = member
   if cfg.membershipOnly == true then eventMember = nativeMembership and nativeMembership.member end
   Event({ type = source, name = base, target = sender, code = code, ok = ok, inGuild = eventMember, kind = kind, guid = guid, nativeMembership = nativeMembership })
+  if source=="whisper" and nativeMembership and nativeMembership.member==false and OlympusOfficerInvites233 then
+    OlympusOfficerInvites233.ObserveWhisper(sender,guid,code,nativeMembership)
+  end
   if ok then
     if cfg.membershipOnly == true then
       OlympusVerifyDB.verificationExchange = { phase = "sync-needed", capturedAt = time() }
@@ -388,7 +393,7 @@ local function HandleCode(source, sender, text, guid)
           if nativeMembership and nativeMembership.member then
             reply = "Olympus: code and current guild membership observed. The officer must Sync & reload to send the proof and roster. Discord access awaits the Worker's account/access checks; no role or invite is confirmed here."
           elseif nativeMembership and nativeMembership.member == false then
-            reply = "Olympus: you are not on this officer's current guild roster; no role was granted. For an Olympus sister guild, use its QR verification. Otherwise join an affiliated guild, then request a fresh code."
+            reply = "Olympus: you are not on this officer's current guild roster. No role or invite was granted. A Knight invite needs an officer's explicit fresh unguilded WHO/unit check. Sister guilds use QR verification."
           end
           SendChatMessage(reply, "WHISPER", nil, sender)
         end
@@ -3134,6 +3139,11 @@ OlympusVerifyAPI = {
   ToggleUnverifiedRank = function(rank) Unverified.ToggleRank(rank) end,
   UnverifiedExcluded = function() return Unverified.Excluded() end,
   When = function(ts) return Unverified.When(ts) end,
+  RecordOfficerInvite233 = function(body)
+    if not OlympusOfficerInvites233 or not OlympusOfficerInvites233.IsOriginalProof(body) then return false end
+    Event({type="officer_invite_proof",body=body,ok=true});return true
+  end,
+  OfficerWhoBusy233 = function() return Presence.pending~=nil or #Presence.Live()>0 end,
   Status = function()
     local db = OlympusVerifyDB or {}
     local q = OlympusQueue
@@ -3178,7 +3188,7 @@ OlympusVerifyAPI = {
   end,
 }
 
--- Read-only facts for the optional reload scheduler; no roster, role or invite authority.
+-- Read-only facts for the hardware Pending Sync alert; no roster, role or invite authority.
 function OlympusVerifyAPI.AutoSyncFacts()
   local db = OlympusVerifyDB
   local r = db and db.roster
@@ -3466,9 +3476,12 @@ function Diag.Launch(scopeOnly)
     api = { SetGuildRankOrder = type(cg.SetGuildRankOrder), IsGuildRankAssignmentAllowed = type(cg.IsGuildRankAssignmentAllowed),
       Invite = type(cg.Invite), Promote = type(cg.Promote), SetMOTD = type(cg.SetMOTD),
       GuildInvite = type(GuildInvite), GuildPromote = type(GuildPromote), GuildSetMOTD = type(GuildSetMOTD) } }
+  facts.targetVeteran = readable(read(GuildControlGetRankName, 7))
+  facts.targetMember = readable(read(GuildControlGetRankName, 9))
   facts.metadataVersion = readable(read(C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata, ADDON, "Version"))
   if not scopeOnly then
     Print(string.format("client version=%q build=%q interface=%q", facts.version, facts.build, facts.interface))
+    Print(string.format("native targets slot0=6 name=%q; slot0=8 name=%q; rank-name API=%s",facts.targetVeteran,facts.targetMember,type(GuildControlGetRankName)))
     for _, name in ipairs({ "SetGuildRankOrder", "IsGuildRankAssignmentAllowed", "Invite", "Promote", "SetMOTD", "GuildInvite", "GuildPromote", "GuildSetMOTD" }) do
       Print("API " .. name .. "=" .. facts.api[name])
     end
@@ -3529,7 +3542,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
     ShowOfflineMembers()
     local n = QueuedCount()
     if cfg.membershipOnly == true then
-      Print(string.format("verification-only mode: %d retained legacy queue record(s) are held unchanged. No invitations or /who actions are enabled.", #db.queue))
+      Print(string.format("verification-only mode: %d retained legacy queue record(s) are held unchanged. Legacy invitations and WHO remain held. /olv officer uses only the separately checked hardware queues.", #db.queue))
     elseif n > 0 and Presence.Available() then
       Print(string.format("%d waiting (%d new from Discord). Each press of your flush key invites the next one confirmed online and guildless, or checks the next in line with /who.", n, added))
     elseif n > 0 then
@@ -3639,14 +3652,15 @@ SlashCmdList.OLYMPUSVERIFY = function(msg)
   local db = OlympusVerifyDB
   if cmd == "diagnostics" then
     Diag.Launch((msg or ""):match("^%s*%S+%s+(.-)%s*$") == "scope")
-  elseif cmd == "autosync" then
+  elseif cmd == "autosync" or cmd == "pending" then
     if OlympusVerifyAutoSync then OlympusVerifyAutoSync.Command((msg or ""):match("^%s*%S+%s*(.-)%s*$"))
     else Print("auto sync module is not loaded; restart after updating the addon.") end
-  elseif cmd == "launch" or cmd == "promote" or cmd == "buffer" or cmd == "motd" then
+  elseif cmd == "launch" or cmd == "officer" or cmd == "next" or cmd == "promote" or cmd == "buffer" or cmd == "motd" then
     local launch = OlympusLaunch229
     local argument = string.match(msg or "", "^%s*%S+%s+(.-)%s*$") or ""
     if not launch then Print("launch module is not loaded; restart after updating the addon.")
-    elseif cmd == "launch" then launch.Show()
+    elseif cmd == "launch" or cmd == "officer" then launch.Show()
+    elseif cmd == "next" then launch.NextAction()
     elseif cmd == "promote" then launch.HardwarePromote(argument)
     elseif cmd == "buffer" then launch.RiskBuffer()
     else launch.Motd(argument) end
@@ -3661,7 +3675,7 @@ SlashCmdList.OLYMPUSVERIFY = function(msg)
   elseif cmd == "clear" then
     if OlympusVerifyAPI.ClearQueue() ~= false then Print("queue cleared.") end
   elseif cmd == "sync" then
-    OlympusVerifyAPI.Sync()
+    if OlympusVerify_Sync then OlympusVerify_Sync() else OlympusVerifyAPI.Sync() end
   elseif cmd == "flushlog" then
     if not LoggingChat then Print("LoggingChat is not available on this client.") return end
     local was = FLUSH_LOG; FLUSH_LOG = true

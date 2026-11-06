@@ -78,6 +78,14 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".233", date: "2026-11-06", lines: [
+      "Use one Olympus rank at a time, with guild access provided by that rank. Uncertain evidence keeps changes on hold.",
+      "Verified members can choose a character-and-guild nickname and restore their previous server nickname.",
+      "A movable pending-sync alert lets officers flush verification with one click or key press.",
+      "Officer queues use the live Veteran and Member ranks. Each invite, promotion or removal requires attended native checks.",
+    ],
+  },
+  {
     build: ".232", date: "2026-11-05", lines: [
       "Native rank checks use the current guild ladder and keep shared guild access alongside the correct rank label.",
       "Keep verification codes pending until the exchange is acknowledged; refreshing roster evidence does not consume them.",

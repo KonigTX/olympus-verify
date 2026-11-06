@@ -489,7 +489,7 @@ const status = async (id, over = {}) => (await J(await interactions.handleIntera
     const before = settingsAudits().length;
     let winner;
     HOOK = async (sql, phase) => {
-      if (phase !== "read" || sql !== "SELECT key, value FROM site_settings WHERE key < 'newsWebhook:' OR key >= 'newsWebhook;'") return;
+      if (phase !== "read" || sql !== "SELECT key, value FROM site_settings WHERE (key < 'newsWebhook:' OR key >= 'newsWebhook;') AND (key < 'nickname233:' OR key >= 'nickname233;')") return;
       HOOK = null;
       winner = await http("PUT", "/api/admin/settings", { who: ADMIN, body: race.winner });
     };

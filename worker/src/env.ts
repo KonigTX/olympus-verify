@@ -1,4 +1,5 @@
 /** Bindings, vars and secrets. Vars live in wrangler.toml; secrets are set with `wrangler secret put`. */
+import {captureCanonicalRankConfig233} from './canonical-ranks233';
 export interface Env {
   BETA_RESET_REMOVALS_ENABLED?: string; // default OFF bulk removals; the old beta source epoch still closes target grants at the fixed cutoff
   BETA_RESET_SOURCE_EPOCH?: string; // absent by default; restriction-only preparation for an immutable new source epoch
@@ -13,6 +14,10 @@ export interface Env {
   QR_PRIVILEGED_RANK_MAPPING_ENABLED?: string;
   FULL_RELEASE_ROLES?: string; // unset by default; owner-supplied canonical JSON for the fresh member and ten rank roles (full-release-roles.ts); invalid present holds
   NATIVE_RANK_SYNC232?: string; // independent canonical named Prime profile; absent/off does not activate; exact live rank IDs, shared access and explicit staff selection
+  CANONICAL_RANKS233?: string; // independent .233 one-highest canonical ladder; explicit fixed IDs/names and reviewed base permissions; absent retains .232
+  CANONICAL_ENTITLEMENTS233?: string; // exact owner-reviewed retained Branch/Alt manifest; not provider ownership, no current-GET adoption
+  CANONICAL_MIGRATION233?: string; // Root-only ephemeral one-shot reviewed manifest; never a production request input
+  CANONICAL_MIGRATION_SOURCE_TREE233?: string; // Root preview's separately pinned exact source tree; never inferred from a manifest/GET
   VERIFY_MEMBERSHIP_ONLY?: string; // exact true: native current-membership verification only; no applicant invites, invalid present holds
   VERIFY_NATIVE_SCOPE?: string; // exact canonical {version:1,guild,realm}; approved native own-guild + live GetRealmName pin, absent/unconfirmed holds membership-only mode
   TREASURY_COSMETIC_ROLES?: string; // absent: disabled; exact canonical guild/app, explicit 90-day season start + three cosmetic role IDs, separately owner-configured
@@ -31,7 +36,7 @@ export interface Env {
   ROLE_OFFICER: string;             // may approve/deny, unbind, run admin commands
   ROLE_MODERATOR: string;           // same admin rights as Officer for this bot
   ROLE_GUILD_LEADER: string;
-  ROLE_GUILD_MASTER: string;        // top role; same admin rights (leave "" if the server has no such role)
+  ROLE_GUILD_MASTER: string;        // top role; may alias the retained ROLE_GUILD_LEADER ID after canonical renaming
   ROLE_RAID_LEADER: string;         // no bot rights; named so a departure log line can say the person still has access
   CHANNEL_RECRUITMENT_REVIEW: string; // review cards (ADMISSION_MODE=review) and, under auto, staff notices
   CHANNEL_MOD_ALERTS: string;         // ban cards with the Discord-ban button (leave "" to fall back to the review channel)
@@ -147,7 +152,11 @@ export const flag = (v: string | undefined) => v === "true";
  * accounts. Olympus Officer and Guild Leader are the officers; Guild Leader (or Guild Master where one exists) approves
  * a Discord ban.
  */
-export const officerRoles = (env: Env) => [env.ROLE_OFFICER, env.ROLE_GUILD_LEADER, env.ROLE_GUILD_MASTER].filter(Boolean);
+export const officerRoles = (env: Env) => {
+  const roles=[env.ROLE_OFFICER,env.ROLE_GUILD_LEADER,env.ROLE_GUILD_MASTER].filter(Boolean),canonical=captureCanonicalRankConfig233(env);
+  if(canonical.mode==='enabled'&&canonical.policy&&canonical.current()&&env.GUILD_ID===canonical.policy.guildId){const council=canonical.policy.ranks[1]!.roleId;if(!roles.includes(council))roles.push(council);}
+  return roles;
+};
 
 /** Roles allowed to press the irreversible "Ban from Discord" button — deliberately narrower than officerRoles. */
 export const banApproverRoles = (env: Env) => [env.ROLE_GUILD_LEADER, env.ROLE_GUILD_MASTER].filter(Boolean);

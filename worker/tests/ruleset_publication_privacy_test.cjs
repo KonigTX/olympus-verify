@@ -18,8 +18,8 @@ async function download(f,c='copy',cursor=''){
 async function mainRulesetPrivacy(){
  await require('./privacy_registered196_families.cjs').run(root);
  let f=fixture();await subject(f);
- eq('actual original13 plus exact2 independently proven families',community.communityDataNames().length,15);
- eq('actual registry original36 plus exact3 metadata statements',community.communityExportPlan(f.env,A).statements.length,39);
+ eq('actual original13 plus exact2 metadata and1 private nickname family',community.communityDataNames().length,16);
+ eq('actual registry original36 plus exact3 metadata and1 nickname statement',community.communityExportPlan(f.env,A).statements.length,40);
  eq('aggregate curated histories38',history.PRIVACY_COPY_HISTORY_COLLECTIONS.length,38);eq('individual histories41',history.PRIVACY_ALL_HISTORY_COLLECTIONS.length,41);
  eq('current table has24 typed columns including original actor birth',f.db.prepare('PRAGMA table_info(ruleset_publications)').all().length,24);
  const insert=f.db.prepare('INSERT INTO ruleset_publications(guild_id,publication_id,target_key,selection_revision,profile_revision,plan_hash,actor,actor_generation,session_version,session_expires,parent_id,channel_id,message_id,frozen_payload,payload_hash,claim_nonce,stage,state,result_code,created_at,updated_at,actor_retain_until) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');

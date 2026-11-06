@@ -10,7 +10,7 @@ const related=`subject=?1 OR proof_id IN(SELECT id FROM verification_proofs WHER
 // The new routine family retains unresolved custody regardless of a malformed
 // attempt count. Its removal/compensation child may still need the exact own PUT
 // parent; no generation filter or current-role GET can erase that old witness.
-const native232Tagged=(a:string)=>`(${a}.purpose IN('launch_routine_membership232','native_rank_compensation232') OR ${a}.native_profile IS 'olympus-prime-live-20261105-v1')`;
+const native232Tagged=(a:string)=>`(${a}.purpose IN('launch_routine_membership232','native_rank_compensation232','canonical_identity233','canonical_entitlement233','canonical_consumed233','canonical_routine233','canonical_compensation233','canonical_migration233','canonical_migration_remove233','canonical_migration_compensation233') OR ${a}.native_profile IS 'olympus-prime-live-20261105-v1' OR ${a}.native_profile IS 'olympus-canonical-ranks-20261106-v1' OR ${a}.native_profile IS 'olympus-canonical-migration-20261106-v1')`;
 const native232Unresolved=(a:string)=>`(${native232Tagged(a)} AND ${a}.state IN('pending','dispatching','unknown'))`;
 const native232CurrentAbsence=`EXISTS(SELECT 1 FROM role_settlements ni JOIN privacy_serving_jobs nj ON ni.id=nj.operation_id||':native_role_inventory'
  WHERE ni.subject=?1 AND ni.subject=nj.subject_id AND ni.subject_generation=nj.subject_generation AND ni.request_digest=nj.request_digest
@@ -20,7 +20,7 @@ const native232CurrentAbsence=`EXISTS(SELECT 1 FROM role_settlements ni JOIN pri
 const native232Retained=`(${native232Unresolved('role_settlements')}
  OR EXISTS(SELECT 1 FROM role_settlements nd WHERE ${native232Unresolved('nd')} AND nd.request_digest=role_settlements.id
  AND nd.subject=role_settlements.subject AND nd.guild_id=role_settlements.guild_id AND nd.role_id=role_settlements.role_id)
- OR (${native232Tagged('role_settlements')} AND desired=1 AND attempts=1 AND state='settled' AND reason='native232_put_acknowledged_and_confirmed' AND NOT ${native232CurrentAbsence}))`;
+ OR (${native232Tagged('role_settlements')} AND desired=1 AND attempts=1 AND state='settled' AND reason IN('native232_put_acknowledged_and_confirmed','canonical233_put_acknowledged_and_confirmed','canonical233_migration_put_acknowledged_and_confirmed') AND NOT ${native232CurrentAbsence}))`;
 /** Fixed source-owned parameter positions only; no caller SQL or operational proof is issued. */
 export function qrErasureCustodyClearSql(identity:'?1'|'?2',native=false):string{
  if(identity!=='?1'&&identity!=='?2')throw Error('qr_erasure_identity_parameter_held');

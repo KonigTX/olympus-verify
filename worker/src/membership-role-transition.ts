@@ -11,7 +11,7 @@ export function membershipTargets(env:Env):MembershipTargets {
  if(!/^\d{17,20}$/.test(env.GUILD_ID)||!/^\d{17,20}$/.test(current))throw Error('membership_configuration');
  if(!membershipTransitionEnabled(env))return Object.freeze({guild:env.GUILD_ID,current,retired:null,transition:false});
  const reserved=[env.GUILD_ID,env.DISCORD_APP_ID,env.ROLE_OFFICER,env.ROLE_MODERATOR,env.ROLE_GUILD_LEADER,env.ROLE_GUILD_MASTER,env.ROLE_RAID_LEADER,...(env.BLOCKING_ROLE_IDS??'').split(',').map(s=>s.trim())];
- if(env.QR_NATIVE_ROLE_MAP!==undefined&&env.QR_NATIVE_ROLE_MAP!=='')reserved.push(...parseNativeRoleMap(env.QR_NATIVE_ROLE_MAP).roles);
+ if(env.QR_NATIVE_ROLE_MAP!==undefined&&env.QR_NATIVE_ROLE_MAP!==''&&env.QR_NATIVE_ROLE_MAP!=='off')reserved.push(...parseNativeRoleMap(env.QR_NATIVE_ROLE_MAP).roles);
  if(reserved.includes(current)||retired!==undefined&&retired!==''&&(!/^\d{17,20}$/.test(retired)||retired===current||reserved.includes(retired)))throw Error('membership_configuration');
  return Object.freeze({guild:env.GUILD_ID,current,retired:retired||null,transition:true});
 }

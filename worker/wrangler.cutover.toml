@@ -64,19 +64,19 @@ database_id = "7e2cf8fd-a9e3-48f6-975a-890f1360e5d0"
 [vars]
 GUILD_ID = "236932545793490944"       # Asmongold's server: since the cutover the bot and the site share it (the Olympus server 1549537348516188200 before)
 DISCORD_APP_ID = "1550176895671341076"  # Olympus Verify application (public value; bot role 1550178134878584934)
-ROLE_GUILD_MEMBER = "1552077551839617104" # Olympus Guild Member; native rank mappings use the separately configured guarded role writer
+ROLE_GUILD_MEMBER = "1552077551839617104" # .233 Olympus Member; every canonical rank supplies common access directly
 ROLE_OFFICER = "1554262223038324840"    # Olympus Officer: officer authority
 ROLE_MODERATOR = "571363393555136512"   # Discord Moderator (the server's global role): named for departure-access reporting only, no officer authority
-ROLE_GUILD_LEADER = "1554261979684933742" # Olympus Guild Leader: officer authority
-ROLE_GUILD_MASTER = ""                  # no dedicated Guild Master role exists in Asmongold's server
+ROLE_GUILD_LEADER = "1554261979684933742" # .233 canonical GM compatibility key; same ID as ROLE_GUILD_MASTER
+ROLE_GUILD_MASTER = "1554261979684933742" # .233 canonical GM; Guild Leader key remains a compatibility alias
 ROLE_RAID_LEADER = "1554262510650007602" # Olympus Raid Leader — no bot rights; named so a departure line can say the person still has channel access
 CHANNEL_RECRUITMENT_REVIEW = "1554266499039105075"  # the private recruitment review channel in Asmongold's server
 CHANNEL_MOD_ALERTS = "1554266499039105075"          # the same private review channel carries the staff decision cards and the officer-rank report
 CHANNEL_SERVER_LOG = "1554266647378919505"          # the private server log in Asmongold's server (leave "" to disable log lines)
-ADMISSION_MODE = "auto"                 # review | auto  (auto since 18 Sep: a confirmed code queues the invite; the Linked Role + code are the check, the key press stays)
+ADMISSION_MODE = "auto"                 # legacy admission selector; members-only keeps legacy automatic invitations disabled
 VERIFY_MEMBERSHIP_ONLY = "true"        # .227: no new link/role/invite without fresh native roster and matching GUID
 VERIFY_NATIVE_SCOPE = '{"version":1,"guild":"OLYMPUS PRIME","realm":"CAMWOW US2 Realm 3 PvE"}' # .229: observed own-addon raw scope; aliases never rewrite proof bytes
-SET_NICKNAME = "false"                  # no nickname capability was requested or granted in Asmongold's server
+SET_NICKNAME = "false"                  # legacy automatic nicknames remain off; .233 buttons are explicit own-member actions
 SET_GUILD_NOTE = "false"                # public note "D:<discord id>" — SetNote is forbidden for addons on the Forever beta; keep false
 OFFICER_CHARACTERS = "Fern Melder"     # shown in /verify instructions; the characters running the addon (two-part Forever name)
 LINKS_NOT_BEFORE = "1793833200"         # 4 Nov 2026 23:00 UTC; fresh-role grants cannot open before the owner-approved launch
@@ -151,12 +151,12 @@ PRIVACY_ERASURE_ENABLED = "true"
 PRIVACY_NATIVE_ERASURE_ENABLED = "true"
 PRIVACY_ERASURE_ATTEMPT_DISCIPLINE = "true"
 PRIVACY_RETENTION_ENABLED = "true"
-# The native beta profile is exact; a changed in-game ladder holds mapping until attended reconfiguration.
-# No native High Council exists in the observed beta ladder; enable only after qualified attended acceptance prerequisites.
+# Historical beta selectors are retired by the .233 canonical policy below.
+# Their original source grammars remain unchanged for existing effect custody.
 QR_PHASE1_ENABLED = "false"
-QR_RANK_MAPPING_ENABLED = "true"
+QR_RANK_MAPPING_ENABLED = "false"
 QR_PRIVILEGED_RANK_MAPPING_ENABLED = "false"
-QR_NATIVE_ROLE_MAP = '{"profile":"beta-five","roles":["1557496182966587453","1557496796949909575","1557498252994285568","1557498969310101576","1557499286965719050"]}'
+QR_NATIVE_ROLE_MAP = "off"
 
 # Secrets (wrangler secret put NAME):
 #   DISCORD_PUBLIC_KEY  DISCORD_BOT_TOKEN  DISCORD_CLIENT_SECRET   (DISCORD_APP_ID is a var above)
@@ -171,9 +171,12 @@ QR_NATIVE_ROLE_MAP = '{"profile":"beta-five","roles":["1557496182966587453","155
 # .164 retains this Native epoch without a physical migration or ordinary-traffic Floor dependency.
 # Native account erasure is enabled above; beta removal remains OFF.
 
-# The eleven permissionless fresh IDs are disjoint from the twelve beta-reset targets.
-FULL_RELEASE_ROLES = '{"version":1,"epoch":"olympus-full-release-20261104-v1","epochStart":1793833200,"grants":true,"membership":"1561095379909353472","native":["1561095726115725373","1561095748039221339","1561095893007073371","1561096070040125460","1561096328409251880","1561096452057596005","1561096598296076460","1561096679778947113","1561096900378103808","1561097105974628372"]}'
-STAFF_TEN_RANK_ROLES = "true"
+# The historical fresh-role selector is retired; its original receipt grammar stays in source.
+FULL_RELEASE_ROLES = "off"
+STAFF_TEN_RANK_ROLES = "false"
 # Current native names are independent of the historical FULL_RELEASE and QR arrays.
-NATIVE_RANK_SYNC232 = '{"version":1,"enabled":true,"profile":"olympus-prime-live-20261105-v1","guildId":"236932545793490944","nativeGuild":"OLYMPUS PRIME","nativeRealm":"CAMWOW US2 Realm 3 PvE","membershipRole":"1552077551839617104","ranks":[{"index":0,"name":"Guild Master","roleId":"1561095726115725373"},{"index":1,"name":"Stewart","roleId":"1568117859970842735"},{"index":2,"name":"High Council","roleId":"1561095748039221339"},{"index":3,"name":"Officer","roleId":"1561095893007073371"},{"index":4,"name":"Officer Alt","roleId":"1561096070040125460"},{"index":5,"name":"Raid Leader","roleId":"1561096328409251880"},{"index":6,"name":"Veteran","roleId":"1561096452057596005"},{"index":7,"name":"Raider","roleId":"1561096598296076460"},{"index":8,"name":"Member","roleId":"1561096679778947113"},{"index":9,"name":"Initiate","roleId":"1561097105974628372"}],"privileged":true}'
+NATIVE_RANK_SYNC232 = "off"
 BETA_RESET_REMOVALS_ENABLED = "false"
+
+# Owner .233 single-highest ladder. Historical grammars remain in source for custody only.
+CANONICAL_RANKS233 = '{"version":1,"enabled":true,"profile":"olympus-canonical-ranks-20261106-v1","guildId":"236932545793490944","ranks":[{"key":"guild-master","name":"Olympus Guild Master","roleId":"1554261979684933742","permissions":"0"},{"key":"high-council","name":"Olympus High Council","roleId":"1567917738985398384","permissions":"0"},{"key":"officer","name":"Olympus Officer","roleId":"1554262223038324840","permissions":"0"},{"key":"officer-alt","name":"Olympus Officer Alt","roleId":"1561096070040125460","permissions":"0"},{"key":"raid-leader","name":"Olympus Raid Leader","roleId":"1554262510650007602","permissions":"0"},{"key":"branch-gm","name":"Olympus Branch GM","roleId":"1555639603619172504","permissions":"0"},{"key":"branch-officer","name":"Olympus Branch Officer","roleId":"1555640676287385771","permissions":"0"},{"key":"veteran","name":"Olympus Veteran","roleId":"1561096452057596005","permissions":"0"},{"key":"raider","name":"Olympus Raider","roleId":"1561096598296076460","permissions":"0"},{"key":"member","name":"Olympus Member","roleId":"1552077551839617104","permissions":"0"},{"key":"alt","name":"Olympus Alt","roleId":"1561096900378103808","permissions":"0"},{"key":"initiate","name":"Olympus Initiate","roleId":"1561097105974628372","permissions":"0"}]}'

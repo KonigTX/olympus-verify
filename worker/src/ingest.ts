@@ -120,7 +120,7 @@ export type Consumed230Facts = Readonly<{subject:string;subjectGeneration:string
   admittedAt:number;pendingExpiresAt:number;source:LaunchMembershipSource;fingerprint:string;deadline:number}>;
 type Consumed230Record = {facts:Consumed230Facts;db:D1Database;check:()=>void;effectCheck:(env:Env)=>void;pendingValues:readonly (string|number|null)[]};
 const consumed230Originals = new WeakMap<OriginalConsumedMembership230,Consumed230Record>();
-const CONSUMED230_CONFIG = ['GUILD_ID','ROLE_GUILD_MEMBER','VERIFY_MEMBERSHIP_ONLY','VERIFY_NATIVE_SCOPE','VERIFY_SECRET',
+const CONSUMED230_CONFIG = ['CANONICAL_ENTITLEMENTS233','CANONICAL_RANKS233','GUILD_ID','ROLE_GUILD_MEMBER','VERIFY_MEMBERSHIP_ONLY','VERIFY_NATIVE_SCOPE','VERIFY_SECRET',
   'LINKS_NOT_BEFORE','LINKS_NOT_BEFORE_CLOCK_GATED','PRIVACY_WRITE_ADMISSION_ENABLED','PRIVACY_WRITE_ADMISSION_LAYOUT',
   'PRIVACY_WRITE_ADMISSION_EPOCH','SHARED_MEMBERSHIP230_MODE','SHARED_MEMBERSHIP230_CLOSURE_JSON','SHARED_MEMBERSHIP230_CLOSURE_SHA256',
   'PRIVACY_ERASURE_ENABLED','PRIVACY_NATIVE_ERASURE_ENABLED','MEMBERSHIP_ROLE_SETTLEMENT_ENABLED','QR_PHASE1_ENABLED',
@@ -206,7 +206,19 @@ function memberRoleResult230(outcome:GrantOutcome|undefined) {
 /** A successful native verification gets a bounded direct rank visit rather
  * than waiting behind the periodic account rotation. Shared access is still
  * granted only by its original writer; a rank hold never invents a base ACK. */
-async function verifiedRankResult232(env:Env,subject:string,outcome:GrantOutcome|undefined):Promise<Readonly<{rankOutcome?:string;rankReason?:string;roleGranted?:false;roleOutcome?:'held'|'unknown'}>>{
+async function verifiedRankResult232(env:Env,subject:string,outcome:GrantOutcome|undefined,originalConsumed?:OriginalConsumedMembership230):Promise<Readonly<{rankOutcome?:string;rankReason?:string;roleGranted?:boolean;roleOutcome?:'granted'|'observed-present'|'held'|'unknown'}>>{
+  const C=await import('./canonical-ranks233'),canonical=C.captureCanonicalRankConfig233(env);
+  if(canonical.present){
+    try{
+      if(!originalConsumed||canonical.mode!=='enabled')return {rankOutcome:'held',rankReason:'canonical233_configuration_held'};
+      const effect={...env,DB:privacyProviderCustodyDatabase(env)};assertConsumed230Original(effect,originalConsumed);
+      if(outcome==='granted'||outcome==='has-role')return {rankOutcome:'settled',rankReason:outcome==='granted'?'canonical233_original_grant':'canonical233_current_role_observed'};
+      if(outcome==='unknown')return {rankOutcome:'unknown',rankReason:'canonical233_original_effect_unknown'};
+      const pass=await import('./full-release-pass'),r=await pass.runVerifiedRank232(effect,subject,callBudget(effect));assertConsumed230Original(effect,originalConsumed);
+      const granted=r.rank?.outcomes.some(o=>o.state==='settled'&&o.reason==='canonical233_put_acknowledged_and_confirmed')===true;
+      return {rankOutcome:r.rank?.state??r.state,rankReason:r.rank?.reason??r.reason,...granted?{roleGranted:true,roleOutcome:'granted' as const}:r.state==='unknown'?{roleGranted:false,roleOutcome:'unknown' as const}:{}};
+    }catch{return {rankOutcome:'held',rankReason:'canonical233_followup_held'};}
+  }
   const N=await import('./native-rank-reconciliation232'),selection=N.captureNativeRankConfig232(env);
   if(!selection.present)return {};
   if(selection.mode!=='enabled'||outcome!=='granted'&&outcome!=='has-role')return {rankOutcome:'held',rankReason:'native232_membership_or_configuration_held'};
@@ -459,7 +471,7 @@ async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,r
     // An already linked member may have lost their Discord role. A newly proved
     // native source can reach the existing writer; never replay an unknown intent.
     const roleOutcome=launchSource?await promote(env,pending.discord_id,nameKey,name,undefined,whisperGuid,undefined,privacyCapture,roleDispatch,launchSource,originalConsumed230):undefined;
-    const rankResult=launchSource?await verifiedRankResult232(env,pending.discord_id,roleOutcome):{};
+    const rankResult=launchSource?await verifiedRankResult232(env,pending.discord_id,roleOutcome,originalConsumed230):{};
     await audit(env, "watcher", "verify.already_linked", name, { discordId: pending.discord_id, source: body.source },reference);
     if(launchSource&&!await launchMembershipCurrent(env,launchSource))return json({result:'outcome_unknown',pendingConsumed:true,roleOutcome:'unknown',inviteQueued:false},503);
     return json({ result: "member", discordId: pending.discord_id, name,...(launchSource?memberRoleResult230(roleOutcome):{}),...rankResult });
@@ -475,7 +487,7 @@ async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,r
     // character to them. The GUID is taken only from a very fresh export; otherwise the next export pins it.
     await audit(env, "watcher", "verify.already_member", name, { discordId: pending.discord_id, source: body.source },reference);
     const roleOutcome=await promote(env, pending.discord_id, nameKey, name, undefined, whisperGuid ?? (now() - onRoster.exportedAt <= ROSTER_PIN_WITHIN ? onRoster.guid : null),undefined,privacyCapture,roleDispatch,launchSource??undefined,originalConsumed230);
-    const rankResult=launchSource?await verifiedRankResult232(env,pending.discord_id,roleOutcome):{};
+    const rankResult=launchSource?await verifiedRankResult232(env,pending.discord_id,roleOutcome,originalConsumed230):{};
     if(launchSource&&!await launchMembershipCurrent(env,launchSource))return json({result:'outcome_unknown',pendingConsumed:true,roleOutcome:'unknown',inviteQueued:false},503);
     return json({ result: "member", discordId: pending.discord_id, name,...(launchSource?memberRoleResult230(roleOutcome):{}),...rankResult });
   }

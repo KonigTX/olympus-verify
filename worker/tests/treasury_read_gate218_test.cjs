@@ -30,7 +30,7 @@ function sourceGraph(provider) {
 
 const ROLE_IDS = n => Array.from({ length: n }, (_, i) => String(400000000000000000n + BigInt(i)));
 const PROFILES = { 'beta-five': 5, 'ten-rank': 10, 'ten-rank-treasurer-v1': 10, 'ten-rank-council-treasurer-v1': 10 };
-async function fresh({ admin = false, roles = null, profile = 'ten-rank', cutoff = 'past', map = null, onStatement = null, onDiscord = null, onAsset = null } = {}) {
+async function fresh({ admin = false, roles = null, profile = 'ten-rank', cutoff = 'past', map = null, canonical233 = false, onStatement = null, onDiscord = null, onAsset = null } = {}) {
   const calls = { discord: 0, assets: 0, statements: 0 };
   let live = null; // set once the database exists; the hooks below run INSIDE the awaited provider and asset reads
   const provider = async url => {
@@ -53,6 +53,12 @@ async function fresh({ admin = false, roles = null, profile = 'ten-rank', cutoff
       : cutoff === 'recent' ? { LINKS_NOT_BEFORE: String(Math.floor(Date.now() / 1000) - 60), LINKS_NOT_BEFORE_CLOCK_GATED: 'false' }
       : cutoff === 'gated-future' ?{ LINKS_NOT_BEFORE: String(Math.floor(Date.now() / 1000) + 86400), LINKS_NOT_BEFORE_CLOCK_GATED: 'true' }
       : { LINKS_NOT_BEFORE: '', LINKS_NOT_BEFORE_CLOCK_GATED: 'false' }) });
+  if(canonical233){
+    const names=['CANONICAL_RANKS233','FULL_RELEASE_ROLES','NATIVE_RANK_SYNC232','QR_NATIVE_ROLE_MAP','QR_RANK_MAPPING_ENABLED','QR_PRIVILEGED_RANK_MAPPING_ENABLED','STAFF_TEN_RANK_ROLES','ROLE_GUILD_MASTER','ROLE_GUILD_LEADER','ROLE_OFFICER','ROLE_RAID_LEADER','VERIFY_MEMBERSHIP_ONLY'];
+    const toml=fs.readFileSync(path.join(root,'wrangler.toml'),'utf8');
+    for(const name of names){const line=toml.split(/\r?\n/).find(v=>v.startsWith(name+' = '));if(!line)throw Error('canonical233_current_config_missing_'+name);const raw=line.slice(line.indexOf('=')+1).trim(),quote=raw[0],end=raw.indexOf(quote,1);if(!['"',"'"].includes(quote)||end<1)throw Error('canonical233_current_config_literal');rawEnv[name]=raw.slice(1,end);}
+    rawEnv.VERIFY_NATIVE_SCOPE=JSON.stringify({version:1,guild:'OLYMPUS PRIME',realm:'Fixture Live Realm'});
+  }
   const writer = load('privacy-write-admission').createPrivacyWriteAdmissionDatabase(native, 'writer', 'canonical', entry.ENTRY_EPOCH);
   const env = { ...rawEnv, DB: writer, ASSETS: { fetch: async () => { calls.assets++; if (onAsset && live) await onAsset(live); return new Response('/* treasury plan */', { status: 200, headers: { 'Content-Type': 'text/javascript' } }); } } };
   envRef = env;
@@ -375,6 +381,15 @@ const ASSETS = ['/static/treasury-plan207.js', '/static/treasury-plan-model207.j
     const out = await f.gate.treasuryAfterMemberGate(new Request('https://guild.example/api/treasury-plan/access'), f.env, '/api/treasury-plan/access');
     check('a signed-out request is answered 401', out.status === 401);
   });
+  for(const [rank,index]of [['Stewart',1],['High Council',2],['Officer Alt',4]])await scenario('canonical233 current native '+rank,{canonical233:true},async f=>{
+    await roster(f,{rank,index});const scope=f.load('launch-verification227').captureLaunchVerification(f.env).scope;
+    await f.write('UPDATE roster_snapshots SET source=? WHERE id=1',scope.provenance);
+    const out=await f.open(ASSETS[0]);check('actual tracked233 off selectors retain exact native '+rank+' read access',out.status===200&&f.calls.assets===1&&f.calls.discord===0);
+  });
+  await scenario('canonical233 foreign roster source',{canonical233:true},async f=>{await roster(f,{rank:'High Council',index:2});check('a foreign current roster source cannot authorize canonical Treasury reads',await canRead(f)===false&&f.calls.assets===0);});
+  await scenario('canonical233 historical ordinal',{canonical233:true},async f=>{await roster(f,{rank:'Officer Alt',index:3});const scope=f.load('launch-verification227').captureLaunchVerification(f.env).scope;await f.write('UPDATE roster_snapshots SET source=? WHERE id=1',scope.provenance);check('canonical Treasury rejects a legacy OfficerAlt3 pair',await canRead(f)===false);});
+  for(const [label,role]of [['HC','1567917738985398384'],['Officer Alt','1561096070040125460']])await scenario('canonical233 Discord '+label,{canonical233:true,roles:[role]},async f=>{const before=f.schema(),out=await f.open(ASSETS[0]);check('canonical '+label+' role alone retains request-local read eligibility',out.status===200&&f.calls.discord===1&&f.calls.assets===1&&f.schema()===before);});
+  for(const role of ['1555639603619172504','1555640676287385771','1555944857380458556','1552077551839617104'])await scenario('canonical233 non-officer '+role,{canonical233:true,roles:[role]},async f=>{check('branch technical and ordinary canonical roles do not gain Treasury staff read access',await canRead(f)===false&&f.calls.assets===0);});
   const load = sourceGraph(async () => { throw Error('no provider'); }), gate = load('site-treasury-access');
   const ten = ['Guild Master', 'High Council', 'Officer', 'Officer Alt', 'Raid Leader', 'Veteran', 'Raider', 'Member', 'Alt', 'Initiate'];
   check('officerRank pins officer-tier names to their exact index in the given ladder only', gate.officerRank('Officer Alt', 3, ten) && !gate.officerRank('Treasurer', 1, ten) && !gate.officerRank('Officer Alt', 2, ten)
@@ -389,6 +404,8 @@ const ASSETS = ['/static/treasury-plan207.js', '/static/treasury-plan-model207.j
     && held(() => gate.assertSameConfig({ QR_NATIVE_ROLE_MAP: 'a', LINKS_NOT_BEFORE_CLOCK_GATED: 'true' }, ['QR_NATIVE_ROLE_MAP', 'LINKS_NOT_BEFORE', 'LINKS_NOT_BEFORE_CLOCK_GATED'], snap))
     && held(() => gate.assertSameConfig({ QR_NATIVE_ROLE_MAP: 'a', LINKS_NOT_BEFORE: '2', LINKS_NOT_BEFORE_CLOCK_GATED: 'true' }, ['QR_NATIVE_ROLE_MAP', 'LINKS_NOT_BEFORE', 'LINKS_NOT_BEFORE_CLOCK_GATED'], snap))
     && held(() => gate.assertSameConfig({ QR_NATIVE_ROLE_MAP: 'a' }, ['QR_NATIVE_ROLE_MAP'], snap)) && Object.isFrozen(snap));
+  let getterCalls233=0;const getterEnv233={};Object.defineProperty(getterEnv233,'CANONICAL_RANKS233',{get(){getterCalls233++;return 'unsafe';}});
+  check('configuration snapshots reject canonical getters without invoking them',held(()=>gate.configSnapshot(getterEnv233,['CANONICAL_RANKS233']))&&getterCalls233===0);
   check('currentLadder withholds beta-five, a clock-gated future cut and an empty cut, and returns the exact configured ladder otherwise',
     ladder('beta-five', past, 'false') === null && ladder('ten-rank', future, 'true') === null && ladder('ten-rank', '', 'false') === null
     && JSON.stringify(ladder('ten-rank', past, 'false').names) === JSON.stringify(ten) && ladder('ten-rank', past, 'false').cutoff === Number(past)

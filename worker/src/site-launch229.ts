@@ -5,6 +5,7 @@ import { API, credentialFetch } from './discord';
 import { apiJson } from './site-core';
 import { captureLaunchVerification, type LaunchVerificationCapture } from './launch-verification227';
 import { FLAGSHIP_GUILD_NAME, canonicalOlympusGuildName } from './guild-affiliation229';
+import { readOfficerInvites233 } from './officer-invites233';
 import { classifyKnightRoles229, projectLaunchOperations229, LAUNCH_ROLE_PAGE229, LAUNCH_ROLE_TTL229, LAUNCH_SCAN_TTL229, LAUNCH_OPERATIONS_PROTOCOL229, type KnightState229, type LaunchRosterRow229 } from './launch-operations229';
 
 type SourceRow229 = LaunchRosterRow229 & {snapshotId: number; snapshotAt: number; memberCount: number; discordId: string | null};
@@ -17,11 +18,11 @@ const bytes229 = (value: string) => new Uint8Array(value.match(/../g)!.map(n => 
 function encoded229(value: string) { return btoa(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
 function secret229(env: Env): string | null { const d=Object.getOwnPropertyDescriptor(env,'VERIFY_SECRET');return d&&Object.hasOwn(d,'value')&&typeof d.value==='string'&&d.value?d.value:null; }
 async function cursorKey229(secret: string) {return crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);}
-async function writeCursor229(value: Cursor229, secret: string) {const body=encoded229(JSON.stringify(value)),mac=hex(await crypto.subtle.sign('HMAC',await cursorKey229(secret),new TextEncoder().encode('launch-operations-cursor|1|'+body)));return body+'.'+mac;}
+async function writeCursor229(value: Cursor229, secret: string) {const body=encoded229(JSON.stringify(value)),mac=hex(await crypto.subtle.sign('HMAC',await cursorKey229(secret),new TextEncoder().encode('officer-operations-cursor|233|'+body)));return body+'.'+mac;}
 async function readCursor229(raw: string, secret: string, at: number): Promise<Cursor229> {
   if(raw.length>2048||!/^[-_A-Za-z0-9]+\.[a-f0-9]{64}$/.test(raw))throw new LaunchCursor229('invalid_launch_cursor');
   const [body,mac]=raw.split('.');
-  if(!await crypto.subtle.verify('HMAC',await cursorKey229(secret),bytes229(mac),new TextEncoder().encode('launch-operations-cursor|1|'+body)))throw new LaunchCursor229('invalid_launch_cursor');
+  if(!await crypto.subtle.verify('HMAC',await cursorKey229(secret),bytes229(mac),new TextEncoder().encode('officer-operations-cursor|233|'+body)))throw new LaunchCursor229('invalid_launch_cursor');
   let v: Cursor229;try{const decoded=atob(body.replace(/-/g,'+').replace(/_/g,'/'));v=JSON.parse(decoded);if(encoded229(JSON.stringify(v))!==body)throw Error();}catch{throw new LaunchCursor229('invalid_launch_cursor');}
   if(!v||Object.keys(v).sort().join(',')!=='expiresAt,issuedAt,offset,rowsDigest,scopeHash,snapshotAt,snapshotId,version'||v.version!==1
     ||!Number.isSafeInteger(v.snapshotId)||v.snapshotId<1||!Number.isSafeInteger(v.snapshotAt)||!Number.isSafeInteger(v.offset)||v.offset<0||v.offset>=1000||v.offset%LAUNCH_ROLE_PAGE229!==0
@@ -68,7 +69,7 @@ export async function readLaunchOperations229(env: Env, cursor: string | null = 
   const scopeHash=(await digest229('native-scope|1|'+launch.scope.guild+'|'+launch.scope.realm)).slice(0,16),rowsDigest=await digest229(JSON.stringify(rows));
   if(captured&&(captured.snapshotId!==first.snapshotId||captured.snapshotAt!==first.snapshotAt||captured.scopeHash!==scopeHash||captured.rowsDigest!==rowsDigest))throw new LaunchCursor229('launch_cursor_source_changed',409);
   const issuedAt=captured?.issuedAt??at,scanExpiresAt=captured?.expiresAt??Math.min(at+LAUNCH_SCAN_TTL229,first.snapshotAt+LAUNCH_SCAN_TTL229),expiresAt=Math.min(at+LAUNCH_ROLE_TTL229,scanExpiresAt),offset=captured?.offset??0;
-  const scanId=(await digest229(JSON.stringify(['launch-operations-scan',1,scopeHash,rowsDigest,issuedAt,scanExpiresAt]))).slice(0,32);
+  const scanId=(await digest229(JSON.stringify(['officer-operations-scan',233,scopeHash,rowsDigest,issuedAt,scanExpiresAt]))).slice(0,32);
   const page=rows.slice(offset,offset+LAUNCH_ROLE_PAGE229),roleRows=page.filter(r=>r.verification==='verified'),configuration=roleConfiguration229(env),states=new Map<string,KnightState229>();
   let retryAfterSeconds: number|null=null,rateLimited=false,roleUnavailable=false,next=0;
   const accountStates=new Map<string,Promise<KnightState229>>();
@@ -89,6 +90,9 @@ export async function readLaunchOperations229(env: Env, cursor: string | null = 
     return accountStates.get(id)!;
   };
   await Promise.all(Array.from({length:Math.min(4,roleRows.length)},async()=>{while(next<roleRows.length){const row=roleRows[next++];states.set(row.guid,await readRole(row.discordId??''));}}));
+  // One first-page invite read uses a separate three-request ceiling, so it
+  // cannot starve any of the twenty roster evidence rows on that page.
+  const invitePage=offset===0?await readOfficerInvites233(env,{limit:3,attempts:0,retries:0},3,at):{invites:[],heldReasons:[]};
   // Re-read the exact Native source and linked/denied/privacy state after provider awaits.
   // For the admin route this also consumes the original signed actor session again.
   const after=await sourceRows229(env,launch,now(),cutoff);
@@ -101,6 +105,9 @@ export async function readLaunchOperations229(env: Env, cursor: string | null = 
   dto.promotions.splice(0,dto.promotions.length,...dto.promotions.filter(row=>pageGuids.has(row.guid)));
   dto.held.splice(0,dto.held.length,...dto.held.filter(row=>pageGuids.has(row.guid)));
   dto.riskBuffer.splice(0,dto.riskBuffer.length,...dto.riskBuffer.filter(row=>pageGuids.has(row.guid)));
+  if(dto.status!=='held')dto.invites.push(...invitePage.invites.filter(row=>row.expiresAt>now()&&row.observedAt<=at+5));
+  if(dto.invites.length){const i=dto.heldReasons.indexOf('native-unguilded-proof-required');if(i>=0)dto.heldReasons.splice(i,1);}
+  dto.heldReasons.push(...invitePage.heldReasons);
   dto.entitlements={offset,pageSize:LAUNCH_ROLE_PAGE229,scanned:page.length,total:rows.length,unscanned:Math.max(0,rows.length-offset-page.length),retryAfterSeconds};
   if(rateLimited)dto.heldReasons.push('discord-rate-limited');if(roleUnavailable||!configuration)dto.heldReasons.push('discord-entitlement-unavailable');
   if(dto.status!=='held'){

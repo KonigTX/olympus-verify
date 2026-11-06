@@ -606,7 +606,8 @@ local function BuildToolbar()
       end
       local force = fullBlocked  -- armed and confirmed: the officer knows better than a minute-old roster count
       fullArmedUntil = 0
-      API.Flush(nil, force and { force = true } or nil)
+      if API.Status().membershipOnly and OlympusLaunch229 then OlympusLaunch229.NextAction()
+      else API.Flush(nil, force and { force = true } or nil) end
     end,
     "Invite the next applicant who is online and in no guild",
     "One invite per click — the game allows exactly one protected action per key press or click. Same as the flush key binding. When nobody is confirmed online yet, the click checks the next applicant with /who instead. At the member cap it asks once before trying anyway.",
@@ -623,7 +624,7 @@ local function BuildToolbar()
   UI.exportButton = exportBtn
   local flushBtn = Button(panel, "Restart chat log", 126, 24, function()
     if API.Status().membershipOnly then
-      if not UI.preview and OlympusVerifyAutoSync then OlympusVerifyAutoSync.SetEnabled(not OlympusVerifyAutoSync.Status().enabled) end
+      if not UI.preview and OlympusVerifyAutoSync then OlympusVerifyAutoSync.HardwareSync() end
     else API.FlushChatLog() end
     UI.Refresh()
   end,
@@ -839,13 +840,13 @@ local function RefreshHeader(s, pc)
     local exchange = s.verificationExchange == "sync-needed" and "proof waiting: Sync & reload"
       or s.verificationExchange == "sync-requested" and "sync requested: check Watcher result"
       or "Guild changes need Sync & reload"
-    local auto = s.autoSync
-    local autoText = auto and auto.enabled and ("auto: " .. string.sub(auto.held or "waiting", 1, 34)) or "auto off"
-    UI.summary:SetText(YELLOW .. "Verification only|r" .. GREY .. "  ·  " .. exchange .. "  ·  " .. autoText .. "|r")
+    local pending = s.autoSync
+    UI.summary:SetText(YELLOW .. "Officer verification|r" .. GREY .. "  ·  " .. exchange .. "  ·  " .. (pending and pending.pending and "Pending Sync: hardware required" or "Sync alert clear") .. "|r")
+    if UI.sendButton then UI.sendButton:SetText("Next officer action") end
     if UI.flushButton then
-      UI.flushButton:SetText(auto and (auto.enabled and "Auto sync: ON" or "Auto sync: OFF") or "Auto sync: N/A")
-      UI.flushButton.tipTitle = "Optional automatic Sync & reload"
-      UI.flushButton.tipText = "Off by default. Click or /olv autosync on|off. When enabled, valid proofs and complete native changes coalesce; a fresh export is requested about every 180 seconds while idle. At least 120 seconds between reloads, 30 seconds after login and 15 seconds idle. Combat, movement, typing and interactions hold it. Manual Sync & reload remains available. Client refusal is held without retries. " .. (auto and auto.held or "Restart the game to load the module.")
+      UI.flushButton:SetText("Pending Sync")
+      UI.flushButton.tipTitle = "One-click hardware Sync & reload"
+      UI.flushButton.tipText = "Timer reloads are disabled. The movable Pending Verification Sync alert and the Sync keybind call the normal Sync API from your click/key press. Right-drag the alert to move it. Combat and unsafe interactions hold it; blocked clients use normal /reload. " .. (pending and pending.held or "Restart to load the module.")
     end
     return
   end

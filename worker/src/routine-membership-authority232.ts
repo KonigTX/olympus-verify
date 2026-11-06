@@ -6,7 +6,8 @@ import { intVar } from './env';
 import { linksNotBefore } from './db';
 import { privacyProviderCustodyDatabase,privacyGenerationFenceSql } from './privacy-serving-authority';
 import { captureLaunchVerification } from './launch-verification227';
-import { captureNativeRankConfig232,NATIVE_RANK_NAMES232,NATIVE_RANK_PROFILE232,NATIVE_SCOPE232,NATIVE_GUILD232,SHARED_MEMBER232 } from './native-rank-reconciliation232';
+import { captureNativeRankConfig232,historicalNativeRankPolicy232,NATIVE_RANK_NAMES232,NATIVE_RANK_PROFILE232,NATIVE_SCOPE232,NATIVE_GUILD232,SHARED_MEMBER232 } from './native-rank-reconciliation232';
+import {captureCanonicalRankConfig233,CANONICAL_PROFILE233} from './canonical-ranks233';
 
 declare const routine232Brand:unique symbol;
 export type RoutineMembership232=Readonly<{[routine232Brand]:true}>;
@@ -17,7 +18,7 @@ type Scalar=string|number|null;
 type Record232={facts:RoutineMembership232Facts;db:D1Database;sourceDB:D1Database;check:()=>void;close:()=>void;effectCheck:(env:Env)=>void;values:readonly Scalar[];effectEnv:Env};
 const originals=new WeakMap<RoutineMembership232,Record232>();
 const ID=/^[1-9][0-9]{16,19}$/,HEX32=/^[0-9a-f]{32}$/,GUID=/^Player-[0-9]{1,6}-[0-9A-Fa-f]{4,16}$/;
-const CONFIG=Object.freeze(['NATIVE_RANK_SYNC232','GUILD_ID','ROLE_GUILD_MEMBER','VERIFY_MEMBERSHIP_ONLY','VERIFY_NATIVE_SCOPE',
+const CONFIG=Object.freeze(['CANONICAL_ENTITLEMENTS233','CANONICAL_RANKS233','NATIVE_RANK_SYNC232','GUILD_ID','ROLE_GUILD_MEMBER','VERIFY_MEMBERSHIP_ONLY','VERIFY_NATIVE_SCOPE',
  'LINKS_NOT_BEFORE','LINKS_NOT_BEFORE_CLOCK_GATED','ROSTER_MIN_MEMBERS','ROSTER_MAX_SHRINK_PCT',
  'PRIVACY_WRITE_ADMISSION_ENABLED','PRIVACY_WRITE_ADMISSION_LAYOUT','PRIVACY_WRITE_ADMISSION_EPOCH',
  'SHARED_MEMBERSHIP230_MODE','SHARED_MEMBERSHIP230_CLOSURE_JSON','SHARED_MEMBERSHIP230_CLOSURE_SHA256',
@@ -47,7 +48,7 @@ function graph(input:unknown):()=>void{
  * Descendant own .232 ACKs retain that identity through ordinary pending expiry. */
 const byteHex=(column:string,size:number)=>`((typeof(${column})='text' AND length(${column})=${size}) AND (length(CAST(${column} AS BLOB))=${size} AND instr(${column},char(0))=0 AND ${column} NOT GLOB '*[^0-9a-f]*'))`;
 const rankName232='CASE a.native_rank '+NATIVE_RANK_NAMES232.map((name,index)=>`WHEN ${index} THEN '${name}'`).join(' ')+' END';
-const ANCHOR=(policy:string)=>`((a.subject=c.discord_id AND a.subject_generation IS p.generation AND a.guild_id='${NATIVE_GUILD232}')
+const ANCHOR=(policy:string,canonical="'null'")=>`((a.subject=c.discord_id AND a.subject_generation IS p.generation AND a.guild_id='${NATIVE_GUILD232}')
  AND (a.native_guid=c.guid AND a.desired=1 AND a.state='settled') AND (typeof(a.checked_at)='integer' AND a.checked_at>=a.created_at AND a.checked_at<a.expires_at)
  AND ((typeof(a.created_at)='integer' AND typeof(a.expires_at)='integer') AND (a.expires_at>a.created_at AND a.expires_at<=a.created_at+300))
  AND (a.created_at>=c.bound_at AND a.created_at>=c.verified_at AND a.created_at<=CAST(strftime('%s','now') AS INTEGER))
@@ -60,12 +61,21 @@ const ANCHOR=(policy:string)=>`((a.subject=c.discord_id AND a.subject_generation
  OR (a.purpose='fresh_roster_rank' AND a.role_id=json_extract(${policy},'$.ranks['||a.native_rank||'].roleId'))
  OR (a.purpose='staff_roster_rank' AND json_extract(${policy},'$.privileged')=1 AND a.role_id=(CASE a.native_rank WHEN 0 THEN '1554261979684933742' WHEN 3 THEN '1554262223038324840' WHEN 5 THEN '1554262510650007602' END)))
  AND ((a.attempts=1 AND ${byteHex('a.claim_nonce',32)} AND a.reason='native232_put_acknowledged_and_confirmed')
- OR (a.purpose='launch_routine_membership232' AND a.attempts=0 AND a.claim_nonce IS NULL AND a.reason='native232_observed_without_dispatch'))))`;
+ OR (a.purpose='launch_routine_membership232' AND a.attempts=0 AND a.claim_nonce IS NULL AND a.reason='native232_observed_without_dispatch'))))
+ OR ((a.subject=c.discord_id AND a.subject_generation IS p.generation AND a.guild_id='${NATIVE_GUILD232}')
+ AND (a.native_guid=c.guid AND a.desired=1 AND a.state='settled' AND a.purpose IN('canonical_identity233','canonical_consumed233','canonical_routine233') AND a.native_profile='${CANONICAL_PROFILE233}')
+ AND (${byteHex('a.id',32)} AND ${byteHex('a.request_digest',64)} AND a.created_at>=c.bound_at AND a.created_at>=c.verified_at AND a.created_at<=CAST(strftime('%s','now') AS INTEGER))
+ AND (typeof(a.checked_at)='integer' AND a.checked_at>=a.created_at AND a.checked_at<a.expires_at AND a.expires_at>a.created_at AND a.expires_at<=a.created_at+300)
+ AND (typeof(a.native_rank)='integer' AND a.native_rank BETWEEN 0 AND 9 AND a.native_rank_name=(${rankName232}))
+ AND a.role_id IN(SELECT json_extract(j.value,'$.roleId') FROM json_each(${canonical},'$.ranks') j)
+ AND ((a.attempts=1 AND ${byteHex('a.claim_nonce',32)} AND a.reason='canonical233_put_acknowledged_and_confirmed')
+ OR (a.attempts=0 AND a.claim_nonce IS NULL AND a.reason='canonical233_observed_without_dispatch' AND a.purpose IN('canonical_consumed233','canonical_routine233'))
+ OR (a.attempts=0 AND a.claim_nonce IS NULL AND a.purpose='canonical_identity233' AND a.reason='canonical233_original_control_verified')))`;
 const ROWS=`COALESCE((SELECT json_group_array(json_array(name_key,guid,rank,rank_index)) FROM
  (SELECT name_key,guid,rank,rank_index FROM roster_members WHERE snapshot_id=s.id ORDER BY name_key)), '[]')`;
 const LINKS=`COALESCE((SELECT json_group_array(json_array(name_key,guid,status,bound_at,verified_at,source,anchor_id)) FROM
  (SELECT c.name_key,c.guid,c.status,c.bound_at,c.verified_at,c.source,
- (SELECT a.id FROM role_settlements a WHERE ${ANCHOR('?2')} ORDER BY a.created_at DESC,a.id LIMIT 1) AS anchor_id
+ (SELECT a.id FROM role_settlements a WHERE ${ANCHOR('?2','?3')} ORDER BY a.created_at DESC,a.id LIMIT 1) AS anchor_id
  FROM characters c WHERE c.discord_id=?1 AND c.status NOT IN('unbound','denied') ORDER BY c.name_key)), '[]')`;
 const STANDING=`json_array(COALESCE((SELECT banned FROM members WHERE discord_id=?1),0),
  COALESCE((SELECT denied FROM site_users WHERE discord_id=?1),0),EXISTS(SELECT 1 FROM rename_holds WHERE discord_id=?1 AND state='reapply'))`;
@@ -81,15 +91,17 @@ type SourceRow={at:number;generation:string|null;state:string|null;id:number;exp
 
 export async function captureRoutineMembership232(env:Env,subject:string):Promise<RoutineMembership232|null>{
  try{
-  if(!ID.test(subject)||/[^0-9]/.test(subject))return null;const selection=captureNativeRankConfig232(env),launch=captureLaunchVerification(env);
+  if(!ID.test(subject)||/[^0-9]/.test(subject))return null;const originalSelection=captureNativeRankConfig232(env),launch=captureLaunchVerification(env),canonical=captureCanonicalRankConfig233(env);
+  if(canonical.present&&(canonical.mode!=='enabled'||!canonical.current()))return null;
+  const historical=canonical.mode==='enabled'?historicalNativeRankPolicy232():null,selection=historical?{mode:'enabled' as const,policy:historical,raw:JSON.stringify(historical),current:originalSelection.current}:originalSelection;
   if(selection.mode!=='enabled'||!selection.policy||!selection.raw||!selection.current())return null;
   const scope='addon-native-v1:'+JSON.stringify({version:1,...NATIVE_SCOPE232});
   if(launch.mode!=='members-only'||launch.scope?.provenance!==scope||!launch.current())return null;
   const configCheck=slots(env,[...CONFIG,'DB']),sourceDB=Object.getOwnPropertyDescriptor(env,'DB')?.value;
   if(!sourceDB||env.GUILD_ID!==NATIVE_GUILD232||env.ROLE_GUILD_MEMBER!==SHARED_MEMBER232||env.VERIFY_MEMBERSHIP_ONLY!=='true'||env.SHARED_MEMBERSHIP230_MODE!=='enabled')return null;
   let active=true;
-  const db=privacyProviderCustodyDatabase(env),check=()=>{configCheck();if(!active||!selection.current()||!launch.current()||Object.getOwnPropertyDescriptor(env,'DB')?.value!==sourceDB)return held();};check();
-  const results=await db.batch([db.prepare(READ).bind(subject,selection.raw)]);const resultCheck=graph(results);check();
+  const db=privacyProviderCustodyDatabase(env),check=()=>{configCheck();if(!active||!selection.current()||!canonical.current()||!launch.current()||Object.getOwnPropertyDescriptor(env,'DB')?.value!==sourceDB)return held();};check();
+  const results=await db.batch([db.prepare(READ).bind(subject,selection.raw,canonical.mode==='enabled'?canonical.raw:'null')]);const resultCheck=graph(results);check();
   if(results.length!==1||results[0]?.success!==true||results[0].results.length!==1)return null;
   const row=results[0].results[0] as SourceRow;const at=row.at,cutoff=linksNotBefore(env),floor=intVar(env.ROSTER_MIN_MEMBERS,0),shrink=intVar(env.ROSTER_MAX_SHRINK_PCT,10);
   if(!Number.isSafeInteger(at)||at<1||!Number.isSafeInteger(row.id)||row.id<1||!Number.isSafeInteger(row.exported_at)||row.exported_at>at||row.exported_at<=at-600||row.exported_at<cutoff||row.source!==scope||row.complete!==1||row.trusted!==1||row.guid_unique!==1||row.state!==null&&row.state!=='active'||row.generation!==null&&(row.generation.length!==32||!HEX32.test(row.generation)))return null;
@@ -122,7 +134,7 @@ export async function captureRoutineMembership232(env:Env,subject:string):Promis
   const cause:RoutineMembership232Facts['cause']=standing[0]===1||standing[1]===1?'ban':standing[2]===1?'rename_hold':eligible.length?'eligible':'departure';
   const primary=cause==='eligible'?eligible[0]!:null,deadline=Math.min(at+300,row.exported_at+600);
   const facts=Object.freeze({subject,subjectGeneration:row.generation,snapshotId:row.id,snapshotExportedAt:row.exported_at,deadline,primary,policyRaw:selection.raw,cause});
-  const values=Object.freeze([subject,row.generation,row.id,row.exported_at,row.source,row.member_count,row.rows_json,row.links_json,row.standing_json,deadline,cutoff,row.previous_count,selection.raw]);
+  const values=Object.freeze([subject,row.generation,row.id,row.exported_at,row.source,row.member_count,row.rows_json,row.links_json,row.standing_json,deadline,cutoff,row.previous_count,selection.raw,canonical.mode==='enabled'?canonical.raw:'null']);
   const effectCheck=(effect:Env)=>{check();const d=Object.getOwnPropertyDescriptor(effect,'DB');if(!d||!Object.hasOwn(d,'value')||d.value!==sourceDB&&d.value!==db)return held();
    for(const key of CONFIG){const a=Object.getOwnPropertyDescriptor(env,key),b=Object.getOwnPropertyDescriptor(effect,key);if(a===undefined?!!b||key in effect:!b||!Object.hasOwn(b,'value')||!Object.is(a.value,b.value))return held();}};
   const cap=Object.freeze({}) as RoutineMembership232,effectEnv={...env,DB:db};check();resultCheck();effectCheck(effectEnv);
@@ -151,7 +163,7 @@ export function routineMembership232Predicate(env:Env,cap:RoutineMembership232,s
    LEFT JOIN role_settlements a ON a.id=json_extract(j.value,'$[6]')
    WHERE CASE WHEN (c.name_key IS NOT NULL AND c.status=json_extract(j.value,'$[2]') AND c.bound_at=json_extract(j.value,'$[3]'))
    AND (c.verified_at IS json_extract(j.value,'$[4]') AND c.source IS json_extract(j.value,'$[5]'))
-   AND (c.status IN('verified','queued') OR (${ANCHOR(q(12))})) THEN 0 ELSE 1 END=1)
+   AND (c.status IN('verified','queued') OR (${ANCHOR(q(12),q(13))})) THEN 0 ELSE 1 END=1)
   AND COALESCE((SELECT member_count FROM roster_snapshots old WHERE old.id<s.id AND old.complete=1 AND old.trusted=1 AND old.source=s.source ORDER BY old.id DESC LIMIT 1),s.member_count)=${q(11)})`,
  values:r.values,next:start+r.values.length});
 }

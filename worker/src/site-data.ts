@@ -1,4 +1,5 @@
 import { APPLICATION_SPECS_219 } from './application-specs219';
+import { NICKNAME_SETTINGS_FILTER233 } from './member-nickname-data233';
 /**
  * The guild site's fixed vocabulary and every rule about what a submission may contain (build .41, 29 Sep 2026;
  * .43, 30 Sep: raid roles split NA/EU, backup choices, the weekly availability grid, the voting board; .44, 30 Sep:
@@ -807,13 +808,13 @@ export function settingsFrom(env: Env, rows: Array<{ key: string; value: string 
 }
 
 export async function loadSettings(env: Env): Promise<SiteSettings> {
-  const rows = await env.DB.prepare("SELECT key, value FROM site_settings WHERE key < 'newsWebhook:' OR key >= 'newsWebhook;'").all<{ key: string; value: string }>();
+  const rows = await env.DB.prepare("SELECT key, value FROM site_settings WHERE (key < 'newsWebhook:' OR key >= 'newsWebhook;') AND "+NICKNAME_SETTINGS_FILTER233).all<{ key: string; value: string }>();
   return settingsFrom(env, rows.results);
 }
 
 /** One read for the settings and the resolved game identity (item 7, 14 Oct 2026); the boot and /api/public use it. */
 export async function loadSiteState(env: Env): Promise<{ settings: SiteSettings; ruleset: RulesetSnapshot }> {
-  const rows = await env.DB.prepare("SELECT key, value FROM site_settings WHERE key < 'newsWebhook:' OR key >= 'newsWebhook;'").all<{ key: string; value: string }>();
+  const rows = await env.DB.prepare("SELECT key, value FROM site_settings WHERE (key < 'newsWebhook:' OR key >= 'newsWebhook;') AND "+NICKNAME_SETTINGS_FILTER233).all<{ key: string; value: string }>();
   return { settings: settingsFrom(env, rows.results), ruleset: await resolveRulesetSnapshot(rows.results, env) };
 }
 

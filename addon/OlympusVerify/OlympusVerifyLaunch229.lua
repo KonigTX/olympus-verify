@@ -53,14 +53,14 @@ function Q.Current()
     return nil, "No dated launch projection is loaded. Run the watcher, then sync and reload." end
   local control = OlympusVerifyDB and OlympusVerifyDB.launchControl
   local held = data.stoppedReason or control and (control.action == "stop" or control.id ~= data.controlId)
-  local result = { identity = identity, promotions = {}, riskBuffer = {}, held = {}, partial = data.scanComplete ~= true,
+  local result = { identity = identity, invites = {}, promotions = {}, riskBuffer = {}, held = {}, partial = data.scanComplete ~= true,
     pages = data.pages, actionHeld = held, freshness = {}, scanComplete = data.scanComplete == true, stalePages = 0 }
   local first, guids = data.pages[1], {}
   if type(first) ~= "table" or type(first.scan) ~= "table" or not Text(first.scan.id, 32) or #first.scan.id ~= 32
     or not first.scan.id:match("^%x+$") or not Number(first.scan.startedAt, 1, now + 5)
     or not Number(first.scan.expiresAt, first.scan.startedAt + 1, first.scan.startedAt + 600) then return nil, "Invalid scan identity; actions held." end
   for index, page in ipairs(data.pages) do
-    if type(page) ~= "table" or page.protocol ~= "launch-operations-v1" or (page.status ~= "ready" and page.status ~= "partial")
+    if type(page) ~= "table" or page.protocol ~= "officer-operations-v233" or (page.status ~= "ready" and page.status ~= "partial")
       or not Number(page.fetchedAt, 1, 2147483647) or not Number(page.expiresAt, page.fetchedAt, page.fetchedAt + 60)
       or page.fetchedAt > now + 5 or not Number(page.snapshotAt, 1, page.fetchedAt)
       or page.fetchedAt - page.snapshotAt >= 600 or not Number(page.snapshotId, 1, 2147483647)
@@ -69,12 +69,13 @@ function Q.Current()
       or type(page.scan) ~= "table" or page.scan.id ~= first.scan.id or page.scan.startedAt ~= first.scan.startedAt or page.scan.expiresAt ~= first.scan.expiresAt
       or page.scan.expiresAt > page.snapshotAt + 600 or page.fetchedAt < page.scan.startedAt or page.fetchedAt >= page.scan.expiresAt
       or type(page.entitlements) ~= "table" or page.entitlements.offset ~= (index-1)*20 or page.entitlements.total ~= first.entitlements.total
-      or type(page.invites) ~= "table" or #page.invites ~= 0
+      or type(page.invites) ~= "table" or #page.invites > 3 or index ~= 1 and #page.invites ~= 0
       or type(page.actions) ~= "table" or page.actions.automatic ~= false or page.actions.roleGrants ~= false
       or page.actions.removals ~= false or page.actions.requiresNativeRecheck ~= true then
       return nil, "Launch projection is held, expired, mismatched or contains unsupported invitations. Refresh; no action taken." end
     if now >= page.expiresAt or now >= page.scan.expiresAt then result.stalePages = result.stalePages + 1 end
-    for _, label in ipairs({ "promotions", "riskBuffer", "held" }) do
+    local queueIds, proofIds = {}, {}
+    for _, label in ipairs({ "invites", "promotions", "riskBuffer", "held" }) do
       local rows = page[label]
       if type(rows) ~= "table" or #rows > 20 then return nil, "Malformed launch projection; no action taken." end
       for _, row in ipairs(rows) do
@@ -82,9 +83,17 @@ function Q.Current()
           or not row.guid:match("^Player%-%d+%-%x+$") or guids[row.guid] then return nil, "Ambiguous launch identities; no action taken." end
         guids[row.guid] = true
         result.freshness[row.guid] = { expiresAt = page.expiresAt, scanExpiresAt = page.scan.expiresAt, offset = page.entitlements.offset }
-        if label == "promotions" then
-          if not Number(row.currentSlot, 6, 9) or (row.targetSlot ~= 5 and row.targetSlot ~= 7) or row.targetSlot >= row.currentSlot
-            or row.reason ~= (row.targetSlot == 5 and "knight-veteran" or "verified-initiate") then return nil, "Unsupported promotion target; no action taken." end
+        if label == "invites" then
+          if not Number(row.queueId,1,2147483647) or queueIds[row.queueId] or not Text(row.proofId,32) or #row.proofId~=32 or not row.proofId:match("^[0-9a-f]+$") or proofIds[row.proofId]
+            or not Text(row.fullName,100) or H.normalizeCharacter(row.fullName)~=H.normalizeCharacter(row.name) or row.scopeHash~=identity.scopeHash
+            or not Number(row.observedAt,1,page.fetchedAt+5) or not Number(row.expiresAt,row.observedAt+1,row.observedAt+60)
+            or row.reason~="knight-unguilded" or row.source~="native-who-unit-v233" then return nil,"Unsupported invitation proof; no action taken." end
+          queueIds[row.queueId],proofIds[row.proofId]=true,true
+          result.freshness[row.guid].expiresAt=math.min(page.expiresAt,row.expiresAt)
+        elseif label == "promotions" then
+          if not Number(row.currentSlot, 7, 9) or row.targetSlot >= row.currentSlot
+            or not ((row.targetSlot == 6 and row.targetName == "Veteran" and row.reason == "knight-veteran")
+              or (row.targetSlot == 8 and row.targetName == "Member" and row.reason == "verified-initiate" and row.currentSlot == 9)) then return nil, "Unsupported promotion target; no action taken." end
         elseif label == "riskBuffer" and (row.currentSlot ~= 9 or row.reviewOnly ~= true or row.reason ~= "unverified-initiate") then
           return nil, "Unsupported risk-buffer entry; no action taken."
         end
@@ -135,7 +144,7 @@ function Q.Print()
   Say(string.format("Launch projection: %d promotion(s), %d risk review(s), %d held; %s. No automatic actions.",
     #current.promotions, #current.riskBuffer, #current.held, current.partial and "partial discovery" or "discovery complete"))
   Say("Discovery and action freshness are separate. Stale rows are advisory; Scan/Stop/Recheck are explicit local controls.")
-  Say("Knight invites are held until explicit unguilded evidence is available; no unknown/manual invite is queued.")
+  Say("Knight invites require a changed explicit empty-guild WHO result and the same visible native unit/GUID. Unknown remains held.")
   for i, row in ipairs(current.promotions) do if i <= 40 then local fresh = current.freshness[row.guid]; Say(string.format("%d. %s -> slot%d (%s; %s). /olv promote %s", i, row.name, row.targetSlot, row.reason,
     not current.actionHeld and time() < fresh.expiresAt and time() < fresh.scanExpiresAt and "fresh" or "STALE/held", row.guid)) end end
   return true
@@ -159,6 +168,8 @@ function Q.HardwarePromote(target)
       or pending.attempts >= pending.maximum then Say("Prior attempt is unconfirmed or changed; no automatic retry. Refresh and review the native roster."); return false end
   elseif native.slot ~= row.currentSlot then Say("The native rank changed since this projection; refresh it."); return false end
   if Q.directBlockedGeneration and Q.generation <= Q.directBlockedGeneration then Say("Refresh the native roster before using the hardware fallback."); return false end
+  if Read(GuildControlGetRankName, row.targetSlot + 1) ~= row.targetName then
+    Say("The client cannot confirm the named target rank. Use the normal guild roster UI; no promotion sent."); return false end
   local cg = type(C_GuildInfo) == "table" and C_GuildInfo or {}
   local direct = not Q.directBlocked and type(cg.SetGuildRankOrder) == "function"
   if direct and Read(cg.IsGuildRankAssignmentAllowed, native.guid, row.targetSlot + 1) ~= true then Say("The client does not allow assigning this native rank."); return false end
@@ -186,7 +197,8 @@ function Q.RiskBuffer()
   local rows = {}
   for _, row in ipairs(current.riskBuffer) do
     local native = roster[row.guid]
-    if native and native.slot == 9 and native.guid ~= current.identity.guid and native.onlineKnown and not native.online and Number(native.level, 1, 255)
+    local fresh = current.freshness[row.guid]
+    if not current.actionHeld and fresh and time()<fresh.expiresAt and time()<fresh.scanExpiresAt and native and native.slot == 9 and native.guid ~= current.identity.guid and native.onlineKnown and not native.online and Number(native.level, 1, 255)
       and Text(native.note, 1024) and Text(native.officerNote, 1024)
       and not (native.note .. " " .. native.officerNote):lower():find((cfg.holdNote or "hold"):lower(), 1, true)
       and type(GetGuildRosterLastOnline) == "function" then
@@ -198,7 +210,7 @@ function Q.RiskBuffer()
       end
     end
   end
-  table.sort(rows, function(a, b) if a.level ~= b.level then return a.level < b.level end; if a.days ~= b.days then return a.days > b.days end; return a.name < b.name end)
+  table.sort(rows, function(a, b) if a.days ~= b.days then return a.days > b.days end; if a.level ~= b.level then return a.level < b.level end; return a.name < b.name end)
   Say("Risk buffer is review only. Nothing is removed or automatically selected for removal.")
   for i = 1, math.min(20, #rows) do local row = rows[i]; Say(string.format("%d. %s level%d, offline %.1fd", i, row.name, row.level, row.days)) end
   return rows
@@ -243,52 +255,111 @@ function Q.Control(action, offset)
   OlympusVerifyAPI.Sync()
   return true
 end
+local function TabRows(current)
+  local rows={}
+  if not current then return rows end
+  if Q.tab=="invites" then for _,r in ipairs(current.invites) do rows[#rows+1]=r end;return rows end
+  if Q.tab=="buffer" then
+    for _,r in ipairs(current.riskBuffer) do rows[#rows+1]=r end
+    table.sort(rows,function(a,b)
+      if (a.lastOnlineDays or -1)~=(b.lastOnlineDays or -1) then return (a.lastOnlineDays or -1)>(b.lastOnlineDays or -1) end
+      if (a.level or 999)~=(b.level or 999) then return (a.level or 999)<(b.level or 999) end
+      return a.name<b.name
+    end)
+  else
+    for _,r in ipairs(current.promotions) do
+      if Q.tab=="knights" and r.reason=="knight-veteran" or Q.tab=="initiates" and r.reason=="verified-initiate" then rows[#rows+1]=r end
+    end
+  end
+  return rows
+end
+function Q.NextAction()
+  local current,why=Q.Current()
+  if Q.tab=="invites" then
+    if OlympusOfficerInvites233 then return OlympusOfficerInvites233.Next(current and current.invites) end
+    Say("Officer WHO/unit capability is unavailable. Use the normal native guild UI; no invite sent.");return false
+  end
+  if not current then Say(why); return false end
+  if Q.tab=="buffer" then Q.RiskBuffer(); Say("Review the selected character in the normal guild roster. No removal has been sent."); return false end
+  local action,roster=ActionContext()
+  if not action then Say(roster); return false end
+  local rows=TabRows(current)
+  if not Q.tab then rows=current.promotions end
+  for _,row in ipairs(rows) do
+    local source=current.freshness[row.guid]
+    if source and not current.actionHeld and time()<source.expiresAt and time()<source.scanExpiresAt and roster[row.guid] and roster[row.guid].slot>row.targetSlot then
+      return Q.HardwarePromote(row.guid) -- exactly one attempted target per hardware action
+    end
+  end
+  Say("No fresh officer action is ready. Recheck the selected source page and sync; no action taken.")
+  return false
+end
 function Q.Show()
   if not Q.window then
-    local frame = CreateFrame("Frame", "OlympusLaunch229Window", UIParent, "BasicFrameTemplateWithInset")
-    frame:SetSize(560, 480); frame:SetPoint("CENTER"); frame:SetMovable(true); frame:EnableMouse(true)
-    frame:RegisterForDrag("LeftButton"); frame:SetScript("OnDragStart", frame.StartMoving); frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-    local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge"); title:SetPoint("TOP", 0, -12); title:SetText("OLYMPUS PRIME launch review")
-    local info = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); info:SetPoint("TOPLEFT", 18, -42); info:SetWidth(520); info:SetJustifyH("LEFT")
-    local function button(label, x, y, width, fn)
-      local b = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate"); b:SetSize(width, 24); b:SetPoint("TOPLEFT", x, y); b:SetText(label); b:SetScript("OnClick", fn); return b
+    local frame=CreateFrame("Frame","OlympusLaunch229Window",UIParent,"BasicFrameTemplateWithInset")
+    frame:SetSize(560,550);frame:SetPoint("CENTER");frame:SetMovable(true);frame:EnableMouse(true)
+    frame:RegisterForDrag("LeftButton");frame:SetScript("OnDragStart",frame.StartMoving);frame:SetScript("OnDragStop",frame.StopMovingOrSizing)
+    local title=frame:CreateFontString(nil,"OVERLAY","GameFontNormalLarge");title:SetPoint("TOP",0,-12);title:SetText("OLYMPUS PRIME officer actions")
+    local info=frame:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall");info:SetPoint("TOPLEFT",18,-42);info:SetWidth(520);info:SetJustifyH("LEFT")
+    local function button(label,x,y,width,fn)
+      local b=CreateFrame("Button",nil,frame,"UIPanelButtonTemplate");b:SetSize(width,24);b:SetPoint("TOPLEFT",x,y);b:SetText(label);b:SetScript("OnClick",fn);return b
     end
-    Q.window, Q.windowInfo, Q.rowButtons, Q.rowRecheckButtons, Q.listPage = frame, info, {}, {}, 1
-    button("Scan + reload", 18, -110, 125, function() Q.Control("scan") end)
-    button("Stop + reload", 150, -110, 125, function() Q.Control("stop") end)
-    button("Sync & reload", 282, -110, 125, function() if OlympusVerifyAPI then OlympusVerifyAPI.Sync() end end)
-    button("Close", 414, -110, 125, function() frame:Hide() end)
-    for i = 1, 8 do local index = i
-      Q.rowButtons[i] = button("", 18, -145-(i-1)*28, 400, function()
-        local rows = Q.shownRows or {}; local row = rows[(Q.listPage-1)*8+index]
-        if row then Q.HardwarePromote(row.guid); Q.Show() end
+    Q.window,Q.windowInfo,Q.rowButtons,Q.rowRecheckButtons,Q.listPage=frame,info,{},{},1
+    Q.tab="knights";Q.tabButtons={}
+    for i,spec in ipairs({{"invites","Knight invites"},{"knights","Knights > Veteran"},{"initiates","Verified > Member"},{"buffer","Purge buffer"}}) do
+      local key=spec[1];Q.tabButtons[key]=button(spec[2],18+(i-1)*132,-100,125,function() Q.tab=key;Q.listPage=1;Q.Show() end)
+    end
+    button("Scan + reload",18,-134,125,function() Q.Control("scan") end)
+    button("Stop + reload",150,-134,125,function() Q.Control("stop") end)
+    button("Sync & reload",282,-134,125,function() if OlympusVerify_Sync then OlympusVerify_Sync() elseif OlympusVerifyAPI then OlympusVerifyAPI.Sync() end end)
+    button("Close",414,-134,125,function() frame:Hide() end)
+    for i=1,8 do local index=i
+      Q.rowButtons[i]=button("",18,-171-(i-1)*28,400,function()
+        local row=(Q.shownRows or {})[(Q.listPage-1)*8+index]
+        if row then
+          if Q.tab=="buffer" then
+            local current=Q.Current();local source=current and current.freshness[row.guid]
+            if source and not current.actionHeld and time()<source.expiresAt and time()<source.scanExpiresAt then Say("Review "..row.name.." in the normal guild roster. This buffer never calls a removal API.")
+            else Say("Unverified status is stale or held. Recheck this source page before native review; no removal sent.") end
+          elseif Q.tab=="invites" then if OlympusOfficerInvites233 then OlympusOfficerInvites233.HardwareInvite(row) end
+          else Q.HardwarePromote(row.guid) end
+          Q.Show()
+        end
       end)
-      Q.rowRecheckButtons[i] = button("Recheck + reload", 426, -145-(i-1)*28, 112, function()
-        local row = (Q.shownRows or {})[(Q.listPage-1)*8+index]
-        local current, why = Q.Current()
-        local source = row and current and current.freshness[row.guid]
-        if source then Q.Control("recheck", source.offset) else Say(why or "This recommendation is unavailable; refresh the projection.") end
+      Q.rowRecheckButtons[i]=button("Recheck + reload",426,-171-(i-1)*28,112,function()
+        local row=(Q.shownRows or {})[(Q.listPage-1)*8+index];local current,why=Q.Current()
+        local source=row and current and current.freshness[row.guid]
+        if source then Q.Control("recheck",source.offset) else Say(why or "This recommendation is unavailable; refresh the projection.") end
       end)
     end
-    button("Previous", 18, -378, 100, function() Q.listPage = math.max(1, Q.listPage-1); Q.Show() end)
-    button("Next", 125, -378, 100, function() Q.listPage = math.min(math.max(1, math.ceil(#(Q.shownRows or {})/8)), Q.listPage+1); Q.Show() end)
-    button("Recheck MOTD + reload", 232, -378, 195, function() Q.Control("recheck", 0) end)
-    button("Risk review", 18, -415, 140, function() Q.RiskBuffer() end)
-    button("Show MOTD", 165, -415, 140, function() Q.Motd("show") end)
-    button("Set MOTD once", 312, -415, 140, function() Q.Motd("set") end)
+    button("Previous",18,-405,100,function() Q.listPage=math.max(1,Q.listPage-1);Q.Show() end)
+    button("Next",125,-405,100,function() Q.listPage=math.min(math.max(1,math.ceil(#(Q.shownRows or {})/8)),Q.listPage+1);Q.Show() end)
+    button("Recheck MOTD + reload",232,-405,195,function() Q.Control("recheck",0) end)
+    Q.nextButton=button("Next officer action",18,-442,220,function() Q.NextAction();Q.Show() end)
+    button("Native purge review",245,-442,207,function() Q.RiskBuffer() end)
+    button("Show MOTD",18,-480,220,function() Q.Motd("show") end)
+    button("Set MOTD once",245,-480,207,function() Q.Motd("set") end)
   end
-  local current, why = Q.Current()
-  Q.shownRows = current and current.promotions or {}
-  Q.listPage = math.min(Q.listPage, math.max(1, math.ceil(#Q.shownRows/8)))
-  local used = OlympusLaunchQueue and OlympusLaunchQueue.refreshedPages
-  used = Number(used, 0, 50) and used or 0
-  Q.windowInfo:SetText(current and ((current.scanComplete and "Discovery complete" or "Discovery incomplete") .. "; " .. #current.pages .. "/50 pages; " .. used .. "/50 explicit recheck attempts used.\n" .. (used >= 50 and "Refresh budget exhausted: start a new Scan. " or "Recheck the chosen row, then load results. ") .. "Each action needs its fresh 60-second page and native roster. Knight invites held: unguilded proof unavailable.") or why)
-  for i, b in ipairs(Q.rowButtons) do
-    local row = Q.shownRows[(Q.listPage-1)*8+i]
-    if row then local fresh = current.freshness[row.guid]
-      b:SetText(row.name .. " -> slot " .. row.targetSlot .. (not current.actionHeld and time() < fresh.expiresAt and time() < fresh.scanExpiresAt and " (click: one native request)" or " (STALE/held; recheck)")); b:Show()
-      Q.rowRecheckButtons[i]:SetText("Recheck p" .. fresh.offset); Q.rowRecheckButtons[i]:Show()
-    else b:Hide(); Q.rowRecheckButtons[i]:Hide() end
+  local current,why=Q.Current()
+  Q.shownRows=TabRows(current)
+  Q.listPage=math.min(Q.listPage,math.max(1,math.ceil(#Q.shownRows/8)))
+  local used=OlympusLaunchQueue and OlympusLaunchQueue.refreshedPages;used=Number(used,0,50) and used or 0
+  local details=current and ((current.scanComplete and "Discovery complete" or "Discovery incomplete").."; "..#current.pages.."/50 pages; "..used.."/50 explicit rechecks. Actions need a fresh 60-second page and native roster.") or why
+  if Q.tab=="invites" then
+    local status=OlympusOfficerInvites233 and OlympusOfficerInvites233.Status()
+    details=(details or "").."\nNext checks one original whisper's visible target/WHO. Unknown guild stays held. "..(status and status.reason or "Capability unavailable.")
+  elseif Q.tab=="buffer" then details=(details or "").."\nReview only: longest offline, then lowest level. Native guild UI removes; no automatic kick." end
+  details=(details or "").."\nScan + reload exports. Wait for the Watcher, then Sync again to load its dated queue. No timer reload or instant delivery."
+  Q.windowInfo:SetText(details)
+  for i,b in ipairs(Q.rowButtons) do
+    local row=Q.shownRows[(Q.listPage-1)*8+i]
+    if row then
+      local fresh=current.freshness[row.guid];local dated=not current.actionHeld and time()<fresh.expiresAt and time()<fresh.scanExpiresAt
+      if Q.tab=="buffer" then b:SetText(row.name.." level "..tostring(row.level or "?")..", offline "..tostring(row.lastOnlineDays or "?").."d"..(dated and " (review only)" or " (STALE/held; recheck)"))
+      elseif Q.tab=="invites" then b:SetText(row.name.." > native invite"..(dated and " (click: one request)" or " (STALE/held; recheck)"))
+      else b:SetText(row.name.." > "..row.targetName..(dated and " (click: one native request)" or " (STALE/held; recheck)")) end
+      b:Show();Q.rowRecheckButtons[i]:SetText("Recheck p"..fresh.offset);Q.rowRecheckButtons[i]:Show()
+    else b:Hide();Q.rowRecheckButtons[i]:Hide() end
   end
   Q.window:Show()
 end
@@ -308,3 +379,15 @@ events:SetScript("OnEvent", function(_, event, addon)
   end
 end)
 Q.Events = events -- deterministic local tests; contains no action dispatcher.
+-- A later disk projection cannot be loaded without a second hardware reload.
+-- This bounded reminder only signals a possibility, never a Watcher/server acknowledgment.
+events:SetScript("OnUpdate",function()
+  local control=OlympusVerifyDB and OlympusVerifyDB.launchControl
+  if type(control)~="table" or control.action=="stop" or not Number(control.observedAt,1,time()) then return end
+  local age=time()-control.observedAt
+  if age>=5 and age<60 and Q.remindedControl~=control.id and (not OlympusLaunchQueue or OlympusLaunchQueue.controlId~=control.id) then
+    Q.remindedControl=control.id
+    Say("The Watcher queue may be ready. Sync again to load and check its actual dated status; this reminder is not an acknowledgment.")
+    if OlympusVerifyAutoSync then OlympusVerifyAutoSync.Request("queue-check") end
+  end
+end)

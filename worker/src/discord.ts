@@ -3,6 +3,7 @@ import type { Env } from "./env";
 import { staffChannel } from "./env";
 import { audit } from "./db";
 import {dispatchOriginalProviderFetch,captureOriginalProviderInit} from './privacy-global-serving-origin';
+import {canonicalMigrationProducerHeld233} from './canonical-migration233';
 
 export const API = "https://discord.com/api/v10";
 
@@ -190,12 +191,23 @@ export function auditReason(reason: string): string {
   return out;
 }
 
-export const addRole = (env: Env, userId: string, roleId: string, reason: string, budget?: AttemptBudget,beforeDispatch?:()=>void) =>
-  rest(env, "PUT", `/guilds/${env.GUILD_ID}/members/${userId}/roles/${roleId}`, undefined, 0, reason, budget,false,beforeDispatch);
+/** Restrict generic producers at their final transport boundary. The central
+ * writer retains its separate original-custody paths through rest(), including
+ * DELETE-only owned drains. Capture the actual URL target before any await. */
+function genericRoleDispatch233(env:Env,guild:string,role:string,beforeDispatch?:()=>void):()=>void{
+ const check=()=>{if('CANONICAL_RANKS233' in env&&canonicalMigrationProducerHeld233(env,guild,role))throw Error('canonical233_old_producer_held');};
+ return ()=>{check();beforeDispatch?.();check();};
+}
+export const addRole = (env: Env, userId: string, roleId: string, reason: string, budget?: AttemptBudget,beforeDispatch?:()=>void) => {
+  const guild=env.GUILD_ID;
+  return rest(env, "PUT", `/guilds/${guild}/members/${userId}/roles/${roleId}`, undefined, 0, reason, budget,false,genericRoleDispatch233(env,guild,roleId,beforeDispatch));
+};
 
 /** `mandatory` (.95): a removal the run owes (after a ban, or while a restriction is held): its retry is counted, never refused. */
-export const removeRole = (env: Env, userId: string, roleId: string, reason: string, budget?: AttemptBudget, mandatory = false,beforeDispatch?:()=>void) =>
-  rest(env, "DELETE", `/guilds/${env.GUILD_ID}/members/${userId}/roles/${roleId}`, undefined, 0, reason, budget, mandatory,beforeDispatch);
+export const removeRole = (env: Env, userId: string, roleId: string, reason: string, budget?: AttemptBudget, mandatory = false,beforeDispatch?:()=>void) => {
+  const guild=env.GUILD_ID;
+  return rest(env, "DELETE", `/guilds/${guild}/members/${userId}/roles/${roleId}`, undefined, 0, reason, budget, mandatory,genericRoleDispatch233(env,guild,roleId,beforeDispatch));
+};
 
 /** A guild member, or null when they are not in the server (404). Used to read someone's current roles. */
 export async function guildMember(env: Env, userId: string, budget?: AttemptBudget): Promise<{ roles: string[]; nick?: string | null; user?: { id: string; username: string } } | null> {
@@ -213,6 +225,14 @@ export const banMember = (env: Env, userId: string, reason: string) =>
 
 export const setNickname = (env: Env, userId: string, nick: string) =>
   rest(env, "PATCH", `/guilds/${env.GUILD_ID}/members/${userId}`, { nick });
+
+/** .233 self-service nickname effect: one HTTP attempt, no429 replay and no
+ * response body/name in errors. The caller durably claims before this call. */
+export async function patchNicknameOnce233(env:Env,userId:string,nick:string|null,beforeDispatch:()=>void):Promise<number>{
+ if(!/^[1-9][0-9]{16,19}$/.test(userId))throw Error('nickname_subject_held');
+ const response=await credentialFetch(API+`/guilds/${env.GUILD_ID}/members/${userId}`,{method:'PATCH',headers:{Authorization:`Bot ${env.DISCORD_BOT_TOKEN}`,'Content-Type':'application/json'},body:JSON.stringify({nick})},beforeDispatch);
+ const status=response.status;await response.body?.cancel().catch(()=>{});return status;
+}
 
 export const postMessage = (env: Env, channelId: string, payload: unknown) =>
   rest<{ id: string }>(env, "POST", `/channels/${channelId}/messages`, payload);

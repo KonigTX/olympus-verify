@@ -32,7 +32,7 @@ let n = 0, pass = 0;
 function check(name, value, detail) { n++; if (value) pass++; console.log((value ? 'PASS ' : 'FAIL ') + name); if (!value && detail) console.log(detail); }
 const member = (id = TARGET, extra = {}) => ({ user: { id, username: 'same-name', global_name: 'Same-Name', avatar: 'a'.repeat(32) }, nick: null, roles: [MEMBER_ROLE, SECRET_ROLE], pending: false, ...extra });
 const answer = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
-async function fixture() {
+async function fixture(overrides = {}) {
   const db = new DatabaseSync(':memory:'); db.exec('PRAGMA foreign_keys=ON');
   db.function('strftime', (format, input) => { if (format !== '%s' || input !== 'now') throw Error('unexpected Native clock'); return String(T); });
   entry.installCurrentEntryEpoch(db, { now: T });
@@ -45,7 +45,7 @@ async function fixture() {
   }, afterBatch: async plan => {
     if (afterHydrate && plan.some(p => p.statement.includes('JOIN json_each(?2) original'))) { const fn = afterHydrate; afterHydrate = null; await fn(); }
   } }), DB = admission.createPrivacyWriteAdmissionDatabase(raw, 'writer', 'canonical', entry.ENTRY_EPOCH);
-  const env = entry.currentEntryEnvironment({ DB, COOKIE_SECRET: 'directory-tests-only-cookie-secret-0123456789', DISCORD_BOT_TOKEN: 'fixture-only', DISCORD_APP_ID: '1550176895671341076', SITE_HOST: 'guild.example', PUBLIC_BASE_URL: 'https://verify.example', SITE_GUILD_ID: GUILD, GUILD_ID: GUILD, SITE_ADMINS: ADMIN, ROLE_GUILD_MEMBER: MEMBER_ROLE, ROLE_MODERATOR: SECRET_ROLE, COMMUNITY_FEATURES: 'directory' });
+  const env = entry.currentEntryEnvironment({ DB, COOKIE_SECRET: 'directory-tests-only-cookie-secret-0123456789', DISCORD_BOT_TOKEN: 'fixture-only', DISCORD_APP_ID: '1550176895671341076', SITE_HOST: 'guild.example', PUBLIC_BASE_URL: 'https://verify.example', SITE_GUILD_ID: GUILD, GUILD_ID: GUILD, SITE_ADMINS: ADMIN, ROLE_GUILD_MEMBER: MEMBER_ROLE, ROLE_MODERATOR: SECRET_ROLE, COMMUNITY_FEATURES: 'directory', ...overrides });
   const write = (sql, ...params) => DB.prepare(sql).bind(...params).run();
   const cookies = new Map();
   for (const id of [ADMIN, VIEWER, TARGET]) {
@@ -390,6 +390,33 @@ async function fixture() {
   const suppressionSql197=suppression197.plans.flat().filter(sql=>sql.includes('discordDirectoryHidden')&&sql.includes('json_extract(CASE WHEN NOT json_valid(ds.value)'));
   check('actual directory and copy statements each evaluate one strict suppression lookup',suppressionSql197.length>0&&suppressionSql197.every(sql=>(sql.match(/json_extract\(CASE WHEN NOT json_valid\(ds\.value\)/g)||[]).length===1));
   suppression197.close();
+  // Actual .233 selectors are literal off; the canonical ladder is the only selected public rank reader.
+  T+=61;
+  const C=load('./canonical-ranks233'),canonicalRaw=JSON.stringify({version:1,enabled:true,profile:C.CANONICAL_PROFILE233,guildId:C.CANONICAL_GUILD233,ranks:C.CANONICAL_RANKS233.map(r=>({...r,permissions:'0'}))});
+  const c=await fixture({GUILD_ID:C.CANONICAL_GUILD233,SITE_GUILD_ID:C.CANONICAL_GUILD233,ROLE_GUILD_MEMBER:'1552077551839617104',CANONICAL_RANKS233:canonicalRaw,QR_NATIVE_ROLE_MAP:'off',FULL_RELEASE_ROLES:'off',NATIVE_RANK_SYNC232:'off'});
+  provider=async()=>answer(C.CANONICAL_RANKS233.map((rank,i)=>member(String(900000000000000000n+BigInt(i)),{user:{id:String(900000000000000000n+BigInt(i)),username:'canonical-'+rank.key},roles:[rank.roleId]})));
+  const canonicalPage=await c.call();
+  check('actual233 off selectors return all12 canonical single-rank holders with exact current public labels',canonicalPage.status===200&&canonicalPage.body.members.length===12&&canonicalPage.body.members.every((m,i)=>m.roles.length===1&&m.roles[0]===C.CANONICAL_RANKS233[i].name),canonicalPage.body);
+  provider=async()=>answer([member(TARGET,{roles:[C.ADDON_DEVELOPER233.roleId]})]);let current=await c.call();
+  check('technical partner alone remains outside canonical member directory eligibility',current.status===200&&current.body.members.length===0);
+  provider=async()=>answer([member(TARGET,{roles:[C.CANONICAL_RANKS233[0].roleId,C.ADDON_DEVELOPER233.roleId]})]);current=await c.call();
+  check('eligible canonical member may show technical title without exposing role IDs or adding authority',current.status===200&&current.body.members[0].roles.includes(C.ADDON_DEVELOPER233.name)&&!JSON.stringify(current.body.members[0]).includes(C.ADDON_DEVELOPER233.roleId));
+  const priorCalls=calls.length;current=await c.call(ADMIN,'',{CANONICAL_RANKS233:'{}'});
+  check('malformed selected canonical reader holds before provider enumeration without legacy fallback',current.status===503&&current.body.error==='discord_directory_unavailable'&&calls.length===priorCalls&&!Object.hasOwn(current.body,'members'));
+  for(const kind of ['value','descriptor','prototype']){
+    const request=new Request('https://guild.example/api/community/discord-directory',{headers:{Cookie:c.cookies.get(ADMIN)}}),e={...c.env},ctx=await context.communityContext(e,request,{guildRoleRead:true});
+    provider=async()=>{if(kind==='value')e.CANONICAL_RANKS233='off';else if(kind==='descriptor')Object.defineProperty(e,'CANONICAL_RANKS233',{value:canonicalRaw,writable:false});else Object.setPrototypeOf(e,{});return answer([member(TARGET,{roles:[C.CANONICAL_RANKS233[0].roleId]})]);};
+    const response=await directory.discordDirectoryList(request,e,ctx),body=await response.json();
+    check('canonical '+kind+' drift during provider wait releases no directory payload',response.status===503&&body.error==='discord_directory_unavailable'&&!Object.hasOwn(body,'members'));
+  }
+  let getterReads=0;const getterEnv={...c.env};Object.defineProperty(getterEnv,'CANONICAL_RANKS233',{get(){getterReads++;return canonicalRaw;}});
+  const getterReq=new Request('https://guild.example/api/community/discord-directory',{headers:{Cookie:c.cookies.get(ADMIN)}}),getterCtx=await context.communityContext(getterEnv,getterReq,{guildRoleRead:true}),beforeGetterCalls=calls.length,getterResponse=await directory.discordDirectoryList(getterReq,getterEnv,getterCtx);
+  check('selected accessor policy is refused with zero getter calls and no enumeration',getterResponse.status===503&&getterReads===0&&calls.length===beforeGetterCalls);
+  c.close();
+  T+=61;const literalOff=await fixture({QR_NATIVE_ROLE_MAP:'off',FULL_RELEASE_ROLES:'off',NATIVE_RANK_SYNC232:'off'});provider=async()=>answer([member()]);current=await literalOff.call();
+  check('literal off legacy selectors preserve ordinary unselected directory reader',current.status===200&&current.body.members[0].roles.join(',')==='Guild Member');
+  for(const key of ['QR_NATIVE_ROLE_MAP','FULL_RELEASE_ROLES']){current=await literalOff.call(ADMIN,'',{[key]:'{'});check('malformed nonoff '+key+' still holds the selected legacy reader',current.status===503&&!Object.hasOwn(current.body,'members'));}
+  literalOff.close();
   console.log(`\n${pass}/${n} passed; unexpected outbound=${unexpectedNetwork}`);
   if (pass !== n || unexpectedNetwork) process.exitCode = 1;
 })().catch(e => { console.error(e); process.exitCode = 1; });

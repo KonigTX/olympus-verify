@@ -177,12 +177,18 @@ const cap=e=>F.captureLaneConfig(e);
   &&F.FRESH_EFFECT_MIN_LEFT===8&&F.FRESH_RECONCILE_MIN_LEFT===4&&F.FRESH_CLAIM_MIN_LEFT===2&&F.STAFF_MIN_ENTRY===20&&F.LEGACY_BAN_ALLOWANCE===16&&F.FRESH_CONFIG_MAX_BYTES===1024
   &&F.LANE_OBSERVED_PRESENT_ENABLED===false&&F.FRESH_LEASE_KEY==='fullReleaseRolesPass');
  {const s=src('full-release-roles.ts');const imports=Array.from(s.matchAll(/^import\s[^;]*?from\s+'([^']+)'/gm),m=>m[1]).sort();
-  check('full-release-roles.ts imports only the exact approved modules including pure current-profile selection',imports.join()==='./account-generation-contracts,./beta-reset-policy,./env,./native-rank-adapter,./native-rank-reconciliation232,./privacy-serving-authority,./qr-phase1');
+  check('full-release-roles.ts imports only the exact approved modules including pure current-profile selection',imports.join()==='./account-generation-contracts,./beta-reset-policy,./canonical-ranks233,./env,./native-rank-adapter,./native-rank-reconciliation232,./privacy-serving-authority,./qr-phase1');
   const code=ts.transpileModule(s,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,removeComments:true}}).outputText;
   check('full-release-roles.ts makes no D1, HTTP or async call',!/\.prepare\(|\.batch\(|fetch\(|\bawait\b|\basync\b|\.DB\b/.test(code));
   const profile232=ts.transpileModule(src('native-rank-reconciliation232.ts'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,removeComments:true}}).outputText;
   check('new current-profile dependency itself imports nothing and makes no D1/HTTP/async call',!/require\(|\.prepare\(|\.batch\(|fetch\(|\bawait\b|\basync\b|\.DB\b/.test(profile232));
-  check('the capture reads every key it documents',F.LANE_CONFIG_KEYS.length===24&&['FULL_RELEASE_ROLES','STAFF_TEN_RANK_ROLES','DISCORD_BOT_TOKEN','MEMBERSHIP_RETIRED_ROLE_ID','INTROS_ROLES','QR_BETA_FERN_EXCEPTION_ENABLED','PRIVACY_ERASURE_ENABLED','PRIVACY_NATIVE_ERASURE_ENABLED','LINKS_NOT_BEFORE_CLOCK_GATED'].every(k=>F.LANE_CONFIG_KEYS.includes(k)));}
+  check('the capture reads every key it documents',F.LANE_CONFIG_KEYS.length===26&&['CANONICAL_RANKS233','CANONICAL_ENTITLEMENTS233'].every(k=>F.LANE_CONFIG_KEYS.includes(k))&&['FULL_RELEASE_ROLES','STAFF_TEN_RANK_ROLES','DISCORD_BOT_TOKEN','MEMBERSHIP_RETIRED_ROLE_ID','INTROS_ROLES','QR_BETA_FERN_EXCEPTION_ENABLED','PRIVACY_ERASURE_ENABLED','PRIVACY_NATIVE_ERASURE_ENABLED','LINKS_NOT_BEFORE_CLOCK_GATED'].every(k=>F.LANE_CONFIG_KEYS.includes(k)));}
+ {const C=load('canonical-ranks233'),policy233=JSON.stringify({version:1,enabled:true,profile:C.CANONICAL_PROFILE233,guildId:C.CANONICAL_GUILD233,ranks:C.CANONICAL_RANKS233.map(r=>({...r,permissions:'0'}))}),e=env({GUILD_ID:C.CANONICAL_GUILD233,ROLE_GUILD_MEMBER:'1552077551839617104',CANONICAL_RANKS233:policy233,NATIVE_RANK_SYNC232:'off',QR_NATIVE_ROLE_MAP:'off',FULL_RELEASE_ROLES:'off',STAFF_TEN_RANK_ROLES:'false',QR_RANK_MAPPING_ENABLED:'false',QR_PRIVILEGED_RANK_MAPPING_ENABLED:'false'}),c=cap(e);
+  check('actual233 canonical selection keeps all historical producers absent under exact off selectors',c.configured&&c.native232?.mode==='enabled'&&c.fresh==='absent'&&c.staff==='absent'&&c.cfg===null&&c.raw===null&&c.current());
+  e.CANONICAL_RANKS233='off';check('canonical source selection descriptor is retained across later mutation',!c.current());
+  const pure=ts.transpileModule(src('canonical-ranks233.ts'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,removeComments:true}}).outputText;
+  check('canonical dependency remains pure: no runtime import, DB, HTTP, async or effect call',!/require\(|\.prepare\(|\.batch\(|fetch\(|\bawait\b|\basync\b|\.DB\b/.test(pure));
+ }
  {const e=src('env.ts');check('env.ts gains the two type-only optional fields',/^  FULL_RELEASE_ROLES\?: string;/m.test(e)&&/^  STAFF_TEN_RANK_ROLES\?: string;/m.test(e)&&!/FULL_RELEASE_ROLES[^?]*=/.test(e.split('\n').filter(l=>!l.includes('//')).join('\n')));}
  console.log(`\n${passed} checks passed`);
 })().catch(e=>{console.error('FAIL',e);process.exit(1);});

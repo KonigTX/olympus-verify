@@ -53,6 +53,13 @@ export function parseNativeRankPolicy232(raw:unknown):NativeRankPolicy232{
  const policy=Object.freeze({version:1 as const,enabled:v.enabled,profile:NATIVE_RANK_PROFILE232,guildId:NATIVE_GUILD232,nativeGuild:NATIVE_SCOPE232.guild,nativeRealm:NATIVE_SCOPE232.realm,membershipRole:SHARED_MEMBER232,ranks:Object.freeze(ranks),privileged:v.privileged});
  if(JSON.stringify(policy)!==raw)return held('native232_configuration_canonical');originalPolicies232.add(policy);return policy;
 }
+/** Historical source grammar only. .233 uses this to recognize genuine retained
+ * lineage after obsolete live config selectors are retired. This does not
+ * activate a .232 writer or rewrite any historical ID's meaning. */
+export function historicalNativeRankPolicy232():NativeRankPolicy232{
+ return parseNativeRankPolicy232(JSON.stringify({version:1,enabled:true,profile:NATIVE_RANK_PROFILE232,guildId:NATIVE_GUILD232,nativeGuild:NATIVE_SCOPE232.guild,nativeRealm:NATIVE_SCOPE232.realm,membershipRole:SHARED_MEMBER232,
+  ranks:NATIVE_RANK_NAMES232.map((name,index)=>({index,name,roleId:name==='Stewart'?NATIVE_STEWART_ROLE232:MIRROR_BY_NAME232[name]})),privileged:true}));
+}
 export function selectNativeRankPolicy232(raw:unknown):Readonly<{mode:'off'|'held';reason:string;policy:null}|{mode:'enabled';reason:null;policy:NativeRankPolicy232}>{
  if(raw===undefined||raw===''||raw==='off')return Object.freeze({mode:'off',reason:'not_configured',policy:null});
  try{const policy=parseNativeRankPolicy232(raw);return policy.enabled?Object.freeze({mode:'enabled',reason:null,policy}):Object.freeze({mode:'off',reason:'disabled',policy:null});}

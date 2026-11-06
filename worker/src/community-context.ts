@@ -1,6 +1,7 @@
 export {registerCommunityData,communityDataNames,communityEraseStatements,communityExportPlan,communityScopedExportPlan,communityPackedExportPlan,communityExport,type Eraser,type ExportPlan,type Exporter} from './community-data-registry';
 import { privacyGenerationLiteralFenceSql, privacyAccountIncarnation, privacyAccountIncarnationLiteralFenceSql } from './privacy-serving-authority';
 import {assertOriginalSiteSessionRead,type OriginalSiteSession} from './privacy-site-session-incarnation';
+import {captureCanonicalRankConfig233,hasCanonicalMemberAccess233} from './canonical-ranks233';
 /**
  * .56 (1 Oct 2026): the adapter contract for the community modules ported from Olympus Forever (consolidation batch 1
  * of Codex's keeper adapter map, evidence/forever-keeper-adapter-map.md, 1 Oct 01:07 UTC).
@@ -135,15 +136,18 @@ export function capabilitiesOf(f: CommunityFacts): CommunityCapabilities {
  * keeper proof. A role from another server, an incomplete member or a malformed
  * provider answer cannot stand in for current membership. */
 async function currentGuildRoleRead(env: Env, discordId: string, check: () => void): Promise<boolean> {
+  const canonical = captureCanonicalRankConfig233(env);
   const guild = env.SITE_GUILD_ID, role = env.ROLE_GUILD_MEMBER;
   if (!env.DISCORD_BOT_TOKEN || !/^\d{17,20}$/.test(guild ?? "") || env.GUILD_ID !== guild || !/^\d{17,20}$/.test(role ?? "")) return false;
+  if (canonical.present && canonical.mode !== 'enabled') return false;
   check();
   try {
     const member = await rest<{ user?: { id?: string; bot?: boolean }; roles?: unknown; pending?: boolean }>(env, "GET", `/guilds/${guild}/members/${discordId}`, undefined, 1);
     check();
-    return member?.user?.id === discordId && (member.pending === undefined || member.pending === false)
+    return canonical.current() && member?.user?.id === discordId && (member.pending === undefined || member.pending === false)
       && (member.user.bot === undefined || member.user.bot === false) && Array.isArray(member.roles)
-      && member.roles.every(value => typeof value === "string" && /^\d{17,20}$/.test(value)) && member.roles.includes(role);
+      && member.roles.every(value => typeof value === "string" && /^\d{17,20}$/.test(value))
+      && (canonical.present ? hasCanonicalMemberAccess233(env, member.roles) : member.roles.includes(role));
   } catch (error) {
     check();
     // Provider refusal/unavailability withholds this additional reader path;

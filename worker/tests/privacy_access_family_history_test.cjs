@@ -4,7 +4,7 @@ const fixturePath=path.join(__dirname,'privacy_access_test.cjs'),source=fs.readF
 if(cut<0)throw Error('fixture seam');
 const scenario=String.raw`
 const history=load('privacy-access-history'),family=load('privacy-access-family-history'),community=load('community-context');
-load('index'); // Actual serving graph: original thirteen plus two independently qualified .196 metadata families.
+load('index'); // Actual serving graph: original thirteen, two .196 metadata families and private .233 nickname.
 async function put(f,t,r){const keys=Object.keys(r);return await fixtureWrite(f,'INSERT INTO '+t+'('+keys.join(',')+') VALUES('+keys.map(()=>'?').join(',')+')',...Object.values(r));}
 const hex=(i,n=32)=>i.toString(16).padStart(n,'0'),eid=i=>'e'+String(i).padStart(21,'0');
 async function member(f,id=A){if(!f.db.prepare('SELECT 1 FROM members WHERE discord_id=?').get(id))await put(f,'members',{discord_id:id,banned:0});}
@@ -60,7 +60,7 @@ const sorted=a=>Array.from(a,x=>JSON.stringify(x)).sort();
 async function original(f,c,id=A){if(!c.startsWith('community.'))return null;const plan=community.communityExportPlan(f.env,id),projection=load('privacy-write-admission').originalPrivacyAdmissionGroupProjection(f.env.DB,plan.statements),out=await f.env.DB.batch(plan.statements.map((s,i)=>/ LIMIT 1000$/.test(projection.logical[i].sql)?f.env.DB.prepare(projection.logical[i].sql.replace(/ LIMIT 1000$/,'')).bind(id):s)),body=plan.shape(out),parts=c.split('.');const value=body[parts[1]][parts[2]];return Array.isArray(value)?value:value.rows;}
 async function mainFamily(){
  await require('./privacy_registered196_families.cjs').run(root);
- eq('closed thirty-five family histories',family.PRIVACY_FAMILY_HISTORY_COLLECTIONS.length,35);eq('aggregate histories thirty-eight',history.PRIVACY_COPY_HISTORY_COLLECTIONS.length,38);eq('individual histories forty-one',history.PRIVACY_ALL_HISTORY_COLLECTIONS.length,41);eq('actual producer graph original13 plus exact2 metadata families',community.communityDataNames().length,15);eq('actual producer graph original36 plus exact3 metadata statements',community.communityExportPlan(fixture().env,A).statements.length,39);
+ eq('closed thirty-five family histories',family.PRIVACY_FAMILY_HISTORY_COLLECTIONS.length,35);eq('aggregate histories thirty-eight',history.PRIVACY_COPY_HISTORY_COLLECTIONS.length,38);eq('individual histories forty-one',history.PRIVACY_ALL_HISTORY_COLLECTIONS.length,41);eq('actual producer graph original13 plus exact2 metadata and1 nickname family',community.communityDataNames().length,16);eq('actual producer graph original36 plus exact3 metadata and1 nickname statement',community.communityExportPlan(fixture().env,A).statements.length,40);
  for(const c of family.PRIVACY_FAMILY_HISTORY_COLLECTIONS){
   const f=fixture(),id=c==='community.councillor_verification.betaFernWindows'?load('qr-beta-fern').BETA_FERN.actor:A,n=c==='community.directory.professions'?12:1002;await seed(f,c,n);const before=count(f,'sqlite_master');
   const baseline=await original(f,c,id);const first=(await download(f,c,null,id)).data.history;

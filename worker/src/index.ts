@@ -82,6 +82,7 @@ import {RecoveryFloorHeld} from './privacy-recovery-floor';
 import {originalRecoveryClockMilliseconds} from './privacy-recovery-original-clock';
 import {recoveryScalarArrayJSON} from './privacy-recovery-data-json';
 import {captureGlobalServingEntry,dispatchGlobalServingEntry,deferOriginalServing,assertGlobalServingDispatch,globalServingMode,preflightOriginalServingRequest,originalGlobalScheduledPhysicalCostObservation} from './privacy-global-serving-origin';
+import {postOfficerInvite233} from './officer-invites233';
 import { captureLaneConfig, FRESH_AUDIT, type LaneCapture } from './full-release-roles';
 import { countStatements, type Admission } from './roster-effects';
 import { linkPreflight, routeLink } from './link';
@@ -596,7 +597,8 @@ async function route(request: Request, env: Env, path: string, schemaReady = tru
     }
     if (query.has("keyVersion") || (body !== null && typeof body === "object" && "keyVersion" in body)) {
       const versions=query.getAll('keyVersion');
-      if(request.method==='GET'&&path==='/queue/launch-operations'&&versions.length===1&&versions[0]==='launch-operations-v1')return handleLaunchOperations229(request,env,true);
+      if(request.method==='GET'&&path==='/queue/launch-operations'&&versions.length===1&&versions[0]==='officer-operations-v233')return handleLaunchOperations229(request,env,true);
+      if(request.method==='POST'&&path==='/ingest/officer-invite'&&versions.length===1&&versions[0]==='officer-operations-v233'&&query.size===1&&body!==null&&!('keyVersion'in body))return postOfficerInvite233(env,body);
       if (versions.length === 1 && versions[0] === STRICT_ROSTER_DISPLAY_PROTOCOL && request.method === "GET" && path === "/queue/unverified" && query.size === 1) {
         const report = await strictRosterDisplay(env, captureLaunchVerification(env));
         return new Response(JSON.stringify(report ?? { error: "strict_roster_display_unavailable" }), {
@@ -687,7 +689,7 @@ async function freshRegistrationRefused(env: Env, trigger: string): Promise<void
 }
 
 /** Bumped with every change that needs a redeploy, so GET /health shows which build is live. */
-const BUILD = "2026-11-05.232 Roster and rank role reconciliation";
+const BUILD = "2026-11-06.233 Unified ranks and officer actions";
 
 /**
  * Presence of each secret (never the value) and a D1 round trip — enough to tell a missing `wrangler secret put` from a

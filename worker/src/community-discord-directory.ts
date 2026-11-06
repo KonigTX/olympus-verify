@@ -12,6 +12,7 @@ import { secondsToIso } from './community-time';
 import { parseNativeRoleMap, namesFor } from './native-rank-adapter';
 import { NATIVE_RANKS } from './qr-phase1';
 import { treasuryDirectoryRoles } from './treasury-cosmetic';
+import {captureCanonicalRankConfig233,ADDON_DEVELOPER233} from './canonical-ranks233';
 
 export const DISCORD_DIRECTORY_PAGE_SIZE = 100; // retained output/captured-target bound
 export const DISCORD_DIRECTORY_SOURCE_PAGE_SIZE = 1000; // existing ListGuildMembers maximum, one request only
@@ -25,17 +26,22 @@ const PUBLIC_ROLE_BINDINGS = [
   ['ROLE_GUILD_MASTER', 'Guild Master'], ['ROLE_GUILD_LEADER', 'Guild Leader'],
   ['ROLE_OFFICER', 'Officer'], ['ROLE_RAID_LEADER', 'Raid Leader'], ['ROLE_GUILD_MEMBER', 'Guild Member'],
 ] as const;
-const ENV_KEYS = ['DB', 'COOKIE_SECRET', 'DISCORD_BOT_TOKEN', 'DISCORD_APP_ID', 'SITE_ADMINS', 'GUILD_ID', 'SITE_GUILD_ID', 'QR_NATIVE_ROLE_MAP', 'FULL_RELEASE_ROLES', 'TREASURY_COSMETIC_ROLES', ...PUBLIC_ROLE_BINDINGS.map(r => r[0])] as const;
+const ENV_KEYS = ['DB', 'COOKIE_SECRET', 'DISCORD_BOT_TOKEN', 'DISCORD_APP_ID', 'SITE_ADMINS', 'GUILD_ID', 'SITE_GUILD_ID', 'CANONICAL_RANKS233', 'QR_NATIVE_ROLE_MAP', 'FULL_RELEASE_ROLES', 'TREASURY_COSMETIC_ROLES', ...PUBLIC_ROLE_BINDINGS.map(r => r[0])] as const;
 const VISIBILITY_KEY = 'discordDirectoryHidden';
 const hiddenValue = `CASE WHEN NOT json_valid(ds.value) THEN json_extract('discord_directory_visibility_unconfirmed','$') WHEN json_type(ds.value)<>'object' OR (SELECT COUNT(*) FROM json_each(ds.value))<>(SELECT COUNT(DISTINCT key) FROM json_each(ds.value)) OR EXISTS(SELECT 1 FROM json_each(ds.value) hidden WHERE length(hidden.key) NOT BETWEEN 17 AND 20 OR hidden.key GLOB '*[^0-9]*' OR hidden.type<>'text' OR (hidden.value<>'discord-only-optout-v1' AND (length(hidden.value)<>32 OR hidden.value GLOB '*[^0-9a-f]*'))) THEN json_extract('discord_directory_visibility_unconfirmed','$') ELSE ds.value END`;
 function publicRoles(env: Env): readonly (readonly [string, string])[] {
+  const canonical=captureCanonicalRankConfig233(env);
+  if(canonical.present){
+    if(canonical.mode!=='enabled'||!canonical.policy||!canonical.current()||canonical.policy.guildId!==env.GUILD_ID||env.SITE_GUILD_ID!==env.GUILD_ID)throw new PageFault('discord_directory_unavailable',503);
+    return canonical.policy.ranks.map(r=>[r.roleId,r.name] as const);
+  }
   const roles: (readonly [string, string])[] = PUBLIC_ROLE_BINDINGS.flatMap(([key, label]) => validId(env[key]) ? [[env[key]!, label] as const] : []);
-  if (env.QR_NATIVE_ROLE_MAP) {
+  if (env.QR_NATIVE_ROLE_MAP && env.QR_NATIVE_ROLE_MAP !== 'off') {
     const map = parseNativeRoleMap(env.QR_NATIVE_ROLE_MAP), names = namesFor(map.profile);
     if (names.length !== map.roles.length) throw new PageFault('discord_directory_unavailable', 503);
     for (let i = 0; i < map.roles.length; i++) { if (!validId(map.roles[i])) throw new PageFault('discord_directory_unavailable', 503); roles.push([map.roles[i]!, `Olympus ${names[i]}`]); }
   }
-  if (env.FULL_RELEASE_ROLES) {
+  if (env.FULL_RELEASE_ROLES && env.FULL_RELEASE_ROLES !== 'off') {
     const f = JSON.parse(env.FULL_RELEASE_ROLES);
     if (!f || Object.keys(f).join(',') !== 'version,epoch,epochStart,grants,membership,native' || f.version !== 1 || !validId(f.membership) || !Array.isArray(f.native) || f.native.length !== NATIVE_RANKS.length || !f.native.every(validId) || new Set([f.membership, ...f.native]).size !== 11 || JSON.stringify(f) !== env.FULL_RELEASE_ROLES) throw new PageFault('discord_directory_unavailable', 503);
     roles.push([f.membership, 'Guild Member']); for (let i = 0; i < f.native.length; i++) roles.push([f.native[i], `Historical ten-rank profile — ${NATIVE_RANKS[i]}`]);
@@ -51,9 +57,11 @@ type Target = { id: string; birth: string | null; generation: string | null; rev
 type Hydrated = Target & { characters: string };
 
 function sourceCapture(env: Env) {
+  const canonical=captureCanonicalRankConfig233(env);
   const slots = ENV_KEYS.map(key => ({ key, descriptor: Object.getOwnPropertyDescriptor(env, key) }));
   for (const slot of slots) if (slot.descriptor && !Object.hasOwn(slot.descriptor, 'value')) throw new PageFault('discord_directory_unavailable', 503);
   const check = () => {
+    if(!canonical.current())throw new PageFault('discord_directory_unavailable',503);
     for (const slot of slots) {
       const current = Object.getOwnPropertyDescriptor(env, slot.key);
       if (!!current !== !!slot.descriptor || current && (!Object.hasOwn(current, 'value') || current.value !== slot.descriptor!.value)) throw new PageFault('discord_directory_unavailable', 503);
@@ -166,7 +174,7 @@ export async function discordDirectoryList(request: Request, env: Env, ctx: Comm
   try {
     const originalSubject = ctx.subject, checkEnv = sourceCapture(env), capture = captureCommunitySubject(originalSubject), subject = capture.subject;
     const check = () => { checkEnv(); capture.check(); if (ctx.subject !== originalSubject) throw new PageFault('discord_directory_unavailable', 503); };
-    const guild = env.SITE_GUILD_ID!, secret = env.COOKIE_SECRET, allowedRoles = publicRoles(env), cosmeticRoles = treasuryDirectoryRoles(env);
+    const guild = env.SITE_GUILD_ID!, secret = env.COOKIE_SECRET, allowedRoles = publicRoles(env), cosmeticRoles:readonly (readonly [string,string])[] = [...treasuryDirectoryRoles(env),...(captureCanonicalRankConfig233(env).mode==='enabled'?[[ADDON_DEVELOPER233.roleId,ADDON_DEVELOPER233.name] as const]:[])];
     if (!validId(guild) || env.GUILD_ID !== guild || typeof secret !== 'string' || !secret || !env.DISCORD_BOT_TOKEN) throw new PageFault('discord_directory_unavailable', 503);
     const binding = JSON.stringify([VERSION, guild, DISCORD_DIRECTORY_PAGE_SIZE, DISCORD_DIRECTORY_SOURCE_PAGE_SIZE, subject.discordId, subject.sessionVersion, subject.expiresAt, subject.accountIncarnation, subject.privacyGeneration]);
     check();

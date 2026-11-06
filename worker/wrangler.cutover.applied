@@ -66,3 +66,13 @@ activated_at = "2026-11-05T14:48:58Z"
 # This local marker records reviewed candidate configuration; no --activate invocation or provider rollout is asserted.
 activation_profile_sha256 = "5f9c94f1a4c36abca993aaa8578a448b9da67f46ff99033c6e0029971f956237"
 activated_at = "2026-11-06T04:25:17Z"
+# Owner-authorized .233 SOURCE PREPARATION: canonical single-highest ladder, legacy selectors retired.
+# This records candidate configuration only, with no provider activation asserted.
+activation_profile_sha256 = "5ab15d11fd2f83ea9889ff3c7ea569cefd84832bbf0b8a165654a183a0f43e40"
+activated_at = "2026-11-06T11:54:24Z"
+# .233 source preparation revision: canonical GM compatibility alias; automatic nicknames stay off.
+activation_profile_sha256 = "06becacc4fc3060bf8cab80598db0b872ab5496cd2dca9d62fef26e1fae72bd5"
+activated_at = "2026-11-06T12:08:56Z"
+# .233 source preparation: clarify current canonical names and legacy disabled selectors; runtime values unchanged.
+activation_profile_sha256 = "aaf8af5a3945bf717be4fd203cc09832bfb1b3470dc4a378b030e3761721e6a0"
+activated_at = "2026-11-06T12:44:58Z"

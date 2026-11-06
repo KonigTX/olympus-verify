@@ -10,6 +10,7 @@ import { privacyGenerationLiteralFenceSql } from './privacy-serving-authority';
 import { captureTreasuryReservedRoles } from './treasury-reserved-roles';
 import { parseNativeRoleMap } from './native-rank-adapter';
 import { ROYAL_WRIT_POLICY } from './royal-writs199';
+import {captureCanonicalRankConfig233,hasCanonicalMemberAccess233} from './canonical-ranks233';
 
 export const TREASURY_PURPOSE = 'treasury_cosmetic';
 export const TREASURY_EXTRA_PREFIX = 'treasury-extra-v1:';
@@ -119,9 +120,11 @@ export function treasuryDirectoryRoles(env: Env): readonly (readonly [string,str
 /** This fresh provider check supplements the original keeper member/standing
  * predicate. A cosmetic title or former keeper record is never membership. */
 export function treasuryHasOlympusMembershipRole(env: Env, roles: readonly string[]): boolean {
+  const canonical=captureCanonicalRankConfig233(env);
+  if(canonical.present)return canonical.current()&&hasCanonicalMemberAccess233(env,roles);
   const eligible: string[] = env.ROLE_GUILD_MEMBER ? [env.ROLE_GUILD_MEMBER] : [];
-  if (env.QR_NATIVE_ROLE_MAP) eligible.push(...parseNativeRoleMap(env.QR_NATIVE_ROLE_MAP).roles);
-  if (env.FULL_RELEASE_ROLES) { const full = JSON.parse(env.FULL_RELEASE_ROLES); eligible.push(full.membership, ...full.native); }
+  if (env.QR_NATIVE_ROLE_MAP && env.QR_NATIVE_ROLE_MAP !== 'off') eligible.push(...parseNativeRoleMap(env.QR_NATIVE_ROLE_MAP).roles);
+  if (env.FULL_RELEASE_ROLES && env.FULL_RELEASE_ROLES !== 'off') { const full = JSON.parse(env.FULL_RELEASE_ROLES); eligible.push(full.membership, ...full.native); }
   return roles.some(role => eligible.includes(role));
 }
 

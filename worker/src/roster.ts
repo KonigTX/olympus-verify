@@ -7,6 +7,7 @@ import { normalizeCharacter } from "./codes";
 import { explainDiscordError, guildMember, logLine, postMessage, removeRole, setNickname, staffNotice } from "./discord";
 import { grantMemberRole, callBudget, affords, GRANT_CALLS, type CallBudget, type GrantOutcome } from "./roles";
 import type { OriginalConsumedMembership230 } from './ingest';
+import {captureCanonicalRankConfig233} from './canonical-ranks233';
 import {captureBetaRoleDispatch,betaRoleDispatchHeld,type BetaRoleDispatch} from './beta-reset-policy';
 import type { RemovalDispatch } from './role-settlements';
 import { flushNotices, notify, noticeBatch, type NoticeBatch } from "./dm";
@@ -1147,7 +1148,7 @@ async function afterPromotion(env: Env, discordId: string, name: string, batch?:
       if(!deferCronRole)await logLine(env, `⚠️ roster: could not grant Guild Member to <@${discordId}> for **${name}**: ${explainDiscordError(e)}`,[reference]);
     }
   }
-  if (env.SET_NICKNAME === "true") {
+  if (env.SET_NICKNAME === "true" && !captureCanonicalRankConfig233(env).present) {
     if(!(await env.DB.prepare(`SELECT (${privacyGenerationFenceSql(1,2)}) AS current`).bind(discordId,capture?.subjectGeneration??null).first<{current:number}>())?.current)return roleOutcome;
     try {
       await setNickname(env, discordId, name.slice(0, 32));

@@ -2,6 +2,8 @@
 import type { Env } from "./env";
 import { rulesetLabel, type RulesetProfile } from "./ruleset-profile";
 import { FLAGSHIP_GUILD_NAME } from "./guild-affiliation229";
+import { nicknameButtons233 } from './member-nickname233';
+import {captureCanonicalRankConfig233} from './canonical-ranks233';
 
 export const GUIDE_VERIFY = "guide:verify"; // button → a request code, nothing to type (27 Sep; it opened a name modal before)
 export const GUIDE_STATUS = "guide:status"; // button → same answer as /verify-status
@@ -44,15 +46,18 @@ export function guideMessage(env: Env, profile: RulesetProfile, freshRoles = fal
   const review = env.ADMISSION_MODE === "review";
   const role = !!env.ROLE_GUILD_MEMBER;
   const nickname = env.SET_NICKNAME === "true";
+  const canonical=captureCanonicalRankConfig233(env).mode==='enabled';
   const invite = !legacyInviteQueue ? "" : review
     ? " If you are applying, an officer reviews the confirmed request before your invite enters the queue; an officer sends the invite from the game client when the guild has room."
     : " If you are applying, your invite enters the queue; an officer sends it from the game client when the guild has room.";
-  const access = freshRoles
+  const access = canonical
+    ? " Your single highest applicable Olympus rank opens the member channels after the current verification and access checks pass; a second stacked Member role is not required."
+    : freshRoles
     ? " Your guild roles open the member channels once your verified character appears on a current guild roster export and the access checks pass."
     : role
     ? " Your **Olympus Guild Member** role opens the member channels once your verified character appears on the officer-exported guild roster and the access checks pass."
     : "";
-  const nick = nickname ? " When enabled by guild staff, your Discord nickname updates to your verified character name." : "";
+  const nick = canonical ? " Use the nickname buttons below to choose your verified character and guild name, or restore your saved previous server nickname." : nickname ? " When enabled by guild staff, your Discord nickname updates to your verified character name." : "";
   return {
     embeds: [
       {
@@ -83,6 +88,7 @@ export function guideMessage(env: Env, profile: RulesetProfile, freshRoles = fal
         components: [
           { type: 2, style: 1, label: "Get my code", custom_id: GUIDE_VERIFY },
           { type: 2, style: 2, label: "My status", custom_id: GUIDE_STATUS },
+          ...nicknameButtons233(),
         ],
       },
     ],

@@ -69,10 +69,11 @@ class NativeMembershipTests(unittest.TestCase):
         self.w.handle_chat_line(self.line())
         self.assertEqual(len(self.calls), 1)
 
-    def test_signed_native_false_is_forwarded_for_explicit_worker_refusal(self):
+    def test_signed_native_false_waits_for_dedicated_positive_officer_proof(self):
         self.w.handle_chat_line(self.line(self.proof(member=False)))
-        self.assertEqual(len(self.calls), 1)
-        self.assertIs(self.calls[0][1]['nativeMembership']['member'], False)
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.w.state.d['outbox'], [])
+        self.assertFalse(self.w.state.was_seen(self.w.code_key('w', NAME, self.code)))
 
     def test_incoming_spoof_wrong_self_target_and_tampered_mac_do_not_dispatch(self):
         self.w.handle_chat_line(self.line().replace('To Fern Melder:', 'Stranger whispers:'))

@@ -5,13 +5,18 @@
 const fs=require('node:fs'),path=require('node:path'),Module=require('node:module');
 const OLD=Object.freeze(['refs','directory','events','trials','restrictions','departures','contributions','news','event_delivery','event_reminders','privacy_access','councillor_verification','ruleset_publication']);
 const ADDED=Object.freeze(['discord_directory_visibility','news_webhook']);
+// .233 reuses the settings table for one separately registered private family.
+// Keep the original13/.196 two-family plan exact rather than absorbing it there.
+const NICKNAME233=Object.freeze(['member_nickname']);
 function exactRegistry(registry,env,id,assert){
- const names=registry.communityDataNames();assert.deepEqual(Array.from(names).sort(),[...OLD,...ADDED].sort(),'all original13 and exact two source-owned families');
- assert.equal(new Set(names).size,15,'no duplicate family accepted');
+ const names=registry.communityDataNames();assert.deepEqual(Array.from(names).sort(),[...OLD,...ADDED,...NICKNAME233].sort(),'all original13, exact .196 two families and one private .233 nickname family');
+ assert.equal(new Set(names).size,16,'no duplicate family accepted');
  const all=registry.communityExportPlan(env,id),selected=registry.communityScopedExportPlan(env,id,ADDED);
- assert.equal(all.statements.length-selected.statements.length,36,'all original thirteen exporters retain36 logical reads');
+ const nickname=registry.communityScopedExportPlan(env,id,NICKNAME233);
+ assert.equal(nickname.statements.length,1,'exact .233 nickname family adds one separately selected read');
+ assert.equal(all.statements.length-selected.statements.length-nickname.statements.length,36,'all original thirteen exporters retain36 logical reads');
  assert.equal(selected.statements.length,3,'directory singleton1 and webhook count+bounded rows2');
- assert.equal(all.statements.length,39,'actual exact expanded registry plan39');
+ assert.equal(all.statements.length,40,'actual exact expanded registry plan40');
  for(const bad of [[],[ADDED[0],ADDED[0]],['unknown196']]){
   assert.throws(()=>registry.communityScopedExportPlan(env,id,bad));assert.throws(()=>registry.communityScopedEraseStatements(env,id,bad));
  }

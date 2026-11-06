@@ -26,6 +26,7 @@ import { bnetLoginOn } from "./bnet-switch";
 import { openRenameHold, reapplyText } from "./rename-review";
 import { captureLaneConfig, FRESH_AUDIT, laneClock, LEGACY_BAN_ALLOWANCE, type LaneCapture } from "./full-release-roles";
 import { appendLinkBlock } from "./link"; // .186: the Olympus Link code, last in the two code replies; off, the very same string
+import { isNicknameInteraction233,handleNicknameInteraction233 } from './member-nickname233';
 
 /** Revision 4: registers deferred work past the reply (index.ts deferOriginalServing). Absent in tests and direct callers. */
 type Defer = (label: string, work: () => Promise<unknown>) => void;
@@ -75,6 +76,7 @@ export async function handleInteraction(env: Env, i: Interaction, defer?: Defer,
   if (i.guild_id !== env.GUILD_ID) return reply("This bot only serves Olympus.");
   const actor=userOf(i)?.id;
   if(actor&&/^\d{17,20}$/.test(actor)&&!privacyActorAlreadyBound(env,actor))env=privacyBoundSubjectEnv(env,actor,await readPrivacySubject(env,actor));
+  if(isNicknameInteraction233(i))return handleNicknameInteraction233(env,i,defer);
 
   if (i.type === 2) {
     if (i.data?.type === 2) return cmdUserMenu(env, i);

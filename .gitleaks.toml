@@ -157,3 +157,18 @@ condition = "AND"
 paths = ['''^docs/launch229-addon-audit\.md$''']
 regexTarget = "secret"
 regexes = ['''^launch-knight-invite-v2$''']
+
+# .233: this exact public officer-action protocol selector is not a credential.
+# Require this rule AND each exact relative path AND the complete literal; the
+# full history and all other values in these files remain scanned.
+[[allowlists]]
+description = "Exact public .233 officer-action protocol selector"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = [
+  '''^watcher/launch_operations229\.py$''',
+  '''^watcher/tests/test_launch_operations229\.py$''',
+  '''^worker/tests/launch_operations229_native_test\.cjs$''',
+]
+regexTarget = "secret"
+regexes = ['''^officer-operations-v233$''']

@@ -8,6 +8,7 @@ import './qr-phase1-data';
 import './privacy-access-data';
 import './ruleset-publication-data';
 import './site-news';
+import './member-nickname-data233';
 import { communityDataNames, communityExportPlan, communityPackedExportPlan } from './community-context';
 import { appOut, apiJson, type AppRow } from './site-core';
 import { bnetFresh } from './bnet-retention';
@@ -35,9 +36,9 @@ export async function exportPrivacyAccess(request:Request,env:Env):Promise<Respo
  const {grant,collection,cursor}=await privacyAccessExportFormAction(request,env),id=grant.subject;
  if(collection!=='copy')return exportPrivacyHistory(env,grant,collection,cursor);
  const marker=await privacySubjectKey(env,id);
- const expected=['refs','directory','events','trials','restrictions','departures','contributions','news','event_delivery','event_reminders','privacy_access','councillor_verification','ruleset_publication','discord_directory_visibility','news_webhook'].sort();
- if(JSON.stringify(communityDataNames().slice().sort())!==JSON.stringify(expected)||communityExportPlan(env,id).statements.length!==39)throw new FormError('privacy_catalog_unqualified',503);
- const selected=communityPackedExportPlan(env,id,['discord_directory_visibility','news_webhook']);
+ const expected=['refs','directory','events','trials','restrictions','departures','contributions','news','event_delivery','event_reminders','privacy_access','councillor_verification','ruleset_publication','discord_directory_visibility','news_webhook','member_nickname'].sort();
+ if(JSON.stringify(communityDataNames().slice().sort())!==JSON.stringify(expected)||communityExportPlan(env,id).statements.length!==40)throw new FormError('privacy_catalog_unqualified',503);
+ const selected=communityPackedExportPlan(env,id,['discord_directory_visibility','news_webhook','member_nickname']);
  if(selected.statements.length!==1)throw new FormError('privacy_catalog_unqualified',503);
  const prepared=await Promise.all(PRIVACY_COPY_HISTORY_COLLECTIONS.map(c=>preparePrivacyHistory(env,grant,c,null,limit)));
  // Four base and four community singleton slots. Every preview has count + 26-row sentinel cap.

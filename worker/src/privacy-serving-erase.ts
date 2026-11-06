@@ -1,5 +1,6 @@
 import './privacy-access-data';
 import './ruleset-publication-data';
+import {nicknameUnresolvedSql233} from './member-nickname-data233';
 /** Serving-account completion; independent provider messages/recovery copies retain truthful custody.
  * Dormant .129 completion and restore authority are not enabled by this module.
  */
@@ -18,6 +19,7 @@ import {originalPrivacyStatementGroupProjection} from './privacy-serving-authori
 import './community-routes';
 import {qrErasureCustodyClearSql} from './qr-phase1-data';
 import { communityDataNames,communityEraseStatements } from './community-context';
+import { nicknameErasureAssertion233 } from './member-nickname-data233';
 import {communityScopedEraseStatements} from './community-data-registry';
 import { mentionDeletes, mentionExactReferenceSql } from './site-admin';
 import { servingPrivacyCatalogAndStaffCustody } from './privacy-business-catalog';
@@ -73,7 +75,7 @@ function ambiguousAccountReferencesSql(discipline=false):string{
  ELSE NOT EXISTS(SELECT 1 FROM json_each(${a}.details,'$.names') WHERE type<>'text') END`;
  // Ambiguous/manual references in another owner's record cannot be guessed away. The structured
  // application scrub runs below, but any still-ambiguous raw document closes this batch.
- return `EXISTS(SELECT 1 FROM site_settings WHERE instr(value,?2)>0)
+ return `(${nicknameUnresolvedSql233('?2')}) OR EXISTS(SELECT 1 FROM site_settings WHERE instr(value,?2)>0)
  OR EXISTS(SELECT 1 FROM site_applications a WHERE a.discord_id<>?2 AND instr(a.answers,?2)>0 AND
  (NOT json_valid(a.answers) OR CASE WHEN json_valid(a.answers) THEN json_type(a.answers)<>'object' OR
  (SELECT COUNT(*) FROM json_each(a.answers) WHERE key='references')<>1 OR
@@ -120,7 +122,7 @@ export async function continueServingErasure(env:Env,proof:AccountErasureProof,a
    const original=captureAccountErasureProof(proof);original.check();
    const guard=()=>env.DB.prepare(`SELECT CASE WHEN ${CURRENT_ERASURE_SQL} AND EXISTS(SELECT 1 FROM privacy_serving_jobs j WHERE j.operation_id=?1 AND ${originalErasureJobBirthSql(original.proof)}) THEN 1 ELSE json_extract('native_registered_settings_erasure_held','$') END AS current`)
     .bind(proof.operationId,proof.subject,proof.subjectGeneration,proof.requestDigest);
-   const scoped=communityScopedEraseStatements(env,proof.subject,['discord_directory_visibility','news_webhook']);
+   const scoped=communityScopedEraseStatements(env,proof.subject,['discord_directory_visibility','news_webhook','member_nickname']);
    const result=await env.DB.batch<{current:number}>([guard(),...scoped,guard()]);original.check();
    if(result.length!==scoped.length+2||result[0]?.results[0]?.current!==1||result.at(-1)?.results[0]?.current!==1)return held('native_registered_settings_cleanup_unconfirmed','unknown');
   }catch{return held('native_registered_settings_cleanup_unconfirmed','unknown');}
@@ -194,7 +196,7 @@ async function completeServingAccount(env:Env,p:AccountErasureProof,role:MemberR
  const configured=globalServingMode(env)==='configured',originalJob=configured?await captureOriginalAccountErasureJobRead(env,p,attempt):null;if(originalJob&&originalErasureJobReadFacts(originalJob).companion.markerKey!==markerKey)throw Error('privacy_original_marker_key_changed');
  const statements:D1PreparedStatement[]=[before,...(originalJob?[originalAccountErasureCompanionGuardStatement(env,originalJob)]:[]),
  env.DB.prepare("UPDATE privacy_serving_jobs SET state='erasing',role_checked_at=?2,staff_access=?3,hold_reason=NULL WHERE operation_id=?1 AND state IN('waiting_role','held')").bind(p.operationId,role.checkedAt,role.staffAccess),
- ...fixedAccountCleanupStatements(env,p,markerKey,rejectionMarker),
+ ...fixedAccountCleanupStatements(env,p,markerKey,rejectionMarker,native),
  // Replay identity has a fixed 366-day purpose window; private recovery copies have their own operator custody.
  env.DB.prepare(`INSERT INTO privacy_restore_replay(operation_id,subject_id,retired_generation,erased_at,retain_until,scope)
  SELECT ?1,?2,?3,${PRIVACY_DB_NOW},${PRIVACY_DB_NOW}+${PRIVACY_REPLAY},'serving_account'
@@ -237,7 +239,7 @@ function characterReferenceScrub(env:Env,id:string):D1PreparedStatement{
 }
 
 /** Same source cleanup bodies for serving completion and independently authorized CLOSED recovery. */
-function fixedAccountCleanupStatements(env:Env,p:Readonly<{subject:string;subjectGeneration:string}>,markerKey:string|null,rejectionMarker:readonly D1PreparedStatement[]):D1PreparedStatement[]{
+function fixedAccountCleanupStatements(env:Env,p:Readonly<{subject:string;subjectGeneration:string}>,markerKey:string|null,rejectionMarker:readonly D1PreparedStatement[],nativeNicknameRedacted=false):D1PreparedStatement[]{
  const target='?1';
  const groupedShape=(a:string)=>`CASE WHEN NOT json_valid(${a}.details) THEN 0
  WHEN json_type(${a}.details)<>'object' THEN 0
@@ -278,7 +280,13 @@ function fixedAccountCleanupStatements(env:Env,p:Readonly<{subject:string;subjec
  env.DB.prepare(`UPDATE community_privacy_cases SET subject_hint=CASE WHEN subject_hint=?1 THEN NULL ELSE subject_hint END,
  character_hint=CASE WHEN character_hint IN(SELECT name FROM characters WHERE discord_id=?1) OR character_hint IN(SELECT name_key FROM characters WHERE discord_id=?1) THEN NULL ELSE character_hint END
  WHERE subject_hint=?1 OR character_hint IN(SELECT name FROM characters WHERE discord_id=?1) OR character_hint IN(SELECT name_key FROM characters WHERE discord_id=?1)`).bind(p.subject),
- ...mentionDeletes(env,p.subject), ...communityEraseStatements(env,p.subject),
+ ...mentionDeletes(env,p.subject), ...(nativeNicknameRedacted
+  // Only completeServingAccount's private Native path reaches this branch,
+  // after the same original job's guarded pre-ambiguity nickname redaction.
+  // Late nickname receipts use the original raw-value CAS, so redaction also
+  // invalidates their write. Still reject any unexpected value in this batch.
+  ? [...communityScopedEraseStatements(env,p.subject,communityDataNames().filter(name=>name!=='member_nickname')),nicknameErasureAssertion233(env,p.subject)]
+  : communityEraseStatements(env,p.subject)),
  // Structured cleanup can leave malformed arrays, duplicate keys or free text. Never silently
  // erase another owner's text, or commit our terminal receipt while this attributable ID remains.
  env.DB.prepare(`SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM site_applications
@@ -324,7 +332,7 @@ function fixedAccountCleanupStatements(env:Env,p:Readonly<{subject:string;subjec
 /** The collector has no Native execute/read methods and accepts no caller adapter. Its only inputs are
  * the exact original Native+independent selection issued by the private recovery source. */
 export function originalClosedRecoveryCleanupPlans(env:Env,selection:OriginalClosedRecoveryReplaySelection):readonly OriginalClosedCleanupStep[]{
- const facts=originalClosedRecoveryCleanupAccount(selection,env);facts.check();const namespaces=communityDataNames().slice().sort();if(namespaces.length!==15||JSON.stringify(namespaces)!=="[\"contributions\",\"councillor_verification\",\"departures\",\"directory\",\"discord_directory_visibility\",\"event_delivery\",\"event_reminders\",\"events\",\"news\",\"news_webhook\",\"privacy_access\",\"refs\",\"restrictions\",\"ruleset_publication\",\"trials\"]")throw Error('closed_recovery_cleanup_namespace_incomplete');const registered=new WeakMap<object,OriginalClosedCleanupStep>();
+ const facts=originalClosedRecoveryCleanupAccount(selection,env);facts.check();const namespaces=communityDataNames().slice().sort();if(namespaces.length!==16||JSON.stringify(namespaces)!=="[\"contributions\",\"councillor_verification\",\"departures\",\"directory\",\"discord_directory_visibility\",\"event_delivery\",\"event_reminders\",\"events\",\"member_nickname\",\"news\",\"news_webhook\",\"privacy_access\",\"refs\",\"restrictions\",\"ruleset_publication\",\"trials\"]")throw Error('closed_recovery_cleanup_namespace_incomplete');const registered=new WeakMap<object,OriginalClosedCleanupStep>();
  const prepare=(sql:string):D1PreparedStatement=>{if(typeof sql!=='string'||sql.length>100000)throw Error('closed_recovery_source_statement');
   const bound=(values:readonly unknown[]):D1PreparedStatement=>{if(values.length>100||values.some(v=>typeof v!=='string'&&(typeof v!=='number'||!Number.isFinite(v))))throw Error('closed_recovery_source_binds');
    const step=Object.freeze({sql,values:Object.freeze(values.slice() as (string|number)[])}),handle=Object.freeze({bind:(...input:unknown[])=>bound(input)});registered.set(handle,step);return handle as unknown as D1PreparedStatement;};return bound([]);};
@@ -338,7 +346,7 @@ export function originalClosedRecoveryCleanupPlans(env:Env,selection:OriginalClo
  WHEN (SELECT COUNT(*) FROM json_each(${a}.details))<>(SELECT COUNT(DISTINCT key) FROM json_each(${a}.details)) THEN 0
  WHEN COALESCE(json_type(${a}.details,'$.names'),'')<>'array' THEN 0
  ELSE NOT EXISTS(SELECT 1 FROM json_each(${a}.details,'$.names') WHERE type<>'text') END`;
- const unqualified=`EXISTS(SELECT 1 FROM site_settings WHERE instr(value,?1)>0)
+ const unqualified=`(${nicknameUnresolvedSql233('?1')}) OR EXISTS(SELECT 1 FROM site_settings WHERE instr(value,?1)>0)
  OR EXISTS(SELECT 1 FROM site_applications a WHERE a.discord_id<>?1 AND instr(a.answers,?1)>0 AND
  (NOT json_valid(a.answers) OR CASE WHEN json_valid(a.answers) THEN json_type(a.answers)<>'object' OR
  (SELECT COUNT(*) FROM json_each(a.answers) WHERE key='references')<>1 OR
