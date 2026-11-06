@@ -78,6 +78,12 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".231", date: "2026-11-05", lines: [
+      "Fix a database compatibility issue that could leave Discord membership access waiting after verification succeeded.",
+      "Existing account, guild and privacy checks still apply before access can be granted.",
+    ],
+  },
+  {
     build: ".230", date: "2026-11-05", lines: [
       "Verification reports confirmed membership separately from Guild Member access and shows when access is on hold.",
       "A fresh in-game verification can restore missing Guild Member access after the launch access checks pass.",
