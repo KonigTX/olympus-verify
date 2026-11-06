@@ -51,7 +51,7 @@ const rankName232='CASE a.native_rank '+NATIVE_RANK_NAMES232.map((name,index)=>`
 const ANCHOR=(policy:string,canonical="'null'",cutoff='0')=>`((a.subject=c.discord_id AND a.subject_generation IS p.generation AND a.guild_id='${NATIVE_GUILD232}')
  AND (a.native_guid=c.guid AND a.desired=1 AND a.state='settled') AND (typeof(a.checked_at)='integer' AND a.checked_at>=a.created_at AND a.checked_at<a.expires_at)
  AND ((typeof(a.created_at)='integer' AND typeof(a.expires_at)='integer') AND (a.expires_at>a.created_at AND a.expires_at<=a.created_at+300))
- AND (a.created_at>=c.bound_at AND a.created_at>=c.verified_at AND a.created_at>=${cutoff} AND a.created_at<=CAST(strftime('%s','now') AS INTEGER))
+ AND ((a.created_at>=c.bound_at AND a.created_at>=c.verified_at) AND (a.created_at>=${cutoff} AND a.created_at<=CAST(strftime('%s','now') AS INTEGER)))
  AND (${byteHex('a.id',32)} AND ${byteHex('a.request_digest',64)}))
  AND ((a.purpose='launch_membership230' AND a.native_profile='prime-native-230' AND a.role_id='${SHARED_MEMBER232}' AND a.native_rank IS NULL AND a.native_rank_name IS NULL
  AND ((a.attempts=1 AND ${byteHex('a.claim_nonce',32)} AND a.reason='launch230_put_acknowledged_and_confirmed')
@@ -64,7 +64,7 @@ const ANCHOR=(policy:string,canonical="'null'",cutoff='0')=>`((a.subject=c.disco
  OR (a.purpose='launch_routine_membership232' AND a.attempts=0 AND a.claim_nonce IS NULL AND a.reason='native232_observed_without_dispatch'))))
  OR ((a.subject=c.discord_id AND a.subject_generation IS p.generation AND a.guild_id='${NATIVE_GUILD232}')
  AND (a.native_guid=c.guid AND a.desired=1 AND a.state='settled' AND a.purpose IN('canonical_identity233','canonical_consumed233','canonical_routine233') AND a.native_profile='${CANONICAL_PROFILE233}')
- AND (${byteHex('a.id',32)} AND ${byteHex('a.request_digest',64)} AND a.created_at>=c.bound_at AND a.created_at>=c.verified_at AND a.created_at>=${cutoff} AND a.created_at<=CAST(strftime('%s','now') AS INTEGER))
+ AND ((${byteHex('a.id',32)} AND ${byteHex('a.request_digest',64)}) AND ((a.created_at>=c.bound_at AND a.created_at>=c.verified_at) AND (a.created_at>=${cutoff} AND a.created_at<=CAST(strftime('%s','now') AS INTEGER))))
  AND (typeof(a.checked_at)='integer' AND a.checked_at>=a.created_at AND a.checked_at<a.expires_at AND a.expires_at>a.created_at AND a.expires_at<=a.created_at+300)
  AND (typeof(a.native_rank)='integer' AND a.native_rank BETWEEN 0 AND 9 AND a.native_rank_name=(${rankName232}))
  AND a.role_id IN(SELECT json_extract(j.value,'$.roleId') FROM json_each(${canonical},'$.ranks') j)

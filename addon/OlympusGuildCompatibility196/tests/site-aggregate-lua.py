@@ -89,17 +89,29 @@ case("module does not export automatically and clear is deliberate", '''assert(O
 
 # Execute the real existing slash handler, without loading private Config.lua or game boot code.
 addon = (root / "addon/OlympusVerify/OlympusVerify.lua").read_text(encoding="utf-8")
-handler = addon[addon.index('SlashCmdList.OLYMPUSVERIFY = function(msg)'):]
+registration_marker = "-- .234 (6 Nov2026): chat UI can install its real slash table after this addon."
+assert addon.count(registration_marker) == 1, "one exact current registration boundary"
+assert addon.count('OlympusVerifySlash234.Register("OLYMPUSVERIFY", {"/olv"}, function(msg)') == 1
+handler = addon[addon.index(registration_marker):]
 runtime = LuaRuntime(unpack_returned_tuples=True)
-runtime.execute('SlashCmdList={};OlympusVerifyDB={};calls=0;function OlympusVerify_Flush()calls=calls+1 end')
+runtime.execute('''
+  SlashCmdList={};OlympusVerifyDB={};calls=0;registrationFrames=0
+  function OlympusVerify_Flush()calls=calls+1 end
+  function CreateFrame(kind)
+    assert(kind=="Frame");registrationFrames=registrationFrames+1
+    return {RegisterEvent=function()end,SetScript=function()end}
+  end
+''')
 runtime.execute(handler)
+runtime.execute('assert(registrationFrames==1 and SLASH_OLYMPUSVERIFY1=="/olv" and type(SlashCmdList.OLYMPUSVERIFY)=="function");cachedDispatcher=SlashCmdList.OLYMPUSVERIFY')
 runtime.execute('SlashCmdList.OLYMPUSVERIFY("invite");assert(calls==1);SlashCmdList.OLYMPUSVERIFY("INVITE anything");assert(calls==2);SlashCmdList.OLYMPUSVERIFY("flush");assert(calls==3)')
 checks += 1
 print("PASS actual slash invite alias calls existing Flush once per command; no alternate invite path")
 preview = (root / "addon/OlympusVerify/OlympusVerifyPreview.lua").read_text(encoding="utf-8")
 wrapper = preview[preview.index('local ALLOWED = '):preview.index('-- For the panel and the tests.')]
 runtime.execute('local_saved=true; messages=0;function Cmd(s)return s end;function Say(s)messages=messages+1 end')
-runtime.execute('local saved=local_saved;local originalSlash=SlashCmdList.OLYMPUSVERIFY;' + wrapper)
+runtime.execute('local saved=local_saved;local slashRegistry=OlympusVerifySlash234;local registryReady=true;local originalSlash=slashRegistry.Snapshot("OLYMPUSVERIFY");' + wrapper)
+runtime.execute('assert(SlashCmdList.OLYMPUSVERIFY==cachedDispatcher)')
 runtime.execute('SlashCmdList.OLYMPUSVERIFY("invite");assert(calls==3 and messages==1)')
 checks += 1
 print("PASS actual preview wrapper blocks invite alias without reaching existing Flush")
