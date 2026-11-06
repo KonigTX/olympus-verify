@@ -748,6 +748,9 @@ class Watcher:
             if not self.verification_roster_ready(item.get("body")):
                 self._wait_for_verification_roster()
                 return Delivery.HELD
+            if self.worker.paused():
+                self._warn_custody("worker transport paused; verification original retained without a request attempt")
+                return Delivery.HELD
             original["attempted"] = True  # before transport; unknown outcomes cannot acquire a second attempt
             retries = 1
         self.worker.last_refusal = None

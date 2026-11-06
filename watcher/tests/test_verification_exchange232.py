@@ -3,12 +3,15 @@ from pathlib import Path
 from datetime import datetime, timezone
 import copy
 import hashlib
+import io
 import json
 import os
 import sys
 import tempfile
 import time
 import unittest
+import urllib.error
+import urllib.response
 from unittest.mock import patch
 
 sys.path.insert(0, os.environ.get('WATCHER_TEST_SOURCE', str(Path(__file__).resolve().parents[1])))
@@ -479,6 +482,108 @@ class VerificationExchangeTests(unittest.TestCase):
     def test_local_expiry_result_is_falsey_and_not_delivered(self):
         self.assertFalse(bool(watcher.Delivery.EXPIRED_LOCAL))
         self.assertIsNot(watcher.Delivery.EXPIRED_LOCAL, watcher.Delivery.DELIVERED)
+
+    def real_worker_call(self):
+        self.w.worker.call = watcher.Worker.call.__get__(self.w.worker, watcher.Worker)
+
+    @staticmethod
+    def http_response(value):
+        return urllib.response.addinfourl(io.BytesIO(json.dumps(value).encode('utf-8')), {}, 'https://test.invalid', 200)
+
+    def test_real_worker_shared_pause_does_not_spend_original_before_http(self):
+        self.admit()
+        self.real_worker_call()
+        requests = []
+        def open_request(req, timeout):
+            requests.append(req)
+            if req.get_method() == 'GET':
+                failure = urllib.error.HTTPError(req.full_url, 429, 'synthetic rate limit', {'Retry-After': '60'}, io.BytesIO(b'not logged'))
+                self.addCleanup(failure.close)
+                raise failure
+            return self.http_response(dict(result='member', roleOutcome='granted', roleGranted=True, pendingConsumed=True))
+        with patch.object(self.w.worker.opener, 'open', side_effect=open_request):
+            ok, _ = self.w.worker.call('GET', '/queue', retries=1)
+            self.assertFalse(ok)
+            self.assertIsNotNone(self.w.worker.paused())
+            self.w.handle_chat_line(self.line())
+            item = self.w.state.d['outbox'][0]
+            original = self.w._verification_originals[id(item)]
+            self.assertEqual(len(requests), 1, 'Only the earlier GET reached HTTP')
+            self.assertFalse(original['attempted'], 'A local pause is not a verification request attempt')
+            self.at += 62
+            self.now.return_value = self.at
+            self.w.flush_outbox()
+            self.assertEqual([r.get_method() for r in requests], ['GET', 'POST'])
+            self.assertEqual(json.loads(requests[1].data), item['body'])
+            self.assertTrue(original['attempted'])
+            self.assertEqual(self.w.state.d['outbox'], [])
+            self.w.flush_outbox()
+            self.assertEqual(len(requests), 2)
+
+    def test_real_worker_long_pause_keeps_local_expiry_and_new_whisper_recovery(self):
+        self.admit()
+        self.real_worker_call()
+        requests = []
+        def open_request(req, timeout):
+            requests.append(req)
+            if req.get_method() == 'GET':
+                failure = urllib.error.HTTPError(req.full_url, 429, 'synthetic long pause', {'Retry-After': '900'}, io.BytesIO(b'not logged'))
+                self.addCleanup(failure.close)
+                raise failure
+            if req.full_url.split('?', 1)[0].endswith('/ingest/roster'):
+                return self.http_response(dict(snapshot=8, trusted=True, members=2))
+            return self.http_response(dict(result='member', roleGranted=True))
+        with patch.object(self.w.worker.opener, 'open', side_effect=open_request):
+            self.w.worker.call('GET', '/queue', retries=1)
+            self.w.handle_chat_line(self.line())
+            item = self.w.state.d['outbox'][0]
+            old_proof = copy.deepcopy(item['body']['nativeMembership'])
+            self.expire_time()
+            self.w.flush_outbox()
+            self.assertEqual(len(requests), 1)
+            self.assertEqual(self.w.state.d['outbox'], [])
+            self.assertFalse(self.w.state.was_seen(self.w.code_key('w', NAME, self.code)))
+            self.w.forward_roster(self.roster())  # Its real call is still locally paused.
+            self.assertEqual(len(requests), 1)
+            self.at += 301
+            self.now.return_value = self.at
+            self.w.flush_outbox()
+            self.assertTrue(self.w.verification_roster_ready(self.body()))
+            self.w.forward_events([dict(type='whisper', name=NAME, guid=GUID, code=self.code, ok=True,
+                                       ts=self.at, nativeMembership=self.proof())])
+            posts = [json.loads(r.data) for r in requests if r.get_method() == 'POST' and r.full_url.split('?', 1)[0].endswith('/ingest/verify')]
+            self.assertEqual(len(posts), 1)
+            self.assertEqual(posts[0]['nativeMembership'], self.proof())
+            self.assertNotEqual(posts[0]['nativeMembership'], old_proof)
+            self.assertEqual(self.w.state.d['outbox'], [])
+
+    def test_real_verification_http429_remains_attempted_and_cannot_expire(self):
+        self.admit()
+        self.real_worker_call()
+        failure = urllib.error.HTTPError('https://test.invalid/ingest/verify', 429, 'synthetic request refused', {'Retry-After': '60'}, io.BytesIO(b'not logged'))
+        self.addCleanup(failure.close)
+        with patch.object(self.w.worker.opener, 'open', side_effect=failure) as transport:
+            self.w.handle_chat_line(self.line())
+            item = self.w.state.d['outbox'][0]
+            self.assertTrue(self.w._verification_originals[id(item)]['attempted'])
+            self.expire_time()
+            self.w.flush_outbox()
+            self.w.forward_events([dict(type='whisper', name=NAME, guid=GUID, code=self.code, ok=True,
+                                       ts=self.at, nativeMembership=self.proof())])
+            self.assertEqual(transport.call_count, 1)
+            self.assertIs(self.w.state.d['outbox'][0], item)
+            self.assertTrue(self.w.state.was_seen(self.w.code_key('w', NAME, self.code)))
+
+    def test_a_paused_response_dict_never_recreates_an_unattempted_original(self):
+        self.admit()
+        self.w.worker.call = lambda *a, **k: (self.calls.append((a, k)) or (False, {'paused': True}))
+        self.w.handle_chat_line(self.line())
+        item = self.w.state.d['outbox'][0]
+        self.assertTrue(self.w._verification_originals[id(item)]['attempted'])
+        self.expire_time()
+        self.w.flush_outbox()
+        self.assertEqual(len(self.calls), 1)
+        self.assertIs(self.w.state.d['outbox'][0], item)
 
 
 if __name__ == '__main__':

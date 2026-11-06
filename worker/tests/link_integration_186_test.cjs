@@ -23,7 +23,7 @@ const root = path.join(__dirname, "..");
 const entry = require("./helpers/privacy129_fixture.cjs");
 const subtle = globalThis.crypto.subtle;
 const sha = (b) => nodeCrypto.createHash("sha256").update(b).digest("hex");
-if(sha(fs.readFileSync(path.join(__dirname,'source230-membership-static-projection.cjs')))!=='32504d3693c7ba345662df9a2609febacabf729161101f0076f59c976fd32f27')throw Error('reviewed230 Link helper differs');
+if(sha(fs.readFileSync(path.join(__dirname,'source230-membership-static-projection.cjs')))!=='a6c3af90806f1803c0414c962557ab429c30a0c2e7b02bf0f0b1582b3afaa86a')throw Error('reviewed230 Link helper differs');
 const source230=require('./source230-membership-static-projection.cjs');
 // Upstream's web/test/fixtures/vectors.json at d03ea8a9 with every seed* field and the two derivable backend "token"
 // fields removed (its own "about" says so); pinned, so a changed fixture is a reviewed change. Each token is rebuilt here
