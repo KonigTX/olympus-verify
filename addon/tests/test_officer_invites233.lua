@@ -1,10 +1,10 @@
 -- .233 own WHO/unit producer + one hardware invite. Synthetic native APIs only.
 local passed,failed=0,0
 local function check(n,v) if v then passed=passed+1;print("PASS "..n) else failed=failed+1;print("FAIL "..n) end end
-local function fixture(saved)
+local function fixture(saved,clock)
   local e=setmetatable({},{__index=_G});e._G=e;setfenv(assert(loadfile("wow_mock.lua")),e)()
   local f={e=e,who=0,invites=0,records=0,name="Fresh Member",guid="Player-1-ABCDEF12",rows={},unit=true}
-  e.NOW=1793935000;e.GetGuildInfo=function(unit) return unit=="player" and "OLYMPUS PRIME" or nil end
+  e.NOW=clock or 1793935000;e.GetGuildInfo=function(unit) return unit=="player" and "OLYMPUS PRIME" or nil end
   e.GetRealmName=function() return "Native Realm" end;e.IsInGuild=function() return true end;e.InCombatLockdown=function() return false end
   e.CanGuildInvite=function() return true end;e.UnitExists=function(token) return token=="target" and f.unit end;e.UnitIsPlayer=function() return true end
   e.UnitGUID=function(token) return token=="player" and "Player-1-00000001" or f.unit and f.guid or nil end
@@ -168,5 +168,46 @@ do
   f.e.GetUnitName=function() f.e.GetRealmName=function() return "Changed Realm" end;return f.name end
   f.answer("")
   check("scope change during final capture unit read cannot publish an officer proof",f.records==0 and f.invites==0)
+end
+local function savedCopy(v)
+  if type(v)~="table" then return v end
+  local out={};for k,value in pairs(v) do out[savedCopy(k)]=savedCopy(value) end;return out
+end
+local function reloadFixture(f,at)
+  f.emit("PLAYER_LEAVING_WORLD")
+  local g=fixture(savedCopy(f.e.OlympusVerifyDB),at)
+  g.rows=savedCopy(f.rows)
+  if f.body then local row=g.e.OlympusVerifyDB.officerInvites233.proofs[f.body.nativeInvite.proofId];g.body=row and row.body or savedCopy(f.body) end
+  return g
+end
+do
+  local f=fixture();f.observe();f.o.HardwareCheck();f.answer("")
+  local proof=savedCopy(f.body.nativeInvite);local start=f.e.NOW
+  local g=reloadFixture(f,start+5) -- first hardware Scan/reload: source leaves WoW's memory for Watcher
+  check("first ordinary reload preserves completed proof revision without producing another WHO/event",g.e.OlympusVerifyDB.officerInvites233.proofs[proof.proofId].revision==(g.e.OlympusVerifyDB.officerInvites233.whoRevision or 0) and g.who==0 and g.records==0)
+  local h=reloadFixture(g,start+10) -- second hardware Sync/reload loads the later Worker projection
+  h.approve()
+  check("two ordinary reloads preserve the exact original proof MAC and observation time",h.body.nativeInvite.mac==proof.mac and h.body.nativeInvite.observedAt==proof.observedAt and h.body.nativeInvite.proofId==proof.proofId)
+  check("original completed proof remains usable for one attended invite after the two-reload transport",h.o.HardwareInvite(h.row) and h.invites==1 and h.who==0 and h.records==0)
+  local i=reloadFixture(h,start+12);i.approve()
+  check("another reload never clears the original spent native queue ID",not i.o.HardwareInvite(i.row) and i.invites==0)
+end
+for _,kind in ipairs({"sort","foreign","ownGuild","officerGuid","realm","expiry"}) do
+  local f=fixture();f.observe();f.o.HardwareCheck();f.answer("");local at=f.e.NOW+5
+  if kind=="sort" then f.e.C_FriendList.SortWho("name")
+  elseif kind=="foreign" then f.e.C_FriendList.SendWho('n-"Someone Else"')
+  elseif kind=="ownGuild" then f.emit("PLAYER_GUILD_UPDATE","player")
+  elseif kind=="expiry" then at=f.body.nativeInvite.observedAt+60 end
+  local g=reloadFixture(f,at)
+  if kind=="officerGuid" then g.e.UnitGUID=function(token) return token=="player" and "Player-1-99999999" or g.guid end
+  elseif kind=="realm" then g.e.GetRealmName=function() return "Other Realm" end end
+  -- Expired proofs may already be pruned by Store; use the original row only for the held oracle.
+  g.body=f.body;g.approve()
+  check(kind.." still holds across ordinary reload and cannot revive old proof custody",not g.o.HardwareInvite(g.row) and g.invites==0 and g.who==0)
+end
+do
+  local f=fixture();f.observe();f.o.HardwareCheck();local g=reloadFixture(f,f.e.NOW+1)
+  g.observe()
+  check("WHO still outstanding at reload stays unknown and cannot be automatically reissued",g.e.OlympusVerifyDB.officerInvites233.unknownWhoOutstanding==true and not g.o.HardwareCheck() and g.who==0 and g.records==0)
 end
 print(string.format("%d passed, %d failed",passed,failed));if failed>0 then error("officer invites failed") end

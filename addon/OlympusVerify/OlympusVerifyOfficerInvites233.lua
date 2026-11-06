@@ -93,7 +93,8 @@ local function ValidStored(row)
   if type(row)~="table" or type(row.body)~="table" or type(row.body.nativeInvite)~="table" then return nil end
   local b,p=row.body,row.body.nativeInvite
   local identity,now=Identity(),time()
-  if not identity or b.source~="whisper" or not Text(b.character) or not Guid(b.guid) or not Text(b.code,7) or H.strictCode(b.code)~=b.code or not H.checkCode(cfg.secret,b.character,b.code)
+  if not identity or row.guild~=identity.guild or row.realm~=identity.realm or row.officerGuid~=identity.guid
+    or b.source~="whisper" or not Text(b.character) or not Guid(b.guid) or not Text(b.code,7) or H.strictCode(b.code)~=b.code or not H.checkCode(cfg.secret,b.character,b.code)
     or p.version~=233 or not Text(p.proofId,32) or #p.proofId~=32 or not p.proofId:match("^%x+$")
     or not Text(p.fullName) or p.fullName~=p.unitFullName or p.unitGuid~=b.guid or H.normalizeCharacter(p.fullName)~=H.normalizeCharacter(b.character)
     or p.guildState~="unguilded" or p.source~="native-who-unit-v233" or p.scopeHash~=identity.scopeHash
@@ -191,7 +192,7 @@ local function OnWho()
   local p={version=233,proofId=request.proofId,fullName=w.fullName,unitGuid=w.guid,unitFullName=w.fullName,whisperAt=w.whisperAt,
     requestedAt=request.requestedAt,observedAt=time(),scopeHash=w.scopeHash,guildState="unguilded",source="native-who-unit-v233",before=request.before,after=after.digest}
   local body={character=w.fullName,code=w.code,guid=w.guid,source="whisper",nativeInvite=p};p.mac=MAC(body)
-  local row={body=body,revision=s.whoRevision or 0};s.proofs[p.proofId]=row;state.proofs[p.proofId]=row
+  local row={body=body,revision=s.whoRevision or 0,guild=w.guild,realm=w.realm,officerGuid=w.officerGuid};s.proofs[p.proofId]=row;state.proofs[p.proofId]=row
   if type(API.RecordOfficerInvite233)=="function" then API.RecordOfficerInvite233(body) end
   if OlympusVerifyAutoSync then OlympusVerifyAutoSync.Request("whisper") end
   state.reason="positive WHO/unit proof captured; Scan + reload exports, then wait for Watcher and Sync again to load the dated queue within 60 seconds"
@@ -241,7 +242,13 @@ function O.Status() return {reason=state.reason,pendingWho=state.pending~=nil,un
 frame:SetScript("OnEvent",function(_,event,addon)
   if event=="PLAYER_LOGIN" then if state.hooksReady==nil then state.hooksReady=InstallHooks() end;Store()
   elseif event=="PLAYER_ENTERING_WORLD" then state.active=true
-  elseif event=="PLAYER_LEAVING_WORLD" then state.active=false;Invalidate("native world changed; proof held",false)
+  elseif event=="PLAYER_LEAVING_WORLD" then
+    state.active=false
+    -- A normal UI reload is the transport. Completed observations retain their
+    -- original revision/identity/expiry and are rechecked before hardware use.
+    -- An unfinished query has no result custody and must remain unknown instead.
+    if state.pending then Invalidate("WHO outstanding while leaving the world; outcome unknown",true)
+    else state.reason="world left; completed proof needs current identity/unit recheck" end
   elseif event=="WHO_LIST_UPDATE" then OnWho()
   elseif event=="ADDON_ACTION_BLOCKED" or event=="ADDON_ACTION_FORBIDDEN" then
     if addon==ADDON then if state.pending then state.pending.blocked=true end;if state.inviting then state.inviting.blocked=true;state.inviting.state="unknown" end end
