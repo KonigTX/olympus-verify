@@ -7,6 +7,20 @@ import {relatedUnresolvedStaffSql,unresolvedStaffGrantSql} from './privacy-erasu
 import { registerCommunityData,type ExportPlan } from './community-context';
 import { registerServingPrivacyFamilies } from './privacy-business-catalog';
 const related=`subject=?1 OR proof_id IN(SELECT id FROM verification_proofs WHERE requester=?1 OR signer=?1)`;
+// The new routine family retains unresolved custody regardless of a malformed
+// attempt count. Its removal/compensation child may still need the exact own PUT
+// parent; no generation filter or current-role GET can erase that old witness.
+const native232Tagged=(a:string)=>`(${a}.purpose IN('launch_routine_membership232','native_rank_compensation232') OR ${a}.native_profile IS 'olympus-prime-live-20261105-v1')`;
+const native232Unresolved=(a:string)=>`(${native232Tagged(a)} AND ${a}.state IN('pending','dispatching','unknown'))`;
+const native232CurrentAbsence=`EXISTS(SELECT 1 FROM role_settlements ni JOIN privacy_serving_jobs nj ON ni.id=nj.operation_id||':native_role_inventory'
+ WHERE ni.subject=?1 AND ni.subject=nj.subject_id AND ni.subject_generation=nj.subject_generation AND ni.request_digest=nj.request_digest
+ AND ni.purpose='native_account_erasure_inventory' AND ni.desired=0 AND ni.attempts=0 AND ni.state='settled' AND ni.reason='observed_absent'
+ AND ni.checked_at BETWEEN CAST(strftime('%s','now') AS INTEGER)-60 AND CAST(strftime('%s','now') AS INTEGER)
+ AND nj.state IN('waiting_role','held','erasing') AND nj.retain_until>CAST(strftime('%s','now') AS INTEGER))`;
+const native232Retained=`(${native232Unresolved('role_settlements')}
+ OR EXISTS(SELECT 1 FROM role_settlements nd WHERE ${native232Unresolved('nd')} AND nd.request_digest=role_settlements.id
+ AND nd.subject=role_settlements.subject AND nd.guild_id=role_settlements.guild_id AND nd.role_id=role_settlements.role_id)
+ OR (${native232Tagged('role_settlements')} AND desired=1 AND attempts=1 AND state='settled' AND reason='native232_put_acknowledged_and_confirmed' AND NOT ${native232CurrentAbsence}))`;
 /** Fixed source-owned parameter positions only; no caller SQL or operational proof is issued. */
 export function qrErasureCustodyClearSql(identity:'?1'|'?2',native=false):string{
  if(identity!=='?1'&&identity!=='?2')throw Error('qr_erasure_identity_parameter_held');
@@ -40,7 +54,7 @@ export function qrErasureCustodyClearSql(identity:'?1'|'?2',native=false):string
 export function qrErasureStatements(env:Env,id:string):D1PreparedStatement[]{return [
  // Never discard the sole durable no-repeat receipt while a provider effect remains unknown.
  env.DB.prepare(`SELECT CASE WHEN ${qrErasureCustodyClearSql('?1',nativeErasureMode(env))} THEN 1 ELSE json_extract('qr_provider_custody_held','$') END AS admitted`).bind(id),
- env.DB.prepare(`DELETE FROM role_settlements WHERE (${related})${nativeErasureMode(env)?" AND NOT(attempts=1 AND state IN('dispatching','unknown')) AND rowid NOT IN(SELECT g.rowid FROM role_settlements g WHERE "+unresolvedStaffGrantSql('g')+")":''}`).bind(id),
+ env.DB.prepare(`DELETE FROM role_settlements WHERE (${related})${nativeErasureMode(env)?" AND NOT(attempts=1 AND state IN('dispatching','unknown')) AND NOT "+native232Retained+" AND rowid NOT IN(SELECT g.rowid FROM role_settlements g WHERE "+unresolvedStaffGrantSql('g')+")":''}`).bind(id),
  // Native mode must retain the exact proof/FK ancestry of a preserved unknown effect.
  // Revoke this account's signing/request authority without erasing its sole custody link.
  ...(nativeErasureMode(env)?[

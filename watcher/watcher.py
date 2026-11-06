@@ -104,10 +104,45 @@ LINE_TS_RE = re.compile(r"^(?P<mo>\d{1,2})/(?P<d>\d{1,2})\s+(?P<h>\d{1,2}):(?P<m
 CLIENT_IN = "Active Player Created"
 CLIENT_OUT = ("Client Object Manager Destroyed", "Client Destroy")
 
-WATCHER_VERSION = "0.6.17"
+WATCHER_VERSION = "0.6.18"
 STRICT_DISPLAY_PROTOCOL = "launch-roster-display-v1"
 STRICT_DISPLAY_PATH = "/queue/unverified?keyVersion=" + STRICT_DISPLAY_PROTOCOL
 STRICT_DISPLAY_MAX_BYTES = 512 * 1024
+
+
+def verification_roster_source(roster: Any) -> dict[str, Any] | None:
+    """Complete native enumeration, without requiring unrelated offline GUID/level data.
+
+    The original Worker ACK remains mandatory. Only the CURRENT target's unique
+    GUID is useful to verification; launch scan eligibility remains unchanged.
+    """
+    if (not isinstance(roster, dict) or type(roster.get('exportedAt')) is not int or roster['exportedAt'] < 1
+            or type(roster.get('total')) is not int or not 1 <= roster['total'] <= 1000
+            or not isinstance(roster.get('members'), list) or len(roster['members']) != roster['total']
+            or launch_operations229.canonical_guild(roster.get('nativeGuild')) != 'OLYMPUS PRIME'):
+        return None
+    for key in ('nativeGuild', 'nativeRealm'):
+        value = roster.get(key)
+        if not isinstance(value, str) or not value or len(value.encode('utf-8')) > 128 or any(ord(c) < 32 or ord(c) == 127 for c in value):
+            return None
+    members, guids = {}, {}
+    for row in roster['members']:
+        if not isinstance(row, dict) or not isinstance(row.get('name'), str):
+            return None
+        name = row['name']
+        key = codes.normalize_character(name)
+        if not key or key in members or len(name) > 96 or any(ord(c) < 32 or c in '|[]()' for c in name):
+            return None
+        guid = row.get('guid') if codes.is_guid(row.get('guid')) else None
+        members[key] = guid
+        if guid is not None:
+            guids[guid] = guids.get(guid, 0) + 1
+    try:
+        raw = json.dumps({k: v for k, v in roster.items() if k != 'exportedAt'}, sort_keys=True, ensure_ascii=False, allow_nan=False)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return {'digest': hashlib.sha256(raw.encode()).hexdigest(), 'members': members, 'guidCounts': guids,
+            'scopeHash': hashlib.sha256(('native-scope|1|' + roster['nativeGuild'] + '|' + roster['nativeRealm']).encode()).hexdigest()[:16]}
 
 
 # Where a relay character may come from: a login note addressed to the name it carries (a whisper the server delivered),
@@ -240,7 +275,13 @@ class Worker:
         if isinstance(res, dict):
             r = res.get("result")
             if isinstance(r, str) and r in Worker.KNOWN_RESULTS:
-                return f" ({r})"
+                detail = ""
+                if r == "member" and isinstance(res.get("roleOutcome"), str) and res["roleOutcome"] in {"granted", "observed-present", "unknown", "not-attempted", "held"}:
+                    detail = "; role=" + res["roleOutcome"]
+                    for key in ("roleGranted", "pendingConsumed"):
+                        if type(res.get(key)) is bool:
+                            detail += "; " + key + "=" + str(res[key]).lower()
+                return f" ({r}{detail})"
             if isinstance(res.get("marked"), int):
                 return f" (marked {res['marked']})"
         return ""
@@ -356,8 +397,13 @@ class CustodyStopped(RuntimeError):
     """Reload durable state in a new process; never discard an uncertain save."""
 
 
+class VerificationDeferred(RuntimeError):
+    """Original source remains on disk; no verification claim or request was made."""
+
+
 class Delivery(str, Enum):
     DELIVERED = "delivered"
+    EXPIRED_LOCAL = "expired-unattempted-source"
     HELD = "durable-held"
     NO_CUSTODY = "no-custody"
 
@@ -492,6 +538,13 @@ class Watcher:
         self.launch_scan = launch_operations229.Scan(lambda: time.time())
         self._launch_roster_candidate = None
         self._launch_accepted_roster = None  # same-process positive receipt only; never inferred after restart
+        self._verification_roster = None
+        self._verification_roster_candidate = None
+        self._verification_roster_originals: dict[int, dict[str, Any]] = {}
+        self._verification_originals: dict[int, dict[str, Any]] = {}
+        self._verification_seen_claims: dict[str, dict[str, Any]] = {}
+        self._verification_waiting = None
+        self._verification_sv_stamp = None
         self._unverified: dict[str, Any] | None = None
         self.max_outbox = int(cfg.get("max_outbox", 500))
         self._custody_halted = False
@@ -555,7 +608,59 @@ class Watcher:
         frozen = json.loads(json.dumps(body, allow_nan=False))
         item = {"path": path, "body": frozen, "label": label, "at": int(time.time()), "binding": self._delivery_binding(), "custody": 1}
         item["digest"] = self._original_digest(item)
+        if self.membership_only and path == "/ingest/verify":
+            # Only this process's newly reserved original may make its first request.
+            # Rehydrating an old/unknown JSON row never creates dispatch authority.
+            self._verification_originals[id(item)] = {"original": item, "attempted": False,
+                                                     "snapshot": json.dumps(item, sort_keys=True, allow_nan=False), "claims": ()}
+        candidate = self._verification_roster_candidate
+        if path == "/ingest/roster" and candidate is not None and frozen == candidate["body"]:
+            self._verification_roster_originals[id(item)] = {**candidate, "original": item}
         return item
+
+    def verification_roster_ready(self, body: Any) -> bool:
+        if not self.membership_only:
+            return True
+        witness = self._verification_roster
+        at = int(time.time())
+        if not isinstance(body, dict) or witness is None:
+            return False
+        if witness["fileStamp"] is not None:
+            try:
+                current = self.sv_file.stat()
+            except OSError:
+                return False
+            if (current.st_mtime_ns, current.st_size) != witness["fileStamp"]:
+                return False
+        proof = validate_membership(self.secret, body.get("character", ""), body.get("guid"),
+                                    body.get("code", ""), body.get("nativeMembership"), at)
+        if (proof is None or body.get("source") != "whisper" or proof["scopeHash"] != witness["scopeHash"]
+                or not at - 600 < witness["exportedAt"] <= at
+                or self.state.d["roster_sent"] != witness["exportedAt"]):
+            return False
+        if proof["member"] and (witness["members"].get(codes.normalize_character(body["character"])) != body["guid"]
+                                or witness["guidCounts"].get(body["guid"]) != 1):
+            return False
+        return True
+
+    def _wait_for_verification_roster(self) -> None:
+        message = "verification waiting for a fresh trusted roster ACK; use Sync & reload, then inspect the watcher result"
+        if self._verification_waiting != message:
+            self._verification_waiting = message
+            log(message)
+
+    def note_verification_roster_receipt(self, item: dict[str, Any], receipt: dict[str, Any]) -> None:
+        source = self._verification_roster_originals.pop(id(item), None)
+        if (source is None or source["original"] is not item or item.get("body") != source["body"]
+                or receipt.get("trusted") is not True or type(receipt.get("snapshot")) is not int or receipt["snapshot"] < 1
+                or type(receipt.get("members")) is not int or receipt["members"] != len(source["body"]["members"])
+                or "refused" in receipt or "skipped" in receipt):
+            return
+        self._verification_roster = {"digest": source["digest"], "exportedAt": source["exportedAt"],
+                                     "scopeHash": source["scopeHash"], "members": source["members"], "guidCounts": source["guidCounts"],
+                                     "snapshot": receipt["snapshot"], "fileStamp": source["fileStamp"]}
+        self._verification_waiting = None
+        log("verification roster ACK: complete native source accepted; pending fresh proofs may now be relayed")
 
     def _settle_original(self, item: dict[str, Any]) -> Delivery:
         box = self.state.d["outbox"]
@@ -574,7 +679,53 @@ class Watcher:
             self._warn_custody("settlement could not be persisted; original retained and dispatch stopped")
             return Delivery.HELD
         self._custody_warning = None
+        self._forget_verification_original(item)
         return Delivery.DELIVERED
+
+    def _forget_verification_original(self, item: dict[str, Any]) -> None:
+        original = self._verification_originals.pop(id(item), None)
+        if original is not None:
+            for claim in original["claims"]:
+                if self._verification_seen_claims.get(claim) is original:
+                    self._verification_seen_claims.pop(claim, None)
+
+    @staticmethod
+    def _verification_original_current(item: dict[str, Any], original: dict[str, Any]) -> bool:
+        try:
+            return original["original"] is item and original["snapshot"] == json.dumps(item, sort_keys=True, allow_nan=False)
+        except (KeyError, TypeError, ValueError, OverflowError):
+            return False
+
+    def _expire_unattempted_verification(self, item: dict[str, Any], original: dict[str, Any]) -> Delivery | None:
+        """Local source expiry is not delivery/ACK. Never infer this right from saved JSON."""
+        if (original.get("attempted") is not False or not self._verification_original_current(item, original)
+                or not original["claims"] or not self.state.d["outbox"] or self.state.d["outbox"][0] is not item):
+            return None
+        body = item.get("body")
+        proof = body.get("nativeMembership") if isinstance(body, dict) else None
+        observed = proof.get("observedAt") if isinstance(proof, dict) else None
+        if (type(observed) is not int or observed <= 0 or observed > int(time.time()) - 600
+                or body.get("source") != "whisper"
+                or validate_membership(self.secret, body.get("character", ""), body.get("guid"), body.get("code", ""), proof, observed) is None):
+            return None
+        claims = original["claims"]
+        if any(self._verification_seen_claims.get(claim) is not original or self.state.d["seen"].count(claim) != 1 for claim in claims):
+            return None
+        box, seen = self.state.d["outbox"], self.state.d["seen"]
+        box.pop(0)
+        self.state.d["seen"] = [claim for claim in seen if claim not in claims]
+        try:
+            self.state.save()
+        except OSError as error:
+            box.insert(0, item)
+            self.state.d["seen"] = seen
+            self._custody_halted = True
+            self._state_write_failed("unattempted-source-expiry", error)
+            self._warn_custody("local source expiry could not be persisted; original retained and dispatch stopped")
+            return Delivery.HELD
+        self._forget_verification_original(item)
+        log("verification source expired before any request; retired locally without server ACK; a fresh genuine whisper is required")
+        return Delivery.EXPIRED_LOCAL
 
     def _dispatch_original(self, item: dict[str, Any], retries: int, settle: Any = None) -> Delivery:
         if self._custody_halted or not self._retained_original(item):
@@ -585,6 +736,20 @@ class Watcher:
         if item.get("refusal_status") is not None:
             self._warn_custody("explicitly refused original retained for attended review")
             return Delivery.HELD
+        if self.membership_only and item.get("path") == "/ingest/verify":
+            original = self._verification_originals.get(id(item))
+            if (original is None or not self._verification_original_current(item, original)
+                    or original["attempted"] is not False):
+                self._warn_custody("verification original already attempted or from an earlier process; no automatic resend")
+                return Delivery.HELD
+            expired = self._expire_unattempted_verification(item, original)
+            if expired is not None:
+                return expired
+            if not self.verification_roster_ready(item.get("body")):
+                self._wait_for_verification_roster()
+                return Delivery.HELD
+            original["attempted"] = True  # before transport; unknown outcomes cannot acquire a second attempt
+            retries = 1
         self.worker.last_refusal = None
         try:
             # A transport stub or caller cannot mutate the original body held in state.
@@ -595,9 +760,14 @@ class Watcher:
             return Delivery.HELD
         if ok and isinstance(res, dict):
             item["acknowledged"] = True
+            source = self._verification_roster_originals.get(id(item))
+            if source is not None and source["original"] is item:
+                source["receipt"] = json.loads(json.dumps(res))
             result = (settle or self._settle_original)(item)
             if result is Delivery.DELIVERED:
                 self.note_launch_roster_receipt(item, res)
+                self.note_verification_roster_receipt(item, res)
+                self._verification_originals.pop(id(item), None)
                 log(f"  -> delivered{Worker.summarize(res)}")
             return result
         if ok and res is None and type(self.worker.last_refusal) is int and 400 <= self.worker.last_refusal < 500:
@@ -612,7 +782,7 @@ class Watcher:
             self._warn_custody("no application receipt; exact original remains held")
         return Delivery.HELD
 
-    def post(self, path: str, body: Any, label: str) -> Delivery:
+    def post(self, path: str, body: Any, label: str, *, _verification_claims: tuple[str, ...] = ()) -> Delivery:
         """Reserve an exact durable original before HTTP; never evict a prior unacknowledged body."""
         box = self.state.d["outbox"]
         if self._custody_halted or len(box) >= self.max_outbox:
@@ -623,6 +793,11 @@ class Watcher:
         except (TypeError, ValueError, OverflowError):
             self._warn_custody("body cannot be retained exactly; source remains unconsumed")
             return Delivery.NO_CUSTODY
+        original = self._verification_originals.get(id(item))
+        if original is not None:
+            original["claims"] = _verification_claims
+            for claim in _verification_claims:
+                self._verification_seen_claims[claim] = original
         box.append(item)
         try:
             self.state.save()
@@ -638,10 +813,16 @@ class Watcher:
         return self._dispatch_original(item, retries=3)
 
     def _post_claimed(self, path: str, body: Any, label: str, keys: list[str]) -> Delivery:
+        if self.membership_only and path == "/ingest/verify" and not self.verification_roster_ready(body):
+            self._wait_for_verification_roster()
+            raise VerificationDeferred()
         before = list(self.state.d["seen"])
+        claims = []
         for key in keys:
-            self.state.seen(key)
-        result = self.post(path, body, label)
+            if not self.state.seen(key):
+                claims.append(self.state._k(key))
+        result = (self.post(path, body, label, _verification_claims=tuple(claims))
+                  if self.membership_only and path == "/ingest/verify" else self.post(path, body, label))
         if result is Delivery.NO_CUSTODY:
             self.state.d["seen"] = before
             raise NoCustody("source paused until original custody is available")
@@ -669,6 +850,10 @@ class Watcher:
             return False
         if result is not Delivery.DELIVERED:
             return False
+        if lane == "outbox":
+            source = self._verification_roster_originals.get(id(original))
+            if source is not None and source["original"] is original and isinstance(source.get("receipt"), dict):
+                self.note_verification_roster_receipt(original, source["receipt"])
         self._ack_settlement_pending = None
         self._custody_halted = False
         self._custody_warning = None
@@ -686,6 +871,8 @@ class Watcher:
                 break
             item = box[0]
             result = self._dispatch_original(item, retries=1)
+            if result is Delivery.EXPIRED_LOCAL:
+                continue  # local expiry advances custody, never the delivered/ACK counter
             if result is not Delivery.DELIVERED:
                 break
             sent += 1
@@ -754,8 +941,14 @@ class Watcher:
                 self.read_identity(line)
             if "ref OLVm-" in line:
                 self.read_native_membership(line)
+        deferred = False
         for line in lines:
-            self.handle_chat_line(line)
+            try:
+                self.handle_chat_line(line)
+            except VerificationDeferred:
+                deferred = True
+        if deferred:
+            return  # original disk lines remain unclaimed; other signed events deduplicate normally
         self.state.d["chat_offset"] = off + consumed
         self.state.d["chat_size"] = size
         if fp:
@@ -1263,18 +1456,26 @@ class Watcher:
     def check_savedvars(self) -> None:
         self.purge_treasury_receipts()
         if not self.sv_file.exists():
+            self._verification_roster = None
             return
-        mtime = self.sv_file.stat().st_mtime
+        initial = self.sv_file.stat()
+        mtime = initial.st_mtime
         if mtime <= self.state.d["sv_mtime"]:
             return
         time.sleep(1.0)  # WoW writes the file in one go, but give it a moment
         try:
             data = savedvars.parse_file(str(self.sv_file))
         except Exception:
+            self._verification_roster = None
             log("SavedVariables parse failed: unreadable or invalid data (contents withheld)")
             self.state.d["sv_mtime"] = mtime
             self.state.save()
             return
+        current = self.sv_file.stat()
+        if (current.st_mtime_ns, current.st_size) != (initial.st_mtime_ns, initial.st_size):
+            self._verification_roster = None
+            return
+        self._verification_sv_stamp = (current.st_mtime_ns, current.st_size)
         db = data.get("OlympusVerifyDB") or {}
         treasury = db.get("treasury") or {}
         receipts = treasury.get("receipts") if isinstance(treasury, dict) else None
@@ -1283,7 +1484,8 @@ class Watcher:
                 if isinstance(receipt, dict) and receipt.get("status") == "confirmed_local" and receipt.get("classification") == "unclassified_receipt":
                     self.record_treasury_receipt(receipt, "savedvariables")
         self.note_saved_relay(db, mtime)
-        self.forward_events(db.get("events") or [])
+        if not self.membership_only:
+            self.forward_events(db.get("events") or [])
         control = self.valid_launch_control(db)
         new_scan = (control is not None and control['action'] == 'scan'
                     and not self.state.was_seen("launch-control:" + control['guid'] + ":" + control['id']))
@@ -1291,6 +1493,11 @@ class Watcher:
             self.forward_roster(db.get("roster") or {}, begin_launch_scan=True)
         else:
             self.forward_roster(db.get("roster") or {})
+        if self.membership_only:
+            try:
+                self.forward_events(db.get("events") or [])
+            except VerificationDeferred:
+                return  # keep the original SavedVariables cursor until roster admission is known
         self.read_launch_control(db)
         self.state.d["sv_mtime"] = mtime
         self.state.save()
@@ -1386,9 +1593,18 @@ class Watcher:
 
     def forward_roster(self, roster: dict[str, Any], *, begin_launch_scan: bool = False) -> None:
         digest = launch_operations229.complete_roster_digest(roster)
+        verification = verification_roster_source(roster) if self.membership_only else None
+        verified = self._verification_roster
+        if verification is None or verified is not None and verification['digest'] != verified["digest"]:
+            self._verification_roster = None
         accepted = self._launch_accepted_roster
         first = self.launch_scan.pages.get(0)
         at = time.time()
+        if (verified is not None and verification is not None and verification['digest'] == verified["digest"]
+                and type(roster.get("exportedAt")) is int and verified["exportedAt"] <= roster["exportedAt"] <= at + 5):
+            # Only the observed file stamp follows an identical complete export.
+            # Neither the original source timestamp nor its ACK deadline is renewed.
+            verified["fileStamp"] = self._verification_sv_stamp
         if (not begin_launch_scan and self.membership_only and digest is not None and accepted is not None and first is not None
                 and self.launch_scan.stopped is None and at < first['scan']['expiresAt']
                 and first['snapshotId'] == accepted['snapshot'] and first['snapshotAt'] == accepted['exportedAt']
@@ -1418,6 +1634,7 @@ class Watcher:
         same_scope = prior_scope_hash == scope_hash or prior_scope_hash is None and not native_scope
         if not exported or exported < self.state.d["roster_sent"] or exported == self.state.d["roster_sent"] and same_scope or not isinstance(members, list):
             return
+        self._verification_roster = None  # a newer pending/refused source never borrows an older positive ACK
         payload = {
             "exportedAt": exported,
             "members": [
@@ -1440,8 +1657,12 @@ class Watcher:
         # from its configuration or a character claim. The Worker pins it before
         # admitting a launch roster. Older addons remain unscoped, not guessed.
         payload.update(native_scope)
+        self._verification_roster_candidate = None
         if digest is not None:
             self._launch_roster_candidate = {'body': json.loads(json.dumps(payload)), 'digest': digest, 'exportedAt': exported}
+        if verification is not None:
+            self._verification_roster_candidate = {**verification, "body": json.loads(json.dumps(payload)),
+                "exportedAt": exported, "fileStamp": self._verification_sv_stamp}
         log(f"roster ({len(payload['members'])} members, exported {exported})")
         previous_watermark = self.state.d["roster_sent"]
         self.state.d["roster_sent"] = exported  # committed atomically with custody, before any dispatch
@@ -1867,10 +2088,13 @@ class Watcher:
             try:
                 self.recover_local_settlement()
                 self._require_custody_continuation()
+                if self.membership_only:
+                    self.check_savedvars()
                 self.flush_outbox()
                 self._require_custody_continuation()
                 self.tail_chat_log()
-                self.check_savedvars()
+                if not self.membership_only:
+                    self.check_savedvars()
                 self.pull_queue()
                 self.pull_launch_operations()
                 self.scan_diag_logs()

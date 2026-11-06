@@ -62,3 +62,7 @@ activated_at = "2026-11-03T19:53:01Z"
 # Membership-only stays true; no Link, relay, Treasury, removal or reserved-name invitation activation.
 activation_profile_sha256 = "cd8df35f62c75fa68fa654dd48134b35581338aeebc4c6134364cd48d5313c8b"
 activated_at = "2026-11-05T14:48:58Z"
+# Owner-authorized .232 SOURCE PREPARATION: exact current Prime rank profile and actual zero-permission Stewart role.
+# This local marker records reviewed candidate configuration; no --activate invocation or provider rollout is asserted.
+activation_profile_sha256 = "5f9c94f1a4c36abca993aaa8578a448b9da67f46ff99033c6e0029971f956237"
+activated_at = "2026-11-06T04:25:17Z"

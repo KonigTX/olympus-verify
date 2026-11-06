@@ -78,6 +78,14 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".232", date: "2026-11-05", lines: [
+      "Native rank checks use the current guild ladder and keep shared guild access alongside the correct rank label.",
+      "Keep verification codes pending until the exchange is acknowledged; refreshing roster evidence does not consume them.",
+      "The current named ladder includes Stewart; its new rank label grants no extra staff powers.",
+      "Native ranks do not create Council appointments. Uncertain roster or provider outcomes keep role changes on hold.",
+    ],
+  },
+  {
     build: ".231", date: "2026-11-05", lines: [
       "Fix a database compatibility issue that could leave Discord membership access waiting after verification succeeded.",
       "Existing account, guild and privacy checks still apply before access can be granted.",

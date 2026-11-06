@@ -55,6 +55,7 @@ const checks227 = String.raw`
   const invoke = (code,guid='Player-4613-12345678',nativeMembership=nativeProof227(code,guid)) => ingest.postVerify(env,{character:'Fern Melder',code,source:'whisper',guid,nativeMembership});
   const noAdmission = () => db.prepare('SELECT COUNT(*) n FROM characters').get().n===0&&db.prepare('SELECT COUNT(*) n FROM invite_queue').get().n===0&&ROLE_ADDS.length===0&&VERIFIED.length===0;
   const unchanged = () => db.prepare('SELECT consumed_at FROM pending').get().consumed_at===null&&noAdmission();
+  const sourcePending = reply => reply.status===503&&reply.body.result==='membership_source_pending'&&reply.body.pendingConsumed===false&&reply.body.roleGranted===false&&reply.body.inviteQueued===false&&unchanged();
   const closedRefusal = reply => reply.status===409&&reply.body.result==='membership_not_confirmed'&&reply.body.pendingConsumed===true&&reply.body.requestRefused===true&&reply.body.roleGranted===false&&reply.body.inviteQueued===false&&db.prepare('SELECT consumed_at,consumed_source FROM pending').get().consumed_at!==null&&db.prepare('SELECT consumed_source FROM pending').get().consumed_source==='membership_refused'&&noAdmission();
   const displayPath227 = '/queue/unverified?keyVersion=launch-roster-display-v1';
   const watcherKey227 = 'synthetic-watcher-display-only-fixture-token';
@@ -150,31 +151,37 @@ const checks227 = String.raw`
   nativePost=await ingest.postRoster(env,{exportedAt:T,members:nativeMembers227,nativeGuild:'Olympus',nativeRealm:'Fixture Live Realm'});
   check('same already scoped native export keeps original snapshot identity',nativePost.status===200&&db.prepare('SELECT COUNT(*) n FROM roster_snapshots').get().n===2);db.close();
   let code=await fresh(), reply=await invoke(code);
-  check('no roster: closes only original request without a character, review, invite or role',closedRefusal(reply));
+  check('no roster: retains original request without a character, review, invite or role',sourcePending(reply));
   const again=await load('./interactions').handleInteraction(env,{type:3,guild_id:env.GUILD_ID,data:{custom_id:'guide:verify'},member:{user:{id:A},roles:[]}});
   const nextCode=(again.body?.data?.content||'').match(/Your code: \x60([A-Z2-9]{7})\x60/)?.[1];
-  check('Get my code after definitive refusal really issues a fresh nonce',!!nextCode&&nextCode!==code&&db.prepare('SELECT COUNT(*) n FROM pending WHERE consumed_at IS NULL').get().n===1&&db.prepare("SELECT COUNT(*) n FROM pending WHERE consumed_source='membership_refused'").get().n===1);db.close();
+  check('Get my code preserves the original open request after a transient source hold',nextCode===code&&db.prepare('SELECT COUNT(*) n FROM pending WHERE consumed_at IS NULL').get().n===1&&db.prepare("SELECT COUNT(*) n FROM pending WHERE consumed_source='membership_refused'").get().n===0);db.close();
+  code=await fresh();await snapshot('Player-4613-12345678',T-1012);reply=await invoke(code);
+  check('observed 1012-second stale-roster regression holds without burning the code',sourcePending(reply));
+  const originalPending232=db.prepare('SELECT id,nonce,created_at FROM pending').get();
+  await snapshot();reply=await invoke(code);
+  const settledPending232=db.prepare('SELECT id,nonce,created_at,consumed_source FROM pending').get();
+  check('fresh roster permits the same original request without a replacement code',reply.body.result==='member'&&settledPending232.id===originalPending232.id&&settledPending232.nonce===originalPending232.nonce&&settledPending232.created_at===originalPending232.created_at&&settledPending232.consumed_source==='whisper'&&ROLE_ADDS.length===1);db.close();
   for(const [label,change] of [['unfinished','UPDATE roster_snapshots SET complete=0'],['distrusted','UPDATE roster_snapshots SET trusted=0'],['truncated','UPDATE roster_snapshots SET member_count=3']]){
     code=await fresh();await snapshot();await env.DB.prepare(change).run();reply=await invoke(code);
-    check(label+': real ingest closes only refused request and creates no admission',closedRefusal(reply));db.close();
+    check(label+': real ingest holds original request and creates no admission',sourcePending(reply));db.close();
   }
   code=await fresh();await snapshot();reply=await invoke(code,'Player-4613-00000000');
-  check('another character GUID cannot borrow this native roster name',closedRefusal(reply));db.close();
+  check('another character GUID cannot borrow this native roster name or burn its request',sourcePending(reply));db.close();
   code=await fresh();await snapshot();reply=await ingest.postVerify(env,{character:'Fern Melder',code,source:'whisper'});
-  check('unsigned/name-only relay lacks native whisper identity and grants nothing',closedRefusal(reply));db.close();
+  check('unsigned/name-only relay lacks native whisper identity and cannot burn a request',sourcePending(reply));db.close();
   for(const [label,make]of[
     ['native own-membership false',c=>nativeProof227(c,undefined,false)],['missing native assertion',()=>null],
     ['stale native assertion',c=>nativeProof227(c,undefined,true,T-601)],['future native assertion',c=>nativeProof227(c,undefined,true,T+6)],
     ['wrong scope assertion',c=>nativeProof227(c,undefined,true,T,{guild:'Olympus II',realm:'Fixture Live Realm'})],
     ['wrong code assertion',()=>nativeProof227('K7QM2XD')],['tampered MAC',c=>({...nativeProof227(c),mac:'0'.repeat(32)})],
     ['unknown proof field',c=>({...nativeProof227(c),guild:'Olympus'})],
-  ]){code=await fresh();await snapshot();reply=await invoke(code,undefined,make(code));check(label+' cannot borrow even a fresh positive roster',closedRefusal(reply));db.close();}
+  ]){code=await fresh();await snapshot();reply=await invoke(code,undefined,make(code));check(label+' cannot borrow even a fresh positive roster',label==='native own-membership false'?closedRefusal(reply):sourcePending(reply));db.close();}
   for(const[label,guid,make]of[
     ['missing proof',undefined,()=>null],['invalid false MAC',undefined,c=>({...nativeProof227(c,undefined,false),mac:'0'.repeat(32)})],
     ['stale false proof',undefined,c=>nativeProof227(c,undefined,false,T-601)],
     ['foreign GUID false proof','Player-4613-00000000',c=>nativeProof227(c,'Player-4613-00000000',false)],
     ['foreign scope false proof',undefined,c=>nativeProof227(c,undefined,false,T,{guild:'Olympus II',realm:'Fixture Live Realm'})],
-  ]){code=await fresh();await snapshot();reply=await invoke(code,guid,make(code));check(label+' cannot poison the trusted roster',closedRefusal(reply)&&db.prepare('SELECT trusted FROM roster_snapshots').get().trusted===1);db.close();}
+  ]){code=await fresh();await snapshot();reply=await invoke(code,guid,make(code));check(label+' cannot poison the trusted roster',((label==='foreign GUID false proof')?closedRefusal(reply):sourcePending(reply))&&db.prepare('SELECT trusted FROM roster_snapshots').get().trusted===1);db.close();}
   code=await fresh();await snapshot();reply=await invoke(code,undefined,nativeProof227(code,undefined,false,T-1));
   check('valid negative observed before a newer export cannot quarantine that export',closedRefusal(reply)&&db.prepare('SELECT trusted FROM roster_snapshots').get().trusted===1);db.close();
   for(const replacement of ['refreshed timestamp','new snapshot']){
@@ -196,12 +203,12 @@ const checks227 = String.raw`
   for(const [label,change]of[['replaced request',()=>db.prepare("UPDATE pending SET nonce='K7Q',created_at=created_at+1").run()],['already closed request',()=>db.prepare("UPDATE pending SET consumed_at=?,consumed_source='banned'").run(T)]]){
     code=await fresh();let reached=false;
     nativeBefore227=plan=>{if(plan.some(p=>p.statement.includes("consumed_source='membership_refused'"))){nativeBefore227=null;reached=true;change();}};
-    reply=await invoke(code);const row=db.prepare('SELECT nonce,consumed_at,consumed_source FROM pending').get();
+    reply=await invoke(code,undefined,nativeProof227(code,undefined,false));const row=db.prepare('SELECT nonce,consumed_at,consumed_source FROM pending').get();
     check(label+' cannot be clobbered by a delayed definitive refusal',reached&&reply.status===503&&reply.body.result==='outcome_unknown'&&row.consumed_source!=='membership_refused'&&noAdmission());db.close();
   }
   code=await fresh();let closeLanded=false;
   nativeAfter227=plan=>{if(plan.some(p=>p.statement.includes("consumed_source='membership_refused'"))){nativeAfter227=null;closeLanded=true;throw Error('synthetic lost committed refusal close ACK');}};
-  reply=await invoke(code);
+  reply=await invoke(code,undefined,nativeProof227(code,undefined,false));
   check('lost committed refusal ACK stays unknown and cannot acknowledge definitive no-role refusal',closeLanded&&reply.status===503&&reply.body.result==='outcome_unknown'&&reply.body.requestRefused!==true&&db.prepare('SELECT consumed_source FROM pending').get().consumed_source==='membership_refused'&&noAdmission());db.close();
   code=await fresh();await snapshot();reply=await invoke(code);
   check('matching native whisper on complete trusted main roster links the requested account',reply.body.result==='member'&&db.prepare('SELECT discord_id,status,guid FROM characters').get().discord_id===A&&db.prepare('SELECT status FROM characters').get().status==='member');

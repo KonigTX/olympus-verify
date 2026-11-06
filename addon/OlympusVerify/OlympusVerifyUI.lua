@@ -621,7 +621,12 @@ local function BuildToolbar()
     "Exports the roster and reloads: the reload writes the roster and the event log for the watcher to send, and loads the newest Discord queue file. The screen reloads for a few seconds.")
   exportBtn:SetPoint("LEFT", sendButton, "RIGHT", 8, 0)
   UI.exportButton = exportBtn
-  local flushBtn = Button(panel, "Restart chat log", 126, 24, function() API.FlushChatLog(); UI.Refresh() end,
+  local flushBtn = Button(panel, "Restart chat log", 126, 24, function()
+    if API.Status().membershipOnly then
+      if not UI.preview and OlympusVerifyAutoSync then OlympusVerifyAutoSync.SetEnabled(not OlympusVerifyAutoSync.Status().enabled) end
+    else API.FlushChatLog() end
+    UI.Refresh()
+  end,
     "Restart chat logging", "Turns chat logging off and on again. This does not guarantee a disk flush; use Sync & reload for the documented exchange. /olv logtest measures delivery on this client.")
   flushBtn:SetPoint("LEFT", exportBtn, "RIGHT", 6, 0)
   UI.flushButton = flushBtn
@@ -831,9 +836,20 @@ local function RefreshHeader(s, pc)
   if s.alertUntil and time() < s.alertUntil then UI.newBadge:Show() else UI.newBadge:Hide() end
   if s.membershipOnly then
     UI.newBadge:Hide()
-    UI.summary:SetText(YELLOW .. "Verification only|r" .. GREY .. "  ·  Legacy invite records retained, read-only|r")
+    local exchange = s.verificationExchange == "sync-needed" and "proof waiting: Sync & reload"
+      or s.verificationExchange == "sync-requested" and "sync requested: check Watcher result"
+      or "Guild changes need Sync & reload"
+    local auto = s.autoSync
+    local autoText = auto and auto.enabled and ("auto: " .. string.sub(auto.held or "waiting", 1, 34)) or "auto off"
+    UI.summary:SetText(YELLOW .. "Verification only|r" .. GREY .. "  ·  " .. exchange .. "  ·  " .. autoText .. "|r")
+    if UI.flushButton then
+      UI.flushButton:SetText(auto and (auto.enabled and "Auto sync: ON" or "Auto sync: OFF") or "Auto sync: N/A")
+      UI.flushButton.tipTitle = "Optional automatic Sync & reload"
+      UI.flushButton.tipText = "Off by default. Click or /olv autosync on|off. When enabled, valid proofs and complete native changes coalesce; a fresh export is requested about every 180 seconds while idle. At least 120 seconds between reloads, 30 seconds after login and 15 seconds idle. Combat, movement, typing and interactions hold it. Manual Sync & reload remains available. Client refusal is held without retries. " .. (auto and auto.held or "Restart the game to load the module.")
+    end
     return
   end
+  if UI.flushButton then UI.flushButton:SetText("Restart chat log") end
 
   -- The number of key presses still owed, and how long the oldest applicant has been waiting, are the two facts an
   -- officer needs at a glance, so they get the line under the title rather than a place in the list.
@@ -862,7 +878,7 @@ local function RefreshTiles(s)
   if s.chatLogging then
     SetTile(2, "CHAT LOG", GREEN .. "on|r" .. (s.flushLog and "" or (GREY .. " · manual|r")), C.green, "Chat log on",
       "Whispers and guild messages go to Logs\\WoWChatLog.txt, which the watcher reads. " ..
-      (s.flushLog and "The addon requests a logging restart after each whisper and guild join or departure. That does not guarantee a disk flush; /olv logtest measures delivery on this client. Use Sync & reload for the documented exchange." or "On the measured beta, chat is written in 48 KiB batches and at /reload or logout. Use Sync & reload for the documented exchange."))
+      (s.flushLog and "The addon requests a logging restart after each whisper and guild join or departure. That does not guarantee a disk flush; /olv logtest measures delivery on this client. Use Sync & reload for the documented exchange." or "Chat may remain buffered until /reload or logout. Use Sync & reload after verification whispers or guild changes. The Watcher must acknowledge the complete roster before forwarding verification; see its role outcome. No automatic reload or immediate delivery is promised."))
   else
     SetTile(2, "CHAT LOG", RED .. "OFF|r", C.red, "Chat log OFF", "Whispers do not reach Discord until chat logging is back on (/chatlog, or /reload: the addon turns it on at login).")
   end
