@@ -20,7 +20,7 @@ function held(s:string):never{throw Error(s);}
 // tuple, only after its own returned PUT. No later GET can create this reason.
 // Every other row, including malformed/unattempted/held/past-absence/unknown,
 // holds. No privacy-generation filter hides older custody. No row is deleted.
-const hex32Sql=(v:string)=>`typeof(${v})='text' AND length(${v})=32 AND length(CAST(${v} AS BLOB))=32 AND instr(${v},char(0))=0 AND ${v} NOT GLOB '*[^0-9a-f]*'`;
+const hex32Sql=(v:string)=>`(typeof(${v})='text' AND length(${v})=32 AND length(CAST(${v} AS BLOB))=32 AND instr(${v},char(0))=0 AND ${v} NOT GLOB '*[^0-9a-f]*')`;
 const ORIGINAL_LEGACY_ACK=`r.purpose='beta_guard_grant' AND r.desired=1 AND r.attempts=1 AND r.state='settled' AND r.reason='legacy_put_acknowledged'
  AND ${hex32Sql('r.id')} AND ${hex32Sql('r.claim_nonce')} AND typeof(r.subject)='text' AND length(r.subject) BETWEEN 17 AND 20 AND length(CAST(r.subject AS BLOB))=length(r.subject) AND instr(r.subject,char(0))=0 AND r.subject GLOB '[1-9]*' AND r.subject NOT GLOB '*[^0-9]*'
  AND typeof(r.created_at)='integer' AND r.created_at>0 AND r.created_at<1792688400 AND typeof(r.expires_at)='integer' AND r.expires_at=r.created_at+300

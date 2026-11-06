@@ -120,6 +120,20 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .231 reverses only this exact D1 compatibility release note.
+  const release231 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".231\", date: \"2026-11-05\", lines: [",
+    "      \"Fix a database compatibility issue that could leave Discord membership access waiting after verification succeeded.\",",
+    "      \"Existing account, guild and privacy checks still apply before access can be granted.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .231 prepend occurs once', originalNews.split(release231).length === 2);
+  originalNews = originalNews.replace(release231, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+
   // .230 reverses only this exact native membership access release note.
   const release230 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

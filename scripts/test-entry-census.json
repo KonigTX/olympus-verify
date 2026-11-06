@@ -11,6 +11,14 @@
   ],
   "exceptions": [
     {
+      "path": "worker/tests/launch_membership231_seed.cjs",
+      "kind": "helper",
+      "owner": "Codex Root / D1 membership compatibility",
+      "reason": "Synthetic seed exporter invoked in its own process by the always-run launch_membership231_workerd_test.cjs; not a standalone test entry.",
+      "evidence": "The registered Workerd regression executes this helper once, then checks the complete original Native/D1 grant flow and unchanged source inputs.",
+      "sha256": "fbdb906d4ec941720eb589e741002723ed692354537b538545b59e5bdae5d66a"
+    },
+    {
       "path": "worker/tests/beta_item15_absent_differential_receipt.cjs",
       "kind": "manual",
       "owner": "Codex Root / owner",
