@@ -196,6 +196,14 @@ async function deleteThroughOriginalRoute(target,actor){
     ["a partially malformed roles list is refused", id => ({ user: { id }, roles: [ROLE, 123] })],
     ["a missing provider profile is refused", () => null],
   ];
+  const canonical233=load('./canonical-ranks233'),policy233=JSON.stringify({version:1,enabled:true,profile:canonical233.CANONICAL_PROFILE233,guildId:canonical233.CANONICAL_GUILD233,ranks:canonical233.CANONICAL_RANKS233.map(r=>({...r,permissions:'0'}))}),canonicalVars233={...roleVars,ROLE_GUILD_MEMBER:'1552077551839617104',CANONICAL_RANKS233:policy233};
+  for(const rank of canonical233.CANONICAL_RANKS233){
+    roleAnswer=id=>({user:{id},roles:[rank.roleId],pending:false});const c=await context.communityContext(env(canonicalVars233),req('https://guild.example/x',cookieV1),{guildRoleRead:true});
+    check('.233 canonical '+rank.key+' reads Community without stacked Member or invented keeper proof',c.capabilities.communityRead&&!c.capabilities.confirmedGuildData&&!c.capabilities.organizer&&one('SELECT COUNT(*) AS n FROM characters WHERE discord_id=?',APPLICANT).n===0);
+  }
+  roleAnswer=id=>({user:{id},roles:[canonical233.ADDON_DEVELOPER233.roleId],pending:false});const technical233=await context.communityContext(env(canonicalVars233),req('https://guild.example/x',cookieV1),{guildRoleRead:true});check('.233 technical partner alone does not become a canonical member reader',!technical233.capabilities.communityRead);
+  roleAnswer=id=>({user:{id},roles:[canonical233.CANONICAL_RANKS233[0].roleId],pending:true});const pending233=await context.communityContext(env(canonicalVars233),req('https://guild.example/x',cookieV1),{guildRoleRead:true});check('.233 canonical role does not bypass Discord membership screening',!pending233.capabilities.communityRead);
+  const bad233=await context.communityContext(env({...canonicalVars233,CANONICAL_RANKS233:'{}'}),req('https://guild.example/x',cookieV1),{guildRoleRead:true});check('.233 malformed selected canonical configuration does not fall back to old member role',!bad233.capabilities.communityRead);
   for (const [name, answer] of states) { roleAnswer = answer; const cc = await roleContext(); check(name, !cc.capabilities.communityRead && !cc.capabilities.confirmedGuildData); }
   roleAnswer = id => ({ user: { id }, roles: [ROLE] });
   const missingConfig = await context.communityContext(env({ ...roleVars, ROLE_GUILD_MEMBER: "" }), req("https://guild.example/x", cookieV1), { guildRoleRead: true });

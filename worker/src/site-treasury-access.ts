@@ -16,23 +16,31 @@ import { linksNotBefore } from "./db";
 import { ROSTER_CURRENT_FOR } from "./roster";
 import { DB_NOW } from "./account-generation-contracts";
 import { privateSiteAsset } from "./site-access";
+import { captureCanonicalRankConfig233, NATIVE_NAMES233 } from './canonical-ranks233';
+import { captureLaunchVerification } from './launch-verification227';
+import { canonicalOlympusGuildName, FLAGSHIP_GUILD_NAME } from './guild-affiliation229';
 
 /** The planning programme's renderer, financial model, content and stylesheet. Royal Writs stay member-readable. */
 export const TREASURY_PLAN_ASSETS = Object.freeze(["/static/treasury-plan207.js", "/static/treasury-plan-model207.js", "/static/treasury-plan-content207.js", "/static/treasury-plan207.css"]);
 export const TREASURY_ACCESS_PATH = "/api/treasury-plan/access";
-const OFFICER_RANKS = new Set(["Guild Master", "High Council", "Treasurer", "Officer", "Officer Alt", "Raid Leader"]);
+const OFFICER_RANKS = new Set(["Guild Master", "Stewart", "High Council", "Treasurer", "Officer", "Officer Alt", "Raid Leader"]);
 const HEADER_NAMES = ["Cookie", "Origin", "Sec-Fetch-Site", "X-Olympus"];
-const DISCORD_KEYS = ["SITE_GUILD_ID", "GUILD_ID", "DISCORD_BOT_TOKEN", "ROLE_GUILD_MASTER", "ROLE_GUILD_LEADER", "ROLE_OFFICER", "ROLE_RAID_LEADER"] as const;
-const ROSTER_KEYS = ["QR_NATIVE_ROLE_MAP", "LINKS_NOT_BEFORE", "LINKS_NOT_BEFORE_CLOCK_GATED"] as const;
+const DISCORD_KEYS = ["SITE_GUILD_ID", "GUILD_ID", "DISCORD_BOT_TOKEN", "ROLE_GUILD_MASTER", "ROLE_GUILD_LEADER", "ROLE_OFFICER", "ROLE_RAID_LEADER", "CANONICAL_RANKS233"] as const;
+const ROSTER_KEYS = ["QR_NATIVE_ROLE_MAP", "LINKS_NOT_BEFORE", "LINKS_NOT_BEFORE_CLOCK_GATED", "CANONICAL_RANKS233", "VERIFY_MEMBERSHIP_ONLY", "VERIFY_NATIVE_SCOPE", "GUILD_ID"] as const;
 
 /** The configuration values that chose a read. assertSameConfig checks them again after the read's await, so one decision
  * never mixes two configurations (the officer/Army reader discipline). The bound site env is a frozen copy, so in normal
  * operation the check cannot fire; it makes the invariant explicit and testable. */
 export function configSnapshot(env: Env, keys: readonly string[]): readonly unknown[] {
-  return Object.freeze(keys.map(key => (env as unknown as Record<string, unknown>)[key]));
+  return Object.freeze(keys.map(key => {
+    const d=Object.getOwnPropertyDescriptor(env,key);
+    if(d&&!Object.hasOwn(d,'value')||!d&&key in env)throw Error('treasury_original_request_held');
+    return d?.value;
+  }));
 }
 export function assertSameConfig(env: Env, keys: readonly string[], snapshot: readonly unknown[]): void {
-  if (keys.length !== snapshot.length || keys.some((key, i) => (env as unknown as Record<string, unknown>)[key] !== snapshot[i])) throw Error("treasury_original_request_held");
+  const current=configSnapshot(env,keys);
+  if (keys.length !== snapshot.length || current.some((value, i) => value !== snapshot[i])) throw Error("treasury_original_request_held");
 }
 // One Treasury page load by a Discord-role officer can cost six reads (the nav check, the route check and the four plan
 // files); twenty a minute leaves room for normal reloads while still bounding provider use per account.
@@ -46,11 +54,17 @@ export function officerRank(rank: unknown, index: unknown, names: readonly strin
 
 /** The configured current native ladder and launch cut, or null while native authority is beta-era or prelaunch: the
  * beta-five profile never carries into this read, and a clock-gated cut that has not opened yet (0) withholds the path. */
-export function currentLadder(env: Env): { names: readonly string[]; cutoff: number } | null {
+export function currentLadder(env: Env): { names: readonly string[]; cutoff: number; source?: string } | null {
+  const canonical=captureCanonicalRankConfig233(env),cutoff=linksNotBefore(env);
+  if(canonical.present){
+    const launch=captureLaunchVerification(env);
+    return canonical.mode==='enabled'&&canonical.policy&&canonical.current()&&env.GUILD_ID===canonical.policy.guildId
+      &&launch.mode==='members-only'&&launch.scope&&launch.current()&&canonicalOlympusGuildName(launch.scope.guild)===FLAGSHIP_GUILD_NAME&&Number.isSafeInteger(cutoff)&&cutoff>0
+      ?{names:NATIVE_NAMES233,cutoff,source:launch.scope.provenance}:null;
+  }
   let profile: ReturnType<typeof parseNativeRoleMap>["profile"];
   try { profile = parseNativeRoleMap(env.QR_NATIVE_ROLE_MAP).profile; } catch { return null; }
   if (profile === "beta-five") return null;
-  const cutoff = linksNotBefore(env);
   return Number.isSafeInteger(cutoff) && cutoff > 0 ? { names: namesFor(profile), cutoff } : null;
 }
 
@@ -76,11 +90,13 @@ const ROSTER_SQL = `SELECT r.rank AS rank, r.rank_index AS rank_index FROM roste
 
 /** Any independently valid officer character admits its account. Filter before limiting: lower-rank alts and a second
  * valid officer do not disqualify the first, while every candidate still has its own unique exported and bound GUID. */
-function rosterOfficerStatement(env: Env, discordId: string, ladder: { names: readonly string[]; cutoff: number }): D1PreparedStatement {
+function rosterOfficerStatement(env: Env, discordId: string, ladder: { names: readonly string[]; cutoff: number; source?: string }): D1PreparedStatement {
   const officers = ladder.names.flatMap((rank, index) => officerRank(rank, index, ladder.names) ? [{ rank, index }] : []);
   const pairs = officers.map((_, i) => `(r.rank=?${4 + i * 2} AND r.rank_index=?${5 + i * 2})`).join(" OR ") || "0";
-  return env.DB.prepare(`${ROSTER_SQL} AND (${pairs}) LIMIT 1`)
-    .bind(discordId, ladder.cutoff, ROSTER_CURRENT_FOR, ...officers.flatMap(({ rank, index }) => [rank, index]));
+  const values=[discordId,ladder.cutoff,ROSTER_CURRENT_FOR,...officers.flatMap(({rank,index})=>[rank,index])];
+  const source=ladder.source===undefined?'':` AND s.source=?${values.length+1}`;
+  return env.DB.prepare(`${ROSTER_SQL} AND (${pairs})${source} LIMIT 1`)
+    .bind(...values,...(ladder.source===undefined?[]:[ladder.source]));
 }
 function rosterOfficerResult(out: D1Result | undefined, names: readonly string[]): boolean {
   const rows = out?.results ?? [];
@@ -90,6 +106,11 @@ function rosterOfficerResult(out: D1Result | undefined, names: readonly string[]
 async function discordOfficerRole(env: Env, discordId: string, check: () => void): Promise<boolean> {
   const guild = env.SITE_GUILD_ID;
   const wanted = [env.ROLE_GUILD_MASTER, env.ROLE_GUILD_LEADER, env.ROLE_OFFICER, env.ROLE_RAID_LEADER].filter((id): id is string => typeof id === "string" && ID.test(id));
+  const canonical=captureCanonicalRankConfig233(env);
+  if(canonical.present){
+    if(canonical.mode!=='enabled'||!canonical.policy||!canonical.current()||guild!==canonical.policy.guildId)return false;
+    for(const rank of canonical.policy.ranks.slice(0,5))if(!wanted.includes(rank.roleId))wanted.push(rank.roleId);
+  }
   if (!env.DISCORD_BOT_TOKEN || !ID.test(guild ?? "") || env.GUILD_ID !== guild || !wanted.length) return false;
   // The guild and role configuration that chose this read must still be the configuration that judges its answer.
   const config = configSnapshot(env, DISCORD_KEYS), same = () => { check(); assertSameConfig(env, DISCORD_KEYS, config); };

@@ -120,6 +120,22 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .233 reverses only this exact unified ranks and officer actions release note.
+  const release233 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".233\", date: \"2026-11-06\", lines: [",
+    "      \"Use one Olympus rank at a time, with guild access provided by that rank. Uncertain evidence keeps changes on hold.\",",
+    "      \"Verified members can choose a character-and-guild nickname and restore their previous server nickname.\",",
+    "      \"A movable pending-sync alert lets officers flush verification with one click or key press.\",",
+    "      \"Officer queues use the live Veteran and Member ranks. Each invite, promotion or removal requires attended native checks.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .233 prepend occurs once', originalNews.split(release233).length === 2);
+  originalNews = originalNews.replace(release233, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+
   // .232 reverses only this exact roster/rank reconciliation preparation note.
   const release232 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

@@ -2,4 +2,10 @@
   <Binding name="OLYMPUSVERIFY_FLUSH" header="OLYMPUSVERIFY" category="ADDONS">
     OlympusVerify_Flush()
   </Binding>
+  <Binding name="OLYMPUSVERIFY_SYNC" header="OLYMPUSVERIFY" category="ADDONS">
+    OlympusVerify_Sync()
+  </Binding>
+  <Binding name="OLYMPUSVERIFY_OFFICER_NEXT" header="OLYMPUSVERIFY" category="ADDONS">
+    if OlympusLaunch229 then OlympusLaunch229.NextAction() end
+  </Binding>
 </Bindings>

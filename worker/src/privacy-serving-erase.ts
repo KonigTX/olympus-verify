@@ -1,5 +1,6 @@
 import './privacy-access-data';
 import './ruleset-publication-data';
+import {nicknameUnresolvedSql233} from './member-nickname-data233';
 /** Serving-account completion; independent provider messages/recovery copies retain truthful custody.
  * Dormant .129 completion and restore authority are not enabled by this module.
  */
@@ -73,7 +74,7 @@ function ambiguousAccountReferencesSql(discipline=false):string{
  ELSE NOT EXISTS(SELECT 1 FROM json_each(${a}.details,'$.names') WHERE type<>'text') END`;
  // Ambiguous/manual references in another owner's record cannot be guessed away. The structured
  // application scrub runs below, but any still-ambiguous raw document closes this batch.
- return `EXISTS(SELECT 1 FROM site_settings WHERE instr(value,?2)>0)
+ return `(${nicknameUnresolvedSql233('?2')}) OR EXISTS(SELECT 1 FROM site_settings WHERE instr(value,?2)>0)
  OR EXISTS(SELECT 1 FROM site_applications a WHERE a.discord_id<>?2 AND instr(a.answers,?2)>0 AND
  (NOT json_valid(a.answers) OR CASE WHEN json_valid(a.answers) THEN json_type(a.answers)<>'object' OR
  (SELECT COUNT(*) FROM json_each(a.answers) WHERE key='references')<>1 OR
@@ -120,7 +121,7 @@ export async function continueServingErasure(env:Env,proof:AccountErasureProof,a
    const original=captureAccountErasureProof(proof);original.check();
    const guard=()=>env.DB.prepare(`SELECT CASE WHEN ${CURRENT_ERASURE_SQL} AND EXISTS(SELECT 1 FROM privacy_serving_jobs j WHERE j.operation_id=?1 AND ${originalErasureJobBirthSql(original.proof)}) THEN 1 ELSE json_extract('native_registered_settings_erasure_held','$') END AS current`)
     .bind(proof.operationId,proof.subject,proof.subjectGeneration,proof.requestDigest);
-   const scoped=communityScopedEraseStatements(env,proof.subject,['discord_directory_visibility','news_webhook']);
+   const scoped=communityScopedEraseStatements(env,proof.subject,['discord_directory_visibility','news_webhook','member_nickname']);
    const result=await env.DB.batch<{current:number}>([guard(),...scoped,guard()]);original.check();
    if(result.length!==scoped.length+2||result[0]?.results[0]?.current!==1||result.at(-1)?.results[0]?.current!==1)return held('native_registered_settings_cleanup_unconfirmed','unknown');
   }catch{return held('native_registered_settings_cleanup_unconfirmed','unknown');}
@@ -324,7 +325,7 @@ function fixedAccountCleanupStatements(env:Env,p:Readonly<{subject:string;subjec
 /** The collector has no Native execute/read methods and accepts no caller adapter. Its only inputs are
  * the exact original Native+independent selection issued by the private recovery source. */
 export function originalClosedRecoveryCleanupPlans(env:Env,selection:OriginalClosedRecoveryReplaySelection):readonly OriginalClosedCleanupStep[]{
- const facts=originalClosedRecoveryCleanupAccount(selection,env);facts.check();const namespaces=communityDataNames().slice().sort();if(namespaces.length!==15||JSON.stringify(namespaces)!=="[\"contributions\",\"councillor_verification\",\"departures\",\"directory\",\"discord_directory_visibility\",\"event_delivery\",\"event_reminders\",\"events\",\"news\",\"news_webhook\",\"privacy_access\",\"refs\",\"restrictions\",\"ruleset_publication\",\"trials\"]")throw Error('closed_recovery_cleanup_namespace_incomplete');const registered=new WeakMap<object,OriginalClosedCleanupStep>();
+ const facts=originalClosedRecoveryCleanupAccount(selection,env);facts.check();const namespaces=communityDataNames().slice().sort();if(namespaces.length!==16||JSON.stringify(namespaces)!=="[\"contributions\",\"councillor_verification\",\"departures\",\"directory\",\"discord_directory_visibility\",\"event_delivery\",\"event_reminders\",\"events\",\"member_nickname\",\"news\",\"news_webhook\",\"privacy_access\",\"refs\",\"restrictions\",\"ruleset_publication\",\"trials\"]")throw Error('closed_recovery_cleanup_namespace_incomplete');const registered=new WeakMap<object,OriginalClosedCleanupStep>();
  const prepare=(sql:string):D1PreparedStatement=>{if(typeof sql!=='string'||sql.length>100000)throw Error('closed_recovery_source_statement');
   const bound=(values:readonly unknown[]):D1PreparedStatement=>{if(values.length>100||values.some(v=>typeof v!=='string'&&(typeof v!=='number'||!Number.isFinite(v))))throw Error('closed_recovery_source_binds');
    const step=Object.freeze({sql,values:Object.freeze(values.slice() as (string|number)[])}),handle=Object.freeze({bind:(...input:unknown[])=>bound(input)});registered.set(handle,step);return handle as unknown as D1PreparedStatement;};return bound([]);};
@@ -338,7 +339,7 @@ export function originalClosedRecoveryCleanupPlans(env:Env,selection:OriginalClo
  WHEN (SELECT COUNT(*) FROM json_each(${a}.details))<>(SELECT COUNT(DISTINCT key) FROM json_each(${a}.details)) THEN 0
  WHEN COALESCE(json_type(${a}.details,'$.names'),'')<>'array' THEN 0
  ELSE NOT EXISTS(SELECT 1 FROM json_each(${a}.details,'$.names') WHERE type<>'text') END`;
- const unqualified=`EXISTS(SELECT 1 FROM site_settings WHERE instr(value,?1)>0)
+ const unqualified=`(${nicknameUnresolvedSql233('?1')}) OR EXISTS(SELECT 1 FROM site_settings WHERE instr(value,?1)>0)
  OR EXISTS(SELECT 1 FROM site_applications a WHERE a.discord_id<>?1 AND instr(a.answers,?1)>0 AND
  (NOT json_valid(a.answers) OR CASE WHEN json_valid(a.answers) THEN json_type(a.answers)<>'object' OR
  (SELECT COUNT(*) FROM json_each(a.answers) WHERE key='references')<>1 OR

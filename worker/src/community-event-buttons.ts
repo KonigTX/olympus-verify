@@ -23,6 +23,7 @@ import { rsvpRefusalState, rsvpStatements, type RsvpStatus } from "./community-e
 import { privacyAccountIncarnation, readPrivacySubject } from "./privacy-serving-authority";
 import { captureLaneConfig } from "./full-release-roles";
 import { siteMemberLink } from "./site-return";
+import {captureCanonicalRankConfig233,hasCanonicalMemberAccess233} from './canonical-ranks233';
 
 const BUTTON = /^raid:(rsvp|remind):([A-Za-z0-9_-]{22}):([1-9]\d{0,8})(?::(yes|tentative|no))?$/; // stage 2: raid:remind:<event>:<revision> has no status
 const SNOWFLAKE = /^\d{17,20}$/;
@@ -37,6 +38,7 @@ export function discordMemberFenceSql(id: number, generation: string | null, inc
 export async function handleRaidComponent(env: Env, i: Interaction): Promise<Response> {
   // Revision 4 (A6): captured here, before any await, for the read-only member-role check below; absent configuration has no cfg.
   const freshMember = captureLaneConfig(env).cfg?.membership ?? null;
+  const canonical = captureCanonicalRankConfig233(env);
   const m = BUTTON.exec(i.data?.custom_id ?? "");
   if (!m || (m[1] === "rsvp") !== (m[4] !== undefined)) return reply("Unknown component.");
   const kind = m[1] as "rsvp" | "remind", eventId = m[2]!, revision = Number(m[3]), status = (m[4] ?? "yes") as RsvpStatus;
@@ -49,7 +51,9 @@ export async function handleRaidComponent(env: Env, i: Interaction): Promise<Res
   const ownerAtEntry = discordCommandOwner225(env, user.id, i.guild_id ?? "");
   const ownerDeadline = now() + 180;
   // In configured mode the fresh member role (FULL_RELEASE_ROLES membership) is accepted too.
-  if (!ownerAtEntry && env.ROLE_GUILD_MEMBER && !(i.member?.roles ?? []).includes(env.ROLE_GUILD_MEMBER) && !(freshMember && (i.member?.roles ?? []).includes(freshMember))) return reply(`Raid sign-ups are for verified guild members. Verify a character first, or open the calendar: ${site}`);
+  if (!ownerAtEntry && (canonical.present
+    ? !canonical.current() || !hasCanonicalMemberAccess233(env, i.member?.roles)
+    : env.ROLE_GUILD_MEMBER && !(i.member?.roles ?? []).includes(env.ROLE_GUILD_MEMBER) && !(freshMember && (i.member?.roles ?? []).includes(freshMember)))) return reply(`Raid sign-ups are for verified guild members. Verify a character first, or open the calendar: ${site}`);
   if (rateLimited(`cr:${user.id}`, 30, 60)) return reply("Too many answers in one minute. Wait a moment, then try again.");
   // The capture: the live account and its incarnation, then the privacy generation, before the batch; the fence inside
   // the batch holds them, so anything that changes in between refuses the write instead of adopting a newer fact.

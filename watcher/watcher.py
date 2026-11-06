@@ -48,6 +48,7 @@ from custody_recovery import StateLease  # noqa: E402
 from treasury_receipts227 import TreasuryJournal, normalize_name as treasury_name, parse_note as treasury_note  # noqa: E402
 from native_membership227 import parse_membership_note, validate_membership  # noqa: E402
 import launch_operations229  # noqa: E402
+import officer_invites233  # noqa: E402
 
 # The sender is a character name, never a channel tag or a UI escape. Since patch 12.1 code shipped to this client,
 # Blizzard's Discord bridge can relay a Discord user's text into guild chat, and a Discord display name is free text:
@@ -104,7 +105,7 @@ LINE_TS_RE = re.compile(r"^(?P<mo>\d{1,2})/(?P<d>\d{1,2})\s+(?P<h>\d{1,2}):(?P<m
 CLIENT_IN = "Active Player Created"
 CLIENT_OUT = ("Client Object Manager Destroyed", "Client Destroy")
 
-WATCHER_VERSION = "0.6.18"
+WATCHER_VERSION = "0.6.19"
 STRICT_DISPLAY_PROTOCOL = "launch-roster-display-v1"
 STRICT_DISPLAY_PATH = "/queue/unverified?keyVersion=" + STRICT_DISPLAY_PROTOCOL
 STRICT_DISPLAY_MAX_BYTES = 512 * 1024
@@ -608,7 +609,7 @@ class Watcher:
         frozen = json.loads(json.dumps(body, allow_nan=False))
         item = {"path": path, "body": frozen, "label": label, "at": int(time.time()), "binding": self._delivery_binding(), "custody": 1}
         item["digest"] = self._original_digest(item)
-        if self.membership_only and path == "/ingest/verify":
+        if self.membership_only and path in ("/ingest/verify", officer_invites233.PATH):
             # Only this process's newly reserved original may make its first request.
             # Rehydrating an old/unknown JSON row never creates dispatch authority.
             self._verification_originals[id(item)] = {"original": item, "attempted": False,
@@ -642,6 +643,34 @@ class Watcher:
                                 or witness["guidCounts"].get(body["guid"]) != 1):
             return False
         return True
+
+    def officer_invite_roster_ready(self, body: Any) -> bool:
+        witness = self._verification_roster
+        at = int(time.time())
+        valid = officer_invites233.validate(self.secret, body, at)
+        if not self.membership_only or valid is None or witness is None:
+            return False
+        if witness["fileStamp"] is not None:
+            try:
+                current = self.sv_file.stat()
+            except OSError:
+                return False
+            if (current.st_mtime_ns, current.st_size) != witness["fileStamp"]:
+                return False
+        return (valid["nativeInvite"]["scopeHash"] == witness["scopeHash"]
+                and at - 600 < witness["exportedAt"] <= at
+                and self.state.d["roster_sent"] == witness["exportedAt"]
+                and codes.normalize_character(valid["character"]) not in witness["members"]
+                and witness["guidCounts"].get(valid["guid"], 0) == 0)
+
+    def forward_officer_invite(self, body: Any) -> None:
+        valid = officer_invites233.validate(self.secret, body, int(time.time()))
+        if valid is None:
+            return
+        key = "officer-invite233:" + valid["nativeInvite"]["proofId"]
+        if self.state.was_seen(key):
+            return
+        self._post_claimed(officer_invites233.PATH, valid, "attended officer invite proof", [key])
 
     def _wait_for_verification_roster(self) -> None:
         message = "verification waiting for a fresh trusted roster ACK; use Sync & reload, then inspect the watcher result"
@@ -702,11 +731,15 @@ class Watcher:
                 or not original["claims"] or not self.state.d["outbox"] or self.state.d["outbox"][0] is not item):
             return None
         body = item.get("body")
-        proof = body.get("nativeMembership") if isinstance(body, dict) else None
+        invite = item.get("path") == officer_invites233.PATH
+        proof = body.get("nativeInvite" if invite else "nativeMembership") if isinstance(body, dict) else None
         observed = proof.get("observedAt") if isinstance(proof, dict) else None
-        if (type(observed) is not int or observed <= 0 or observed > int(time.time()) - 600
-                or body.get("source") != "whisper"
-                or validate_membership(self.secret, body.get("character", ""), body.get("guid"), body.get("code", ""), proof, observed) is None):
+        lifetime = officer_invites233.TTL if invite else 600
+        if type(observed) is not int or observed <= 0 or observed > int(time.time()) - lifetime or body.get("source") != "whisper":
+            return None
+        authenticated = (officer_invites233.validate(self.secret, body, observed) if invite else
+                         validate_membership(self.secret, body.get("character", ""), body.get("guid"), body.get("code", ""), proof, observed))
+        if authenticated is None:
             return None
         claims = original["claims"]
         if any(self._verification_seen_claims.get(claim) is not original or self.state.d["seen"].count(claim) != 1 for claim in claims):
@@ -736,7 +769,7 @@ class Watcher:
         if item.get("refusal_status") is not None:
             self._warn_custody("explicitly refused original retained for attended review")
             return Delivery.HELD
-        if self.membership_only and item.get("path") == "/ingest/verify":
+        if self.membership_only and item.get("path") in ("/ingest/verify", officer_invites233.PATH):
             original = self._verification_originals.get(id(item))
             if (original is None or not self._verification_original_current(item, original)
                     or original["attempted"] is not False):
@@ -745,7 +778,11 @@ class Watcher:
             expired = self._expire_unattempted_verification(item, original)
             if expired is not None:
                 return expired
-            if not self.verification_roster_ready(item.get("body")):
+            if item["path"] == "/ingest/verify" and item.get("body", {}).get("nativeMembership", {}).get("member") is False:
+                self._warn_custody("unattempted nonmember verification held for explicit officer evidence; original was not relabelled")
+                return Delivery.HELD
+            ready = (self.officer_invite_roster_ready(item.get("body")) if item["path"] == officer_invites233.PATH else self.verification_roster_ready(item.get("body")))
+            if not ready:
                 self._wait_for_verification_roster()
                 return Delivery.HELD
             if self.worker.paused():
@@ -762,6 +799,11 @@ class Watcher:
             self._warn_custody("transport outcome unknown; exact original remains held")
             return Delivery.HELD
         if ok and isinstance(res, dict):
+            if item["path"] == officer_invites233.PATH and not officer_invites233.receipt(item["body"], res):
+                self._warn_custody("officer invite application receipt unknown; exact original retained without retry")
+                return Delivery.HELD
+            if item["path"] == officer_invites233.PATH:
+                log("officer invite: " + (res["reason"] if res["result"] == "held" else "approved for one attended native action; no role granted"))
             item["acknowledged"] = True
             source = self._verification_roster_originals.get(id(item))
             if source is not None and source["original"] is item:
@@ -816,7 +858,8 @@ class Watcher:
         return self._dispatch_original(item, retries=3)
 
     def _post_claimed(self, path: str, body: Any, label: str, keys: list[str]) -> Delivery:
-        if self.membership_only and path == "/ingest/verify" and not self.verification_roster_ready(body):
+        if self.membership_only and path in ("/ingest/verify", officer_invites233.PATH) and not (
+                self.officer_invite_roster_ready(body) if path == officer_invites233.PATH else self.verification_roster_ready(body)):
             self._wait_for_verification_roster()
             raise VerificationDeferred()
         before = list(self.state.d["seen"])
@@ -825,7 +868,7 @@ class Watcher:
             if not self.state.seen(key):
                 claims.append(self.state._k(key))
         result = (self.post(path, body, label, _verification_claims=tuple(claims))
-                  if self.membership_only and path == "/ingest/verify" else self.post(path, body, label))
+                  if self.membership_only and path in ("/ingest/verify", officer_invites233.PATH) else self.post(path, body, label))
         if result is Delivery.NO_CUSTODY:
             self.state.d["seen"] = before
             raise NoCustody("source paused until original custody is available")
@@ -992,6 +1035,9 @@ class Watcher:
             # The following authenticated self-note or SavedVariables fallback
             # will relay this actual whisper. An old GUID note is not current
             # membership and the host never invents a positive assertion.
+            return
+        if self.membership_only and native and native["nativeMembership"]["member"] is False:
+            self._warn_custody("new nonmember whisper is waiting for explicit WHO/unit officer proof; no verification request sent")
             return
         self.note_ticket_sender(sender, code)
         body = {"character": sender, "code": code, "source": "whisper", "ts": int(time.time()), "officer": self.officer}
@@ -1413,6 +1459,9 @@ class Watcher:
         key = self.code_key("w", row["character"], row["code"])
         if self.state.was_seen(key):
             return True
+        if row["nativeMembership"]["member"] is False:
+            self._warn_custody("new nonmember whisper is waiting for explicit WHO/unit officer proof; no verification request sent")
+            return True
         self.note_ticket_sender(row["character"], row["code"])
         body = {**row, "source": "whisper", "ts": row["nativeMembership"]["observedAt"], "officer": self.officer}
         self._post_claimed("/ingest/verify", body, "native membership verification", [key])
@@ -1514,7 +1563,9 @@ class Watcher:
             if not isinstance(e, dict):
                 continue
             t, name, ts = e.get("type"), e.get("name") or "", int(e.get("ts") or 0)
-            if t in ("whisper", "mail") and e.get("ok") and e.get("code"):
+            if t == "officer_invite_proof" and self.membership_only:
+                self.forward_officer_invite(e.get("body"))
+            elif t in ("whisper", "mail") and e.get("ok") and e.get("code"):
                 raw = str(e["code"]).upper()
                 strict = codes.strict_code(raw)
                 # the same key the chat-log path used for this whisper, so it is relayed once whichever route is first
@@ -1529,6 +1580,9 @@ class Watcher:
                 if self.membership_only:
                     proof = validate_membership(self.secret, name, e.get("guid"), strict or raw, e.get("nativeMembership"), int(time.time()))
                     if proof is None:
+                        continue
+                    if proof["member"] is False:
+                        self._warn_custody("new nonmember whisper is waiting for explicit WHO/unit officer proof; no verification request sent")
                         continue
                     body["nativeMembership"] = proof
                 if codes.is_guid(e.get("guid")):

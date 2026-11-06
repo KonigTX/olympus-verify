@@ -15,7 +15,8 @@ import { NATIVE_RANKS } from './qr-phase1';
 import { parseNativeRoleMap,privilegedNativeMap } from './native-rank-adapter';
 import { BETA_RESET_CUTOFF,BETA_RESET_ROLE_IDS } from './beta-reset-policy';
 import { intVar } from './env';
-import {captureNativeRankConfig232,NATIVE_STAFF232,type NativeRankCapture232} from './native-rank-reconciliation232';
+import {captureNativeRankConfig232,historicalNativeRankPolicy232,NATIVE_STAFF232,type NativeRankCapture232} from './native-rank-reconciliation232';
+import {captureCanonicalRankConfig233} from './canonical-ranks233';
 
 // --- purposes (role_settlements.purpose has no CHECK, schema.sql:980-988). .160 never acts on them: settleRoleIntent
 // holds at :272, reconcileRemovalReceipt refuses at :351, continuation and the website batch select old purposes only.
@@ -96,9 +97,25 @@ export const NATIVE232_WALK_SELECT=`WITH candidates AS (
  EXISTS(SELECT 1 FROM members WHERE discord_id=candidates.subject AND banned=1) OR EXISTS(SELECT 1 FROM site_users WHERE discord_id=candidates.subject AND denied=1) OR EXISTS(SELECT 1 FROM rename_holds WHERE discord_id=candidates.subject AND state='reapply') AS restricted
  FROM candidates),work AS (SELECT *,CASE WHEN (top_rank IS NOT last_rank OR restricted OR (?4=1 AND top_rank IN(0,3,5) AND NOT EXISTS(SELECT 1 FROM role_settlements staff WHERE staff.subject=facts.subject AND staff.guild_id=?1 AND staff.native_profile='olympus-prime-live-20261105-v1' AND staff.purpose='staff_roster_rank' AND staff.native_rank=facts.top_rank AND staff.desired=1 AND staff.state='settled'))) AND last_attempt<=${DB_NOW}-${FRESH_INTERVAL_SECONDS} THEN 1 ELSE 0 END AS urgent FROM facts)
  SELECT subject,top_rank,urgent FROM work ORDER BY urgent DESC,CASE WHEN urgent THEN last_attempt ELSE CASE WHEN subject>?2 THEN 0 ELSE 1 END END,subject LIMIT ?3`;
+/** Current canonical accounts remain in the bounded rotation after the old
+ * selectors are retired. Scheduling rows are hints; the original issuer proves
+ * identity, current source, standing and generation again before any effect. */
+export const CANONICAL233_WALK_SELECT=`WITH candidates AS (
+ SELECT DISTINCT c.discord_id AS subject FROM characters c WHERE c.discord_id IS NOT NULL AND c.status NOT IN('unbound','denied')
+ AND EXISTS(SELECT 1 FROM role_settlements a WHERE a.subject=c.discord_id AND a.guild_id=?1 AND a.native_guid=c.guid AND a.desired=1 AND a.state='settled'
+ AND ((a.purpose='launch_membership230' AND a.reason IN('launch230_put_acknowledged_and_confirmed','launch230_current_role_observed'))
+ OR (a.native_profile='olympus-prime-live-20261105-v1' AND a.reason IN('native232_put_acknowledged_and_confirmed','native232_observed_without_dispatch'))
+ OR (a.native_profile='olympus-canonical-ranks-20261106-v1' AND a.reason IN('canonical233_put_acknowledged_and_confirmed','canonical233_observed_without_dispatch','canonical233_original_control_verified'))))
+ UNION SELECT DISTINCT subject FROM role_settlements WHERE guild_id=?1 AND native_profile IN('olympus-prime-live-20261105-v1','olympus-canonical-ranks-20261106-v1')),facts AS (
+ SELECT subject,(SELECT MIN(r.rank_index) FROM characters c JOIN roster_members r ON r.guid=c.guid AND r.name_key=c.name_key WHERE c.discord_id=candidates.subject AND c.status='member' AND r.snapshot_id=(SELECT MAX(id) FROM roster_snapshots)) AS top_rank,
+ (SELECT native_rank FROM role_settlements r WHERE r.subject=candidates.subject AND r.guild_id=?1 AND r.native_profile='olympus-canonical-ranks-20261106-v1' AND r.purpose IN('canonical_consumed233','canonical_routine233') AND r.desired=1 AND r.state='settled' ORDER BY r.created_at DESC,r.rowid DESC LIMIT 1) AS last_rank,
+ COALESCE((SELECT MAX(ts) FROM audit WHERE actor='system' AND action='role.native232_attempt' AND subject=candidates.subject),0) AS last_attempt,
+ EXISTS(SELECT 1 FROM members WHERE discord_id=candidates.subject AND banned=1) OR EXISTS(SELECT 1 FROM site_users WHERE discord_id=candidates.subject AND denied=1) OR EXISTS(SELECT 1 FROM rename_holds WHERE discord_id=candidates.subject AND state='reapply') AS restricted
+ FROM candidates),work AS (SELECT *,CASE WHEN (top_rank IS NOT last_rank OR restricted OR ?4<>0) AND last_attempt<=${DB_NOW}-${FRESH_INTERVAL_SECONDS} THEN 1 ELSE 0 END AS urgent FROM facts)
+ SELECT subject,top_rank,urgent FROM work ORDER BY urgent DESC,CASE WHEN urgent THEN last_attempt ELSE CASE WHEN subject>?2 THEN 0 ELSE 1 END END,subject LIMIT ?3`;
 
 // --- configuration capture (A1, Q6). Synchronous, descriptor-based: an accessor or inherited key is never invoked.
-export const LANE_CONFIG_KEYS=Object.freeze(['FULL_RELEASE_ROLES','STAFF_TEN_RANK_ROLES','LINKS_NOT_BEFORE','LINKS_NOT_BEFORE_CLOCK_GATED','ROSTER_MIN_MEMBERS','ROSTER_MAX_SHRINK_PCT',
+export const LANE_CONFIG_KEYS=Object.freeze(['CANONICAL_ENTITLEMENTS233','CANONICAL_RANKS233','FULL_RELEASE_ROLES','STAFF_TEN_RANK_ROLES','LINKS_NOT_BEFORE','LINKS_NOT_BEFORE_CLOCK_GATED','ROSTER_MIN_MEMBERS','ROSTER_MAX_SHRINK_PCT',
  'ROLE_CALL_BUDGET','GUILD_ID','DISCORD_APP_ID','DISCORD_BOT_TOKEN','ROLE_GUILD_MEMBER','ROLE_OFFICER','ROLE_MODERATOR','ROLE_GUILD_LEADER',
  'ROLE_GUILD_MASTER','ROLE_RAID_LEADER','MEMBERSHIP_RETIRED_ROLE_ID','BLOCKING_ROLE_IDS','INTROS_ROLES','QR_NATIVE_ROLE_MAP',
  'QR_PRIVILEGED_RANK_MAPPING_ENABLED','QR_BETA_FERN_EXCEPTION_ENABLED','PRIVACY_ERASURE_ENABLED','PRIVACY_NATIVE_ERASURE_ENABLED'] as const);
@@ -164,7 +181,7 @@ function freshTierR(raw:string,text:(k:LaneKey)=>string|undefined):FreshCheck{
  return {cfg:Object.freeze({version:1,epoch:r.epoch,epochStart:r.epochStart,grants:r.grants,membership:r.membership as string,native:Object.freeze((r.native as string[]).slice())}),reason:''};
 }
 export function captureLaneConfig(env:unknown):LaneCapture{
- const native232=captureNativeRankConfig232(env);
+ const originalNative=captureNativeRankConfig232(env),canonical=captureCanonicalRankConfig233(env),native232:NativeRankCapture232=canonical.present?Object.freeze({present:true,mode:canonical.mode,raw:canonical.raw,policy:historicalNativeRankPolicy232(),current:()=>originalNative.current()&&canonical.current()}):originalNative;
  if(native232.present){
   // A selected new named profile owns the overlapping producer venue. Old raw
   // FULL_RELEASE/QR values remain historical; no old queued row is relabelled.

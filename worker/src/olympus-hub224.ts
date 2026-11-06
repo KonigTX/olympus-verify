@@ -9,6 +9,7 @@ import { guideLookup219, workshopLookup219, referenceLookup219, safeDiscordText2
 import type { HubAnswer222, HubRow222 } from './raid-hub222';
 import { siteMemberLink } from './site-return';
 import { CLASSES, classDisplayChoices } from './site-data';
+import { nicknameButtons233 } from './member-nickname233';
 
 const CID=/^o224:([0-9]{17,20}):([0-9]{10}):([a-z]{2,16})$/;
 const SECTIONS=[['status','Verification & character status'],['guides','Forever guides & preparation'],['workshop','Workshop crafters & recipes'],['branches','Branch capacity & launch'],['council','Council, ranks & applications'],['treasury','Treasury & Stockades appeals']] as const;
@@ -76,6 +77,7 @@ export async function olympusHub224(env:Env,a:GuildActor219,i:Interaction):Promi
   embeds=[await referenceLookup219(env,a,'treasury'),await referenceLookup219(env,a,'stockades')];
   components.push(row(link('Treasury charter',open('governance')),link('Appeal rules',open('governance'))));
  }else throw Error('This private control is unavailable. Run /olympus for a fresh hub.');
+ if(p==='home'||p==='status')components.push(row(...nicknameButtons233()));
  components.push(row({type:3,custom_id:id(a,'section'),placeholder:'Open another Olympus section',min_values:1,max_values:1,options:SECTIONS.map(([value,label])=>({value,label}))}));
  components.push(row(button(a,'Guild hub home','home'),link('Open Olympus',base+'/#/')));
  if((controlDeadlines.get(a)??a.deadline)<=now())throw Error('This private control expired. Run /olympus for a fresh hub.');

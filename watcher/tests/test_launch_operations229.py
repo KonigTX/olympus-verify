@@ -26,7 +26,7 @@ def page(at, offset=0, total=20, started=None):
                 scopeHash=hashlib.sha256(f'native-scope|1|{guild}|{realm}'.encode()).hexdigest()[:16],
                 entitlements=dict(offset=offset, pageSize=20, scanned=min(20,max(0,total-offset)), total=total, unscanned=max(0, total-offset-20), retryAfterSeconds=None),
                 nextCursor=None if last else 'opaque-cursor-' + str(offset + 20), invites=[],
-                promotions=[dict(guid=f'Player-1-{offset+1:08X}', name='Test Member', currentSlot=9, targetSlot=7, reason='verified-initiate')],
+                promotions=[dict(guid=f'Player-1-{offset+1:08X}', name='Test Member', currentSlot=9, targetSlot=8, targetName="Member", reason='verified-initiate')],
                 riskBuffer=[], held=[], heldReasons=['native-unguilded-proof-required'],
                 motd=dict(short=short, bulletin='Long bulletin\nSecond line', characters=len(short), bytes=len(short.encode()), maxBytes=128),
                 actions=dict(automatic=False, roleGrants=False, removals=False, requiresNativeRecheck=True))
@@ -63,6 +63,20 @@ class LaunchOperations(unittest.TestCase):
                 value = page(self.at); change(value)
                 self.assertFalse(launch.validate_page(value, self.at))
 
+    def test_officer233_target_contract_and_old_wire_refusal(self):
+        value = page(self.at)
+        self.assertEqual((launch.PROTOCOL, launch.PATH), ('officer-operations-v233', '/queue/launch-operations?keyVersion=officer-operations-v233'))
+        self.assertTrue(launch.validate_page(value, self.at))
+        for patch_value in [dict(targetSlot=7), dict(targetSlot=5), dict(targetName='Veteran'), dict(currentSlot=8)]:
+            changed = copy.deepcopy(value); changed['promotions'][0].update(patch_value)
+            self.assertFalse(launch.validate_page(changed, self.at))
+        value['protocol'] = 'launch-operations-v1'
+        self.assertFalse(launch.validate_page(value, self.at))
+        value = page(self.at); value['promotions'][0].update(targetSlot=6, targetName='Veteran', reason='knight-veteran', currentSlot=7)
+        self.assertTrue(launch.validate_page(value, self.at))
+        value['promotions'][0]['currentSlot'] = 6
+        self.assertFalse(launch.validate_page(value, self.at))
+
     def scan(self, total=20):
         self.clock = float(self.at)
         scan = launch.Scan(lambda: self.clock)
@@ -74,6 +88,24 @@ class LaunchOperations(unittest.TestCase):
             offset = int(path.rsplit('-', 1)[1]) if '&cursor=' in path else 0
             return True, page(int(self.clock), offset, total, self.at)
         return scan, call, calls
+
+    def test_officer233_bounded_invite_projection_and_stale_advisory(self):
+        value = page(self.at)
+        row = dict(queueId=1, proofId='1'*32, name='Visible Candidate', guid='Player-1-ABCDEF12', fullName='Visible Candidate',
+                   scopeHash=value['scopeHash'], observedAt=self.at, expiresAt=self.at+60, reason='knight-unguilded', source='native-who-unit-v233')
+        value['invites'] = [row]
+        self.assertTrue(launch.validate_page(value, self.at))
+        self.assertFalse(launch.validate_page(value, self.at+60))
+        self.assertTrue(launch.validate_page(value, self.at+60, allow_stale=True))
+        for changes in (dict(queueId=True), dict(source='membership-absence'), dict(expiresAt=self.at+61), dict(fullName='Other'), dict(scopeHash='0'*16), dict(reason='manual')):
+            changed = copy.deepcopy(value); changed['invites'][0].update(changes)
+            self.assertFalse(launch.validate_page(changed, self.at), changes)
+        duplicate = copy.deepcopy(value); duplicate['held'] = [dict(name=row['name'], guid=row['guid'], reason='held')]
+        self.assertFalse(launch.validate_page(duplicate, self.at))
+        later = page(self.at, 20, 40); later['invites'] = [row]
+        self.assertFalse(launch.validate_page(later, self.at))
+        value['invites'] *= 4
+        self.assertFalse(launch.validate_page(value, self.at))
 
     def test_full_1000_scan_50_pages_plus_fifty_explicit_refresh_attempts(self):
         scan, call, calls = self.scan(1000)
@@ -168,8 +200,9 @@ class LaunchOperations(unittest.TestCase):
             instance.pull_launch_operations()
             self.assertEqual(len(calls), count)  # No role request on the normal fast loop.
             instance.worker.call = lambda *a, **k: (False, {'httpStatus': 429})
-            with patch.object(watcher.time,'time',return_value=self.at+6):
-                self.assertTrue(instance.launch_scan.request(dict(action='recheck',offset=0,id='explicit-refusal',scopeHash=page(self.at)['scopeHash']),self.at+6))
+            ready_at = max(self.at+6, instance.launch_scan.next_at+1)
+            with patch.object(watcher.time,'time',return_value=ready_at):
+                self.assertTrue(instance.launch_scan.request(dict(action='recheck',offset=0,id='explicit-refusal',scopeHash=page(self.at)['scopeHash']),ready_at))
                 instance.pull_launch_operations()
             self.assertIn(b'stoppedReason="source-refused"', instance.launch_operations_file.read_bytes())
             self.assertFalse(instance.state.d.get('queue_written_pending'))

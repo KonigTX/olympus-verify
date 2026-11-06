@@ -278,6 +278,14 @@ async function erasure(f){const account=f.db.prepare('SELECT account_incarnation
    }finally{h.close();}
   }
   const reserved210=load('./treasury-reserved-roles'),beta210=load('./beta-reset-policy').BETA_RESET_ROLE_IDS;
+  const canonical233=load('./canonical-ranks233'),config233={version:1,enabled:true,profile:canonical233.CANONICAL_PROFILE233,guildId:canonical233.CANONICAL_GUILD233,ranks:canonical233.CANONICAL_RANKS233.map(r=>({...r,permissions:'0'}))},env233={GUILD_ID:canonical233.CANONICAL_GUILD233,QR_NATIVE_ROLE_MAP:'off',FULL_RELEASE_ROLES:'off',CANONICAL_RANKS233:JSON.stringify(config233)},reserved233=reserved210.captureTreasuryReservedRoles(env233);
+  for(const r of [...canonical233.CANONICAL_RANKS233,canonical233.ADDON_DEVELOPER233]){
+    let refused=false;try{treasury.parseTreasuryConfig(JSON.stringify({version:1,guildId:env233.GUILD_ID,applicationId:APP,seasonStartsAt:T-3600,roles:{...ROLE_IDS,tithePayer:r.roleId}}),env233.GUILD_ID,APP,reserved233.roles);}catch{refused=true;}
+    check('.233 canonical/technical role cannot be configured as a Treasury cosmetic: '+r.key,refused&&reserved233.roles.includes(r.roleId));
+  }
+  for(const r of canonical233.CANONICAL_RANKS233)check('.233 fresh '+r.key+' role directly supplements keeper membership for Treasury eligibility',treasury.treasuryHasOlympusMembershipRole(env233,[r.roleId]));
+  check('.233 technical developer is not Treasury member eligibility',!treasury.treasuryHasOlympusMembershipRole(env233,[canonical233.ADDON_DEVELOPER233.roleId]));
+  const changed233={...env233},footprint233=reserved210.captureTreasuryReservedRoles(changed233);changed233.CANONICAL_RANKS233='off';let drift233=false;try{footprint233.check();}catch{drift233=true;}check('.233 canonical policy change invalidates original Treasury reserved capture',drift233);
   check('.211 canonical restriction always includes every fixed beta-reset marker',beta210.every(role=>reserved210.captureTreasuryReservedRoles({}).roles.includes(role)));
   let getter210=0;const accessor210={};Object.defineProperty(accessor210,'LINK_ROLE_ID',{get(){getter210++;throw Error('must not read marker getter');}});
   let refused210=false;try{reserved210.captureTreasuryReservedRoles(accessor210);}catch{refused210=true;}check('.211 marker capture refuses accessors without invoking them',refused210&&getter210===0);

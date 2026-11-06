@@ -39,7 +39,7 @@ const checks232=String.raw`
  const valid=async(cap,start=1)=>{const p=I.routineMembership232Predicate(env,cap,start);return !!await env.DB.prepare('SELECT 1 WHERE '+p.sql).bind(...(start===1?[]:Array(start-1).fill(null)),...p.values).first();};
  await seed();let cap=await capture();check('actual Native read issues new routine cap from retained original230 lineage',!!cap&&I.routineMembership232Facts(cap).primary.index===3&&await valid(cap));
  check('historical original pending expiry is not current authority expiry',I.routineMembership232Facts(cap).deadline===T+300&&db.prepare('SELECT expires_at FROM role_settlements').get().expires_at<T);
- check('frozen predicate relocates all thirteen bound values',await valid(cap,8));
+ check('frozen predicate relocates all fourteen independently frozen bound values',await valid(cap,8));
  let copied=false;try{I.assertRoutineMembership232(env,{...cap});}catch{copied=true;}check('copied capability DTO has no authority',copied);
  I.closeRoutineMembership232(cap);let closed=false;try{I.routineMembership232Facts(cap);}catch{closed=true;}check('closed invocation cannot retain its original capability',closed);db.close();
  for(const status of['member','left_pending']){await seed();await duplicateGuid232(status);check('global '+status+' GUID conflict cannot mint another account rank capability',await capture()===null);db.close();
@@ -157,7 +157,7 @@ const checks232=String.raw`
  await write("INSERT INTO roster_members(snapshot_id,name_key,name,guid,rank,rank_index) SELECT 1,json_extract(value,'$[0]'),json_extract(value,'$[0]'),json_extract(value,'$[1]'),'Initiate',9 FROM json_each(?1)",JSON.stringify(extra232));await write('UPDATE roster_snapshots SET member_count=1000');trace232=[];cap=await capture();
  check('full1000 native roster issues bounded original cap with one verified main',!!cap&&I.routineMembership232Facts(cap).primary.guid===GUID&&await valid(cap));
  const sourceStatements232=trace232.filter(r=>r.sql.includes(' AS rows_json,')),predicate232=I.routineMembership232Predicate(env,cap),maximum232={physicalStatements:trace232.length,sourceReads:sourceStatements232.length,maxSQLBytes:Math.max(...trace232.map(r=>Buffer.byteLength(r.sql))),maxParameters:Math.max(...trace232.map(r=>r.params.length)),sourceReadParameters:sourceStatements232[0]?.params.length,predicateParameters:predicate232.values.length,maxBoundValueBytes:Math.max(...trace232.flatMap(r=>r.params.map(v=>Buffer.byteLength(typeof v==='string'?v:JSON.stringify(v)))))};
- check('actual captured Native SQL keeps all parameters bounded and thirteen predicate values',maximum232.sourceReads===1&&maximum232.sourceReadParameters===2&&maximum232.predicateParameters===13&&maximum232.maxParameters<100&&trace232.every(r=>Math.max(0,...[...r.sql.matchAll(/\?(\d+)/g)].map(m=>Number(m[1])))===r.params.length));
+ check('actual captured Native SQL keeps all parameters bounded and fourteen predicate values',maximum232.sourceReads===1&&maximum232.sourceReadParameters===3&&maximum232.predicateParameters===14&&maximum232.maxParameters<100&&trace232.every(r=>Math.max(0,...[...r.sql.matchAll(/\?(\d+)/g)].map(m=>Number(m[1])))===r.params.length));
  console.log('BUDGET routine232 '+JSON.stringify(maximum232));I.closeRoutineMembership232(cap);db.close();
  globalThis.Date=RealDate;crypto.getRandomValues=realRandom;console.log(ok+'/'+n+' routine membership232 checks passed');process.exitCode=ok===n?0:1;
 })().catch(error=>{console.error(error);process.exitCode=1;});`;

@@ -1,18 +1,24 @@
--- Opt-in, bounded native file exchange. A reload request is never a Worker ACK.
+-- .233 pending file-exchange alert. Timers never call Sync/ReloadUI or a guild action.
 local API = OlympusVerifyAPI
 if type(API) ~= "table" then return end
-local A = { MIN_INTERVAL = 120, REFRESH_INTERVAL = 180, BOOT_DELAY = 30, IDLE_DELAY = 15, COALESCE = 10 }
+local A = { REFRESH_INTERVAL = 180, CHIME_INTERVAL = 30 }
 OlympusVerifyAutoSync = A
 local f, state = CreateFrame("Frame"), { active = false, contexts = {}, held = "off", attempted = false, timerReady = false }
 local function pref(create)
   if type(OlympusVerifyDB) ~= "table" then return nil end
-  if type(OlympusVerifyDB.autoSync232) ~= "table" then
+  if type(OlympusVerifyDB.pendingSync233) ~= "table" then
     if create == false then return nil end
-    OlympusVerifyDB.autoSync232 = { enabled = false }
+    OlympusVerifyDB.pendingSync233 = { sound = true }
   end
-  return OlympusVerifyDB.autoSync232
+  return OlympusVerifyDB.pendingSync233
 end
-local function mono() return type(GetTime) == "function" and GetTime() or nil end
+local function mono()
+  if type(GetTime)~="function" then return nil end
+  local ok,value=pcall(GetTime)
+  if not ok then return nil end
+  if type(issecretvalue)=="function" then local known,secret=pcall(issecretvalue,value);if not known or secret then return nil end end
+  if type(value)=="number" and value==value and value>=0 and value<math.huge then return value end
+end
 local function readable(value)
   if type(issecretvalue) == "function" then local ok, secret = pcall(issecretvalue, value); if not ok or secret then return false end end
   return true
@@ -39,15 +45,15 @@ local function boolean(name, required, ...)
   if not ok or not readable(value) or type(value) ~= "boolean" then return nil end
   return value
 end
-local function contextHeld()
+local function contextHeld(hardware)
   if not state.active then return "loading" end
-  if state.attempted then return "reload requested; use manual Sync if needed" end
   local combat = boolean("InCombatLockdown", true)
   if combat == nil then return "combat status unavailable" elseif combat then return "combat" end
   for _, spec in ipairs({ { "UnitAffectingCombat", "combat", "player" }, { "UnitIsDeadOrGhost", "dead", "player" },
     { "UnitOnTaxi", "taxi", "player" }, { "IsFalling", "falling" }, { "IsFlying", "flying" },
     { "CursorHasItem", "item on cursor" }, { "SpellIsTargeting", "spell targeting" }, { "IsMouseButtonDown", "mouse button held" } }) do
-    local value = boolean(spec[1], true, spec[3])
+    local value
+    if hardware and spec[1] == "IsMouseButtonDown" then value=false else value=boolean(spec[1], true, spec[3]) end
     if value == nil then return "activity status unavailable" elseif value then return spec[2] end
   end
   if type(GetUnitSpeed) ~= "function" then return "movement status unavailable" end
@@ -79,7 +85,7 @@ local function contextHeld()
       if shown then return "interaction window open" end
     end
   end
-  for _, name in ipairs({ "CharacterFrame", "SpellBookFrame", "TalentFrame", "PlayerSpellsFrame", "CollectionsJournal", "EncounterJournal", "CommunitiesFrame", "GuildFrame", "FriendsFrame", "WorldMapFrame", "PVEFrame", "PVPQueueFrame", "CalendarFrame", "AchievementFrame", "HelpFrame", "VideoOptionsFrame", "AudioOptionsFrame", "ChatConfigFrame", "EditModeManagerFrame", "OlympusLaunch229Window" }) do
+  if not hardware then for _, name in ipairs({ "CharacterFrame", "SpellBookFrame", "TalentFrame", "PlayerSpellsFrame", "CollectionsJournal", "EncounterJournal", "CommunitiesFrame", "GuildFrame", "FriendsFrame", "WorldMapFrame", "PVEFrame", "PVPQueueFrame", "CalendarFrame", "AchievementFrame", "HelpFrame", "VideoOptionsFrame", "AudioOptionsFrame", "ChatConfigFrame", "EditModeManagerFrame", "OlympusLaunch229Window" }) do
     local frame = rawget(_G, name)
     if frame then
       if type(frame.IsShown) ~= "function" then return "UI status unavailable" end
@@ -87,114 +93,132 @@ local function contextHeld()
       if not success or not readable(shown) or type(shown) ~= "boolean" then return "UI status unavailable" end
       if shown then return "review window open" end
     end
+  end end
+end
+
+local function UpdateAlert()
+  if not A.button then
+    local b = CreateFrame("Button", "OlympusPendingSync233", UIParent, "UIPanelButtonTemplate")
+    b:SetSize(320, 46); b:SetMovable(true); b:EnableMouse(true); b:SetClampedToScreen(true)
+    b:RegisterForDrag("RightButton")
+    b:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    b:SetScript("OnDragStop", function(self)
+      self:StopMovingOrSizing()
+      local point, _, relative, x, y = self:GetPoint()
+      local p = pref()
+      local allowed = { TOP=true, BOTTOM=true, LEFT=true, RIGHT=true, CENTER=true, TOPLEFT=true, TOPRIGHT=true, BOTTOMLEFT=true, BOTTOMRIGHT=true }
+      if p and allowed[point] and allowed[relative] and type(x)=="number" and type(y)=="number" and x==x and y==y and math.abs(x)<10000 and math.abs(y)<10000 then
+        p.position = { point=point, relative=relative, x=x, y=y }
+      end
+    end)
+    b:SetScript("OnClick", function(_, mouse) if mouse == "LeftButton" then A.HardwareSync() end end)
+    local p = pref(false); local pos = p and p.position
+    local allowed = { TOP=true, BOTTOM=true, LEFT=true, RIGHT=true, CENTER=true, TOPLEFT=true, TOPRIGHT=true, BOTTOMLEFT=true, BOTTOMRIGHT=true }
+    if type(pos)=="table" and allowed[pos.point] and allowed[pos.relative] and type(pos.x)=="number" and type(pos.y)=="number" and pos.x==pos.x and pos.y==pos.y and math.abs(pos.x)<10000 and math.abs(pos.y)<10000 then
+      b:SetPoint(pos.point, UIParent, pos.relative, pos.x, pos.y)
+    else b:SetPoint("TOP", UIParent, "TOP", 0, -140) end
+    A.button=b
+  end
+  A.button:SetText(state.requested and "Sync requested: confirm the UI reload\nIf blocked, use the normal /reload command" or "Pending Verification Sync\nClick or press the Sync keybind (right-drag to move)")
+  if state.pendingAt and state.active then A.button:Show() else A.button:Hide() end
+end
+local function Chime()
+  local p, clock = pref(false), mono()
+  if p and p.sound~=false and state.active and clock and (not state.lastChime or clock-state.lastChime>=A.CHIME_INTERVAL) and type(PlaySound)=="function" then
+    state.lastChime=clock
+    pcall(PlaySound, SOUNDKIT and SOUNDKIT.RAID_WARNING or 8959, "Master")
   end
 end
 function A.Status()
-  local p = pref(false)
-  return { enabled = p and p.enabled == true or false, held = state.held, pending = state.pendingAt ~= nil }
+  local p=pref(false)
+  return { enabled=false, mode="hardware-pending", sound=p and p.sound~=false or false,
+    held=state.held or "waiting for native data", pending=state.pendingAt~=nil, requested=state.requested==true }
 end
 function A.Request(reason)
-  local p, clock = pref(), mono()
-  if not p or p.enabled ~= true or not clock then return false end
-  if reason ~= "whisper" and reason ~= "native-change" and reason ~= "periodic" then return false end
-  if reason == "whisper" then pcall(API.ExportRoster) end
-  if not facts() then return false end
-  state.pendingAt = state.pendingAt or clock
-  state.reason = state.reason == "whisper" and state.reason or reason
+  if reason~="whisper" and reason~="native-change" and reason~="periodic" and reason~="queue-check" then return false end
+  if not pref() then return false end
+  if reason=="whisper" then pcall(API.ExportRoster) end
+  if reason~="whisper" and not facts() then return false end
+  local first=state.pendingAt==nil
+  state.pendingAt=state.pendingAt or mono() or 0
+  state.reason=state.reason=="whisper" and state.reason or reason
+  if not state.requested then state.held="hardware click or keybind required" end
+  if first then Chime() end
+  UpdateAlert()
   return true
 end
 function A.NativeChanged()
-  local source = facts()
-  if not source then return end
-  if state.digest and source.digest ~= state.digest then A.Request("native-change") end
-  state.digest = source.digest
+  local source=facts(); if not source then return end
+  local p=pref(false)
+  if source.digest~=(state.digest or p and p.lastSyncedDigest) then A.Request("native-change") end
+  state.digest=source.digest
 end
 function A.RecordSync()
-  local p, source = pref(), facts()
+  local p,source=pref(),facts()
   if not p then return end
-  p.lastSyncAt = time()
-  if source then p.lastRequestedDigest = source.digest end
-  state.pendingAt = nil
+  p.lastSyncAt=time()
+  if source then p.lastSyncedDigest=source.digest end
+  state.requested=true
+  state.held="sync requested; confirm that the UI reloads"
+  UpdateAlert()
+end
+-- This function is reached only from the addon button, a key binding or a typed slash command.
+-- Timer and event callbacks below only export/read/update the alert.
+function A.HardwareSync()
+  if OlympusVerifyUI and OlympusVerifyUI.preview then return false end
+  local held=contextHeld(true)
+  if held then state.held=held; UpdateAlert(); return false end
+  if state.requested then state.held="request unconfirmed; use the normal /reload command if needed"; UpdateAlert(); return false end
+  if type(API.Sync)~="function" or not ((C_UI and type(C_UI.Reload)=="function") or type(ReloadUI)=="function") then
+    state.held="reload API unavailable; type /reload in normal chat"; UpdateAlert(); return false
+  end
+  state.requested=true
+  local success=pcall(API.Sync)
+  if not success then state.held="client refused Sync; use the normal /reload command" end
+  UpdateAlert()
+  return success
 end
 function A.SetEnabled(value)
-  local p = pref()
-  if not p or type(value) ~= "boolean" then return false end
-  p.enabled = value
-  state.pendingAt, state.reason = nil, nil
-  state.held = value and (state.timerReady and "waiting for idle native data" or "timer API unavailable") or "off"
-  activity() -- enabling never reloads immediately and never resets the persisted interval
-  facingHeld()
-  return true
+  -- Compatibility with the retired timer preference never starts automatic reloads.
+  local p=pref(); if not p or type(value)~="boolean" then return false end
+  p.sound=value; UpdateAlert(); return true
 end
 function A.Command(argument)
-  local a = string.lower(argument or "")
-  if a == "on" or a == "off" then A.SetEnabled(a == "on") end
-  local s = A.Status()
-  if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage("Olympus: auto sync " .. (s.enabled and "ON" or "OFF") .. "; " .. s.held .. ". /olv autosync on|off. Manual /olv sync remains available.") end
-  if OlympusVerifyUI and OlympusVerifyUI.Refresh then OlympusVerifyUI.Refresh() end
+  local arg=string.lower(argument or "")
+  if arg=="sound on" then A.SetEnabled(true) elseif arg=="sound off" then A.SetEnabled(false) end
+  local s=A.Status()
+  if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage("Olympus: timer reloads are disabled. Pending Sync "..(s.pending and "waiting" or "clear").."; "..s.held..". Click the alert or use the Sync keybind. /olv pending sound on|off.") end
 end
 function A.Tick()
-  local p, clock, wall = pref(), mono(), time()
-  if not p or p.enabled ~= true then state.held = "off"; return end
-  if not state.timerReady then state.held = "timer API unavailable"; return end
-  if state.attempted then return end
-  if type(clock) ~= "number" or clock ~= clock or not state.boot or clock < state.boot or type(wall) ~= "number" or wall < 1 or wall ~= math.floor(wall) then state.held = "clock unavailable"; return end
-  if clock - state.boot < A.BOOT_DELAY then state.held = "settling after login"; return end
-  local turning = facingHeld()
-  if turning then state.held = turning; return end
-  -- Export only cached native facts through the existing throttled reader.
-  local ok = pcall(API.ExportRoster)
-  if not ok then state.held = "native roster unavailable"; return end
-  local source = facts()
-  if not source then state.held = "native roster unavailable"; return end
-  local last = p.lastSyncAt or state.wallBoot
-  for _, value in ipairs({ p.lastAutoAt or 0, last }) do
-    if type(value) ~= "number" or value ~= math.floor(value) or value > wall then state.held = "clock/persisted interval held"; return end
+  if not state.active then return end
+  -- Cached native roster export only. No timer dispatches Sync, ReloadUI, invite, promote, purge or MOTD.
+  pcall(API.ExportRoster)
+  local source,p=facts(),pref(false)
+  if source then
+    A.NativeChanged()
+    local last=p and p.lastSyncAt or state.wallBoot
+    if type(last)=="number" and time()>=last and time()-last>=A.REFRESH_INTERVAL then A.Request("periodic") end
   end
-  if wall - last >= A.REFRESH_INTERVAL then A.Request("periodic") end
-  if not state.pendingAt then state.held = "waiting for new native data"; return end
-  if wall - math.max(p.lastAutoAt or 0, last, state.wallBoot) < A.MIN_INTERVAL then state.held = "minimum 120-second interval"; return end
-  if clock - state.pendingAt < A.COALESCE then state.held = "coalescing"; return end
-  local held = contextHeld()
-  if held then state.held = held; return end
-  if not state.lastInput or clock - state.lastInput < A.IDLE_DELAY then state.held = "waiting for 15 seconds idle"; return end
-  if type(API.Sync) ~= "function" or not ((C_UI and type(C_UI.Reload) == "function") or type(ReloadUI) == "function") then state.held = "reload API unavailable"; return end
-  -- Final recheck before the single normal reload request; no protected-call bypass.
-  held = contextHeld()
-  local current = facts()
-  if held or not current or current.digest ~= source.digest then state.held = held or "native source changed"; return end
-  state.attempted = true
-  p.lastAutoAt, p.lastSyncAt, p.lastRequestedDigest = wall, wall, source.digest
-  state.held = "reload requested; waiting for client"
-  local success = pcall(API.Sync)
-  if not success then state.held = "reload refused; use manual Sync" end
+  if state.pendingAt then state.held=state.requested and state.held or contextHeld(false) or "hardware click or keybind required" end
+  UpdateAlert()
 end
-local open = { TRADE_SHOW = "trade", MAIL_SHOW = "mail", BANKFRAME_OPENED = "bank", GUILDBANKFRAME_OPENED = "guild bank",
-  AUCTION_HOUSE_SHOW = "auction", MERCHANT_SHOW = "merchant", CINEMATIC_START = "cinematic", LOADING_SCREEN_ENABLED = "loading" }
-local close = { TRADE_CLOSED = "TRADE_SHOW", MAIL_CLOSED = "MAIL_SHOW", BANKFRAME_CLOSED = "BANKFRAME_OPENED", GUILDBANKFRAME_CLOSED = "GUILDBANKFRAME_OPENED",
-  AUCTION_HOUSE_CLOSED = "AUCTION_HOUSE_SHOW", MERCHANT_CLOSED = "MERCHANT_SHOW", CINEMATIC_STOP = "CINEMATIC_START", LOADING_SCREEN_DISABLED = "LOADING_SCREEN_ENABLED" }
-f:SetScript("OnEvent", function(_, event)
-  if event == "PLAYER_LOGIN" then
+local open={TRADE_SHOW="trade",MAIL_SHOW="mail",BANKFRAME_OPENED="bank",GUILDBANKFRAME_OPENED="guild bank",AUCTION_HOUSE_SHOW="auction",MERCHANT_SHOW="merchant",CINEMATIC_START="cinematic",LOADING_SCREEN_ENABLED="loading"}
+local close={TRADE_CLOSED="TRADE_SHOW",MAIL_CLOSED="MAIL_SHOW",BANKFRAME_CLOSED="BANKFRAME_OPENED",GUILDBANKFRAME_CLOSED="GUILDBANKFRAME_OPENED",AUCTION_HOUSE_CLOSED="AUCTION_HOUSE_SHOW",MERCHANT_CLOSED="MERCHANT_SHOW",CINEMATIC_STOP="CINEMATIC_START",LOADING_SCREEN_DISABLED="LOADING_SCREEN_ENABLED"}
+f:SetScript("OnEvent",function(_,event)
+  if event=="PLAYER_LOGIN" then
     if state.started then return end
-    state.started = true
-    state.boot, state.wallBoot, state.lastInput = mono(), time(), mono()
-    pref()
-    if C_Timer and type(C_Timer.NewTicker) == "function" then
-      local ok, ticker = pcall(C_Timer.NewTicker, 5, function()
-        local success = pcall(A.Tick)
-        if not success then state.attempted, state.held = true, "automatic sync held; use manual Sync" end
-      end)
-      state.timerReady = ok and ticker ~= nil
-    end
-  elseif event == "PLAYER_ENTERING_WORLD" then state.active = true; activity()
-  elseif event == "PLAYER_LEAVING_WORLD" then state.active = false; activity()
-  elseif event == "ADDON_ACTION_FORBIDDEN" or event == "ADDON_ACTION_BLOCKED" then
-    if state.attempted then state.held = "reload blocked; use manual Sync" end
-  elseif open[event] then state.contexts[event] = open[event]; activity()
-  elseif close[event] then state.contexts[close[event]] = nil; activity()
-  else activity() end
+    state.started=true; state.wallBoot=time(); pref()
+    if C_Timer and type(C_Timer.NewTicker)=="function" then pcall(C_Timer.NewTicker,5,function() pcall(A.Tick) end) end
+  elseif event=="PLAYER_ENTERING_WORLD" then state.active=true
+  elseif event=="PLAYER_LEAVING_WORLD" then state.active=false
+  elseif event=="ADDON_ACTION_FORBIDDEN" or event=="ADDON_ACTION_BLOCKED" then
+    if state.requested then state.held="client blocked reload; use normal /reload, no bypass or automatic retry" end
+  elseif open[event] then state.contexts[event]=open[event]
+  elseif close[event] then state.contexts[close[event]]=nil end
+  UpdateAlert()
 end)
-for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "PLAYER_LEAVING_WORLD", "GLOBAL_MOUSE_DOWN", "GLOBAL_MOUSE_UP", "MODIFIER_STATE_CHANGED", "PLAYER_STARTED_MOVING", "PLAYER_STOPPED_MOVING", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "ADDON_ACTION_FORBIDDEN", "ADDON_ACTION_BLOCKED" }) do pcall(f.RegisterEvent, f, event) end
-for event in pairs(open) do pcall(f.RegisterEvent, f, event) end
-for event in pairs(close) do pcall(f.RegisterEvent, f, event) end
-A.frame = f -- exposed read-only event surface for the ordinary offline client mock
+for _,event in ipairs({"PLAYER_LOGIN","PLAYER_ENTERING_WORLD","PLAYER_LEAVING_WORLD","ADDON_ACTION_FORBIDDEN","ADDON_ACTION_BLOCKED"}) do pcall(f.RegisterEvent,f,event) end
+for event in pairs(open) do pcall(f.RegisterEvent,f,event) end
+for event in pairs(close) do pcall(f.RegisterEvent,f,event) end
+A.frame=f
+function OlympusVerify_Sync() return A.HardwareSync() end

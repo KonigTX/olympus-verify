@@ -3,9 +3,10 @@
 import type { Env } from './env';
 import { BETA_RESET_ROLE_IDS } from './beta-reset-policy';
 import { parseNativeRoleMap } from './native-rank-adapter';
+import {parseCanonicalRankPolicy233,ADDON_DEVELOPER233} from './canonical-ranks233';
 
 const SINGLE_KEYS = ['ROLE_GUILD_MEMBER', 'MEMBERSHIP_RETIRED_ROLE_ID', 'ROLE_OFFICER', 'ROLE_MODERATOR', 'ROLE_GUILD_LEADER', 'ROLE_GUILD_MASTER', 'ROLE_RAID_LEADER', 'LINK_ROLE_ID'] as const;
-const MARKER_KEYS = [...SINGLE_KEYS, 'BLOCKING_ROLE_IDS', 'INTROS_ROLES', 'QR_NATIVE_ROLE_MAP', 'FULL_RELEASE_ROLES'] as const;
+const MARKER_KEYS = [...SINGLE_KEYS, 'BLOCKING_ROLE_IDS', 'INTROS_ROLES', 'QR_NATIVE_ROLE_MAP', 'FULL_RELEASE_ROLES', 'CANONICAL_RANKS233'] as const;
 const ID = /^[1-9][0-9]{16,19}$/;
 const id = (value: unknown): value is string => typeof value === 'string' && ID.test(value) && BigInt(value) <= 18446744073709551615n;
 const held = (changed = false): never => { throw Error(changed ? 'treasury_reserved_roles_changed' : 'treasury_reserved_roles_configuration'); };
@@ -36,13 +37,18 @@ export function captureTreasuryReservedRoles(env: Env): Readonly<{ roles: readon
     }
   }
   const native = text('QR_NATIVE_ROLE_MAP');
-  if (native) { try { reserved.push(...parseNativeRoleMap(native).roles); } catch { return held(); } }
+  if (native && native !== 'off') { try { reserved.push(...parseNativeRoleMap(native).roles); } catch { return held(); } }
   const full = text('FULL_RELEASE_ROLES');
-  if (full) {
+  if (full && full !== 'off') {
     let value: Record<string, unknown>;
     try { value = JSON.parse(full); } catch { return held(); }
     if (!value || !id(value.membership) || !Array.isArray(value.native) || value.native.length !== 10 || !value.native.every(id)) return held();
     reserved.push(value.membership, ...value.native);
+  }
+  const canonical=text('CANONICAL_RANKS233');
+  if(canonical&&canonical!=='off'){
+    const policy=parseCanonicalRankPolicy233(canonical);if(policy.guildId!==env.GUILD_ID)return held();
+    reserved.push(...policy.ranks.map(r=>r.roleId),ADDON_DEVELOPER233.roleId);
   }
   check();
   return Object.freeze({ roles: Object.freeze([...new Set(reserved)]), check });

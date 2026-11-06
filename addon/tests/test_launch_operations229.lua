@@ -13,6 +13,7 @@ local function fixture(fallback)
   e.UnitGUID = function() return "Player-1-0000AAAA" end
   e.GetGuildRosterShowOffline = function() return true end
   e.InCombatLockdown = function() return false end
+  e.GuildControlGetRankName = function(order) return order==7 and "Veteran" or order==9 and "Member" or "Other" end
   e.CanGuildPromote, e.CanEditMOTD = function() return true end, function() return true end
   e.issecretvalue = function() return false end
   e.ROSTER = {
@@ -33,12 +34,12 @@ local function fixture(fallback)
   e.C_GuildInfo.Uninvite = function() f.removals = f.removals + 1 end
   setfenv(assert(loadfile("../OlympusVerify/Libs/OlympusHmac.lua")), e)("OlympusVerify")
   local h = e.OlympusHmac
-  f.page = { protocol = "launch-operations-v1", fetchedAt = e.NOW, expiresAt = e.NOW + 60, status = "ready",
+  f.page = { protocol = "officer-operations-v233", fetchedAt = e.NOW, expiresAt = e.NOW + 60, status = "ready",
     snapshotId = 12, snapshotAt = e.NOW - 10, guild = f.guild, canonicalGuild = "OLYMPUS PRIME", realm = f.realm,
     scan = { id = string.rep("a",32), startedAt = e.NOW, expiresAt = e.NOW + 590 },
     entitlements = { offset = 0, total = 20 },
     scopeHash = h.sha256hex("native-scope|1|" .. f.guild .. "|" .. f.realm):sub(1, 16), invites = {},
-    promotions = {{ name = "Candidate", guid = "Player-1-0000BBBB", currentSlot = 9, targetSlot = 7, reason = "verified-initiate" }},
+    promotions = {{ name = "Candidate", guid = "Player-1-0000BBBB", currentSlot = 9, targetSlot = 8, targetName = "Member", reason = "verified-initiate" }},
     riskBuffer = {}, held = {}, motd = { short = "Guild rules and Discord: use Get my code.", bytes = 40, maxBytes = 128 },
     actions = { automatic = false, roleGrants = false, removals = false, requiresNativeRecheck = true } }
   f.page.motd.bytes = #f.page.motd.short
@@ -59,12 +60,12 @@ do
     for key, value in pairs(f.page) do page[key] = value end
     page.entitlements, page.promotions = {offset=(pageIndex-1)*20,total=80}, {}
     for item = 1, 2 do local n = (pageIndex-1)*2+item
-      page.promotions[item] = {name="Mixed candidate "..n,guid=string.format("Player-1-%08X",100+n),currentSlot=9,targetSlot=7,reason="verified-initiate"}
+      page.promotions[item] = {name="Mixed candidate "..n,guid=string.format("Player-1-%08X",100+n),currentSlot=9,targetSlot=8,targetName="Member",reason="verified-initiate"}
     end
     pages[pageIndex] = page
   end
   f.env.OlympusLaunchQueue.pages, f.env.NOW = pages, start+100
-  f.q.Show()
+  f.q.Show(); f.q.tab="initiates"; f.q.Show()
   check("each visible mixed-source recommendation exposes its own recheck button", f.q.rowRecheckButtons and f.q.rowRecheckButtons[8] and f.q.rowRecheckButtons[8]:IsShown())
   if f.q.rowRecheckButtons then
     f.q.rowRecheckButtons[8]:GetScript("OnClick")()
@@ -97,7 +98,7 @@ do
     p.entitlements, p.promotions = {offset=(index-1)*20,total=1000}, {}
     pages[index] = p
   end
-  pages[3].promotions = {{name="Candidate",guid="Player-1-0000BBBB",currentSlot=9,targetSlot=7,reason="verified-initiate"}}
+  pages[3].promotions = {{name="Candidate",guid="Player-1-0000BBBB",currentSlot=9,targetSlot=8,targetName="Member",reason="verified-initiate"}}
   f.env.OlympusLaunchQueue.pages = pages; f.env.NOW = start+260; f.emit("GUILD_ROSTER_UPDATE")
   check("full 50-page discovery retains expired pages as advisory", f.q.Current() and #f.q.Current().pages == 50 and not f.q.HardwarePromote("1") and f.direct == 0)
   check("naturally partial early pages do not contradict completed discovery", f.q.Current().scanComplete and not f.q.Current().partial and f.q.Current().stalePages > 0)
@@ -105,7 +106,7 @@ do
   check("50-page scan recheck renews only selected page eligibility", f.q.HardwarePromote("1") and f.direct == 1 and pages[1].expiresAt == start+60)
 end
 do
-  local f = fixture(); f.q.Show()
+  local f = fixture(); f.q.Show(); f.q.tab="initiates"; f.q.Show()
   check("opening actual native queue frame is read only", f.q.window:IsShown() and f.direct == 0 and f.invites == 0)
   f.q.rowButtons[1]:GetScript("OnClick")()
   check("native queue button makes exactly one hardware request", f.direct == 1 and f.fallback == 0)
@@ -120,22 +121,22 @@ end
 do
   local f = fixture()
   check("dated raw-scope Prime projection is admitted without any action", f.q.Current() ~= nil and f.direct == 0 and f.fallback == 0 and f.invites == 0 and f.removals == 0)
-  check("direct hardware promotion uses exact GUID and one-based target order", f.q.HardwarePromote("Player-1-0000BBBB") and f.direct == 1 and f.lastGuid == "Player-1-0000BBBB" and f.lastOrder == 8)
+  check("direct hardware promotion uses exact GUID and one-based target order", f.q.HardwarePromote("Player-1-0000BBBB") and f.direct == 1 and f.lastGuid == "Player-1-0000BBBB" and f.lastOrder == 9)
   f.emit("GUILD_ROSTER_UPDATE")
   check("confirmed target rank cannot promote again", not f.q.HardwarePromote("Player-1-0000BBBB") and f.direct == 1)
 end
 do
-  local f = fixture(); f.page.promotions[1].targetSlot, f.page.promotions[1].reason = 5, "knight-veteran"
-  check("Knight Veteran projection requests native slot5 as rankOrder6", f.q.HardwarePromote("1") and f.direct == 1 and f.lastOrder == 6)
+  local f = fixture(); f.page.promotions[1].targetSlot, f.page.promotions[1].targetName, f.page.promotions[1].reason = 6, "Veteran", "knight-veteran"
+  check("Knight Veteran projection requests native slot6 as rankOrder7", f.q.HardwarePromote("1") and f.direct == 1 and f.lastOrder == 7)
 end
 do
   local f = fixture(true)
   check("missing direct capability falls back to exactly one rank per click", f.q.HardwarePromote("1") and f.fallback == 1 and f.env.ROSTER[2].rankIndex == 8)
   check("fallback waits for a newer native roster before another click", not f.q.HardwarePromote("1") and f.fallback == 1)
   f.emit("GUILD_ROSTER_UPDATE")
-  check("fresh native progress admits one further bounded fallback click", f.q.HardwarePromote("1") and f.fallback == 2 and f.env.ROSTER[2].rankIndex == 7)
+  check("confirmed Member target does not send another fallback", not f.q.HardwarePromote("1") and f.fallback == 1 and f.env.ROSTER[2].rankIndex == 8)
   f.emit("GUILD_ROSTER_UPDATE")
-  check("bounded fallback stops at Member and never skips further", not f.q.HardwarePromote("1") and f.fallback == 2)
+  check("bounded fallback stops at Member and never skips further", not f.q.HardwarePromote("1") and f.fallback == 1)
 end
 for _, case in ipairs({ "expiry", "future", "scope", "rank", "permission", "assignment", "guid", "duplicate", "preview", "combat", "invite" }) do
   local f = fixture()
@@ -191,8 +192,48 @@ do
   risk("High Long", "0000CCC3", 9, 30)
   risk("Protected", "0000CCC4", 1, 40, "HOLD")
   local rows = f.q.RiskBuffer()
-  check("risk buffer uses lowest native level then longest measured offline", #rows == 3 and rows[1].name:find("Small Long",1,true) and rows[2].name:find("Small%-Forever") and rows[3].name:find("High Long",1,true))
+  check("risk buffer uses longest measured offline then lowest native level", #rows == 3 and rows[1].name:find("High Long",1,true) and rows[2].name:find("Small Long",1,true) and rows[3].name:find("Small%-Forever"))
   check("risk buffer preserves hold notes and never removes anyone", f.removals == 0 and f.direct == 0 and f.invites == 0)
+end
+do
+  local f=fixture();f.q.Show()
+  check("four officer tabs are present and opening them is read only",f.q.tabButtons.invites and f.q.tabButtons.knights and f.q.tabButtons.initiates and f.q.tabButtons.buffer and f.direct==0 and f.invites==0 and f.removals==0)
+  f.q.tab="invites";check("unknown unguilded invite queue never dispatches",not f.q.NextAction() and f.invites==0)
+  f.q.tab="buffer";check("purge Next action is native review only",not f.q.NextAction() and f.removals==0)
+  f.q.tab="initiates";check("Next officer action requests one fresh verified Initiate promotion",f.q.NextAction() and f.direct==1 and f.lastOrder==9)
+  f.emit("GUILD_ROSTER_UPDATE");check("Next action skips confirmed completed native target",not f.q.NextAction() and f.direct==1)
+end
+for _,case in ipairs({"protocol","targetName","oldSlot7","oldSlot5","wrongCurrent","nativeTargetName","missingNativeTargetName"}) do
+  local f=fixture()
+  if case=="protocol" then f.page.protocol="launch-operations-v1"
+  elseif case=="targetName" then f.page.promotions[1].targetName="Veteran"
+  elseif case=="oldSlot7" then f.page.promotions[1].targetSlot=7
+  elseif case=="oldSlot5" then f.page.promotions[1].targetSlot=5
+  elseif case=="wrongCurrent" then f.page.promotions[1].currentSlot=8
+  elseif case=="nativeTargetName" then f.env.GuildControlGetRankName=function() return "Officer" end
+  else f.env.GuildControlGetRankName=nil end
+  check(case.." holds without a protected request",not f.q.HardwarePromote("1") and f.direct==0 and f.fallback==0)
+end
+do
+  local f=fixture();f.page.promotions={};f.page.riskBuffer={{name="Candidate",guid="Player-1-0000BBBB",currentSlot=9,level=1,lastOnlineDays=2,reason="unverified-initiate",reviewOnly=true}}
+  f.env.NOW=f.env.NOW+61;f.emit("GUILD_ROSTER_UPDATE")
+  check("expired unverified classification is never offered as current purge evidence",#f.q.RiskBuffer()==0 and f.removals==0)
+end
+do
+  local f=fixture();local row={queueId=1,proofId=string.rep("a",32),name="Visible Candidate",guid="Player-1-ABCDEF12",fullName="Visible Candidate",scopeHash=f.page.scopeHash,observedAt=f.env.NOW,expiresAt=f.env.NOW+30,reason="knight-unguilded",source="native-who-unit-v233"}
+  f.page.invites={row};local current=f.q.Current()
+  check("exact positive officer proof is projected with the shorter native expiry",current and #current.invites==1 and current.freshness[row.guid].expiresAt==row.expiresAt)
+  local calls=0;f.env.OlympusOfficerInvites233={Next=function(rows) calls=calls+1;return rows and rows[1]==row end,Status=function() return {reason="test status"} end}
+  f.q.Show();f.q.tab="invites";f.q.Show();check("invite tab routes only its approved source row to the hardware dispatcher",f.q.NextAction() and calls==1 and f.invites==0 and f.direct==0)
+  row.scopeHash=string.rep("0",16);check("mismatched invitation scope holds the entire projection",f.q.Current()==nil)
+end
+do
+  local f=fixture();local alerts=0;f.env.OlympusVerifyAutoSync={Request=function(reason) if reason=="queue-check" then alerts=alerts+1 end end}
+  f.env.OlympusVerifyDB.launchControl={action="scan",id="new-control",observedAt=f.env.NOW}
+  local tick=f.q.Events:GetScript("OnUpdate");tick();check("queue reminder waits a bounded Watcher window and never reloads",alerts==0 and not f.syncs)
+  f.env.NOW=f.env.NOW+5;tick();tick();check("second hardware Sync reminder is coalesced and claims no ACK",alerts==1 and not f.syncs and f.invites==0)
+  f.env.OlympusLaunchQueue.controlId="second-control";f.env.OlympusVerifyDB.launchControl={action="recheck",id="second-control",observedAt=f.env.NOW-5};tick()
+  check("already loaded matching control needs no speculative second-Sync alert",alerts==1)
 end
 print(string.format("%d passed, %d failed", passed, failed))
 if failed > 0 then error("launch operations failed") end

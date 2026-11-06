@@ -1,6 +1,8 @@
 /** Current launch recommendations only. No D1/provider/native writes or role authority. */
 import { FLAGSHIP_GUILD_NAME, canonicalOlympusGuildName, isApprovedNativeGuildName } from './guild-affiliation229';
-export const LAUNCH_OPERATIONS_PROTOCOL229 = 'launch-operations-v1' as const;
+import type { OfficerInvite233 } from './officer-invites233';
+// The owner's .233 live ladder targets supersede the launch draft's historical slots.
+export const LAUNCH_OPERATIONS_PROTOCOL229 = 'officer-operations-v233' as const;
 export const LAUNCH_ROLE_TTL229 = 60;
 export const LAUNCH_SCAN_TTL229 = 600;
 export const LAUNCH_ROLE_PAGE229 = 20;
@@ -26,22 +28,22 @@ export interface LaunchRosterSource229 {
   guild: string; realm: string; scopeHash: string;
 }
 export function launchMotd229() {
-  const short = 'OLYMPUS PRIME: #olympus-verify / olympus.roachcouncil.com. Verify for Member (Knights+: Veteran); avoid Initiate space purges.';
+  const short = 'olympus.roachcouncil.com #olympus-verify: whisper Fern Melder code! Verified=Member; Knights=Veteran. Initiates get kicked!';
   const bytes = new TextEncoder().encode(short).byteLength;
   if (bytes > 128 || !/^[\x20-\x7e]+$/.test(short)) throw Error('launch_motd_limit');
   const bulletin = [
     'OLYMPUS PRIME is the flagship; OLYMPUS and Olympus I are its aliases.',
     'Link Discord through #olympus-verify or olympus.roachcouncil.com. Current Knight-or-higher entitlement is checked from the exact Discord role ladder.',
     'A Knight invite requires a fresh native observation that the same whispering GUID is actually unguilded. Missing or ambiguous guild information is unknown and stays held.',
-    'Linked Knights below Veteran are recommended for native slot 5. Other verified Initiates are recommended for Member, native slot 7. Native rank, GUID, guild, realm and permission are checked again for each hardware action.',
-    'Unverified Initiates are shown separately for human space review, lowest level and then longest offline first. Pending and unknown verification stay held. No automatic purge, role grant or rank change is performed.',
+    'Linked Knights below Veteran are recommended for Veteran, native index 6. Other verified Initiates are recommended for Member, native index 8. The owner confirmed the current live names and indices on 6 November 2026. Native rank name/index, GUID, guild, realm and permission are checked again for each hardware action.',
+    'Unverified Initiates are shown separately for human space review, longest offline and then lowest level first. Pending and unknown verification stay held. No automatic purge, role grant or rank change is performed.',
   ].join('\n\n');
   return Object.freeze({short, bulletin, characters: short.length, bytes, maxBytes: 128 as const});
 }
-export interface LaunchPromotion229 { name: string; guid: string; currentSlot: number; targetSlot: 5 | 7; reason: 'knight-veteran' | 'verified-initiate' }
+export interface LaunchPromotion229 { name: string; guid: string; currentSlot: number; targetSlot: 6 | 8; targetName: 'Veteran' | 'Member'; reason: 'knight-veteran' | 'verified-initiate' }
 export interface LaunchRisk229 { name: string; guid: string; currentSlot: 9; level: number | null; lastOnlineDays: number | null; reason: 'unverified-initiate'; reviewOnly: true }
 export interface LaunchHeld229 { name: string; guid: string; reason: string }
-const nativeLabels: Readonly<Record<number, string>> = Object.freeze({5: 'Veteran', 6: 'Raider', 7: 'Member', 8: 'Alt', 9: 'Initiate'});
+const nativeLabels: Readonly<Record<number, string>> = Object.freeze({0: 'Guild Master', 1: 'Stewart', 2: 'High Council', 3: 'Officer', 4: 'Officer Alt', 5: 'Raid Leader', 6: 'Veteran', 7: 'Raider', 8: 'Member', 9: 'Initiate'});
 export function projectLaunchOperations229(source: LaunchRosterSource229 | null, rows: readonly LaunchRosterRow229[], knightByGuid: ReadonlyMap<string, KnightState229>, at: number, expiresAt: number) {
   const heldReasons: string[] = ['native-unguilded-proof-required'];
   const promotions: LaunchPromotion229[] = [], riskBuffer: LaunchRisk229[] = [], held: LaunchHeld229[] = [];
@@ -53,7 +55,7 @@ export function projectLaunchOperations229(source: LaunchRosterSource229 | null,
     realm: source?.realm ?? null, scopeHash: source?.scopeHash ?? null,
     entitlements: {offset: 0, pageSize: LAUNCH_ROLE_PAGE229, scanned: knightByGuid.size, total: rows.filter(r => r.verification === 'verified').length, unscanned: 0, retryAfterSeconds: null as number | null},
     scan: {id: null as string | null, startedAt: null as number | null, expiresAt: null as number | null},
-    pageCursor: null as string | null, nextCursor: null as string | null, invites: [] as never[], promotions, riskBuffer, held, heldReasons, motd: launchMotd229(),
+    pageCursor: null as string | null, nextCursor: null as string | null, invites: [] as OfficerInvite233[], promotions, riskBuffer, held, heldReasons, motd: launchMotd229(),
     actions: {automatic: false, roleGrants: false, removals: false, requiresNativeRecheck: true},
   };
   if (!Number.isSafeInteger(at) || !Number.isSafeInteger(expiresAt) || expiresAt <= at || expiresAt > at + LAUNCH_ROLE_TTL229) heldReasons.push('entitlement-expired');
@@ -69,7 +71,7 @@ export function projectLaunchOperations229(source: LaunchRosterSource229 | null,
   if (heldReasons.length > 1) return envelope;
   for (const row of rows) {
     const slot = row.currentSlot, identity = {name: row.name, guid: row.guid};
-    if (!Number.isInteger(slot) || slot === null || slot < 0 || slot > 9 || slot >= 5 && nativeLabels[slot] !== row.rank) { held.push({...identity, reason: 'native-rank-unconfirmed'}); continue; }
+    if (!Number.isInteger(slot) || slot === null || slot < 0 || slot > 9 || nativeLabels[slot] !== row.rank) { held.push({...identity, reason: 'native-rank-unconfirmed'}); continue; }
     if (row.verification === 'pending' || row.verification === 'unknown') { held.push({...identity, reason: row.verification === 'pending' ? 'pending-verification' : 'verification-unknown'}); continue; }
     if (row.verification === 'unverified') {
       if (slot === 9 && row.rank === 'Initiate') riskBuffer.push({...identity, currentSlot: 9, level: Number.isInteger(row.level) && row.level! >= 1 && row.level! <= 255 ? row.level : null, lastOnlineDays: typeof row.lastOnlineSeconds === 'number' && Number.isFinite(row.lastOnlineSeconds) && row.lastOnlineSeconds > 0 && row.lastOnlineSeconds <= 10 * 366 * 86400 ? row.lastOnlineSeconds / 86400 : null, reason: 'unverified-initiate', reviewOnly: true});
@@ -77,11 +79,11 @@ export function projectLaunchOperations229(source: LaunchRosterSource229 | null,
     }
     const knight = knightByGuid.get(row.guid) ?? 'unknown';
     if (knight === 'unknown') { held.push({...identity, reason: 'discord-entitlement-unknown'}); continue; }
-    if (knight === 'knight' && slot > 5) promotions.push({...identity, currentSlot: slot, targetSlot: 5, reason: 'knight-veteran'});
-    else if (knight === 'non-knight' && slot === 9 && row.rank === 'Initiate') promotions.push({...identity, currentSlot: slot, targetSlot: 7, reason: 'verified-initiate'});
+    if (knight === 'knight' && slot > 6) promotions.push({...identity, currentSlot: slot, targetSlot: 6, targetName: 'Veteran', reason: 'knight-veteran'});
+    else if (knight === 'non-knight' && slot === 9 && row.rank === 'Initiate') promotions.push({...identity, currentSlot: slot, targetSlot: 8, targetName: 'Member', reason: 'verified-initiate'});
   }
   promotions.sort((a, b) => a.targetSlot - b.targetSlot || a.name.localeCompare(b.name, 'en'));
-  riskBuffer.sort((a, b) => (a.level ?? Infinity) - (b.level ?? Infinity) || (b.lastOnlineDays ?? -1) - (a.lastOnlineDays ?? -1) || a.name.localeCompare(b.name, 'en'));
+  riskBuffer.sort((a, b) => (b.lastOnlineDays ?? -1) - (a.lastOnlineDays ?? -1) || (a.level ?? Infinity) - (b.level ?? Infinity) || a.name.localeCompare(b.name, 'en'));
   envelope.entitlements.unscanned = held.filter(r => r.reason === 'discord-entitlement-unknown').length;
   envelope.status = envelope.entitlements.unscanned ? 'partial' : 'ready';
   return envelope;

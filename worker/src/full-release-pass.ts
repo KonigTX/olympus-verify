@@ -20,6 +20,7 @@ import { identifyNativeProfile } from './native-rank-adapter';
 import { privacyCaptureFromColumns,privacyGenerationExpressionFenceSql,readPrivacySubject } from './privacy-serving-authority';
 import { DB_NOW,randomGeneration } from './account-generation-contracts';
 import { FRESH_CAUSE_CHILD_CAP,FRESH_GRANT_CHILD_CAP,FRESH_REMOVAL_CHILD_CAP,STAFF_CHILD_CAP,laneChildBudget,laneRoom } from './lane-budget';
+import {captureCanonicalRankConfig233} from './canonical-ranks233';
 import { room,type Admission,type StatementCount } from './roster-effects';
 import { ROSTER_INGEST_STATEMENTS } from './scheduled-budget';
 import * as L from './full-release-roles';
@@ -139,6 +140,7 @@ export async function runNativeSubject232(env:Env,subject:string,calls:CallBudge
  if(!authority)return done('held','native232_original_identity_or_source_held');
  try{const V=await import('./shared-membership-cutover230'),selection=await V.captureRuntimeVenue230(env);if(selection.mode!=='enabled')return done('held','native232_venue_held');
   const effect=M.routineMembership232Environment(env,authority),f=M.routineMembership232Facts(authority),child=laneChildBudget(calls,FRESH_GRANT_CHILD_CAP);
+  if(captureCanonicalRankConfig233(env).present){rank=await R.reconcileCanonicalRanks233(effect,authority,selection.venue,child,maxJobs);return done(rank.state,rank.reason);}
   base=await R.queueAndSettleRoutineMembership232(effect,authority,selection.venue,child);
   if(base.state!=='settled'&&f.cause==='eligible'&&!base.reason.startsWith('native232_restriction_'))return done(base.state,base.reason);
   rank=await R.reconcileNativeRanks232(effect,authority,selection.venue,child,maxJobs);return done(rank.state,rank.reason);
@@ -155,6 +157,7 @@ export async function runVerifiedRank232(env:Env,subject:string,calls:CallBudget
  if(!authority)return done('held','native232_original_identity_or_source_held');
  try{const V=await import('./shared-membership-cutover230'),selection=await V.captureRuntimeVenue230(env);if(selection.mode!=='enabled')return done('held','native232_venue_held');
   const effect=M.routineMembership232Environment(env,authority),child=laneChildBudget(calls,FRESH_GRANT_CHILD_CAP);
+  if(captureCanonicalRankConfig233(env).present){rank=await R.reconcileCanonicalRanks233(effect,authority,selection.venue,child);return done(rank.state,rank.reason);}
   rank=await R.reconcileNativeRanks232(effect,authority,selection.venue,child);
   if(rank.reason==='native232_restriction_cleanup_pending'){
    base=await R.queueAndSettleRoutineMembership232(effect,authority,selection.venue,child);
@@ -525,7 +528,8 @@ async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admis
   if(!cap.current())return done('held','lane_configuration_changed');lastFreshLocal=t;
   lease=L.freshLeaseValue(t+L.FRESH_LEASE_SECONDS,randomGeneration());if(!await env.DB.prepare(L.FRESH_LEASE_ACQUIRE).bind(lease).first()){lease=null;return done('skipped','lease_held');}
   const st=parseState((await env.DB.prepare(L.FRESH_STATE_SELECT).first<{details:string|null}>())?.details),M=await import('./routine-membership-authority232'),V=await import('./shared-membership-cutover230');
-  const window=(await env.DB.prepare(L.NATIVE232_WALK_SELECT).bind(cap.guild,st.g,L.FRESH_WALK_WINDOW,selected.policy.privileged?1:0).all<{subject:string;top_rank:number|null;urgent:number}>()).results;
+  const canonical=captureCanonicalRankConfig233(env);
+  const window=(await env.DB.prepare(canonical.present?L.CANONICAL233_WALK_SELECT:L.NATIVE232_WALK_SELECT).bind(cap.guild,st.g,L.FRESH_WALK_WINDOW,canonical.present?0:selected.policy.privileged?1:0).all<{subject:string;top_rank:number|null;urgent:number}>()).results;
   const refs:PrivacyReference[]=[];let visited=0,stop='';
   for(const row of window){
    if(visited>=L.FRESH_GRANT_SUBJECTS_PER_PASS)break;
@@ -540,7 +544,13 @@ async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admis
    const f=M.routineMembership232Facts(authority),effect=M.routineMembership232Environment(env,authority),selectedVenue=await V.captureRuntimeVenue230(env);
    if(selectedVenue.mode!=='enabled'){counts.held++;st.g=row.subject;continue;}
    M.assertRoutineMembership232(effect,authority);refs.push(reference);
-   const child=laneChildBudget(io.calls,FRESH_GRANT_CHILD_CAP),base=await R.queueAndSettleRoutineMembership232(effect,authority,selectedVenue.venue,child);
+   const child=laneChildBudget(io.calls,FRESH_GRANT_CHILD_CAP);
+   if(captureCanonicalRankConfig233(effect).present){
+    const rank=await R.reconcileCanonicalRanks233(effect,authority,selectedVenue.venue,child);
+    for(const outcome of rank.outcomes){if(outcome.state==='settled'){counts.settled++;if(outcome.reason==='canonical233_delete_acknowledged_and_confirmed')counts.removed++;}else if(outcome.state==='unknown')counts.unknown++;else counts.held++;}
+    counts.requests+=io.calls.attempts-start;st.g=row.subject;await audit(effect,'system','role.native232_attempt',row.subject,{n:snapshot,rank:f.primary?.index??null,result:rank.state},reference);continue;
+   }
+   const base=await R.queueAndSettleRoutineMembership232(effect,authority,selectedVenue.venue,child);
    if(base.state==='settled')counts.settled++;else if(base.state==='unknown')counts.unknown++;else counts.held++;
    // A known existing/manual base is sufficient access, but never deletion
    // custody. No rank grant may run before this current base admission.

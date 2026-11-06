@@ -10,8 +10,8 @@ import time
 import urllib.parse
 from typing import Any, Callable
 
-PATH = "/queue/launch-operations?keyVersion=launch-operations-v1"
-PROTOCOL = "launch-operations-v1"
+PATH = "/queue/launch-operations?keyVersion=officer-operations-v233"
+PROTOCOL = "officer-operations-v233"
 MAX_BYTES = 262144
 MAX_PAGES = 50
 MAX_REFRESH_ATTEMPTS = 50
@@ -84,17 +84,30 @@ def validate_page(report: Any, at: int, allow_stale: bool = False) -> bool:
         return False
     if report["actions"] != {"automatic": False, "roleGrants": False, "removals": False, "requiresNativeRecheck": True} or any(type(v) is not bool for v in report["actions"].values()):
         return False
-    # Owner's explicit hold: no invitation producer until positive unguilded evidence is qualified.
-    if report["invites"] != []:
+    if not isinstance(report["invites"], list) or len(report["invites"]) > 3 or entitlement["offset"] != 0 and report["invites"]:
         return False
     for key in ("promotions", "riskBuffer", "held", "heldReasons"):
         if not isinstance(report[key], list) or len(report[key]) > 1000:
             return False
     guids: set[str] = set()
+    queue_ids, proof_ids = set(), set()
+    for row in report["invites"]:
+        if (not _person(row) or set(row) != {"queueId", "proofId", "name", "guid", "fullName", "scopeHash", "observedAt", "expiresAt", "reason", "source"}
+                or not _integer(row["queueId"], 1) or row["queueId"] in queue_ids
+                or not isinstance(row["proofId"], str) or not re.fullmatch(r"[0-9a-f]{32}", row["proofId"]) or row["proofId"] in proof_ids
+                or not _text(row["fullName"], 100) or not row["fullName"] or "|" in row["fullName"] or row["fullName"].strip().lower() != row["name"].strip().lower()
+                or row["scopeHash"] != report["scopeHash"] or not _integer(row["observedAt"], 1) or row["observedAt"] > fetched + 5
+                or not _integer(row["expiresAt"], 1) or not row["observedAt"] < row["expiresAt"] <= row["observedAt"] + 60
+                or row["reason"] != "knight-unguilded" or row["source"] != "native-who-unit-v233" or row["guid"] in guids
+                or not allow_stale and at >= row["expiresAt"]):
+            return False
+        guids.add(row["guid"]); queue_ids.add(row["queueId"]); proof_ids.add(row["proofId"])
     for row in report["promotions"]:
-        if (not _person(row) or set(row) != {"guid", "name", "currentSlot", "targetSlot", "reason"}
-                or not _integer(row["currentSlot"], 6, 9) or row["targetSlot"] not in (5, 7) or type(row["targetSlot"]) is not int
-                or row["targetSlot"] >= row["currentSlot"] or row["reason"] != ("knight-veteran" if row["targetSlot"] == 5 else "verified-initiate")
+        if (not _person(row) or set(row) != {"guid", "name", "currentSlot", "targetSlot", "targetName", "reason"}
+                or not _integer(row["currentSlot"], 7, 9) or row["targetSlot"] not in (6, 8) or type(row["targetSlot"]) is not int
+                or row["targetSlot"] >= row["currentSlot"]
+                or (row["targetSlot"], row["targetName"], row["reason"]) not in ((6, "Veteran", "knight-veteran"), (8, "Member", "verified-initiate"))
+                or row["targetSlot"] == 8 and row["currentSlot"] != 9
                 or row["guid"] in guids):
             return False
         guids.add(row["guid"])
@@ -118,7 +131,7 @@ def validate_page(report: Any, at: int, allow_stale: bool = False) -> bool:
             or type(motd["maxBytes"]) is not int or motd["maxBytes"] != 128 or type(motd["bytes"]) is not int or motd["bytes"] != len(motd["short"].encode())
             or type(motd["characters"]) is not int or motd["characters"] != len(motd["short"].encode("utf-16-le")) // 2):
         return False
-    return not (report["status"] == "held" and (report["promotions"] or report["riskBuffer"]))
+    return not (report["status"] == "held" and (report["invites"] or report["promotions"] or report["riskBuffer"]))
 
 
 def _same_scan(page: dict[str, Any], first: dict[str, Any]) -> bool:
@@ -246,8 +259,8 @@ class Scan:
             self._stop('snapshot-changed'); return True
         if page['entitlements']['offset'] != offset or self.pages and not _same_scan(page, self.pages[min(self.pages)]):
             self._stop('snapshot-changed'); return True
-        others = {row['guid'] for key, prior in self.pages.items() if key != offset for kind in ('promotions', 'riskBuffer', 'held') for row in prior[kind]}
-        if any(row['guid'] in others for kind in ('promotions', 'riskBuffer', 'held') for row in page[kind]):
+        others = {row['guid'] for key, prior in self.pages.items() if key != offset for kind in ('invites', 'promotions', 'riskBuffer', 'held') for row in prior[kind]}
+        if any(row['guid'] in others for kind in ('invites', 'promotions', 'riskBuffer', 'held') for row in page[kind]):
             self._stop('duplicate-identity'); return True
         self.pages[offset] = page
         if page['entitlements']['retryAfterSeconds'] is not None:
@@ -296,7 +309,7 @@ def render_pages(result: Any, at: int) -> str | None:
         return None
     if pages and any(not _same_scan(page, pages[0]) or page['entitlements']['offset'] != index*20 for index, page in enumerate(pages)):
         return None
-    people = [row['guid'] for page in pages for kind in ('promotions', 'riskBuffer', 'held') for row in page[kind]]
+    people = [row['guid'] for page in pages for kind in ('invites', 'promotions', 'riskBuffer', 'held') for row in page[kind]]
     if len(set(people)) != len(people):
         return None
     # Opaque pagination material never needs to reach the game or its logs.

@@ -4337,19 +4337,23 @@
         h('p',{class:'muted small',text:scanExpired?'The original scan/native snapshot window expired. Start a new scan.':d.scan?.expiresAt?'Scan witness expires '+fmtDateTime(d.scan.expiresAt)+'. Recheck an examined page to refresh only its role evidence.':'No confirmed native scan.'}),
         h('p',{class:'muted small',text:(d.heldReasons||[]).join(' · ')})));
       const table=(head,rows)=>h('div',{class:'table-wrap'},h('table',null,h('thead',null,h('tr',null,head.map(text=>h('th',{scope:'col',text})))),h('tbody',null,rows)));
+      const inviteRows=[...pages.values()].flatMap(p=>p.dto.invites.map(r=>({r,current:p.deadline>clock&&!scanExpired&&nowSec()<r.expiresAt})));
+      add(output,frame('Unguilded Knight+ invite queue',h('span',{class:'badge',text:String(inviteRows.filter(x=>x.current).length)}),
+        h('p',{text:'An invite requires explicit current native unguilded evidence and the same character identity. Use Next Officer Action in-game; unknown evidence stays held.'}),
+        table(['Character','Evidence expires','Status'],inviteRows.map(({r,current})=>h('tr',{'data-launch-invite233':r.proofId},h('td',{text:r.fullName}),h('td',{text:fmtDateTime(r.expiresAt)}),h('td',{text:current?'Recheck and invite in-game':'Stale advisory · fresh native proof required'}))))));
       for(const [offset,p] of [...pages].sort((a,b)=>a[0]-b[0])){
         const eligible=p.deadline>clock&&!scanExpired,recheck=h('button',{id:'launch-recheck229-'+offset,type:'button',class:'btn small',text:'Recheck this page',disabled:busy||scanExpired||!p.dto.pageCursor,onclick:()=>{scanning=false;load(p.dto.pageCursor);}});
-        const rows=p.dto.promotions.map(r=>h('tr',{[eligible?'data-launch-promotion229':'data-launch-advisory229']:r.guid},h('td',{text:r.name}),h('td',{text:r.currentSlot+' to '+r.targetSlot}),h('td',{text:r.reason}),h('td',{text:eligible?'Role evidence current':'Stale advisory · recheck required'})));
+        const promotionTable=reason=>table(['Character','Native slots','Evidence'],p.dto.promotions.filter(r=>r.reason===reason).map(r=>h('tr',{[eligible?'data-launch-promotion229':'data-launch-advisory229']:r.guid},h('td',{text:r.name}),h('td',{text:r.currentSlot+' to '+r.targetName+' (index '+r.targetSlot+')'}),h('td',{text:eligible?'Role evidence current':'Stale advisory · recheck required'}))));
         add(output,frame('Examined page '+(offset/20+1),h('span',{class:'badge',text:eligible?'Role evidence current':'Stale advisory'}),
-          h('p',{text:'Role evidence expires '+fmtDateTime(p.dto.expiresAt)+'. Fixed targets: Knights below Veteran to slot 5; other verified Initiates to Member slot 7. No web action is offered.'}),recheck,
-          table(['Character','Native slots','Reason','Evidence'],rows)));
+          h('p',{text:'Role evidence expires '+fmtDateTime(p.dto.expiresAt)+'. Live targets: Knights below Veteran to Veteran (index 6); other verified Initiates to Member (index 8). Actions require an attended in-game click or key press.'}),recheck,
+          h('h3',{text:'Knight+ → Veteran'}),promotionTable('knight-veteran'),h('h3',{text:'Verified Initiates → Member'}),promotionTable('verified-initiate')));
       }
       const risks=[...pages.values()].flatMap(p=>p.dto.riskBuffer),held=[...pages.values()].flatMap(p=>p.dto.held);
       add(output,frame('Initiate space buffer · review only',h('span',{class:'badge',text:String(risks.length)}),
-        h('p',{text:'Lowest measured level, then longest measured offline first. Unknown values stay unknown. This is dated native-snapshot advice. No automatic purge or removal is requested.'}),
-        table(['Character','Level','Last online'],risks.sort((a,b)=>(a.level??Infinity)-(b.level??Infinity)||(b.lastOnlineDays??-1)-(a.lastOnlineDays??-1)||a.name.localeCompare(b.name)).map(r=>h('tr',null,h('td',{text:r.name}),h('td',{text:r.level??'Unknown'}),h('td',{text:r.lastOnlineDays===null?'Unknown':Math.round(r.lastOnlineDays*10)/10+' days'}))))));
+        h('p',{text:'Longest measured offline, then lowest measured level first. Unknown values stay unknown. This is dated native-snapshot advice. Removal requires an attended native review.'}),
+        table(['Character','Level','Last online'],risks.sort((a,b)=>(b.lastOnlineDays??-1)-(a.lastOnlineDays??-1)||(a.level??Infinity)-(b.level??Infinity)||a.name.localeCompare(b.name)).map(r=>h('tr',null,h('td',{text:r.name}),h('td',{text:r.level??'Unknown'}),h('td',{text:r.lastOnlineDays===null?'Unknown':Math.round(r.lastOnlineDays*10)/10+' days'}))))));
       if(held.length)add(output,frame('Held evidence',null,table(['Character','Reason'],held.map(r=>h('tr',null,h('td',{text:r.name}),h('td',{text:r.reason}))))));
-      const remaining=[...pages.values()].map(p=>p.deadline-clock).filter(n=>n>0);if(d.scan?.expiresAt&&!scanExpired)remaining.push((d.scan.expiresAt-nowSec())*1000);
+      const remaining=[...pages.values()].map(p=>p.deadline-clock).filter(n=>n>0);for(const {r,current}of inviteRows)if(current)remaining.push((r.expiresAt-nowSec())*1000);if(d.scan?.expiresAt&&!scanExpired)remaining.push((d.scan.expiresAt-nowSec())*1000);
       if(remaining.length)expiryTimer=setTimeout(()=>{if(live()&&model){draw(model);status.textContent='A role-evidence window expired. Stale advisory rows require an explicit page recheck; no read or action was retried.';}},Math.max(1,Math.min(...remaining)));
       if(focused){const field=document.getElementById(focused);if(field)field.focus({preventScroll:true});}
     }
@@ -4363,16 +4367,18 @@
       try {
         const d=await api('GET','/api/admin/launch-operations'+(cursor?'?cursor='+encodeURIComponent(cursor):''),undefined,{live:current});
         if(!current())return;
-        if(!d||d.protocol!=='launch-operations-v1'||!['ready','partial','held'].includes(d.status)||!d.motd||typeof d.motd.short!=='string'||d.motd.short.length>128||!/^[\x20-\x7e]+$/.test(d.motd.short)
-          ||!Array.isArray(d.promotions)||!Array.isArray(d.riskBuffer)||!Array.isArray(d.held)||d.promotions.length>1000||d.riskBuffer.length>1000||d.held.length>1000
-          ||d.status==='held'&&(d.promotions.length||d.riskBuffer.length)||!Number.isSafeInteger(d.fetchedAt)||!Number.isSafeInteger(d.expiresAt)
+        if(!d||d.protocol!=='officer-operations-v233'||!['ready','partial','held'].includes(d.status)||!d.motd||typeof d.motd.short!=='string'||d.motd.short.length>128||!/^[\x20-\x7e]+$/.test(d.motd.short)
+          ||!Array.isArray(d.promotions)||!Array.isArray(d.riskBuffer)||!Array.isArray(d.held)||!Array.isArray(d.invites)||d.invites.length>3||d.promotions.length>1000||d.riskBuffer.length>1000||d.held.length>1000
+          ||d.status==='held'&&(d.promotions.length||d.riskBuffer.length||d.invites.length)||!Number.isSafeInteger(d.fetchedAt)||!Number.isSafeInteger(d.expiresAt)
           ||d.actions?.automatic!==false||d.actions?.roleGrants!==false||d.actions?.removals!==false||cursor&&model&&identity(model)!==identity(d))throw Error('launch_response_unconfirmed');
         if(d.status==='held'){pages.clear();nextCursor=null;scanning=false;}
         else {
           const e=d.entitlements;
           if(!d.scan||!/^[a-f0-9]{32}$/.test(d.scan.id)||!Number.isSafeInteger(d.scan.startedAt)||!Number.isSafeInteger(d.scan.expiresAt)||d.scan.expiresAt>d.scan.startedAt+600||d.scan.expiresAt>d.snapshotAt+600
             ||!e||!Number.isInteger(e.offset)||e.offset<0||e.offset>=1000||e.offset%20!==0||!Number.isInteger(e.scanned)||e.scanned<0||e.scanned>20||!Number.isInteger(e.total)||e.total<0||e.total>1000||typeof d.pageCursor!=='string'||d.pageCursor.length>2048)throw Error('launch_page_unconfirmed');
-          for(const r of d.promotions)if(![5,7].includes(r.targetSlot)||!Number.isInteger(r.currentSlot)||r.currentSlot<=r.targetSlot)throw Error('launch_target_unconfirmed');
+          for(const r of d.promotions)if(!Number.isInteger(r.currentSlot)||!(r.targetSlot===6&&r.targetName==='Veteran'&&r.reason==='knight-veteran'&&r.currentSlot>6&&r.currentSlot<=9||r.targetSlot===8&&r.targetName==='Member'&&r.reason==='verified-initiate'&&r.currentSlot===9))throw Error('launch_target_unconfirmed');
+          const inviteIds=new Set(),inviteProofs=new Set();
+          for(const r of d.invites){if(e.offset!==0||!Number.isSafeInteger(r.queueId)||r.queueId<1||inviteIds.has(r.queueId)||typeof r.proofId!=='string'||!/^[a-f0-9]{32}$/.test(r.proofId)||inviteProofs.has(r.proofId)||typeof r.fullName!=='string'||!r.fullName||r.fullName.length>100||/[\x00-\x1f\x7f]/.test(r.fullName)||!/^Player-\d{1,6}-[0-9A-Fa-f]{4,16}$/.test(r.guid)||r.scopeHash!==d.scopeHash||!Number.isSafeInteger(r.observedAt)||!Number.isSafeInteger(r.expiresAt)||r.expiresAt<=r.observedAt||r.expiresAt>r.observedAt+60||r.observedAt>d.fetchedAt+5||r.reason!=='knight-unguilded'||r.source!=='native-who-unit-v233')throw Error('launch_invite_unconfirmed');inviteIds.add(r.queueId);inviteProofs.add(r.proofId);}
           const others=new Set([...pages].filter(([offset])=>offset!==e.offset).flatMap(([,p])=>[...p.dto.promotions,...p.dto.riskBuffer,...p.dto.held].map(r=>r.guid))),seen=new Set();
           for(const r of [...d.promotions,...d.riskBuffer,...d.held]){if(others.has(r.guid)||seen.has(r.guid))throw Error('launch_duplicate_identity');seen.add(r.guid);}
           const remaining=Math.max(0,Math.min(60000,(d.expiresAt-d.fetchedAt)*1000)-(monotonic()-started)-1000);
