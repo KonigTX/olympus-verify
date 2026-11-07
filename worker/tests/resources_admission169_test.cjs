@@ -120,6 +120,19 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .236 reverses only the exact official addon download repair release note.
+  const release236 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".236\", date: \"2026-11-06\", lines: [",
+    "      \"The official verification addon download is available with the roster performance repair.\",",
+    "      \"The addon remains version 0.6.21 with the same roster performance repair.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .236 prepend occurs once', originalNews.split(release236).length === 2);
+  originalNews = originalNews.replace(release236, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
   // .234 reverses only this exact verified character continuity release note.
   // .235 reverses only this exact addon background CPU release note.
   const release235 = [

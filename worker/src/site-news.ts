@@ -78,6 +78,12 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".236", date: "2026-11-06", lines: [
+      "The official verification addon download is available with the roster performance repair.",
+      "The addon remains version 0.6.21 with the same roster performance repair.",
+    ],
+  },
+  {
     build: ".235", date: "2026-11-06", lines: [
       "The verification addon reuses unchanged roster snapshots to reduce background CPU use.",
       "Manual Sync and in-game verification keep their existing checks.",
