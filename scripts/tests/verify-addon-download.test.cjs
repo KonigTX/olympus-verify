@@ -10,7 +10,7 @@ const calls = [];
 const env = {PUBLIC_BASE_URL:'https://bot.example', SITE_HOST:'site.example', ASSETS:{async fetch(request) {
   calls.push(request); const url = new URL(request.url);
   assert(paths.includes(url.pathname)); assert.equal(url.search, ''); assert.equal(request.method, 'GET');
-  assert.deepEqual([...request.headers], []); assert.equal(request.redirect, 'error');
+  assert.deepEqual([...request.headers], []); assert.equal(request.redirect, 'manual');
   return new Response(fs.readFileSync(path.join(root, 'worker/public', url.pathname)), {headers:{'Set-Cookie':'must-not-escape=1','Content-Type':'text/plain','Location':'https://unexpected.example'}});
 }}};
 Object.defineProperty(env, 'DB', {get(){throw Error('public download touched database');}});
@@ -49,5 +49,6 @@ async function fetchAt(host, file, method = 'GET') { return index.fetch(new Requ
     assert(html.includes('https://www.curseforge.com/wow/addons/olympus-guild')); assert(html.includes('There is no separate Army addon download.'));
     assert(!html.includes('olympus-army-addon-0.2.0.zip')); assert(html.includes('preserve private Config.lua'));
   });
-  console.log(JSON.stringify({passed,failed:0,assetRequests:calls.length,databaseReads:0,providerCalls:0}));
+  const native = await require('./helpers/verify-addon-native-assets.cjs')(root);
+  console.log(JSON.stringify({passed:passed+native.checks,failed:0,unitChecks:passed,nativeAssetChecks:native.checks,assetRequests:calls.length,databaseReads:0,providerCalls:0}));
 })().catch(e => {console.error(e); process.exitCode=1;});
