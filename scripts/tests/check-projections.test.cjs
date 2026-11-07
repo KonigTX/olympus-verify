@@ -24,6 +24,14 @@ function fixture(changes = new Map(), repin = false) {
   return { ...base, get };
 }
 check('real staged projection graph passes', verify(base).result === 'PASS');
+const verifyFolder235 = 'worker/public/static/olympus-verify/';
+for (const name of ['olympus-verify-0.6.21.zip', 'version.json']) {
+  const file = verifyFolder235 + name;
+  rejects('Verify package resource drift is refused: ' + name, () => verify(fixture(new Map([[file, Buffer.concat([base.get(file), Buffer.from('\n')])]]))), /byte pin drift|closed Verify archive/);
+  rejects('Verify package resource is mandatory: ' + name, () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r=JSON.parse(s);r.required_public_resources=r.required_public_resources.filter(row=>row.path!==file);return JSON.stringify(r); }), true)), /576-public-path binding/);
+}
+rejects('Verify generator source hash is independently pinned by its manifest', () => verify(fixture(changed('scripts/build-verify-addon.cjs', s => s + '\n'))), /byte pin drift/);
+rejects('Verify source payload cannot drift behind an unchanged archive', () => verify(fixture(changed('addon/OlympusVerify/Bindings.xml', s => s + '\n'))), /byte pin drift/);
 const releaseTuple223=/^const BUILD = "(\d{4}-\d{2}-\d{2})\.(\d+) [^"\r\n]+";$/m.exec(base.get('worker/src/index.ts').toString('utf8'));
 if(!releaseTuple223)throw Error('One current BUILD tuple required for negative controls');
 const currentNewsTuple223='build: ".'+releaseTuple223[2]+'", date: "'+releaseTuple223[1]+'"';
@@ -68,7 +76,7 @@ rejects('current login variants cannot be relabeled official', () => verify(fixt
 rejects('current login variants require both exact paths', () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r = JSON.parse(s); r.login_art_variants.assets[0].path = 'worker/public/static/wow/login/alias.png'; return JSON.stringify(r); }), true)), /nonofficial owner login art variants/);
 rejects('current login variant reference digest cannot be repinned', () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r = JSON.parse(s); r.login_art_variants.assets[1].sha256 = '0'.repeat(64); return JSON.stringify(r); }), true)), /nonofficial owner login art variants/);
 rejects('current login variants do not allow a third variant', () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r = JSON.parse(s); r.login_art_variants.assets.push({ ...r.login_art_variants.assets[0] }); return JSON.stringify(r); }), true)), /nonofficial owner login art variants/);
-const closedPublicPathBinding = /^closed two-variant 512-asset 574-public-path binding$/;
+const closedPublicPathBinding = /^closed two-variant 512-asset 576-public-path binding$/;
 rejects('current login variants require two separate asset rows', () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r = JSON.parse(s); r.assets = r.assets.filter(row => row.path !== loginVariants[0]); return JSON.stringify(r); }), true)), closedPublicPathBinding);
 for (const file of ['worker/public/static/talents/analysis.js', 'worker/public/static/talents/guide-builds179.js']) {
   rejects('talent comparison code byte drift is refused: ' + file, () => verify(fixture(changed(file, s => s + '\n'))), /byte pin drift/);

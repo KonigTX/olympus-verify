@@ -88,6 +88,8 @@ jobs:
           node scripts/tests/ci-workflow.test.cjs
           node scripts/tests/ci-treasury-workerd.test.cjs
           node scripts/tests/check-projections.test.cjs
+          node scripts/tests/verify-addon-package.test.cjs
+          node scripts/tests/verify-addon-download.test.cjs
       - name: Package the Worker without deploying
         if: matrix.shard == 8
         run: npx wrangler deploy --dry-run --outdir ../.check-worker
