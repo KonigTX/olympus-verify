@@ -18,7 +18,7 @@ export async function verifyAddonDownload(request: Request, env: Env, site: bool
   }
   // Fetch only the fixed asset, without cookies, caller headers, queries or redirect following.
   const canonical = new URL(url.pathname, url.origin);
-  const source = await env.ASSETS.fetch(new Request(canonical, { method: 'GET', redirect: 'error' }));
+  const source = await env.ASSETS.fetch(new Request(canonical, { method: 'GET', redirect: 'manual' }));
   if (source.status !== 200) { await source.body?.cancel(); return new Response(null, { status: 404, headers }); }
   headers.set('Content-Type', url.pathname === ZIP ? 'application/zip' : 'application/json; charset=utf-8');
   if (url.pathname === ZIP) headers.set('Content-Disposition', 'attachment; filename="olympus-verify-0.6.21.zip"');
