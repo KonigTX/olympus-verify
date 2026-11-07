@@ -9,7 +9,7 @@ export async function verifyAddonDownload(request: Request, env: Env, site: bool
   const url = new URL(request.url);
   let decoded = url.pathname;
   try { decoded = decodeURIComponent(decoded); } catch { /* Malformed aliases never match an asset. */ }
-  const candidate = [url.pathname, decoded].some(path => path.toLowerCase().startsWith('/static/olympus-verify'));
+  const candidate = [url.pathname, decoded].some(path => path.toLowerCase().startsWith(ZIP.slice(0, ZIP.lastIndexOf('/'))));
   if (!candidate) return null;
   const headers = securityHeaders(new Headers());
   if (!site || ![ZIP, MANIFEST].includes(url.pathname)) return new Response(null, { status: 404, headers });
