@@ -48,6 +48,7 @@ import { memberLegalNavigation } from "./member-legal-navigation";
 import { CAMERA_PAGE_PATH, fetchCanonicalHtmlAsset, memberSiteGate, privateCameraPageAsset, privateSiteAsset } from './site-access';
 import { forwardPrivateProductionControl } from './privacy-private-control-adapter';
 import { LOGIN_ASSETS, POLICY_ASSETS, policyHeaders } from "./policy-render";
+import { verifyAddonDownload } from './verify-addon-download';
 import { immutablePolicyAsset, POLICY_ASSET_DIGEST_PREFIX } from "./policy-asset-cache";
 import { ensureSchema } from "./schema";
 import { recordRelay, relayReportFromQuery, relayStatus, ticketsReady } from "./relays";
@@ -197,6 +198,8 @@ export default {
       const asset = privateSiteAsset(await env.ASSETS.fetch(request));
       return new Response(request.method === 'HEAD' ? null : asset.body, { status: asset.status, statusText: asset.statusText, headers: asset.headers });
     }
+    const verifyDownload = await verifyAddonDownload(request, env, host === 'site');
+    if (verifyDownload) return verifyDownload;
     // Existing browser-only privacy controls remain available after the site account is gone.
     // This exact page/module pair has no server-data fetch, form submission or serving authority.
     if (host === 'site' && url.pathname === path && (path === '/static/qr-beta-window-data.html' || path === '/static/qr-beta-window.mjs')) {
@@ -689,7 +692,7 @@ async function freshRegistrationRefused(env: Env, trigger: string): Promise<void
 }
 
 /** Bumped with every change that needs a redeploy, so GET /health shows which build is live. */
-const BUILD = "2026-11-06.234 Verified character continuity";
+const BUILD = "2026-11-06.235 Bounded addon roster refresh";
 
 /**
  * Presence of each secret (never the value) and a D1 round trip — enough to tell a missing `wrangler secret put` from a

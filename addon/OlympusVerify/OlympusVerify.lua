@@ -37,7 +37,7 @@ local SECRET = cfg.secret
 -- 0.6.12: the example's placeholder is public, so a Config.lua copied without replacing it must not accept codes made from it.
 if type(SECRET) ~= "string" or SECRET == "" or string.find(SECRET, "^REPLACE_WITH_") then SECRET = nil end
 local secretWarned = false  -- 0.6.12: say once per session, not on every whisper, that codes cannot be checked
-local SOURCE_VERSION = "0.6.20" -- Keep this source fallback and OlympusVerify.toc aligned.
+local SOURCE_VERSION = "0.6.21" -- Keep this source fallback and OlympusVerify.toc aligned.
 local VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version"))
   or (GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version")) or SOURCE_VERSION
 local SET_NOTES = cfg.setNotes == true  -- SetNote is forbidden for addons on the Forever beta; leave false there
@@ -578,7 +578,130 @@ function Presence.NativeRosterScope()
   return read(rawget(_G, "GetGuildInfo"), "player"), read(rawget(_G, "GetRealmName"))
 end
 
-ExportRoster = function(force, rosterAlreadyAsked)
+-- Pending-alert fingerprints belong to a newly captured native export, never a
+-- caller-supplied SavedVariables table. Keep an in-memory field/identity witness
+-- so mutating an exported table cannot reuse its cached digest.
+do
+  local fields = { "name", "full", "guid", "rank", "rankIndex", "level", "class", "note", "onote", "lastOnline" }
+  local rowKeys, rosterKeys = {}, { exportedAt=true, members=true, total=true, online=true, nativeGuild=true, nativeRealm=true }
+  for _, key in ipairs(fields) do rowKeys[key] = true end
+  local accepted, cached, lastClock, lastPoll
+  local function scalar(value)
+    if type(issecretvalue) == "function" then
+      local ok, secret = pcall(issecretvalue, value)
+      if not ok or secret then return false end
+    end
+    local kind = type(value)
+    if kind ~= "nil" and kind ~= "string" and kind ~= "number" and kind ~= "boolean" then return false end
+    return true
+  end
+  local function hold()
+    if accepted then accepted.invalid = true end
+    cached = nil
+    return nil
+  end
+  function Presence.CapturePendingRoster235(r)
+    accepted, cached = nil, nil
+    if type(r) ~= "table" or type(r.members) ~= "table" or type(r.total) ~= "number"
+      or r.total < 1 or r.total > 1000 or r.total ~= math.floor(r.total) or #r.members ~= r.total then return end
+    local witness = { roster=r, members=r.members, rows={}, metadata={} }
+    for key in pairs(rosterKeys) do
+      if key ~= "members" then
+        if not scalar(r[key]) then return end
+        witness.metadata[key] = r[key]
+      end
+    end
+    for i = 1, r.total do
+      local row, values = r.members[i], {}
+      if type(row) ~= "table" or getmetatable(row) ~= nil then return end
+      for key in pairs(row) do if not rowKeys[key] then return end end
+      for _, key in ipairs(fields) do
+        if not scalar(row[key]) then return end
+        values[key] = row[key]
+      end
+      witness.rows[i] = { row=row, values=values }
+    end
+    accepted = witness
+  end
+  local function unchanged(r)
+    if not accepted or accepted.invalid or accepted.roster ~= r or getmetatable(r) ~= nil
+      or r.members ~= accepted.members or getmetatable(r.members) ~= nil or #r.members ~= #accepted.rows then return false end
+    for key in pairs(r.members) do
+      if type(key) ~= "number" or key ~= math.floor(key) or key < 1 or key > #accepted.rows then return false end
+    end
+    for key in pairs(r) do if not rosterKeys[key] then return false end end
+    for key in pairs(rosterKeys) do
+      if key ~= "members" and (not scalar(r[key]) or r[key] ~= accepted.metadata[key]) then return false end
+    end
+    for i = 1, #accepted.rows do
+      local old, row = accepted.rows[i], rawget(r.members, i)
+      if row ~= old.row or getmetatable(row) ~= nil then return false end
+      for key in pairs(row) do if not rowKeys[key] then return false end end
+      for _, key in ipairs(fields) do
+        local value = rawget(row, key)
+        if not scalar(value) or value ~= old.values[key] then return false end
+      end
+    end
+    return true
+  end
+  function Presence.RefreshPendingRoster235()
+    if not IsInGuild or IsInGuild() ~= true then return false end
+    local now = time()
+    -- Request at the normal cadence, without publishing the old native cache
+    -- while a response is outstanding. Claim before a synchronous response.
+    if now - lastRosterExport < ROSTER_THROTTLE
+      or rosterAskedAt and now - rosterAskedAt < ROSTER_THROTTLE
+      or lastPoll and now - lastPoll < ROSTER_THROTTLE then return false end
+    lastPoll = now
+    Presence.deferPendingFacts235 = true
+    local ok, requested = pcall(RequestRoster, false)
+    Presence.deferPendingFacts235 = nil
+    return ok and requested or false
+  end
+  function Presence.PendingRosterFacts235()
+    local db, now = OlympusVerifyDB, time()
+    local r = db and db.roster
+    if type(now) ~= "number" or lastClock and now < lastClock then return hold() end
+    lastClock = now
+    if not accepted or accepted.invalid or r ~= accepted.roster or getmetatable(r) ~= nil
+      or rawget(r, "members") ~= accepted.members or getmetatable(accepted.members) ~= nil then return hold() end
+    for key in pairs(rosterKeys) do
+      if key ~= "members" and not scalar(rawget(r, key)) then return hold() end
+    end
+    local guild, realm = Presence.NativeRosterScope()
+    local ownGuid = UnitGUID and Presence.Readable(UnitGUID("player"))
+    local ownName = Presence.MyName()
+    if cfg.membershipOnly ~= true or not IsInGuild or IsInGuild() ~= true or not guild or not realm or not Presence.IsGuid(ownGuid) or not ownName
+      or not r or r.nativeGuild ~= guild or r.nativeRealm ~= realm or type(r.exportedAt) ~= "number"
+      or r.exportedAt > now or now - r.exportedAt > 75 or type(r.members) ~= "table" or #r.members ~= r.total
+      or type(r.total) ~= "number" or r.total < 1 or r.total > 1000 or r.total ~= math.floor(r.total) then return hold() end
+    local upper = string.upper(guild)
+    if upper ~= "OLYMPUS PRIME" and upper ~= "OLYMPUS" and upper ~= "OLYMPUS I" then return hold() end
+    if not unchanged(r) then return hold() end
+    if cached then
+      if cached.guid ~= ownGuid or cached.name ~= ownName then return hold() end
+      return { strict=true, exportedAt=r.exportedAt, digest=cached.digest }
+    end
+    local parts, own = { "G" .. #guild .. ":" .. guild, "R" .. #realm .. ":" .. realm, "T" .. tostring(r.total) }, 0
+    for _, old in ipairs(accepted.rows) do
+      local values, encoded = old.values, {}
+      if values.guid == ownGuid then own = own + 1 end
+      for _, key in ipairs(fields) do
+        local value = values[key]
+        local text = value == nil and "nil" or type(value) .. ":" .. tostring(value)
+        if #text > 1024 then return hold() end
+        encoded[#encoded + 1] = tostring(#text) .. ":" .. text
+      end
+      parts[#parts + 1] = "M" .. table.concat(encoded)
+    end
+    if own ~= 1 then return hold() end
+    table.sort(parts)
+    cached = { digest=L.sha256hex(table.concat(parts, "|")), guid=ownGuid, name=ownName }
+    return { strict=true, exportedAt=r.exportedAt, digest=cached.digest }
+  end
+end
+
+ExportRoster = function(force, rosterAlreadyAsked, deferPendingFacts)
   if not IsInGuild() then return end
   local nativeGuild, nativeRealm = Presence.NativeRosterScope()
   if cfg.membershipOnly == true and not (nativeGuild and nativeRealm) then return nil end
@@ -616,8 +739,10 @@ ExportRoster = function(force, rosterAlreadyAsked)
     Print(string.format("roster export looked short (%d members vs %d last time) — kept the previous export. /olv roster forces one.", #members, prevCount))
     return nil
   end
-  OlympusVerifyDB.roster = { exportedAt = now, members = members, total = total, online = online, nativeGuild = nativeGuild, nativeRealm = nativeRealm }
-  if cfg.membershipOnly == true and OlympusVerifyAutoSync then OlympusVerifyAutoSync.NativeChanged() end
+  local captured = { exportedAt = now, members = members, total = total, online = online, nativeGuild = nativeGuild, nativeRealm = nativeRealm }
+  Presence.CapturePendingRoster235(captured)
+  OlympusVerifyDB.roster = captured
+  if cfg.membershipOnly == true and OlympusVerifyAutoSync and not deferPendingFacts then OlympusVerifyAutoSync.NativeChanged() end
   return #members
 end
 
@@ -3117,6 +3242,9 @@ OlympusVerifyAPI = {
     frame:UpdateButton()
     return n
   end,
+  -- A timer may request a roster at the ordinary 60s cadence. Only its native
+  -- response event publishes a snapshot; manual/whisper exports stay forced.
+  RefreshRosterForPending235 = function() return Presence.RefreshPendingRoster235() end,
   FlushChatLog = function() local was = FLUSH_LOG; FLUSH_LOG = true; FlushChatLog(); FLUSH_LOG = was end,
   -- Export the roster and reload: the reload writes SavedVariables (roster, events) for the watcher to send, and loads
   -- the newest OlympusQueue.lua (Discord approvals) -- the two things WoW only exchanges at a reload. From a click only.
@@ -3190,32 +3318,7 @@ OlympusVerifyAPI = {
 
 -- Read-only facts for the hardware Pending Sync alert; no roster, role or invite authority.
 function OlympusVerifyAPI.AutoSyncFacts()
-  local db = OlympusVerifyDB
-  local r = db and db.roster
-  local guild, realm = Presence.NativeRosterScope()
-  local ownGuid = UnitGUID and Presence.Readable(UnitGUID("player"))
-  if cfg.membershipOnly ~= true or not IsInGuild or IsInGuild() ~= true or not guild or not realm or not Presence.IsGuid(ownGuid) or not Presence.MyName()
-    or not r or r.nativeGuild ~= guild or r.nativeRealm ~= realm or type(r.exportedAt) ~= "number"
-    or r.exportedAt > time() or time() - r.exportedAt > 75 or type(r.members) ~= "table" or #r.members ~= r.total
-    or type(r.total) ~= "number" or r.total < 1 or r.total > 1000 or r.total ~= math.floor(r.total) then return nil end
-  local upper = string.upper(guild)
-  if upper ~= "OLYMPUS PRIME" and upper ~= "OLYMPUS" and upper ~= "OLYMPUS I" then return nil end
-  local parts, own = { "G" .. #guild .. ":" .. guild, "R" .. #realm .. ":" .. realm, "T" .. tostring(r.total) }, 0
-  for _, row in ipairs(r.members) do
-    if row.guid == ownGuid then own = own + 1 end
-    local fields = {}
-    for _, key in ipairs({ "name", "full", "guid", "rank", "rankIndex", "level", "class", "note", "onote", "lastOnline" }) do
-      local value = row[key]
-      if type(issecretvalue) == "function" and issecretvalue(value) then return nil end
-      local text = value == nil and "nil" or type(value) .. ":" .. tostring(value)
-      if #text > 1024 then return nil end
-      fields[#fields + 1] = tostring(#text) .. ":" .. text
-    end
-    parts[#parts + 1] = "M" .. table.concat(fields)
-  end
-  if own ~= 1 then return nil end
-  table.sort(parts)
-  return { strict = true, exportedAt = r.exportedAt, digest = L.sha256hex(table.concat(parts, "|")) }
+  return Presence.PendingRosterFacts235()
 end
 
 -- ---------------------------------------------------------------- events
@@ -3579,7 +3682,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
     Presence.rosterVersion = Presence.rosterVersion + 1
     -- This is already the response/update we were waiting for. Reading its
     -- cache must not request another response, including an empty first page.
-    ExportRoster(false, true)
+    ExportRoster(false, true, Presence.deferPendingFacts235 == true)
     if kickMacroTarget and not Unverified.TargetEligible(kickMacroTarget, Unverified.aim[L.normalizeCharacter(kickMacroTarget)], true) then
       Unverified.DisarmMacro()
     end

@@ -16,4 +16,5 @@
 *.tga binary
 *.blp binary
 *.pdf binary
+*.zip binary
 addon/tests/fixtures/community-census/contract-v2.json -text

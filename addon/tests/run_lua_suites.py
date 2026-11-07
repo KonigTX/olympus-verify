@@ -41,6 +41,7 @@ SUITES = {
     "launch_diagnostics229": (TESTS, Path("test_launch_diagnostics229.lua")),
     "launch_operations229": (TESTS, Path("test_launch_operations229.lua")),
     "auto_sync232": (TESTS, Path("test_auto_sync232.lua")),
+    "performance235": (TESTS, Path("test_performance235.lua")),
     "slash_registration234": (TESTS, Path("test_slash_registration234.lua")),
     "officer_invites233": (TESTS, Path("test_officer_invites233.lua")),
 }

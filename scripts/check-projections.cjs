@@ -10,6 +10,9 @@ const BOOT = ['LICENSE', 'README.md', 'CLAUDE.md', 'THIRD_PARTY_NOTICES.md', 'do
   'worker/src/site-data.ts', 'worker/src/site-ranks.ts', 'worker/src/site-core.ts', 'worker/src/site-news.ts',
   'worker/tests/site_test.cjs', 'worker/tests/hosts_test.cjs', 'worker/tests/bnet_retention_test.cjs'];
 BOOT.push('worker/tests/site_news_test.cjs', 'worker/tests/resources_admission169_test.cjs', 'worker/src/talent-build-contract.ts');
+const VERIFY_ADDON_INPUTS = ['Bindings.xml','Config.example.lua','Libs/OlympusHmac.lua','Libs/OlympusQr.lua','OlympusVerify.lua','OlympusVerify.toc',
+  'OlympusVerifyAutoSync.lua','OlympusVerifyBrowser.lua','OlympusVerifyCensus.lua','OlympusVerifyGuild.lua','OlympusVerifyLaunch229.lua',
+  'OlympusVerifyOfficerInvites233.lua','OlympusVerifyPreview.lua','OlympusVerifyRanks.lua','OlympusVerifyRoster.lua','OlympusVerifyTreasury.lua','OlympusVerifyUI.lua'];
 // Inspect only inert candidate text. This preflight does not run the historical inverse leaf.
 function verifyReleaseTestPins(text, build, check) {
   const tuple = /^(\d{4}-\d{2}-\d{2})\.(\d+) [^"\r\n]+$/.exec(build);
@@ -106,7 +109,7 @@ function loadSnapshot(cwd, revision = null) {
     if (!revision) need(header[2] === '0', 'unmerged index entry: ' + file);
     entries.set(file, { mode: header[0], oid: header[revision ? 2 : 1] });
   }
-  const wanted = [...entries.keys()].filter(p => BOOT.includes(p) || /^(scripts\/|policies\/|worker\/scripts\/|worker\/public\/static\/)/.test(p)
+  const wanted = [...entries.keys()].filter(p => BOOT.includes(p) || VERIFY_ADDON_INPUTS.some(file => p === 'addon/OlympusVerify/' + file) || /^(scripts\/|policies\/|worker\/scripts\/|worker\/public\/static\/)/.test(p)
     || /^addon\/OlympusStatsPilot\/(?:OlympusStatsPilot\.toc|Core\.lua|OlympusStatsPilot\.lua|Army\.lua|Libs\/StatsPilotQr\.lua|README\.md|ARMY\.md)$/.test(p) || ['tools/army-qr-live/protocol.js','tools/guild-qr-pilot/pilot.js','tools/guild-qr-pilot/decoder.js'].includes(p)
     || ['tools/build-site-assets.py', 'tools/wow-cursor-provenance.json', 'tools/build-talent-art.py', 'tools/check-login-portal.py',
       'tools/shared-census-website/website-overlay.cjs', 'tools/army-qr-local/website-overlay.cjs'].includes(p));
@@ -166,12 +169,25 @@ function verify(snapshot) {
       && ['path', 'mode', 'bytes', 'sha256'].every(key => row[key] === expectedVariants[i][key])
       && !ref.official_paths.includes(row.path) && !ref.native_paths.includes(row.path)), 'exact nonofficial owner login art variants');
   check(ref.assets.length === 512 && new Set(ref.assets.map(row => row.path)).size === 512
-    && ref.required_public_resources.length === 62 && new Set(ref.required_public_resources.map(row => row.path)).size === 62
-    && new Set([...ref.assets, ...ref.required_public_resources].map(row => row.path)).size === 574
+    && ref.required_public_resources.length === 64 && new Set(ref.required_public_resources.map(row => row.path)).size === 64
+    && new Set([...ref.assets, ...ref.required_public_resources].map(row => row.path)).size === 576
     && ref.required_public_resources.some(row => row.path === 'worker/public/static/governance/council-portfolios228.md')
     && ref.official_paths.length === 494 && ref.fixed_art_source_pins.length === 7
     && variantPins.every(expected => { const rows = ref.assets.filter(row => row.path === expected.path); return rows.length === 1
-      && ['path', 'mode', 'bytes', 'sha256'].every(key => rows[0][key] === expected[key]); }), 'closed two-variant 512-asset 574-public-path binding');
+      && ['path', 'mode', 'bytes', 'sha256'].every(key => rows[0][key] === expected[key]); }), 'closed two-variant 512-asset 576-public-path binding');
+  const verifyRoot = 'worker/public/static/olympus-verify/', verifyNames = ['olympus-verify-0.6.21.zip','version.json'];
+  check(ref.required_public_resources.filter(row => row.path.startsWith(verifyRoot)).length === 2 && verifyNames.every(name =>
+    ref.required_public_resources.filter(row => row.path === verifyRoot + name).length === 1
+    && !ref.runtime_paths.includes(verifyRoot + name) && !ref.official_paths.includes(verifyRoot + name) && !ref.native_paths.includes(verifyRoot + name)), 'two exact non-art Verify package resources');
+  const verifyManifest = json(get(verifyRoot + 'version.json'));
+  check(verifyManifest.schema === 'olympus-verify-public-download-v1' && verifyManifest.version === '0.6.21'
+    && verifyManifest.archive.path === '/static/olympus-verify/olympus-verify-0.6.21.zip'
+    && verifyManifest.archive.bytes === get(verifyRoot + verifyNames[0]).length
+    && verifyManifest.archive.sha256 === sha(get(verifyRoot + verifyNames[0]))
+    && verifyManifest.generator.path === 'scripts/build-verify-addon.cjs'
+    && JSON.stringify(verifyManifest.files.map(row => row.path)) === JSON.stringify(VERIFY_ADDON_INPUTS.map(file => 'OlympusVerify/' + file)), 'closed Verify archive and source manifest');
+  pin(verifyManifest.generator);
+  for (const row of verifyManifest.files) pin({...row, path:'addon/' + row.path});
   const talentComparisonResources = ['worker/public/static/talents/analysis.js', 'worker/public/static/talents/guide-builds179.js'];
   check(talentComparisonResources.every(file => ref.required_public_resources.filter(row => row.path === file).length === 1
     && ref.runtime_paths.includes(file) && !ref.official_paths.includes(file) && !ref.native_paths.includes(file)), 'two exact non-art talent comparison resources');
