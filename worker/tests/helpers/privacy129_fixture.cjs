@@ -67,6 +67,46 @@ function installCurrentEntryEpoch(db, options = {}) {
   const installed = installer.installFixtureEpoch(db,layout,epoch);
   return Object.freeze({layout,epoch,installed,metadata:ENTRY_METADATA});
 }
+// Test adapter metadata only, never a production SQL admission/parser. Identify
+// the outer constructor without reading command words inside CTEs or quotes.
+function originalFixtureCommand(sql) {
+  if (typeof sql !== 'string' || sql.length > 1000000 || sql.includes('\0')) throw Error('entry Native SQL command bounds');
+  let at=0;
+  const fail=()=>{throw Error('entry Native SQL command shape');};
+  const skip=()=>{
+    for (;;) {
+      while (at<sql.length && /\s/.test(sql[at])) at++;
+      if (sql.startsWith('--',at)) { const end=sql.indexOf('\n',at+2);at=end<0?sql.length:end+1;continue; }
+      if (sql.startsWith('/*',at)) { const end=sql.indexOf('*/',at+2);if(end<0)fail();at=end+2;continue; }
+      break;
+    }
+  };
+  const quoted=()=>{
+    const open=sql[at++],close=open==='['?']':open;
+    while(at<sql.length){if(sql[at++]!==close)continue;if(sql[at]===close){at++;continue;}return;}
+    fail();
+  };
+  const word=()=>{skip();const start=at;while(at<sql.length&&/[A-Za-z0-9_$\u0080-\uffff]/.test(sql[at]))at++;if(at===start)fail();return sql.slice(start,at).toUpperCase();};
+  const group=()=>{
+    skip();if(sql[at++]!=='(')fail();let depth=1;
+    while(at<sql.length){skip();if(at>=sql.length)break;const c=sql[at];
+      if(c==="'"||c==='"'||c==='`'||c==='['){quoted();continue;}
+      at++;if(c==='('){if(++depth>1024)fail();}else if(c===')'&&--depth===0)return;
+    }
+    fail();
+  };
+  const first=word();if(first!=='WITH')return {command:first,withClause:false};
+  skip();const recursiveAt=at;if(/[A-Za-z0-9_$\u0080-\uffff]/.test(sql[at]||'')){if(word()!=='RECURSIVE')at=recursiveAt;}
+  for (;;) {
+    skip();if(sql[at]==="'"||sql[at]==='"'||sql[at]==='`'||sql[at]==='[')quoted();else word();
+    skip();if(sql[at]==='(')group();
+    if(word()!=='AS')fail();skip();
+    if(sql[at]!=='('){const modifier=word();if(modifier==='NOT'){if(word()!=='MATERIALIZED')fail();}else if(modifier!=='MATERIALIZED')fail();}
+    group();skip();if(sql[at]!==',')break;at++;
+  }
+  return {command:word(),withClause:true};
+}
+const originalFixtureWrites=command=>['INSERT','UPDATE','DELETE','REPLACE'].includes(command);
 function originalNativePort(db, hooks = {}) {
   const records = new WeakMap(), nativeTrace = [], nativeGroups = [];
   function execute(handle) {
@@ -75,13 +115,16 @@ function originalNativePort(db, hooks = {}) {
     const {sql,params} = record;
     hooks.statement?.(sql,params);
     nativeTrace.push({sql,params:params.slice()});
-    const statement = db.prepare(sql), read = statement.columns().length > 0;
+    const command=originalFixtureCommand(sql),statement = db.prepare(sql), read = statement.columns().length > 0;
     const sqliteParams = params.map(value=>Array.isArray(value) ? new Uint8Array(value) : value);
     if (read) {
       hooks.beforeRead?.(sql,params);
       const results = hooks.readStatement ? hooks.readStatement(statement,sqliteParams) : statement.all(...sqliteParams);
+      // RETURNING executes once through all(). Capture logical changes before
+      // afterRead can perform another fixture write; trigger totals are not it.
+      const changes=originalFixtureWrites(command.command)?Number(db.prepare('SELECT changes() n').get().n):0;
       hooks.afterRead?.(sql,params,results[0] ?? null);
-      return {success:true,results,meta:{changes:/^\s*(INSERT|UPDATE|DELETE|REPLACE)\b/i.test(sql) ? Number(db.prepare('SELECT changes() n').get().n) : 0}};
+      return {success:true,results,meta:{changes}};
     }
     const result = statement.run(...sqliteParams);
     return {success:true,results:[],meta:{changes:Number(result.changes),last_row_id:Number(result.lastInsertRowid)}};
@@ -108,7 +151,8 @@ function originalNativePort(db, hooks = {}) {
     // It cannot be interleaved inside an atomic provider batch.
     for (const statement of plan) {
       const record=records.get(statement);
-      if (!/^\s*(SELECT|WITH)\b/i.test(record.sql)) await hooks.beforeRun?.(record.sql,record.params);
+      const command=originalFixtureCommand(record.sql);
+      if (command.withClause?originalFixtureWrites(command.command):!/^\s*(SELECT|WITH)\b/i.test(record.sql)) await hooks.beforeRun?.(record.sql,record.params);
     }
     nativeGroups.push(plan.map(statement=>({sql:records.get(statement).sql,params:records.get(statement).params.slice()})));
     db.exec('BEGIN');

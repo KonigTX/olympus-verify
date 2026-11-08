@@ -1575,6 +1575,25 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   "historicalParagraph": "const BUILD = \"2026-11-07.237 Scoped rank validation\";"
 }
 ]);
+  const RETAINED_CONTEXTS239 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-08.238 Rank scheduling\";",
+    "singleLine": true,
+    "paragraphSha256": "2186254bd280bf18cc02a18ec96293edec75ed89ac474f1edbc4eefa540c91cc",
+    "paragraphBytes": 47,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 238,
+    "purpose": "Exact rank scheduling BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "4cd27edb0836dc5a4be37ae27bf394c1785b247bd952f2c2e815941b3820b193",
+    "predecessorRelease": 237,
+    "currentBuild": true,
+    "editorialRelease": 238,
+    "editorialPredecessorSHA256": "4cd27edb0836dc5a4be37ae27bf394c1785b247bd952f2c2e815941b3820b193",
+    "historicalParagraph": "const BUILD = \"2026-11-08.238 Rank scheduling\";"
+  }
+]);
   const CURRENT_CONTEXTS = Object.freeze([
   {
     "file": "docs/launch-runbook.md",
@@ -1909,21 +1928,21 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
     "predecessorSHA256": "437d986083c837391fc4653333712ddc8a21a8d22086bd54a505a7d6e228a6a4",
     "historicalParagraph": "        const row = office199(family.primaryKey), reserved = [\"leader\",\"high_council\",\"officer_corps\"].includes(family.tier) || family.sourceKeys.some(reservedKey201);"
   },
-  {
+{
   "file": "worker/src/index.ts",
-  "startMarker": "const BUILD = \"2026-11-08.238 Rank scheduling\";",
+  "startMarker": "const BUILD = \"2026-11-08.239 Migration coordination\";",
   "singleLine": true,
-  "paragraphSha256": "2186254bd280bf18cc02a18ec96293edec75ed89ac474f1edbc4eefa540c91cc",
-  "paragraphBytes": 47,
+  "paragraphSha256": "b343f27af2eb5a1531e510c79b612b40ade8d81e2900bda90ef926cb0279965e",
+  "paragraphBytes": 54,
   "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
   "count": 0,
-  "ownerRelease": 238,
-  "purpose": "Exact rank scheduling BUILD with zero guarded-vocabulary credit.",
-  "predecessorSHA256": "4cd27edb0836dc5a4be37ae27bf394c1785b247bd952f2c2e815941b3820b193",
-  "predecessorRelease": 237,
+  "ownerRelease": 239,
+  "purpose": "Exact migration coordination BUILD with zero guarded-vocabulary credit.",
+  "predecessorSHA256": "2186254bd280bf18cc02a18ec96293edec75ed89ac474f1edbc4eefa540c91cc",
+  "predecessorRelease": 238,
   "currentBuild": true,
-  "editorialRelease": 238,
-  "editorialPredecessorSHA256": "4cd27edb0836dc5a4be37ae27bf394c1785b247bd952f2c2e815941b3820b193"
+  "editorialRelease": 239,
+  "editorialPredecessorSHA256": "2186254bd280bf18cc02a18ec96293edec75ed89ac474f1edbc4eefa540c91cc"
 },
   {
     "file": "worker/public/static/app.js",
@@ -2260,7 +2279,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
 
   // .218's exact release label contains no guarded rank term, so it grants zero credit.
   // Keep the byte, duplicate, planted-term and wrong-file refusals without raising ALLOWED or changing GUARD.
-  const buildSpecs217 = CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===238 && spec.currentBuild===true && spec.file==='worker/src/index.ts'), buildFile217='worker/src/index.ts';
+  const buildSpecs217 = CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===239 && spec.currentBuild===true && spec.file==='worker/src/index.ts'), buildFile217='worker/src/index.ts';
   const buildText217=guarded.find(([file])=>file===buildFile217)[1], buildQualification217=currentContextQualification(buildFile217,buildText217);
   const buildLine217=buildSpecs217.length===1 ? buildQualification217.paragraphs.find(value=>value.startsWith(buildSpecs217[0].startMarker))||'' : '';
   check('.218 pins exactly one current release label with zero guarded vocabulary credit',buildSpecs217.length===1 && buildSpecs217[0].file===buildFile217 && buildSpecs217[0].singleLine===true && buildSpecs217[0].digest===currentDigest && buildSpecs217[0].count===0 && buildQualification217.errors.length===0 && buildQualification217.credits[currentDigest]===0 && Object.keys(guardedCounts(buildLine217)).length===0 && Buffer.byteLength(buildLine217,'utf8')===buildSpecs217[0].paragraphBytes && sha(buildLine217)===buildSpecs217[0].paragraphSha256 && GUARD.size===28 && Object.keys(ALLOWED[buildFile217]).length===1 && ALLOWED[buildFile217][currentDigest]===undefined);
@@ -2334,7 +2353,9 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   check('.236 current BUILD preserves .235 as exact non-crediting history', sha(current235.historicalParagraph)===current235.paragraphSha256 && Buffer.byteLength(current235.historicalParagraph)===current235.paragraphBytes && RETAINED_CONTEXTS237.length===1 && current236.predecessorRelease===235 && current236.predecessorSHA256===current235.paragraphSha256 && current236.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current235.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current235.historicalParagraph).errors.length>0);
   const current237=RETAINED_CONTEXTS238[0];
   check('.237 current BUILD preserves .236 as exact non-crediting history', sha(current236.historicalParagraph)===current236.paragraphSha256 && Buffer.byteLength(current236.historicalParagraph)===current236.paragraphBytes && RETAINED_CONTEXTS238.length===1 && current237.predecessorRelease===236 && current237.predecessorSHA256===current236.paragraphSha256 && current237.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current236.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current236.historicalParagraph).errors.length>0);
-  check('.238 current BUILD preserves .237 as exact non-crediting history', sha(current237.historicalParagraph)===current237.paragraphSha256 && Buffer.byteLength(current237.historicalParagraph)===current237.paragraphBytes && buildSpecs217.length===1 && buildSpecs217[0].predecessorRelease===237 && buildSpecs217[0].predecessorSHA256===current237.paragraphSha256 && buildSpecs217[0].count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current237.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current237.historicalParagraph).errors.length>0);
+  const current238=RETAINED_CONTEXTS239[0];
+  check('.238 current BUILD preserves .237 as exact non-crediting history', sha(current237.historicalParagraph)===current237.paragraphSha256 && Buffer.byteLength(current237.historicalParagraph)===current237.paragraphBytes && RETAINED_CONTEXTS239.length===1 && current238.predecessorRelease===237 && current238.predecessorSHA256===current237.paragraphSha256 && current238.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current237.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current237.historicalParagraph).errors.length>0);
+  check('.239 current BUILD preserves .238 as exact non-crediting history', sha(current238.historicalParagraph)===current238.paragraphSha256 && Buffer.byteLength(current238.historicalParagraph)===current238.paragraphBytes && buildSpecs217.length===1 && buildSpecs217[0].ownerRelease===239 && buildSpecs217[0].predecessorRelease===238 && buildSpecs217[0].predecessorSHA256===current238.paragraphSha256 && buildSpecs217[0].count===0 && current238.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current238.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current238.historicalParagraph).errors.length>0);
   // Explicit Master218 scope; original GUARD and ALLOWED remain byte-identical.
   const ownerContexts218=CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===218);
   const retiredLineage218=[...RETAINED_CONTEXTS222.filter(spec=>spec.retirement222),...retainedApp228].filter(spec=>spec.ownerRelease===218||spec.predecessorRelease===218);
@@ -2358,7 +2379,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
     check('.218 retired bytes remain uncredited '+spec.paragraphSha256.slice(0,12),!historicalPresent218&&!appendedQualification218.paragraphs.some(paragraph=>sha(paragraph)===spec.paragraphSha256)&&(appendedQualification218.credits[spec.digest]||0)<=(baseline218.credits[spec.digest]||0)&&(spec.count===0?currentContextQualification(spec.file,buildText217.replace(buildLine217,spec.startMarker)).errors.length>0:appendedUncredited218>((ALLOWED[spec.file]||{})[spec.digest]||0)&&overOriginalVocabularyAllowance(spec.file,appendedHits218,appendedQualification218).some(value=>value===spec.file+': digest '+spec.digest.slice(0,12)+' x'+appendedUncredited218)));
   }
   const currentBuildTuple218=/^const BUILD = "(\d{4}-\d{2}-\d{2})\.(\d+) [^"]+";$/.exec(buildLine217),currentNews218=news.RELEASE_NOTES[0];
-  check('.238 exact BUILD version/date equals the newest actual release-note metadata',!!currentBuildTuple218&&currentBuildTuple218[1]==='2026-11-08'&&currentBuildTuple218[2]==='238'&&currentNews218.build==='.'+currentBuildTuple218[2]&&currentNews218.date===currentBuildTuple218[1]);
+  check('.239 exact BUILD version/date equals the newest actual release-note metadata',!!currentBuildTuple218&&currentBuildTuple218[1]==='2026-11-08'&&currentBuildTuple218[2]==='239'&&currentNews218.build==='.'+currentBuildTuple218[2]&&currentNews218.date===currentBuildTuple218[1]);
   const retiredBuildSpec217=RETIRED_CONTEXTS218.find(spec=>spec.ownerRelease===217&&spec.file===buildFile217);
   check('.218 the retired217 label cannot replace or accompany the unique current label',!!retiredBuildSpec217&&currentContextQualification(buildFile217,buildText217.replace(buildLine217,retiredBuildSpec217.startMarker)).errors.length>0&&currentContextQualification(buildFile217,buildText217+'\n'+retiredBuildSpec217.startMarker).errors.length>0&&Object.keys(currentContextQualification('README.md',retiredBuildSpec217.startMarker).credits).length===0);
 

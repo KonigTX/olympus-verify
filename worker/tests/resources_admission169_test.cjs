@@ -120,6 +120,19 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .239 reverses only the exact migration coordination release note.
+  const release239 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".239\", date: \"2026-11-08\", lines: [",
+    "      \"Role cleanup coordinates with background rank checks.\",",
+    "      \"Verified guild ranks keep updating after legacy roles are cleaned up.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .239 prepend occurs once', originalNews.split(release239).length === 2);
+  originalNews = originalNews.replace(release239, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
   // .238 reverses only the exact rank scheduling release note.
   const release238 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

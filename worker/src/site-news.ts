@@ -78,6 +78,12 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".239", date: "2026-11-08", lines: [
+      "Role cleanup coordinates with background rank checks.",
+      "Verified guild ranks keep updating after legacy roles are cleaned up.",
+    ],
+  },
+  {
     build: ".238", date: "2026-11-08", lines: [
       "New guild rank changes take priority over older role reconciliation work.",
       "Background rank checks continue while the officer roster is fresh.",
