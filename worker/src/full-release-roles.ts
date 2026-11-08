@@ -100,6 +100,11 @@ export const NATIVE232_WALK_SELECT=`WITH candidates AS (
 /** Current canonical accounts remain in the bounded rotation after the old
  * selectors are retired. Scheduling rows are hints; the original issuer proves
  * identity, current source, standing and generation again before any effect. */
+/** Priority is a scheduling hint only: a finite changed target must differ from
+ * both the known settled rank and the latest typed attempted rank (or settled
+ * fallback). A held attempt of the same target keeps the existing backoff.
+ * One due restriction stays first; a changed or generic urgent account can
+ * use the second slot before further restrictions. The issuer proves every effect. */
 export const CANONICAL233_WALK_SELECT=`WITH candidates AS (
  SELECT DISTINCT c.discord_id AS subject FROM characters c WHERE c.discord_id IS NOT NULL AND c.status NOT IN('unbound','denied')
  AND EXISTS(SELECT 1 FROM role_settlements a WHERE a.subject=c.discord_id AND a.guild_id=?1 AND a.native_guid=c.guid AND a.desired=1 AND a.state='settled'
@@ -110,9 +115,13 @@ export const CANONICAL233_WALK_SELECT=`WITH candidates AS (
  SELECT subject,(SELECT MIN(r.rank_index) FROM characters c JOIN roster_members r ON r.guid=c.guid AND r.name_key=c.name_key WHERE c.discord_id=candidates.subject AND c.status='member' AND r.snapshot_id=(SELECT MAX(id) FROM roster_snapshots)) AS top_rank,
  (SELECT native_rank FROM role_settlements r WHERE r.subject=candidates.subject AND r.guild_id=?1 AND r.native_profile='olympus-canonical-ranks-20261106-v1' AND r.purpose IN('canonical_consumed233','canonical_routine233') AND r.desired=1 AND r.state='settled' ORDER BY r.created_at DESC,r.rowid DESC LIMIT 1) AS last_rank,
  COALESCE((SELECT MAX(ts) FROM audit WHERE actor='system' AND action='role.native232_attempt' AND subject=candidates.subject),0) AS last_attempt,
+ (SELECT json_extract(CASE WHEN json_valid(a.details) THEN a.details ELSE '{}' END,'$.rank') FROM audit a WHERE a.actor='system' AND a.action='role.native232_attempt' AND a.subject=candidates.subject AND typeof(a.ts)='integer' AND a.ts>0 AND json_type(CASE WHEN json_valid(a.details) THEN a.details ELSE '{}' END,'$.rank')='integer' AND json_extract(CASE WHEN json_valid(a.details) THEN a.details ELSE '{}' END,'$.rank') BETWEEN 0 AND 9 ORDER BY a.ts DESC,a.id DESC LIMIT 1) AS last_attempt_rank,
  EXISTS(SELECT 1 FROM members WHERE discord_id=candidates.subject AND banned=1) OR EXISTS(SELECT 1 FROM site_users WHERE discord_id=candidates.subject AND denied=1) OR EXISTS(SELECT 1 FROM rename_holds WHERE discord_id=candidates.subject AND state='reapply') AS restricted
- FROM candidates),work AS (SELECT *,CASE WHEN (top_rank IS NOT last_rank OR restricted OR ?4<>0) AND last_attempt<=${DB_NOW}-${FRESH_INTERVAL_SECONDS} THEN 1 ELSE 0 END AS urgent FROM facts)
- SELECT subject,top_rank,urgent FROM work ORDER BY urgent DESC,CASE WHEN urgent THEN last_attempt ELSE CASE WHEN subject>?2 THEN 0 ELSE 1 END END,subject LIMIT ?3`;
+ FROM candidates),targets AS (SELECT *,CASE WHEN NOT restricted AND typeof(top_rank)='integer' AND top_rank BETWEEN 0 AND 9 AND typeof(last_rank)='integer' AND last_rank BETWEEN 0 AND 9 AND top_rank IS NOT last_rank AND top_rank IS NOT COALESCE(last_attempt_rank,last_rank) THEN 1 ELSE 0 END AS new_target FROM facts),
+ work AS (SELECT *,CASE WHEN new_target=1 OR ((top_rank IS NOT last_rank OR restricted OR ?4<>0) AND last_attempt<=${DB_NOW}-${FRESH_INTERVAL_SECONDS}) THEN 1 ELSE 0 END AS urgent FROM targets),
+ restriction_order AS (SELECT subject,ROW_NUMBER() OVER(ORDER BY last_attempt,subject) AS restriction_position FROM work WHERE restricted AND urgent),
+ ranked AS (SELECT w.*,r.restriction_position FROM work w LEFT JOIN restriction_order r ON r.subject=w.subject)
+ SELECT subject,top_rank,urgent FROM ranked ORDER BY CASE WHEN restriction_position=1 THEN 0 WHEN NOT restricted AND new_target THEN 1 WHEN NOT restricted AND urgent THEN 2 WHEN restricted AND urgent THEN 3 ELSE 4 END,CASE WHEN urgent THEN last_attempt ELSE CASE WHEN subject>?2 THEN 0 ELSE 1 END END,subject LIMIT ?3`;
 
 // --- configuration capture (A1, Q6). Synchronous, descriptor-based: an accessor or inherited key is never invoked.
 export const LANE_CONFIG_KEYS=Object.freeze(['CANONICAL_ENTITLEMENTS233','CANONICAL_RANKS233','FULL_RELEASE_ROLES','STAFF_TEN_RANK_ROLES','LINKS_NOT_BEFORE','LINKS_NOT_BEFORE_CLOCK_GATED','ROSTER_MIN_MEMBERS','ROSTER_MAX_SHRINK_PCT',

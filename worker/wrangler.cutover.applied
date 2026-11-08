@@ -76,3 +76,8 @@ activated_at = "2026-11-06T12:08:56Z"
 # .233 source preparation: clarify current canonical names and legacy disabled selectors; runtime values unchanged.
 activation_profile_sha256 = "aaf8af5a3945bf717be4fd203cc09832bfb1b3470dc4a378b030e3761721e6a0"
 activated_at = "2026-11-06T12:44:58Z"
+
+# .238 SOURCE PREPARATION: separate canonical-only minute plus unchanged quarter callback.
+# Not an activation, Native qualification or provider deployment receipt.
+activation_profile_sha256 = "c7c560a8d68f68fb6be6db84975f9415e872ba2fabc7feedd374da69906d03e0"
+activated_at = "2026-11-08T05:55:07Z"

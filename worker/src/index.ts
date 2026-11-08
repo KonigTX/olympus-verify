@@ -78,7 +78,8 @@ import {BETA_RESET_CRON,BETA_RESET_SCHEDULE_QUALIFIED,runBetaResetSlice} from '.
 import {resetGuardEnabled,captureBetaRoleDispatch,type BetaRoleDispatch} from './beta-reset-policy';
 import {createPrivacyWriteAdmissionDatabase,isPrivacyWriteAdmissionDatabase,PrivacyWriteAdmissionHeld} from './privacy-write-admission';
 import {captureHandlerServingOrigin,registerHandlerInteractionNames,type HandlerServingOrigin} from './privacy-serving-production-origin';
-import {EPOCH2_SCHEDULE_QUALIFIED,captureOriginalRosterSchedule,originalRosterScheduleFacts,type OriginalRosterSchedule} from './scheduled-budget';
+import {EPOCH2_SCHEDULE_QUALIFIED,CANONICAL_RANK_SCHEDULE_QUALIFIED,CANONICAL_RANK_CHILD_STATEMENTS,CANONICAL_RANK_SCHEDULE_HTTP,captureOriginalRosterSchedule,originalRosterScheduleFacts,type OriginalRosterSchedule} from './scheduled-budget';
+import {captureCanonicalRankConfig233} from './canonical-ranks233';
 import {RecoveryFloorHeld} from './privacy-recovery-floor';
 import {originalRecoveryClockMilliseconds} from './privacy-recovery-original-clock';
 import {recoveryScalarArrayJSON} from './privacy-recovery-data-json';
@@ -305,13 +306,22 @@ export default {
       scheduledIntrinsics();const admission=scheduledDescriptor(env,'PRIVACY_WRITE_ADMISSION_ENABLED');
       if(!admission&&'PRIVACY_WRITE_ADMISSION_ENABLED'in env||admission&&!scheduledHasOwn(admission,'value'))return scheduledHeld();
       const original=captureOriginalScheduledCallback(event,ctx),scheduled=originalScheduledCallback(original,event,ctx);
-      const resetMinute=scheduled.cron===BETA_RESET_CRON;
-      // An inactive minute callback captures only its original controller/context; it starts no database or provider work.
-      if(resetMinute&&!resetGuardEnabled(env))return;
+      const resetMinute=scheduled.cron===BETA_RESET_CRON,canonical=resetMinute?captureCanonicalRankConfig233(env):null;
+      const canonicalMinute=resetMinute&&canonical!.present;
+      const beta=canonicalMinute?scheduledDescriptor(env,'BETA_RESET_REMOVALS_ENABLED'):undefined,native=canonicalMinute?scheduledDescriptor(env,'PRIVACY_NATIVE_ERASURE_ENABLED'):undefined,layout=canonicalMinute?scheduledDescriptor(env,'PRIVACY_WRITE_ADMISSION_LAYOUT'):undefined;
+      const canonicalCheck=()=>{if(!canonicalMinute)return;const currentBeta=scheduledDescriptor(env,'BETA_RESET_REMOVALS_ENABLED');
+        if(!layout||!scheduledHasOwn(layout,'value')||layout.value!=='recorded-live-pre-seal-20261017'||!scheduledSame(scheduledDescriptor(env,'PRIVACY_WRITE_ADMISSION_LAYOUT'),layout))throw new PrivacyWriteAdmissionHeld('canonical_rank_minute_layout_unqualified_or_drift');
+        if(!canonical||canonical.mode!=='enabled'||!canonical.current()||!native||!scheduledHasOwn(native,'value')||native.value!=='true'||!scheduledSame(scheduledDescriptor(env,'PRIVACY_NATIVE_ERASURE_ENABLED'),native)||!admission||admission.value!=='true'||!scheduledSame(scheduledDescriptor(env,'PRIVACY_WRITE_ADMISSION_ENABLED'),admission))throw new PrivacyWriteAdmissionHeld('canonical_rank_minute_native_configuration_held');
+        if(beta?!scheduledHasOwn(beta,'value')||!scheduledSame(currentBeta,beta)||beta.value!==undefined&&beta.value!=='false':currentBeta!==undefined||'BETA_RESET_REMOVALS_ENABLED'in env)throw new PrivacyWriteAdmissionHeld('canonical_rank_minute_beta_collision_or_drift');
+      };
+      // Inactive historical minute remains zero-work; two selected producer purposes never override each other.
+      if(resetMinute&&!canonicalMinute&&!resetGuardEnabled(env))return;
+      canonicalCheck();
+      if(canonicalMinute&&!CANONICAL_RANK_SCHEDULE_QUALIFIED)throw new PrivacyWriteAdmissionHeld('canonical_rank_minute_requires_current_native_qualification');
       if(admission?.value==='true'&&!EPOCH2_SCHEDULE_QUALIFIED)throw new PrivacyWriteAdmissionHeld('epoch2_schedule_700_requires_current_native_qualification');
-      if(resetMinute&&!BETA_RESET_SCHEDULE_QUALIFIED)throw new PrivacyWriteAdmissionHeld('beta_reset_minute_requires_current_native_qualification');
-      const check=()=>{originalScheduledCallback(original,event,ctx);};
-      const constraint=resetMinute?scheduledFreeze({binding:scheduled.binding,check,costMode:'beta_reset' as const}):scheduledFreeze({binding:scheduled.binding,check});
+      if(resetMinute&&!canonicalMinute&&!BETA_RESET_SCHEDULE_QUALIFIED)throw new PrivacyWriteAdmissionHeld('beta_reset_minute_requires_current_native_qualification');
+      const check=()=>{originalScheduledCallback(original,event,ctx);canonicalCheck();};
+      const constraint=canonicalMinute?scheduledFreeze({binding:scheduled.binding,check,costMode:'canonical_rank' as const}):resetMinute?scheduledFreeze({binding:scheduled.binding,check,costMode:'beta_reset' as const}):scheduledFreeze({binding:scheduled.binding,check});
       originalScheduledCallback(original,event,ctx);
       const globalEntry=captureGlobalServingEntry(env,ctx,'scheduled',undefined,constraint);scheduledCostConstraints.set(original,constraint);
       const roleSliceCost = (): OriginalScheduledSliceCost | null => {
@@ -323,12 +333,30 @@ export default {
         const facts=originalScheduledCallbackPhysicalCostObservation(event,ctx),row=facts.jobs.find(job=>job.job==='newsCron');
         return row?Object.freeze({state:row.state,statements:row.statements,pendingGroups:row.pendingGroups,failedGroups:row.failedGroups}):null;
       };
-      await dispatchGlobalServingEntry(globalEntry,()=>{originalScheduledCallback(original,event,ctx);return resetMinute?runSourceBetaResetScheduledBody(globalEntry.env,ctx,roleDispatch):runSourceEpoch2ScheduledBody(globalEntry.env,ctx,undefined,roleDispatch,roleSliceCost,newsSliceCost);});
+      await dispatchGlobalServingEntry(globalEntry,()=>{originalScheduledCallback(original,event,ctx);return canonicalMinute?runSourceCanonicalRankScheduledBody(globalEntry.env,ctx,check):resetMinute?runSourceBetaResetScheduledBody(globalEntry.env,ctx,roleDispatch):runSourceEpoch2ScheduledBody(globalEntry.env,ctx,undefined,roleDispatch,roleSliceCost,newsSliceCost);});
     } catch(e) {
       console.error("cron entry held; skipping this run",errorRef(e));
     }
   },
 };
+
+/** .238 canonical-only minute. Same original callback/cost context and Native issuer;
+ * its own390 child budget cannot borrow from the unchanged ordinary700/role120 slice. */
+async function runSourceCanonicalRankScheduledBody(env:Env,ctx:ExecutionContext,check:()=>void):Promise<void>{
+ check();assertGlobalServingDispatch(env);env=writeAdmissionEnv(env);
+ if(!nativeErasureMode(env)||!isPrivacyWriteAdmissionDatabase(env.DB))throw new PrivacyWriteAdmissionHeld('canonical_rank_minute_native_required');
+ const lane=captureLaneConfig(env);if(lane.native232?.mode!=='enabled'||!lane.current())throw new PrivacyWriteAdmissionHeld('canonical_rank_minute_lane_held');
+ await ensureSchema(env);check();if(!lane.current())throw new PrivacyWriteAdmissionHeld('canonical_rank_minute_lane_changed');
+ deferOriginalServing(ctx,'runCanonicalRankPass',async()=>{check();
+  const count={used:0},counted=countStatements(env,count);
+  // Scheduling hint only: never stamp an attempt against expired Native evidence.
+  const latest=await counted.DB.prepare("SELECT CAST(strftime('%s','now') AS INTEGER) AS at,exported_at,complete,trusted FROM roster_snapshots WHERE id=(SELECT MAX(id) FROM roster_snapshots)").first<{at:number;exported_at:number;complete:number;trusted:number}>();check();
+  if(!latest||!Number.isSafeInteger(latest.at)||latest.at<1||!Number.isSafeInteger(latest.exported_at)||latest.exported_at<1||latest.exported_at>latest.at||latest.at-latest.exported_at>=600||latest.complete!==1||latest.trusted!==1)return;
+  const pass=await import('./full-release-pass');check();
+  const calls=callBudget(counted);calls.limit=Math.min(calls.limit,CANONICAL_RANK_SCHEDULE_HTTP);
+  await pass.runFreshPass(counted,{calls,adm:pass.nativeAdmission232(count,CANONICAL_RANK_CHILD_STATEMENTS)},'scheduled',lane);check();
+ });
+}
 
 /** Original minute body only; the exported callback retains each schedule's qualification guard.
  * No extra scheduler or trigger is installed. Global dispatch and the same Native admission remain mandatory. */
@@ -692,7 +720,7 @@ async function freshRegistrationRefused(env: Env, trigger: string): Promise<void
 }
 
 /** Bumped with every change that needs a redeploy, so GET /health shows which build is live. */
-const BUILD = "2026-11-07.237 Scoped rank validation";
+const BUILD = "2026-11-08.238 Rank scheduling";
 
 /**
  * Presence of each secret (never the value) and a D1 round trip — enough to tell a missing `wrangler secret put` from a

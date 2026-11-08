@@ -28,7 +28,7 @@ import type { LaneCapture } from './full-release-roles';
 import * as R from './role-settlements';
 import type { LaneObservation,LaneQueueResult,LaneRemovalGroup,LaneRemovalOutcome,LaneSpentOutcome,Settlement } from './role-settlements';
 
-export type FreshTrigger='watcher'|'ingest';
+export type FreshTrigger='watcher'|'ingest'|'scheduled';
 const ID=/^\d{17,20}$/;
 const quoted=(values:readonly string[])=>values.map(v=>`'${v}'`).join(',');
 
@@ -513,8 +513,9 @@ export async function runFreshPass(env:Env,io:Readonly<{calls:CallBudget;adm?:Ad
 async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admission;reserve?:number}>,trigger:FreshTrigger,cap:LaneCapture):Promise<FreshPassResult>{
  const counts=emptyCounts(),t=now(),done=(state:FreshPassResult['state'],reason:string):FreshPassResult=>Object.freeze({state,reason,counts:Object.freeze({...counts})}),selected=cap.native232;
  if(!selected||selected.mode!=='enabled'||!selected.policy||!cap.current())return done('held','native232_configuration_held');
- if(!io?.calls||trigger!=='watcher'&&trigger!=='ingest')return done('held','invalid_operation');
- if(trigger==='watcher'&&t-lastFreshLocal<L.FRESH_INTERVAL_SECONDS)return done('skipped','throttled');
+ if(!io?.calls||trigger!=='watcher'&&trigger!=='ingest'&&trigger!=='scheduled')return done('held','invalid_operation');
+ if(trigger==='scheduled'){const canonical=captureCanonicalRankConfig233(env);if(canonical.mode!=='enabled'||!canonical.current())return done('held','canonical238_schedule_configuration_held');}
+ if((trigger==='watcher'||trigger==='scheduled')&&t-lastFreshLocal<L.FRESH_INTERVAL_SECONDS)return done('skipped','throttled');
  const adm=io.adm??null,local={used:0},startUsed=adm?adm.count.used:0,limit=FRESH_SWEEP_STATEMENTS-Math.max(0,Math.min(FRESH_SWEEP_STATEMENTS,io.reserve??0));
  // The Native issuer and up to base + two rank visits include original-result
  // reads, every final admission and one owned compensation. Measured fixtures
@@ -524,7 +525,7 @@ async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admis
  try{
   if(!admit(NATIVE_OPEN232_STATEMENTS))return done('held','statement_budget');
   const recent=await env.DB.prepare(L.FRESH_INTERVAL_SELECT).first<{ts:number;action:string;snapshot_id:number|null}>(),snapshot=(await env.DB.prepare(L.NEWEST_SNAPSHOT_SELECT).first<{id:number|null}>())?.id??null;
-  if(recent&&(trigger==='watcher'||recent.snapshot_id===snapshot))return done('skipped','interval');
+  if(recent&&(trigger==='watcher'||trigger==='scheduled'||recent.snapshot_id===snapshot))return done('skipped','interval');
   if(!cap.current())return done('held','lane_configuration_changed');lastFreshLocal=t;
   lease=L.freshLeaseValue(t+L.FRESH_LEASE_SECONDS,randomGeneration());if(!await env.DB.prepare(L.FRESH_LEASE_ACQUIRE).bind(lease).first()){lease=null;return done('skipped','lease_held');}
   const st=parseState((await env.DB.prepare(L.FRESH_STATE_SELECT).first<{details:string|null}>())?.details),M=await import('./routine-membership-authority232'),V=await import('./shared-membership-cutover230');
