@@ -78,6 +78,12 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".237", date: "2026-11-07", lines: [
+      "An unrecognized roster rank no longer blocks updates for other verified characters.",
+      "Characters with uncertain rank data stay on hold until their rank is confirmed.",
+    ],
+  },
+  {
     build: ".236", date: "2026-11-06", lines: [
       "The official verification addon download is available with the roster performance repair.",
       "The addon remains version 0.6.21 with the same roster performance repair.",

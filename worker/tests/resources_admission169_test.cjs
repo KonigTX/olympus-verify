@@ -120,6 +120,19 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .237 reverses only the exact scoped-rank validation release note.
+  const release237 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".237\", date: \"2026-11-07\", lines: [",
+    "      \"An unrecognized roster rank no longer blocks updates for other verified characters.\",",
+    "      \"Characters with uncertain rank data stay on hold until their rank is confirmed.\",",
+    "    ],",
+    "  },",
+    "",
+  ].join('\n');
+  check('Guild News exact authorized .237 prepend occurs once', originalNews.split(release237).length === 2);
+  originalNews = originalNews.replace(release237, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
   // .236 reverses only the exact official addon download repair release note.
   const release236 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
