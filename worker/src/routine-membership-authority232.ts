@@ -115,15 +115,21 @@ export async function captureRoutineMembership232(env:Env,subject:string):Promis
   if(!Number.isSafeInteger(at)||at<1||!Number.isSafeInteger(row.id)||row.id<1||!Number.isSafeInteger(row.exported_at)||row.exported_at>at||row.exported_at<=at-600||row.exported_at<cutoff||row.source!==scope||row.complete!==1||row.trusted!==1||row.guid_unique!==1||row.state!==null&&row.state!=='active'||row.generation!==null&&(row.generation.length!==32||!HEX32.test(row.generation)))return null;
   const rows=JSON.parse(row.rows_json) as unknown[][],links=JSON.parse(row.links_json) as unknown[][],standing=JSON.parse(row.standing_json) as number[];
   if(!Array.isArray(rows)||rows.length!==row.member_count||rows.length<floor||rows.length>1000||!Number.isSafeInteger(row.previous_count)||(row.previous_count-rows.length)*100>shrink*row.previous_count||!Array.isArray(links)||!links.length||links.length>100||standing.length!==3||standing.some(v=>v!==0&&v!==1))return null;
-  const byGuid=new Map<string,Readonly<{guid:string;nameKey:string;rank:string;index:number}>>(),names=new Set<string>(),unknownGuidKeys=new Set<string>();
+  const byGuid=new Map<string,Readonly<{guid:string;nameKey:string;rank:string;index:number}>>(),names=new Set<string>(),unknownGuidKeys=new Set<string>(),seenNativeGuids=new Set<string>(),unknownRankKeys=new Set<string>(),unknownRankGuids=new Set<string>();
   for(const r of rows){if(!Array.isArray(r)||r.length!==4)return null;const [key,guid,rank,index]=r;
-   if(typeof key!=='string'||!key||typeof index!=='number'||!Number.isInteger(index)||index<0||index>9||rank!==NATIVE_RANK_NAMES232[index]||names.has(key))return null;
+   if(typeof key!=='string'||!key||names.has(key))return null;
    names.add(key);
+   // .237: unknown ranks prove no rank or departure. Keep every identity in
+   // the global fences, while holding only accounts linked to those rows.
+   const rankKnown=typeof index==='number'&&Number.isInteger(index)&&index>=0&&index<=9&&rank===NATIVE_RANK_NAMES232[index];
+   if(!rankKnown)unknownRankKeys.add(key);
    // Offline unrelated members can lack a GUID. They prove no identity and do
    // not block a different fully proved character's rank. Target names whose
    // identity is unknown remain held, including an apparent old departure.
    if(guid===null||guid===''){unknownGuidKeys.add(key);continue;}
-   if(typeof guid!=='string'||guid!==guid.trim()||!GUID.test(guid)||byGuid.has(guid))return null;
+   if(typeof guid!=='string'||guid!==guid.trim()||!GUID.test(guid)||seenNativeGuids.has(guid))return null;
+   seenNativeGuids.add(guid);
+   if(!rankKnown){unknownRankGuids.add(guid);continue;}
    byGuid.set(guid,Object.freeze({guid,nameKey:key,rank:rank as string,index}));
   }
   const eligible:Readonly<{guid:string;nameKey:string;rank:string;index:number}>[]=[],seenLinks=new Set<string>();let qualifiedLinks=0;
@@ -132,7 +138,11 @@ export async function captureRoutineMembership232(env:Env,subject:string):Promis
    // this operation, but it neither outranks nor blocks an already verified main.
    if(status==='verified'||status==='queued')continue;
    if(typeof key!=='string'||!key||typeof guid!=='string'||guid!==guid.trim()||!GUID.test(guid)||seenLinks.has(guid)||typeof bound!=='number'||!Number.isSafeInteger(bound)||bound<1||bound>at||typeof verified!=='number'||!Number.isSafeInteger(verified)||verified<bound||verified>at||!['whisper','mail'].includes(String(source))||!['member','left_pending','left'].includes(String(status)))return null;
-   seenLinks.add(guid);const native=byGuid.get(guid);
+   seenLinks.add(guid);
+   // Match either identity direction before legacy exclusion or left handling;
+   // an uncertain higher alt must not disappear and lower another alt's rank.
+   if(unknownRankKeys.has(key)||unknownRankGuids.has(guid))return null;
+   const native=byGuid.get(guid);
    // .234: an absent prelaunch link is inert, not departure/identity/ownership.
    // Keep its exact row in the captured graph; it may not jam an independently
    // proved current character. A matching/unknown native name or GUID still holds.
