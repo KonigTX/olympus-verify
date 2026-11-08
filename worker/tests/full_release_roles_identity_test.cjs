@@ -357,12 +357,15 @@ if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 
 const source227 = require('./source227-role-historical-projection.cjs');
 if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source230-membership-static-projection.cjs'))).digest('hex')!=='eb38cbf11209b4ef56f052e5e54b117d6fffdbd40d764faa00aa5708468c5f63')throw Error('reviewed230 identity helper differs');
 const source230=require('./source230-membership-static-projection.cjs');
+// Exact .238 cost-label source inverse is STATIC ONLY; runtime source stays current.
+if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source238-canonical-minute-static-projection.cjs'))).digest('hex')!=='4cc3bcda017a18d768b249224bba709334586021926ef37b98319134c6ad5c1b')throw Error('reviewed238 static origin helper differs');
+const source238=require('./source238-canonical-minute-static-projection.cjs');
 // .228 C09 reverses only two exact current sources for the original static seals.
 if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'source228-privacy-historical-projection.cjs'))).digest('hex') !== '1314b9a32a95348ae6092bcc5963cb16526ad8eecbc8bf1dcd7414dbff84324c') throw Error('reviewed228 C09 identity helper differs');
 const source228Privacy = require('./source228-privacy-historical-projection.cjs');
 function sourceDigest(name) {
   const raw=fs.readFileSync(path.join(SRC, name + '.ts'), 'utf8');
-  const before230=['discord','role-settlements','roles','roster','interactions'].includes(name)?source230.inverse(name,raw):name==='privacy-serving-erase'?source230.before233(name,raw):raw;
+  const before230=['discord','role-settlements','roles','roster','interactions'].includes(name)?source230.inverse(name,raw):name==='privacy-serving-erase'?source230.before233(name,raw):source238.originalSource(name,raw);
   const original=RECORD?raw:source228Privacy.originalSource(name,source227.originalSource(name,before230));
   return original===null?null:source211.source211HistoricalDigest(name,original);
 }
@@ -414,9 +417,11 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
     return;
   }
   if (!PINS) throw Error('PINS not recorded');
+  for(const[name,ok]of Object.entries(source238.checks(SRC)))check('.238 exact static origin '+name,ok);
+  for(const row of source238.controls(SRC))check('.238 static origin refuses '+row.name,row.refused);
   for(const[name,ok]of Object.entries(source230.checks(SRC)))check('.230 current→a984 exact static guard '+name,ok);
   for(const[name,ok]of Object.entries(source230.copyControls()))check('.230 paired copy-only guard '+name,ok);
-  source230.withStaticView(SRC,static230=>{
+  source238.withStaticView(SRC,static230=>{
   const banSources=ban210.sourceChecks(static230,PINS);
   check('ban210 successor binds exact reviewed interactions source, finite paired fixture and unchanged historical PINS',Object.values(banSources).every(Boolean),banSources);
   const heldSources=held210.sourceChecks(SRC);

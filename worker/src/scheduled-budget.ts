@@ -188,6 +188,19 @@ export function admissionScheduledBudget(cap:OriginalRosterSchedule):ReadonlyArr
  * The reset minute keeps its own false qualifier (beta-reset.ts). */
 export const EPOCH2_SCHEDULE_QUALIFIED=true as const;
 
+/** .238: independent canonical-only minute, never added to the ordinary700 table.
+ * Root promotes the guard after exact local scheduled-controller/Native proof;
+ * production still requires the complete source and live release gates. */
+export const CANONICAL_RANK_SCHEDULE_QUALIFIED=true as const;
+export const CANONICAL_RANK_PASS_STATEMENTS=388; // 13 open + 2*180 subject +15 close
+export const CANONICAL_RANK_PREFLIGHT_STATEMENTS=2; // one original Native metadata read
+export const CANONICAL_RANK_CHILD_STATEMENTS=CANONICAL_RANK_PREFLIGHT_STATEMENTS+CANONICAL_RANK_PASS_STATEMENTS;
+export const CANONICAL_RANK_SCHEDULE_HTTP=40;
+export const CANONICAL_RANK_SCHEDULED_BUDGET:ReadonlyArray<{job:string;worst:number}>=Object.freeze([
+ {job:'ensureSchema',worst:1},{job:'runCanonicalRankPass',worst:CANONICAL_RANK_CHILD_STATEMENTS},
+]);
+export const CANONICAL_RANK_SCHEDULED_WORST_CASE=CANONICAL_RANK_SCHEDULED_BUDGET.reduce((sum,row)=>sum+row.worst,0);
+
 /**
  * .115, third review round (Codex, 3 Oct 2026 16:48 UTC, finding A): the other invocations that apply roster effects hold
  * themselves to the same target, counting every statement attempt they make (roster-effects.ts countStatements) and

@@ -85,7 +85,7 @@ async function scheduled(name,cron){
 }
 
 // AST inventory asserts current source policy; it never dispatches a body or mints custody.
-function parseSource(name){const sf=ts.createSourceFile(name,fs.readFileSync(path.join(root,'src',name),'utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);assert.equal(sf.parseDiagnostics.length,0,'source parses '+name);return sf;}
+function parseSource(name){const raw=fs.readFileSync(path.join(root,'src',name),'utf8'),text=name==='index.ts'?require(path.join(__dirname,'canonical_rank238_schedule_source.cjs')).historicalIndexSource238(raw):raw;const sf=ts.createSourceFile(name,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);assert.equal(sf.parseDiagnostics.length,0,'source parses '+name);return sf;}
 function allNodes(node,predicate){const found=[];function visit(value){if(predicate(value))found.push(value);ts.forEachChild(value,visit);}visit(node);return found;}
 function sole(values,label){assert.equal(values.length,1,label);return values[0];}
 function tokens(text){const scanner=ts.createScanner(ts.ScriptTarget.Latest,true,ts.LanguageVariant.Standard,text),out=[];for(let kind=scanner.scan();kind!==ts.SyntaxKind.EndOfFileToken;kind=scanner.scan())out.push([kind,scanner.getTokenText()]);return out;}
@@ -190,7 +190,9 @@ function sourceInventory(){
 (async()=>{
  const ordinaryLabels=sourceInventory();
  const triggers=[...fs.readFileSync(path.join(root,'wrangler.toml'),'utf8').matchAll(/^crons\s*=\s*(\[[^\r\n]+\])/gm)];
- check('inactive shipping configuration has sole quarter-hour and no minute trigger',triggers.length===1&&JSON.stringify(JSON.parse(triggers[0][1]))===JSON.stringify(['*/15 * * * *']));
+ const currentConfig=fs.readFileSync(path.join(root,'wrangler.toml'),'utf8'),betaFlagRows=[...currentConfig.matchAll(/^BETA_RESET_REMOVALS_ENABLED\s*=\s*["']([^"'\r\n]*)["']/gm)],canonicalRows=[...currentConfig.matchAll(/^CANONICAL_RANKS233\s*=\s*'([^'\r\n]+)'/gm)];
+ const currentCanonical=canonicalRows.length===1?JSON.parse(canonicalRows[0][1]):null;
+ check('shipping config preserves quarter and adds only canonical-profile minute with Beta removals OFF',triggers.length===1&&JSON.stringify(JSON.parse(triggers[0][1]))===JSON.stringify(['*/15 * * * *','* * * * *'])&&betaFlagRows.length<=1&&(betaFlagRows.length===0||betaFlagRows[0][1]==='false')&&currentCanonical?.version===1&&currentCanonical.enabled===true&&currentCanonical.profile==='olympus-canonical-ranks-20261106-v1'&&JSON.stringify(load('scheduled-budget').CANONICAL_RANK_SCHEDULED_BUDGET.map(row=>row.job))===JSON.stringify(['ensureSchema','runCanonicalRankPass']));
  for(const flag of [undefined,'false','TRUE','',null]){
   await reset(false,6);schema.forgetSchemaCheck();if(flag===undefined)delete env.BETA_RESET_REMOVALS_ENABLED;else env.BETA_RESET_REMOVALS_ENABLED=flag;
   await sentinel();physical=0;const {result,cost}=await scheduled('unowned minute flag '+String(flag),'* * * * *');

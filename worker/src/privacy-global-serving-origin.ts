@@ -25,7 +25,7 @@ export type GlobalServingEntry=Readonly<{origin:GlobalServingOrigin|null;env:Env
 export type ServingDeferred=(work:()=>Promise<unknown>)=>void;
 type Method=Readonly<{receiver:object;owner:object;name:string;descriptor:PropertyDescriptor}>;
 type Slot=Readonly<{key:PropertyKey;descriptor:PropertyDescriptor}>;
-type EntryConstraint=Readonly<{binding:string;check:()=>void;costMode?:'beta_reset'}>;
+type EntryConstraint=Readonly<{binding:string;check:()=>void;costMode?:'beta_reset'|'canonical_rank'}>;
 const entryConstraintInputs=new WeakMap<object,EntryConstraint>(),entryConstraintDescriptor=Object.getOwnPropertyDescriptor;
 type State={constraint:EntryConstraint|null;env:Env;native:D1Database;ctx:ExecutionContext;slots:readonly Slot[];prepare:Method;batch:Method;wait:Method;metadata:object;metadataTuple:string;client:ServingGateClient;config:ServingOriginalConfig;created:number;expires:number;last:number;id:string;nonce:string;requestDigest:string|null;purpose:'fetch'|'scheduled';request:Request|null;requestTuple:string|null;workRequest:Request|null;workRequestTuple:string|null;phase:'captured'|'running'|'terminal'|'unknown';tracked:D1Database|null;suppressionSender:OriginalServingSuppressionSender|null};
 type Active=Readonly<{origin:GlobalServingOrigin;context:ServingContext}>;
@@ -55,6 +55,8 @@ const originalCostRun=method(originalCostActive,'run')!,originalCostGet=method(o
 const ORIGINAL_SCHEDULE_COST_JOBS=['ensureSchema','sweepInviteQueue','sweepMemberRoles','continueRosterEffects','refreshNames','autoQueueReserved','purgeSeenInteractions','purgeBattleNetData','sweepRenameHolds','sweepCommunityProfiles','sweepCommunityEvents','runEventReminders','sweepCommunityTrials','sweepCommunityRestrictions','departureIntake','sweepCommunityDepartures','openWeeklyObligations','sweepCommunityContributions','sweepCommunityPrivacy','newsCron','runOfficerDigest','runServingErasureJob','sweepServingRetention','sweepRejectionExpiry'] as const;
 // The original minute callback has a distinct closed two-label envelope. Ordinary24 labels are unchanged.
 const ORIGINAL_BETA_RESET_COST_JOBS=['ensureSchema','runBetaResetSlice'] as const;
+// Separate original callback: no quarter-hour or beta-reset child may borrow this profile.
+const ORIGINAL_CANONICAL_RANK_COST_JOBS=['ensureSchema','runCanonicalRankPass'] as const;
 function originalCostRootCurrent(root:NativeCostRoot):void{root.constraint.check();if(originalCostRoots.get(root.ctx)!==root||entryConstraints.get(root.ctx)!==root.constraint||entryConstraintInputs.get(root.ctx)!==root.input)return held();}
 function originalCostScope(root:NativeCostRoot,ctx:ExecutionContext,label:string):NativeCostScope{
  originalCostRootCurrent(root);if(ctx!==root.ctx||root.scopes.length>=root.labels.length)return held();let known=false;
@@ -65,7 +67,7 @@ function originalCostScope(root:NativeCostRoot,ctx:ExecutionContext,label:string
 }
 function captureOriginalCostRoot(ctx:ExecutionContext,constraint:EntryConstraint):NativeCostRoot{
  constraint.check();const input=entryConstraintInputs.get(ctx);if(!input||originalCostRoots.has(ctx))return held();
- const root:NativeCostRoot={key:Object.freeze({}),ctx,constraint,input,labels:constraint.costMode==='beta_reset'?ORIGINAL_BETA_RESET_COST_JOBS:ORIGINAL_SCHEDULE_COST_JOBS,scopes:[]};originalCostRoots.set(ctx,root);originalCostScope(root,ctx,'ensureSchema');return root;
+ const root:NativeCostRoot={key:Object.freeze({}),ctx,constraint,input,labels:constraint.costMode==='canonical_rank'?ORIGINAL_CANONICAL_RANK_COST_JOBS:constraint.costMode==='beta_reset'?ORIGINAL_BETA_RESET_COST_JOBS:ORIGINAL_SCHEDULE_COST_JOBS,scopes:[]};originalCostRoots.set(ctx,root);originalCostScope(root,ctx,'ensureSchema');return root;
 }
 function originalCurrentCostScope():NativeCostScope|null{
  // Invoke only the originally captured private ALS method before inspecting any later mutable slot.
@@ -137,9 +139,9 @@ function retainEntryConstraint(ctx:ExecutionContext,purpose:'fetch'|'scheduled',
  const first=entryConstraintDescriptor(input,'check');if(!first||first.get!==undefined||first.set!==undefined||typeof first.value!=='function')return held();const original=first.value as ()=>void;original();
  const keys=Reflect.ownKeys(input),binding=Object.getOwnPropertyDescriptor(input,'binding'),check=Object.getOwnPropertyDescriptor(input,'check'),mode=Object.getOwnPropertyDescriptor(input,'costMode'),prototype=Object.getPrototypeOf(input);
  const minute=!!mode;
- if(keys.length!==(minute?3:2)||keys.some(key=>key!=='binding'&&key!=='check'&&(!minute||key!=='costMode'))||!binding||!check||!sameDescriptor(check,first)||!Object.hasOwn(binding,'value')||!Object.hasOwn(check,'value')||typeof binding.value!=='string'||binding.value.length<1||binding.value.length>1024||mode&&(!Object.hasOwn(mode,'value')||mode.value!=='beta_reset')||!mode&&'costMode'in input)return held();
+ if(keys.length!==(minute?3:2)||keys.some(key=>key!=='binding'&&key!=='check'&&(!minute||key!=='costMode'))||!binding||!check||!sameDescriptor(check,first)||!Object.hasOwn(binding,'value')||!Object.hasOwn(check,'value')||typeof binding.value!=='string'||binding.value.length<1||binding.value.length>1024||mode&&(!Object.hasOwn(mode,'value')||mode.value!=='beta_reset'&&mode.value!=='canonical_rank')||!mode&&'costMode'in input)return held();
  const retainedCheck=()=>{original();const now=Reflect.ownKeys(input);if(Object.getPrototypeOf(input)!==prototype||now.length!==keys.length||now.some((key,n)=>key!==keys[n])||!sameDescriptor(Object.getOwnPropertyDescriptor(input,'binding'),binding)||!sameDescriptor(Object.getOwnPropertyDescriptor(input,'check'),check))return held();const nextMode=Object.getOwnPropertyDescriptor(input,'costMode');if(mode?!sameDescriptor(nextMode,mode):nextMode!==undefined||'costMode'in input)return held();};
- const guard=minute?Object.freeze({binding:binding.value as string,check:retainedCheck,costMode:'beta_reset' as const}):Object.freeze({binding:binding.value as string,check:retainedCheck});guard.check();entryConstraints.set(ctx,guard);entryConstraintInputs.set(ctx,input);return guard;
+ const guard=minute?Object.freeze({binding:binding.value as string,check:retainedCheck,costMode:mode!.value as 'beta_reset'|'canonical_rank'}):Object.freeze({binding:binding.value as string,check:retainedCheck});guard.check();entryConstraints.set(ctx,guard);entryConstraintInputs.set(ctx,input);return guard;
 }
 function envCopy(env:Env,db:D1Database):Env{const descriptors=Object.getOwnPropertyDescriptors(env);descriptors.DB={value:db,enumerable:true,writable:false,configurable:false};return Object.defineProperties(Object.create(Object.getPrototypeOf(env)),descriptors) as Env;}
 /** Synchronous source entry capture. The tracked transport exists before legacy narrow origin factories capture DB. */

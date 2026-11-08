@@ -78,6 +78,12 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".238", date: "2026-11-08", lines: [
+      "New guild rank changes take priority over older role reconciliation work.",
+      "Background rank checks continue while the officer roster is fresh.",
+    ],
+  },
+  {
     build: ".237", date: "2026-11-07", lines: [
       "An unrecognized roster rank no longer blocks updates for other verified characters.",
       "Characters with uncertain rank data stay on hold until their rank is confirmed.",
