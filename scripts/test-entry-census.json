@@ -11,6 +11,14 @@
   ],
   "exceptions": [
     {
+      "path": "worker/tests/canonical_rank238_schedule_source.cjs",
+      "kind": "helper",
+      "owner": "Codex Root / canonical rank scheduling .238",
+      "reason": "Static historical-AST oracle loaded by the registered beta_reset_schedule_test.cjs through require(path.join(__dirname,...)); the literal-require source scanner does not traverse that computed path. This helper is not an independent CLI test.",
+      "evidence": "beta_reset_schedule_test.cjs parseSource(index.ts) calls historicalIndexSource238 only for the historical AST checks. The same registered suite retains its current runtime callback checks. This disposition supplies no execution, branch-coverage, runtime-handler or release acceptance.",
+      "sha256": "28f69686873e5df3f656930ece46f1dda6ca4b3c2c42fd83ad5152d87eb74d92"
+    },
+    {
       "path": "worker/tests/launch_membership231_seed.cjs",
       "kind": "helper",
       "owner": "Codex Root / D1 membership compatibility",
