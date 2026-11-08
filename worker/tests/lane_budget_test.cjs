@@ -22,6 +22,9 @@ if (crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'sour
 const source227 = require('./source227-role-historical-projection.cjs');
 if(crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source230-membership-static-projection.cjs'))).digest('hex')!=='eb38cbf11209b4ef56f052e5e54b117d6fffdbd40d764faa00aa5708468c5f63')throw Error('reviewed230 lane helper differs');
 const source230=require('./source230-membership-static-projection.cjs');
+// Exact .238 cost-label source inverse is STATIC ONLY; runtime source stays current.
+if(crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source238-canonical-minute-static-projection.cjs'))).digest('hex')!=='4cc3bcda017a18d768b249224bba709334586021926ef37b98319134c6ad5c1b')throw Error('reviewed238 static origin helper differs');
+const source238=require('./source238-canonical-minute-static-projection.cjs');
 const state=(b,p)=>JSON.stringify({limit:b.limit,attempts:b.attempts,calls:b.calls,retries:b.retries,exhausted:b.exhausted,parent:p});
 function apply(b,op){try{op(b);return 'ok';}catch(e){return 'throw:'+e.message;}}
 (async()=>{
@@ -74,9 +77,11 @@ function apply(b,op){try{op(b);return 'ok';}catch(e){return 'throw:'+e.message;}
  // roles bae0474c4c2ab9f3d8441b23cd6b89b3c4d41355d9850b860f1a7c745ff4fb15;
  // original796settlementlines bad16c4d3c773be54b76e85b8f3f8f871269e5cd9f3f1a0be6242be5e9caa37c.
  check('role-rank-continuation.ts is byte-identical to the reviewed .163 integrated source',sha(src('role-rank-continuation.ts'))==='bf4a2926770bf44af674e7a2ddc6f9b5c029960aaeca66a30947730d9d296561');
+ for(const[name,ok]of Object.entries(source238.checks(path.join(root,'src'))))check('.238 exact static origin '+name,ok);
+ for(const row of source238.controls(path.join(root,'src')))check('.238 static origin refuses '+row.name,row.refused);
  for(const[name,ok]of Object.entries(source230.checks(path.join(root,'src'))))check('.230 closed current→a984 static guard '+name,ok);
  for(const[name,ok]of Object.entries(source230.copyControls()))check('.230 paired copy-only guard '+name,ok);
- source230.withStaticView(path.join(root,'src'),staticView=>{
+ source238.withStaticView(path.join(root,'src'),staticView=>{
  const staticSource=name=>fs.readFileSync(path.join(staticView,name),'utf8');
  check('.227 static inverse binds all four whole current sources and refuses unrelated/context/line-ending drift',Object.values(source227.checks(staticView)).every(Boolean));
  check('roles.ts reconstructs byte-identical reviewed .163 integrated source through the exact finite .227 inverse',sha(source227.inverse('roles',staticSource('roles.ts'))??'')==='0fb851d804ddb97594a8b4109db3fad46a3f88df8c65475b63f2c79dbf89f6f8');
