@@ -25,7 +25,7 @@ const source230=require('./source230-membership-static-projection.cjs');
 // Exact .238 cost-label source inverse is STATIC ONLY; runtime source stays current.
 if(crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source238-canonical-minute-static-projection.cjs'))).digest('hex')!=='4cc3bcda017a18d768b249224bba709334586021926ef37b98319134c6ad5c1b')throw Error('reviewed238 static origin helper differs');
 const source238=require('./source238-canonical-minute-static-projection.cjs');
-if(crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source239-migration-static-projection.cjs'))).digest('hex')!=='010dc673a291c8fd587d6afc17f05ee1e9c904c16fd3077837e7d31aad0a1408')throw Error('reviewed239 static role helper differs');
+if(crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source239-migration-static-projection.cjs'))).digest('hex')!=='39f12bb39335e0234d7e43daa6ae2bc4c8e1aaf58b9dc65507012aac069594eb')throw Error('reviewed239 static role helper differs');
 const source239=require('./source239-migration-static-projection.cjs');
 const state=(b,p)=>JSON.stringify({limit:b.limit,attempts:b.attempts,calls:b.calls,retries:b.retries,exhausted:b.exhausted,parent:p});
 function apply(b,op){try{op(b);return 'ok';}catch(e){return 'throw:'+e.message;}}

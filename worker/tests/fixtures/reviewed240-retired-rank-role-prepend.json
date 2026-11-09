@@ -1,0 +1,26 @@
+{
+  "schema": "source240-exact-role-prepend-v1",
+  "file": "role-settlements.ts",
+  "currentSHA256": "1ab3c87d63a67ac969cf88afb93aa40a0184db089c1bf97777c1a2e1881b0a5f",
+  "currentBytes": 321728,
+  "predecessorSHA256": "8ddf0098cf5504a514060c0f1af7346469e118e1b3ae306ba1386f05784fbb01",
+  "predecessorBytes": 321243,
+  "historicalV20FixtureSHA256": "f35f5617bb383ea4a02ff3dad1daa0a16f2c3dbd94f6aad8152be3e8411a3ebf",
+  "scope": "Static-only exact .240 qualifier inverse before the unchanged V20/V19/V18/V17/V16 and historical233/232/230 chains. Reconstructed source must never execute.",
+  "edits": [
+    {
+      "count": 1,
+      "from": "import {captureCanonicalRankConfig233,captureCanonicalEntitlements233,highestCanonicalRank233,canonicalNativeRole233,canonicalProducerHeld233,CANONICAL_PROFILE233,CANONICAL_RANKS233,CANONICAL_MANAGED_ROLE_IDS233,LEGACY_RANK_ROLE_IDS233,NATIVE_CANONICAL_INDEX233} from './canonical-ranks233';\n",
+      "to": "import {captureCanonicalRankConfig233,captureCanonicalEntitlements233,highestCanonicalRank233,canonicalNativeRole233,canonicalProducerHeld233,CANONICAL_PROFILE233,CANONICAL_RANKS233,CANONICAL_MANAGED_ROLE_IDS233,NATIVE_CANONICAL_INDEX233} from './canonical-ranks233';\n",
+      "fromSHA256": "818a722505d9ca4bfa71f8604924214046948702e3589e57beef51ad8e9757d7",
+      "toSHA256": "d61cc90baee385bf692eace0d8237518305ce01635fe3011ac9b4ff0491eca7e"
+    },
+    {
+      "count": 1,
+      "from": "  // .240: an originally owned legacy cosmetic can outlive its globally deleted role definition.\n  // Both original inventories must agree on absence; the existing guarded observation supplies no DELETE ACK.\n  if(!wanted&&roleOnly230===canonical233RoleOnly&&canonicalApproved&&!grant&&requested.id===roleId\n   &&LEGACY_RANK_ROLE_IDS233.includes(requested.id)&&target&&!target.roles.includes(requested.id)\n   &&!!(permission&268435456n||permission&8n))continue;\n",
+      "to": "",
+      "fromSHA256": "974e9d4e3d51e17efee495a0e331170fd0999e691137c4724f8de6ff6e7d757f",
+      "toSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

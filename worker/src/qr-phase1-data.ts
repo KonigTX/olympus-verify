@@ -53,7 +53,22 @@ const native239RetentionFacts=`WITH
  q239_retained AS MATERIALIZED(SELECT r239.q239_row FROM q239_roots r239 WHERE EXISTS(SELECT 1 FROM q239_base_flags b239 WHERE b239.q239_row=r239.q239_row AND b239.q239_keep=1)
   OR EXISTS(SELECT 1 FROM q239_negative_flags n239 WHERE n239.q239_row=r239.q239_row AND n239.q239_keep=1)
   OR EXISTS(SELECT 1 FROM q239_negative_flags n239 WHERE n239.request_digest=r239.id AND n239.q239_keep=1)) `;
-const native232Retained=`EXISTS(SELECT 1 FROM q239_retained kept239 WHERE kept239.q239_row=role_settlements.rowid)`;
+/** .240 (2026-11-08): an ordinary settled removal remains a blocker while its
+ * original positive ACK survives. Keep uncertainty too: routine parent selection
+ * checks global incoming references, including NULL/mismatched child metadata.
+ * This preserves lineage only; an observed zero-attempt row never becomes an ACK
+ * or ownership. M removal retention above is unchanged. Neither child nor parent
+ * gains a lifetime beyond the positive parent retained by this same DELETE. */
+const native240RetentionFacts=native239RetentionFacts+`,
+ q240_routine_children AS MATERIALIZED(SELECT child240.q239_row FROM q239_roots child240
+  JOIN role_settlements parent240 ON child240.request_digest=parent240.id
+  WHERE child240.desired=0 AND child240.state='settled'
+  AND parent240.desired=1 AND parent240.attempts=1 AND parent240.state='settled'
+  AND parent240.reason IN('native232_put_acknowledged_and_confirmed','canonical233_put_acknowledged_and_confirmed','canonical233_migration_put_acknowledged_and_confirmed','launch230_put_acknowledged_and_confirmed')
+  AND (EXISTS(SELECT 1 FROM q239_retained kept240 WHERE kept240.q239_row=parent240.rowid)
+   OR NOT EXISTS(SELECT 1 FROM q239_roots erased240 WHERE erased240.q239_row=parent240.rowid))),
+ q240_retained AS MATERIALIZED(SELECT q239_row FROM q239_retained UNION SELECT q239_row FROM q240_routine_children) `;
+const native232Retained=`EXISTS(SELECT 1 FROM q240_retained kept239 WHERE kept239.q239_row=role_settlements.rowid)`;
 /** Fixed source-owned parameter positions only; no caller SQL or operational proof is issued. */
 export function qrErasureCustodyClearSql(identity:'?1'|'?2',native=false):string{
  if(identity!=='?1'&&identity!=='?2')throw Error('qr_erasure_identity_parameter_held');
@@ -87,7 +102,7 @@ export function qrErasureCustodyClearSql(identity:'?1'|'?2',native=false):string
 export function qrErasureStatements(env:Env,id:string):D1PreparedStatement[]{return [
  // Never discard the sole durable no-repeat receipt while a provider effect remains unknown.
  env.DB.prepare(`SELECT CASE WHEN ${qrErasureCustodyClearSql('?1',nativeErasureMode(env))} THEN 1 ELSE json_extract('qr_provider_custody_held','$') END AS admitted`).bind(id),
- env.DB.prepare(`${nativeErasureMode(env)?native239RetentionFacts:''}DELETE FROM role_settlements WHERE (${related})${nativeErasureMode(env)?" AND NOT(attempts=1 AND state IN('dispatching','unknown')) AND NOT "+native232Retained+" AND rowid NOT IN(SELECT g.rowid FROM role_settlements g WHERE "+unresolvedStaffGrantSql('g')+")":''}`).bind(id),
+ env.DB.prepare(`${nativeErasureMode(env)?native240RetentionFacts:''}DELETE FROM role_settlements WHERE (${related})${nativeErasureMode(env)?" AND NOT(attempts=1 AND state IN('dispatching','unknown')) AND NOT "+native232Retained+" AND rowid NOT IN(SELECT g.rowid FROM role_settlements g WHERE "+unresolvedStaffGrantSql('g')+")":''}`).bind(id),
  // Native mode must retain the exact proof/FK ancestry of a preserved unknown effect.
  // Revoke this account's signing/request authority without erasing its sole custody link.
  ...(nativeErasureMode(env)?[

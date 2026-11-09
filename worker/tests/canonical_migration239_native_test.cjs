@@ -205,6 +205,47 @@ const body239=String.raw`
   check('239 '+condition239+' marker privacy '+(mayClear239?'clears exact expired no-network lease':'retains live/unknown/unproved custody'),mayClear239?!cleanup239&&!actual:actual&&JSON.stringify(actual)===saved);
   check('239 '+condition239+' erasure control never sends a role effect',put()===0&&del()===0);db.close();
  }
+
+ // .240 QR coupling unit cases. The first pair is produced by original source.
+ // Explicit later row mutations are synthetic predicate/uncertainty controls,
+ // never production ACKs, erasure authority, ownership or a live repair recipe.
+ async function routinePair240(){
+  const old240=await originalLegacy239();T++;await plan239(present,C.CANONICAL_RANKS233[4].roleId);
+  await visit239();await visit239();
+  const parent240=rows().find(x=>x.id===old240.grant.id),child240=rows().find(x=>x.purpose==='canonical_routine233'&&x.role_id===legacy239&&x.desired===0&&x.state==='settled'&&x.attempts===1&&x.reason==='canonical233_delete_acknowledged_and_confirmed'&&x.request_digest===old240.grant.id);
+  if(!parent240||!child240)throw Error('240_original_routine_retention_pair_missing');
+  return {parent:parent240,child:child240,rowid:db.prepare('SELECT rowid AS r FROM role_settlements WHERE id=?').get(child240.id).r};
+ }
+ const row240=id=>db.prepare('SELECT * FROM role_settlements WHERE rowid=?').get(id);
+ {const pair240=await routinePair240(),before240=JSON.stringify([pair240.parent,pair240.child]);http=[];
+  await env.DB.batch(Q.qrErasureStatements(env,A));await env.DB.batch(Q.qrErasureStatements(env,A));
+  check('240 original routine DELETE ACK and original positive remain byte-exact across repeated partial QR',JSON.stringify([rows().find(x=>x.id===pair240.parent.id),row240(pair240.rowid)])===before240&&put()===0&&del()===0);db.close();}
+ for(const mutation240 of [
+  ['observed0',"attempts=0,claim_nonce=NULL,reason='canonical233_observed_without_dispatch'"],
+  ['unrecognized reason',"reason='synthetic_unrecognized_terminal'"],
+  ['unrecognized purpose',"purpose='synthetic_unrecognized_terminal'"],
+  ['NULL profile','native_profile=NULL'],['NULL id','id=NULL'],['NULL generation','subject_generation=NULL'],
+  ['foreign generation',"subject_generation='77777777777777777777777777777777'"],
+  ['foreign guild',"guild_id='223456789012345679'"],['foreign role',"role_id='223456789012345680'"],
+  ['NULL original checked time','checked_at=NULL'],
+  ['malformed M child',"purpose='canonical_migration_remove233',native_profile=NULL,subject_generation='77777777777777777777777777777777',role_id='223456789012345680'"]
+ ]){const pair240=await routinePair240();await env.DB.prepare('UPDATE role_settlements SET '+mutation240[1]+' WHERE id=?1').bind(pair240.child.id).run();
+  const before240=JSON.stringify([rows().find(x=>x.id===pair240.parent.id),row240(pair240.rowid)]);http=[];
+  await env.DB.batch(Q.qrErasureStatements(env,A));await env.DB.batch(Q.qrErasureStatements(env,A));
+  check('240 '+mutation240[0]+' settled incoming blocker remains uncertainty with retained parent, not new authority',JSON.stringify([rows().find(x=>x.id===pair240.parent.id),row240(pair240.rowid)])===before240&&put()===0&&del()===0);db.close();}
+ {const pair240=await routinePair240(),foreign240='223456789012345678';await env.DB.prepare('UPDATE role_settlements SET subject=?1,subject_generation=NULL,guild_id=?2,role_id=?3 WHERE id=?4').bind(foreign240,'223456789012345679','223456789012345680',pair240.child.id).run();
+  const before240=JSON.stringify([rows().find(x=>x.id===pair240.parent.id),row240(pair240.rowid)]);http=[];await env.DB.batch(Q.qrErasureStatements(env,foreign240));
+  check('240 foreign erasure root cannot prune global incoming blocker while its original parent survives outside root',JSON.stringify([rows().find(x=>x.id===pair240.parent.id),row240(pair240.rowid)])===before240&&put()===0&&del()===0);db.close();}
+ {const pair240=await routinePair240();await env.DB.prepare("UPDATE role_settlements SET state='unknown' WHERE id=?1").bind(pair240.child.id).run();const before240=JSON.stringify(rows());http=[];let held240=false;
+  try{await env.DB.batch(Q.qrErasureStatements(env,A));}catch{held240=true;}
+  check('240 original unknown-attempt custody still refuses partial QR without any mutation or role effect',held240&&JSON.stringify(rows())===before240&&put()===0&&del()===0);db.close();}
+ for(const nonblocking240 of [['NULL digest','request_digest=NULL'],['unclaimed held child',"state='held',attempts=0,claim_nonce=NULL,reason='canonical233_never_dispatched'"]]){
+  const pair240=await routinePair240();await env.DB.prepare('UPDATE role_settlements SET '+nonblocking240[1]+' WHERE id=?1').bind(pair240.child.id).run();http=[];await env.DB.batch(Q.qrErasureStatements(env,A));
+  check('240 '+nonblocking240[0]+' does not extend unrelated non-blocking child retention',!row240(pair240.rowid)&&JSON.stringify(rows().find(x=>x.id===pair240.parent.id))===JSON.stringify(pair240.parent)&&put()===0&&del()===0);db.close();}
+ {const pair240=await routinePair240();await env.DB.prepare('DELETE FROM role_settlements WHERE id=?1').bind(pair240.parent.id).run();http=[];await env.DB.batch(Q.qrErasureStatements(env,A));
+  check('240 synthetic missing-parent boundary does not create orphan retention or authority',!rows().some(x=>x.id===pair240.parent.id)&&!row240(pair240.rowid)&&put()===0&&del()===0);db.close();}
+ {const pair240=await routinePair240();await env.DB.prepare("UPDATE role_settlements SET attempts=0,claim_nonce=NULL,reason='native232_observed_without_dispatch' WHERE id=?1").bind(pair240.parent.id).run();http=[];await env.DB.batch(Q.qrErasureStatements(env,A));
+  check('240 synthetic non-ACK positive observation cannot mint coupled ownership or extend either row lifetime',!rows().some(x=>x.id===pair240.parent.id)&&!row240(pair240.rowid)&&put()===0&&del()===0);db.close();}
  console.log(ok+'/'+n+' canonical239 migration Native checks passed');process.exitCode=ok===n?0:1;
 `;
 source239=source239.slice(0,source239.indexOf(start239))+body239+source239.slice(source239.indexOf(end239)+end239.length);

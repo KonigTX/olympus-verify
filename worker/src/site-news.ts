@@ -78,6 +78,12 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".240", date: "2026-11-08", lines: [
+      "Promotions and demotions keep syncing after older cosmetic rank roles are retired.",
+      "The official OlympusVerify addon stays at 0.6.21.",
+    ],
+  },
+  {
     build: ".239", date: "2026-11-08", lines: [
       "Role cleanup coordinates with background rank checks.",
       "Verified guild ranks keep updating after legacy roles are cleaned up.",

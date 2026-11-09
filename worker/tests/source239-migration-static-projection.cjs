@@ -1,5 +1,5 @@
 "use strict";
-// Versioned239 V20, V19, V18 then V17 prepends followed by the unchanged V16 static-only inverse. Never execute reconstructed source or
+// Exact .240 qualifier prepend, then the unchanged239 V20/V19/V18/V17/V16 static-only inverse. Never execute reconstructed source or
 // pass this disposable directory to the generic/runtime TypeScript loader.
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto');
 const H=x=>crypto.createHash('sha256').update(x).digest('hex'),need=(v,c)=>{if(!v)throw Error(c);};
@@ -52,12 +52,26 @@ const pre20Bytes=fs.readFileSync(path.join(__dirname,'fixtures/reviewed239-v20-r
 need(H(pre20Bytes)==='f35f5617bb383ea4a02ff3dad1daa0a16f2c3dbd94f6aad8152be3e8411a3ebf','REVIEWED239_V20_PREPEND_CHANGED');const pre20=JSON.parse(pre20Bytes.toString('utf8'));
 need(pre20.schema==='source239-v20-exact-role-prepend-v1'&&pre20.file===m.file&&pre20.currentSHA256==='8ddf0098cf5504a514060c0f1af7346469e118e1b3ae306ba1386f05784fbb01'&&pre20.currentBytes===321243&&pre20.predecessorSHA256===pre19.currentSHA256&&pre20.predecessorBytes===pre19.currentBytes&&pre20.historicalV19FixtureSHA256===H(pre19Bytes)&&pre20.edit.count===1&&H(pre20.edit.from)===pre20.edit.fromSHA256&&H(pre20.edit.to)===pre20.edit.toSHA256,'REVIEWED239_V20_PREPEND_SCOPE_CHANGED');
 function toV19(raw){if(typeof raw!=='string'||Buffer.byteLength(raw)!==pre20.currentBytes||H(raw)!==pre20.currentSHA256||raw.split(pre20.edit.from).length!==2)return null;const prior=raw.replace(pre20.edit.from,()=>pre20.edit.to);return Buffer.byteLength(prior)===pre19.currentBytes&&H(prior)===pre19.currentSHA256?prior:null;}
-function inverse(raw){const prior=toV19(raw);return prior===null?null:inverseV19(prior);}
-function checks(sourceRoot){const current=fs.readFileSync(path.join(sourceRoot,m.file),'utf8'),prior=toV19(current);return Object.freeze({'exact-V20-current-whole-source':Buffer.byteLength(current)===pre20.currentBytes&&H(current)===pre20.currentSHA256,'finite-counted-V20-prepend':prior!==null,...(prior===null?{'accepted-history-restoration-held':false}:checksV19(prior))});}
-function controls(sourceRoot){
- const current=fs.readFileSync(path.join(sourceRoot,m.file),'utf8'),prior=toV19(current);need(prior!==null,'REVIEWED239_V20_POSITIVE_STATIC_SOURCE_REQUIRED');
+function inverseV20(raw){const prior=toV19(raw);return prior===null?null:inverseV19(prior);}
+function checksV20(current){const prior=toV19(current);return Object.freeze({'exact-V20-current-whole-source':Buffer.byteLength(current)===pre20.currentBytes&&H(current)===pre20.currentSHA256,'finite-counted-V20-prepend':prior!==null,...(prior===null?{'accepted-history-restoration-held':false}:checksV19(prior))});}
+function controlsV20(current){
+ const prior=toV19(current);need(prior!==null,'REVIEWED239_V20_POSITIVE_STATIC_SOURCE_REQUIRED');
  const previous=controlsV19(prior),probes=[['V20 unrelated prefix','// unreviewed239\n'+current],['V20 unrelated suffix',current+'\n// unreviewed239\n'],['V20 raw CRLF drift',current.replace(/\n/g,'\r\n')],['V19 cannot masquerade as V20',prior],['V20 missing release association',current.replace(pre20.edit.from,'')],['V20 duplicate release association',current.replace(pre20.edit.from,pre20.edit.from+pre20.edit.from)],['V20 changed release association',current.replace(pre20.edit.from,pre20.edit.from+'/* unreviewed239 */')]];
- return [...previous,...probes.map(([name,candidate])=>Object.freeze({name,refused:candidate!==current&&inverse(candidate)===null,source:m.file,scope:'Exact V20 release association checkpoint; original predicates and historical guards retained'}))];
+ return [...previous,...probes.map(([name,candidate])=>Object.freeze({name,refused:candidate!==current&&inverseV20(candidate)===null,source:m.file,scope:'Exact V20 release association checkpoint; original predicates and historical guards retained'}))];
+}
+const pre240Bytes=fs.readFileSync(path.join(__dirname,'fixtures/reviewed240-retired-rank-role-prepend.json'));
+need(H(pre240Bytes)==='444e7909d575e075e2871c518e2895b2acb55b3b4198317be8c36a09a77731f3','REVIEWED240_PREPEND_CHANGED');const pre240=JSON.parse(pre240Bytes.toString('utf8'));
+need(pre240.schema==='source240-exact-role-prepend-v1'&&pre240.file===m.file&&pre240.currentSHA256==='1ab3c87d63a67ac969cf88afb93aa40a0184db089c1bf97777c1a2e1881b0a5f'&&pre240.currentBytes===321728&&pre240.predecessorSHA256===pre20.currentSHA256&&pre240.predecessorBytes===pre20.currentBytes&&pre240.historicalV20FixtureSHA256===H(pre20Bytes)&&pre240.edits.length===2,'REVIEWED240_PREPEND_SCOPE_CHANGED');
+for(const e of pre240.edits)need(e.count===1&&typeof e.from==='string'&&e.from.length>0&&typeof e.to==='string'&&e.from!==e.to&&H(e.from)===e.fromSHA256&&H(e.to)===e.toSHA256,'REVIEWED240_COUNTED_CONTEXT_CHANGED');
+function toV20(raw){if(typeof raw!=='string'||Buffer.byteLength(raw)!==pre240.currentBytes||H(raw)!==pre240.currentSHA256)return null;let prior=raw;for(const e of pre240.edits){if(prior.split(e.from).length!==2)return null;prior=prior.replace(e.from,()=>e.to);}return Buffer.byteLength(prior)===pre20.currentBytes&&H(prior)===pre20.currentSHA256?prior:null;}
+function inverse(raw){const prior=toV20(raw);return prior===null?null:inverseV20(prior);}
+function checks(sourceRoot){const current=fs.readFileSync(path.join(sourceRoot,m.file),'utf8'),prior=toV20(current);return Object.freeze({'exact-240-current-whole-source':Buffer.byteLength(current)===pre240.currentBytes&&H(current)===pre240.currentSHA256,'finite-counted-240-two-window-prepend':prior!==null,...(prior===null?{'accepted-history-restoration-held':false}:checksV20(prior))});}
+function controls(sourceRoot){
+ const current=fs.readFileSync(path.join(sourceRoot,m.file),'utf8'),prior=toV20(current);need(prior!==null,'REVIEWED240_POSITIVE_STATIC_SOURCE_REQUIRED');
+ const previous=controlsV20(prior),probes=[['240 unrelated prefix','// unreviewed240\n'+current],['240 unrelated suffix',current+'\n// unreviewed240\n'],['240 raw CRLF drift',current.replace(/\n/g,'\r\n')],['V20 cannot masquerade as240',prior]];
+ for(const[i,e]of pre240.edits.entries())probes.push(['240 missing context '+i,current.replace(e.from,'')],['240 duplicated context '+i,current.replace(e.from,e.from+e.from)],['240 changed context '+i,current.replace(e.from,e.from+'/* unreviewed240 */')]);
+ probes.push(['240 absence exception retains missing-role boundary',current.replace('if(!wanted&&roleOnly230===canonical233RoleOnly','if(roleOnly230===canonical233RoleOnly')],['240 absence exception stays exact legacy role family',current.replace('LEGACY_RANK_ROLE_IDS233.includes(requested.id)','CANONICAL_MANAGED_ROLE_IDS233.includes(requested.id)')],['240 absence exception retains member-role absence',current.replace('!target.roles.includes(requested.id)','true')]);
+ return [...previous,...probes.map(([name,candidate])=>Object.freeze({name,refused:candidate!==current&&inverse(candidate)===null,source:m.file,scope:'Exact .240 two-window qualifier prepend; all110 prior static refusal controls and historical whole-source seals retained'}))];
 }
 const NAMES=Object.freeze(['discord','role-settlements','roles','roster','interactions','guide','treasury-cosmetic','treasury-reserved-roles','privacy-serving-erase','privacy-global-serving-origin']);
 function withStaticView(sourceRoot,inspect){
@@ -67,4 +81,4 @@ function withStaticView(sourceRoot,inspect){
  try{for(const name of NAMES){const file=path.join(sourceRoot,name+'.ts');need(fs.lstatSync(file).isFile()&&!fs.lstatSync(file).isSymbolicLink(),'STATIC239_SOURCE_FILE_REQUIRED');const raw=fs.readFileSync(file),out=name==='role-settlements'?inverse(raw.toString('utf8')):raw;need(out!==null,'STATIC239_CURRENT_ROLE_CHANGED');fs.writeFileSync(path.join(tmp,name+'.ts'),out,{flag:'wx'});}return inspect(tmp);}
  finally{need(owned(),'STATIC239_OWNED_CLEANUP_CHANGED');fs.rmSync(tmp,{recursive:true});}
 }
-module.exports=Object.freeze({inverse,checks,controls,withStaticView,metadata:Object.freeze({current:pre20.currentSHA256,v19Checkpoint:pre19.currentSHA256,v18Checkpoint:pre18.currentSHA256,v17Checkpoint:pre.currentSHA256,v16Checkpoint:m.currentSHA256,predecessor:m.predecessorSHA256,versionedCheckpoint239:true,staticOnly:true,runtimeSubstitutionAuthorized:false})});
+module.exports=Object.freeze({inverse,checks,controls,withStaticView,metadata:Object.freeze({current:pre240.currentSHA256,v20Checkpoint:pre20.currentSHA256,v19Checkpoint:pre19.currentSHA256,v18Checkpoint:pre18.currentSHA256,v17Checkpoint:pre.currentSHA256,v16Checkpoint:m.currentSHA256,predecessor:m.predecessorSHA256,versionedCheckpoint239:true,staticOnly:true,runtimeSubstitutionAuthorized:false})});

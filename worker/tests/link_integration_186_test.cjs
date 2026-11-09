@@ -25,7 +25,7 @@ const subtle = globalThis.crypto.subtle;
 const sha = (b) => nodeCrypto.createHash("sha256").update(b).digest("hex");
 if(sha(fs.readFileSync(path.join(__dirname,'source230-membership-static-projection.cjs')))!=='eb38cbf11209b4ef56f052e5e54b117d6fffdbd40d764faa00aa5708468c5f63')throw Error('reviewed230 Link helper differs');
 const source230=require('./source230-membership-static-projection.cjs');
-if(sha(fs.readFileSync(path.join(__dirname,'source239-migration-static-projection.cjs')))!=='010dc673a291c8fd587d6afc17f05ee1e9c904c16fd3077837e7d31aad0a1408')throw Error('reviewed239 static role helper differs');
+if(sha(fs.readFileSync(path.join(__dirname,'source239-migration-static-projection.cjs')))!=='39f12bb39335e0234d7e43daa6ae2bc4c8e1aaf58b9dc65507012aac069594eb')throw Error('reviewed239 static role helper differs');
 const source239=require('./source239-migration-static-projection.cjs');
 // Upstream's web/test/fixtures/vectors.json at d03ea8a9 with every seed* field and the two derivable backend "token"
 // fields removed (its own "about" says so); pinned, so a changed fixture is a reviewed change. Each token is rebuilt here

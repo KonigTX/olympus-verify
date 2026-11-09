@@ -361,7 +361,7 @@ const source230=require('./source230-membership-static-projection.cjs');
 if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source238-canonical-minute-static-projection.cjs'))).digest('hex')!=='4cc3bcda017a18d768b249224bba709334586021926ef37b98319134c6ad5c1b')throw Error('reviewed238 static origin helper differs');
 const source238=require('./source238-canonical-minute-static-projection.cjs');
 // .239 exact Role prepend is static-only. Never pass reconstructed source to load().
-if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source239-migration-static-projection.cjs'))).digest('hex')!=='010dc673a291c8fd587d6afc17f05ee1e9c904c16fd3077837e7d31aad0a1408')throw Error('reviewed239 static role helper differs');
+if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source239-migration-static-projection.cjs'))).digest('hex')!=='39f12bb39335e0234d7e43daa6ae2bc4c8e1aaf58b9dc65507012aac069594eb')throw Error('reviewed239 static role helper differs');
 const source239=require('./source239-migration-static-projection.cjs');
 // .228 C09 reverses only two exact current sources for the original static seals.
 if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'source228-privacy-historical-projection.cjs'))).digest('hex') !== '1314b9a32a95348ae6092bcc5963cb16526ad8eecbc8bf1dcd7414dbff84324c') throw Error('reviewed228 C09 identity helper differs');

@@ -22,7 +22,7 @@ import {assertRuntimeVenue230,runtimeVenue230Facts,runtimeVenue230Predicate,oldS
 import type {OriginalConsumedMembership230} from './ingest';
 import {captureNativeRankConfig232,historicalNativeRankPolicy232,nativeRankProducerHeld232,NATIVE_RANK_PROFILE232,NATIVE_RANK_NAMES232,SHARED_MEMBER232,NATIVE_STAFF232} from './native-rank-reconciliation232';
 import type {RoutineMembership232} from './routine-membership-authority232';
-import {captureCanonicalRankConfig233,captureCanonicalEntitlements233,highestCanonicalRank233,canonicalNativeRole233,canonicalProducerHeld233,CANONICAL_PROFILE233,CANONICAL_RANKS233,CANONICAL_MANAGED_ROLE_IDS233,NATIVE_CANONICAL_INDEX233} from './canonical-ranks233';
+import {captureCanonicalRankConfig233,captureCanonicalEntitlements233,highestCanonicalRank233,canonicalNativeRole233,canonicalProducerHeld233,CANONICAL_PROFILE233,CANONICAL_RANKS233,CANONICAL_MANAGED_ROLE_IDS233,LEGACY_RANK_ROLE_IDS233,NATIVE_CANONICAL_INDEX233} from './canonical-ranks233';
 import {captureCanonicalMigration233,canonicalMigrationProducerHeld233,CANONICAL_MIGRATION_PROFILE233,CANONICAL_MIGRATION_ROLE_IDS233} from './canonical-migration233';
 
 type Role={id:string;position:number;permissions:string;managed:boolean;name?:string};
@@ -89,6 +89,11 @@ async function qualify(env:Env,b:AttemptBudget,subject:string,roleId:string,gran
   if(!wanted&&allowMissingBetaDuplicate&&!grant&&!cosmetic&&otherRoles.length===0
    &&env.GUILD_ID===BETA_RESET_GUILD_ID&&roleId==='1558657538960916490'&&requested.id===roleId
    &&!target?.roles.includes(roleId)&&!!(permission&268435456n||permission&8n))continue;
+  // .240: an originally owned legacy cosmetic can outlive its globally deleted role definition.
+  // Both original inventories must agree on absence; the existing guarded observation supplies no DELETE ACK.
+  if(!wanted&&roleOnly230===canonical233RoleOnly&&canonicalApproved&&!grant&&requested.id===roleId
+   &&LEGACY_RANK_ROLE_IDS233.includes(requested.id)&&target&&!target.roles.includes(requested.id)
+   &&!!(permission&268435456n||permission&8n))continue;
   if(!wanted&&allowMissingRetired&&membershipTransitionEnabled(env)&&membershipTargets(env).retired===requested.id)continue;if(!wanted||wanted.managed||wanted.id===env.GUILD_ID||wanted.position>=highest||requested.cosmetic&&wanted.permissions!=='0'||roleOnly&&grant&&!canonicalApproved&&wanted.permissions!=='0'||!(permission&268435456n||permission&8n))throw new Error('role_hierarchy');}
  if(target){if(target.roles.some(id=>!inventory.has(id))||!roleOnly&&Math.max(0,...target.roles.map(id=>inventory.get(id)!.position))>=highest)throw new Error('target_hierarchy');}
  if(grant&&(!target||(env.BLOCKING_ROLE_IDS||'').split(',').map(x=>x.trim()).some(x=>x&&target.roles.includes(x)))){if((roleOnly230===native232RoleOnly||roleOnly230===canonical233RoleOnly)&&target)throw new Native232Blocked(env,target,subject);throw new Error('server_restriction');}

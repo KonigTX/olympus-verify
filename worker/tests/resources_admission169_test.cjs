@@ -120,6 +120,19 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .240 reverses only the exact retired-role continuity release note.
+  const release240 = [
+  "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+  "  {",
+  "    build: \".240\", date: \"2026-11-08\", lines: [",
+  "      \"Promotions and demotions keep syncing after older cosmetic rank roles are retired.\",",
+  "      \"The official OlympusVerify addon stays at 0.6.21.\",",
+  "    ],",
+  "  },",
+  ""
+  ].join('\n');
+  check('Guild News exact authorized .240 prepend occurs once', originalNews.split(release240).length === 2);
+  originalNews = originalNews.replace(release240, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
   // .239 reverses only the exact migration coordination release note.
   const release239 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
