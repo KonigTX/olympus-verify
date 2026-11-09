@@ -11,6 +11,14 @@
   ],
   "exceptions": [
     {
+      "path": "worker/tests/canonical_rank239_schedule_source.cjs",
+      "kind": "helper",
+      "owner": "Codex Root / static historical source prepends .239",
+      "reason": "Static historical-AST oracle loaded by the registered beta_reset_schedule_test.cjs through require(path.join(__dirname,...)); the literal-require source scanner does not traverse that computed path. This helper is not an independent CLI test.",
+      "evidence": "beta_reset_schedule_test.cjs parseSource(index.ts) calls historicalIndexSource239. The helper authenticates the exact .239 BUILD inverse and delegates to the unchanged .238 oracle; eight refusal controls and all original scheduled/runtime assertions remain in the registered leaf. Source disposition only: no execution, branch-coverage or live acceptance.",
+      "sha256": "11abd02d7233f5a42c712e1ce3c000ae5c5e2d297dff1e0dfd1eeed8077055ef"
+    },
+    {
       "path": "worker/tests/canonical_rank238_schedule_source.cjs",
       "kind": "helper",
       "owner": "Codex Root / canonical rank scheduling .238",
