@@ -120,6 +120,19 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .241 reverses only the exact recent-rank-priority member release note.
+  const release241 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".241\", date: \"2026-11-09\", lines: [",
+    "      \"Recent in-game rank changes get priority while older rank updates catch up.\",",
+    "      \"Existing verification and account-safety checks still apply.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .241 prepend occurs once', originalNews.split(release241).length === 2);
+  originalNews = originalNews.replace(release241, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
   // .240 reverses only the exact retired-role continuity release note.
   const release240 = [
   "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

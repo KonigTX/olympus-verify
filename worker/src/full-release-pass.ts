@@ -549,7 +549,7 @@ async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admis
    if(captureCanonicalRankConfig233(effect).present){
     const rank=await R.reconcileCanonicalRanks233(effect,authority,selectedVenue.venue,child);
     for(const outcome of rank.outcomes){if(outcome.state==='settled'){counts.settled++;if(outcome.reason==='canonical233_delete_acknowledged_and_confirmed')counts.removed++;}else if(outcome.state==='unknown')counts.unknown++;else counts.held++;}
-    counts.requests+=io.calls.attempts-start;st.g=row.subject;await audit(effect,'system','role.native232_attempt',row.subject,{n:snapshot,rank:f.primary?.index??null,result:rank.state},reference);continue;
+    counts.requests+=io.calls.attempts-start;st.g=row.subject;await audit(effect,'system','role.native232_attempt',row.subject,{n:f.snapshotId,rank:f.primary?.index??null,result:rank.state},reference);continue;
    }
    const base=await R.queueAndSettleRoutineMembership232(effect,authority,selectedVenue.venue,child);
    if(base.state==='settled')counts.settled++;else if(base.state==='unknown')counts.unknown++;else counts.held++;
