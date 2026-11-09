@@ -85,7 +85,7 @@ async function scheduled(name,cron){
 }
 
 // AST inventory asserts current source policy; it never dispatches a body or mints custody.
-function parseSource(name){const raw=fs.readFileSync(path.join(root,'src',name),'utf8'),text=name==='index.ts'?require(path.join(__dirname,'canonical_rank238_schedule_source.cjs')).historicalIndexSource238(raw):raw;const sf=ts.createSourceFile(name,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);assert.equal(sf.parseDiagnostics.length,0,'source parses '+name);return sf;}
+function parseSource(name){const raw=fs.readFileSync(path.join(root,'src',name),'utf8'),text=name==='index.ts'?require(path.join(__dirname,'canonical_rank239_schedule_source.cjs')).historicalIndexSource239(raw):raw;const sf=ts.createSourceFile(name,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);assert.equal(sf.parseDiagnostics.length,0,'source parses '+name);return sf;}
 function allNodes(node,predicate){const found=[];function visit(value){if(predicate(value))found.push(value);ts.forEachChild(value,visit);}visit(node);return found;}
 function sole(values,label){assert.equal(values.length,1,label);return values[0];}
 function tokens(text){const scanner=ts.createScanner(ts.ScriptTarget.Latest,true,ts.LanguageVariant.Standard,text),out=[];for(let kind=scanner.scan();kind!==ts.SyntaxKind.EndOfFileToken;kind=scanner.scan())out.push([kind,scanner.getTokenText()]);return out;}
@@ -95,6 +95,9 @@ function namedCall(node,name){return ts.isCallExpression(node)&&ts.isIdentifier(
 function assertFalseExport(file,name){const sf=parseSource(file),statement=sole(sf.statements.filter(node=>ts.isVariableStatement(node)&&node.declarationList.declarations.some(item=>ts.isIdentifier(item.name)&&item.name.text===name)),name);assert.ok(statement.modifiers?.some(mod=>mod.kind===ts.SyntaxKind.ExportKeyword));const variable=sole(statement.declarationList.declarations.filter(item=>item.name.text===name),name);exactSyntax(variable.initializer,'false as const',name+' remains literal false');}
 function assertTrueExport(file,name){const sf=parseSource(file),statement=sole(sf.statements.filter(node=>ts.isVariableStatement(node)&&node.declarationList.declarations.some(item=>ts.isIdentifier(item.name)&&item.name.text===name)),name);assert.ok(statement.modifiers?.some(mod=>mod.kind===ts.SyntaxKind.ExportKeyword));const variable=sole(statement.declarationList.declarations.filter(item=>item.name.text===name),name);exactSyntax(variable.initializer,'true as const',name+' is literal true');}
 function sourceInventory(){
+ assert.equal(require('node:crypto').createHash('sha256').update(fs.readFileSync(path.join(__dirname,'canonical_rank239_schedule_source.cjs'))).digest('hex'),'cf75fb0a4cabbcebe345cf26179084390b0186d6ae071445c4979231e5b08534','reviewed240 schedule static helper differs');
+ const static239=require(path.join(__dirname,'canonical_rank239_schedule_source.cjs')),currentIndexRaw=fs.readFileSync(path.join(root,'src/index.ts'),'utf8');
+ for(const row of static239.controls(currentIndexRaw))check('.239 exact BUILD static prepend refuses '+row.name,row.refused);
  const sf=parseSource('index.ts'),exports=sf.statements.filter(node=>ts.isExportAssignment(node)&&!node.isExportEquals);
  const defaultObject=sole(exports,'one default export').expression;assert.ok(ts.isObjectLiteralExpression(defaultObject));
  const method=sole(defaultObject.properties.filter(node=>ts.isMethodDeclaration(node)&&node.name.getText()==='scheduled'),'one scheduled method');

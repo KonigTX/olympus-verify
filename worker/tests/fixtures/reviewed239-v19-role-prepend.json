@@ -1,0 +1,34 @@
+{
+  "schema": "source239-v19-exact-role-prepend-v1",
+  "file": "role-settlements.ts",
+  "currentSHA256": "cd5274b3cf869759acf066a8d023fc66102d7db30267c7770eabac81edc713b0",
+  "currentBytes": 321224,
+  "predecessorSHA256": "21e2005b966860af44ba9482b0950a2a31f62c5deb6d3355b6734bb9d89d2557",
+  "predecessorBytes": 320220,
+  "edits": [
+    {
+      "from": "/** Incoming references are global even when their child is foreign, expired or\n * has a NULL id. Historical FROM roots remain present after an original M\n * DELETE consumes ownership. Only the existing fully parent-bound pending,\n * strict alias cleanup and never-dispatched classifications may coexist. */\nfunction canonical239FromReferencesClear(subject:string,guild:string,generation:string,from:string):string{\n return `NOT EXISTS(SELECT 1 FROM c239_base from239 JOIN c239_children child239 ON child239.request_digest=from239.id\n  WHERE ${canonical239And([`from239.subject=${subject}`,`from239.guild_id=${guild}`,`from239.subject_generation IS ${generation}`,`from239.role_id IN(SELECT value FROM json_each(${from}))`,\"NOT(EXISTS(SELECT 1 FROM c239_safe_pending pending239 WHERE pending239.c239_row=child239.c239_row) OR child239.c239_alias=1 OR child239.c239_no_send=1)\"])})`;\n}\n",
+      "to": "",
+      "fromSHA256": "66b594eb787b7d9d01f58bf93b3618b7dbfc7381cfb717b8892fdbc0f7e55a55",
+      "toSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "count": 1
+    },
+    {
+      "from": "canonical239FromBirthClear('?2','?3','?5','?9'),canonical239FromReferencesClear('?2','?3','?5','?9'),physical('')",
+      "to": "canonical239FromBirthClear('?2','?3','?5','?9'),physical('')",
+      "fromSHA256": "6ea171bb78e84c8b2259cc7728e81cdfa91284180d2389dec4d09b07a8f0f0ed",
+      "toSHA256": "0e298181e9de7c091bf23879a313facfe5d3a1d59d18e06ec8f84731fe0422b4",
+      "count": 1
+    },
+    {
+      "from": "...desired===0?[canonical239FromBirthClear('?2','?3','?5','?'+(reserveAt+3))]:[],canonical239FromReferencesClear('?2','?3','?5','?'+(reserveAt+3)),standing",
+      "to": "...desired===0?[canonical239FromBirthClear('?2','?3','?5','?'+(reserveAt+3))]:[],standing",
+      "fromSHA256": "3641b6e31400de5393d75dd8e9fa92b8d27139fa6a7658bcedfbe3afe8f3d716",
+      "toSHA256": "d90f3574a3dcf9a7a7a069b9b16db1fa4ba6f7fb553e741120d6b97289d9ecac",
+      "count": 1
+    }
+  ],
+  "historicalV18FixtureSHA256": "0bd65c3a6c43b95480811376d5945a876029f0dc4a3b0f7811f294082bc2cdfd",
+  "sourceOnly": true,
+  "currentWholeQualificationClaim": false
+}

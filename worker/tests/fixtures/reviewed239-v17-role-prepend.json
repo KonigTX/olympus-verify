@@ -1,0 +1,18 @@
+{
+  "schema": "source239-v17-exact-role-prepend-v1",
+  "file": "role-settlements.ts",
+  "currentSHA256": "6c71bf632c38d5a7fcf7826c390066e108e97682ad008b7bc30a9c70659a4e62",
+  "currentBytes": 319222,
+  "predecessorSHA256": "7d594a73b54ef5782347a2aa49b646abd6979adfd3a8ccb09a79467335da652c",
+  "predecessorBytes": 319246,
+  "edit": {
+    "from": "const originalGuardBase=canonical239And([p.sql,g.sql,physical,ownParent,canonical239NoAmbiguousOwnership('?2','?3','?5')]);",
+    "to": "const originalGuardBase=`(${p.sql}) AND (${g.sql}) AND (${physical}) AND (${ownParent}) AND (${canonical239NoAmbiguousOwnership('?2','?3','?5')})`;",
+    "count": 1,
+    "fromSHA256": "d984e73c4b85ae37e7e4eaf2345e9b62668bc62224af3693a852c760967fc6ad",
+    "toSHA256": "8089ce03b6c25e524db44fb75f570efbaa4c7a0abac4d738a38cb31ad716e882"
+  },
+  "historicalV16FixtureSHA256": "6c422e9f51d4f01c58f1a993c0bc413ce152fab14f4d330f5044dc69e1a2718a",
+  "sourceOnly": true,
+  "currentNativeQualificationClaim": false
+}

@@ -1,0 +1,34 @@
+{
+  "schema": "source239-v18-exact-role-prepend-v1",
+  "file": "role-settlements.ts",
+  "currentSHA256": "21e2005b966860af44ba9482b0950a2a31f62c5deb6d3355b6734bb9d89d2557",
+  "currentBytes": 320220,
+  "predecessorSHA256": "6c71bf632c38d5a7fcf7826c390066e108e97682ad008b7bc30a9c70659a4e62",
+  "predecessorBytes": 319222,
+  "edits": [
+    {
+      "from": "  const ownershipBaseFacts=canonical233?canonical239GroupedFacts('?2','?3','?5'):canonical239Facts('?2','?3','?5');\n  const ownershipFacts=canonical233?ownershipBaseFacts:ownershipBaseFacts.slice(0,-1)+',\\n'+legacyPhysicalKnown.map(source=>`${source.name} AS MATERIALIZED(SELECT old.rowid AS c239_row FROM role_settlements old WHERE old.subject=?2 AND old.guild_id=?3 AND ${source.predicate})`).join(',\\n')+' ';\n",
+      "to": "  const ownershipFacts=canonical233?canonical239GroupedFacts('?2','?3','?5'):canonical239Facts('?2','?3','?5');\n",
+      "fromSHA256": "429314a42720f1fe3376924e117f26570a6ed6a136c421c4bcc9b9ee1a560969",
+      "toSHA256": "1906e20c3e983486779fa9716c7e1c47ee4c0d80d96c6cb0a8d2bf40fe0e82f2",
+      "count": 1
+    },
+    {
+      "from": "${physicalKnown}",
+      "to": "(${launch230KnownReceipt('old')}) OR (${native232KnownReceipt('old')}) OR ${canonical233?`(${canonical233KnownReceipt('old')}) OR (${canonical233MigrationKnownReceipt('old')}) OR `:''}(${legacy}) OR ${canonical233?'0=1':oldLaneAck}",
+      "fromSHA256": "5127aeef32223bffcc1d42667814d54cc7cae597c3406e108a76520ceeb5d99d",
+      "toSHA256": "d264de1526d38230664d185bd5920ae3c80cce0122df0c6153b9a84fdad0118e",
+      "count": 1
+    },
+    {
+      "from": "  // Same-statement raw classification only: original S/G rows across every\n  // generation. These sets do not grant ownership or filter global children.\n  const legacyPhysicalKnown=canonical233?[]:[\n   {name:'c239_physical_launch_known',predicate:`(${launch230KnownReceipt('old')})`},\n   {name:'c239_physical_native_known',predicate:`(${native232KnownReceipt('old')})`},\n   {name:'c239_physical_legacy_known',predicate:`(${legacy})`},\n   {name:'c239_physical_old_lane_known',predicate:oldLaneAck},\n  ] as const;\n  const physicalKnown=canonical233?`(${launch230KnownReceipt('old')}) OR (${native232KnownReceipt('old')}) OR ${canonical233?`(${canonical233KnownReceipt('old')}) OR (${canonical233MigrationKnownReceipt('old')}) OR `:''}(${legacy}) OR ${canonical233?'0=1':oldLaneAck}`:legacyPhysicalKnown.map(source=>`(EXISTS(SELECT 1 FROM ${source.name} known239 WHERE known239.c239_row=old.rowid))`).join(' OR ');\n",
+      "to": "",
+      "fromSHA256": "87e5c2dc3bbd65ef5487fd1dda55e04ef1860ff8e929e6bfc2c68a7db3eda8ed",
+      "toSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "count": 1
+    }
+  ],
+  "historicalV17FixtureSHA256": "13244520335763ddc01510f719ca46c6b2b21c488cbbc13f04099c3b08d6343f",
+  "sourceOnly": true,
+  "currentWholeQualificationClaim": false
+}
