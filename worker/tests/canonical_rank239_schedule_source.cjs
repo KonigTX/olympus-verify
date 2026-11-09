@@ -1,0 +1,12 @@
+'use strict';
+// Static239 prepend only. Never passed to the generic/runtime TypeScript loader.
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict'),H=b=>crypto.createHash('sha256').update(b).digest('hex');
+const priorFile=path.join(__dirname,'canonical_rank238_schedule_source.cjs');
+assert.equal(H(fs.readFileSync(priorFile)),'28f69686873e5df3f656930ece46f1dda6ca4b3c2c42fd83ad5152d87eb74d92','UNCHANGED238_STATIC_ORACLE_REQUIRED');
+const prior=require('./canonical_rank238_schedule_source.cjs');
+const CURRENT_SHA256='e465e5f3ef0f9beb1e5abc6dc79761ab41641f2cb860f79ea05c91e65367b342',CURRENT_BYTES=69996,ACCEPTED238_SHA256='9dafbf360cc3c616dfc485452ae6e2c14301cd5c4783bfe95eb84a3221a43aea',ACCEPTED238_BYTES=69989;
+const FROM='const BUILD = "2026-11-08.239 Migration coordination";',TO='const BUILD = "2026-11-08.238 Rank scheduling";';
+function toAccepted238(raw){assert.equal(typeof raw,'string','EXACT239_SOURCE_TEXT');assert.equal(Buffer.byteLength(raw),CURRENT_BYTES,'EXACT239_SOURCE_BYTES');assert.equal(H(raw),CURRENT_SHA256,'EXACT239_WHOLE_SOURCE');assert.equal(raw.split(FROM).length,2,'ONE_EXACT239_BUILD_WINDOW');const restored=raw.replace(FROM,()=>TO);assert.equal(Buffer.byteLength(restored),ACCEPTED238_BYTES,'EXACT_ACCEPTED238_BYTES');assert.equal(H(restored),ACCEPTED238_SHA256,'EXACT_ACCEPTED238_WHOLE_SOURCE');return restored;}
+function historicalIndexSource239(raw){return prior.historicalIndexSource238(toAccepted238(raw));}
+function controls(raw){const old=toAccepted238(raw),probes=[['prefix','// unreviewed239\n'+raw],['suffix',raw+'\n// unreviewed239\n'],['raw CRLF drift',raw.replace(/\n/g,'\r\n')],['old238 cannot masquerade as239',old],['missing exactBUILD',raw.replace(FROM,'')],['duplicate exactBUILD',raw.replace(FROM,FROM+FROM)],['changed exactBUILD',raw.replace(FROM,FROM+'/* changed */')],['unrelated guard drift',raw.replace('if(resetMinute&&!canonicalMinute&&!resetGuardEnabled(env))return;','if(false)return;')]];return probes.map(([name,candidate])=>{let refused=false;try{historicalIndexSource239(candidate);}catch{refused=true;}return Object.freeze({name,refused:candidate!==raw&&refused});});}
+module.exports=Object.freeze({historicalIndexSource239,toAccepted238,controls,metadata:Object.freeze({staticOnly:true,currentSHA256:CURRENT_SHA256,accepted238SHA256:ACCEPTED238_SHA256,historical238SHA256:prior.HISTORICAL_SHA256,windowCount:1,runtimeSubstitutionAuthorized:false})});

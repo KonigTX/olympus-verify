@@ -360,12 +360,15 @@ const source230=require('./source230-membership-static-projection.cjs');
 // Exact .238 cost-label source inverse is STATIC ONLY; runtime source stays current.
 if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source238-canonical-minute-static-projection.cjs'))).digest('hex')!=='4cc3bcda017a18d768b249224bba709334586021926ef37b98319134c6ad5c1b')throw Error('reviewed238 static origin helper differs');
 const source238=require('./source238-canonical-minute-static-projection.cjs');
+// .239 exact Role prepend is static-only. Never pass reconstructed source to load().
+if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source239-migration-static-projection.cjs'))).digest('hex')!=='010dc673a291c8fd587d6afc17f05ee1e9c904c16fd3077837e7d31aad0a1408')throw Error('reviewed239 static role helper differs');
+const source239=require('./source239-migration-static-projection.cjs');
 // .228 C09 reverses only two exact current sources for the original static seals.
 if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'source228-privacy-historical-projection.cjs'))).digest('hex') !== '1314b9a32a95348ae6092bcc5963cb16526ad8eecbc8bf1dcd7414dbff84324c') throw Error('reviewed228 C09 identity helper differs');
 const source228Privacy = require('./source228-privacy-historical-projection.cjs');
 function sourceDigest(name) {
   const raw=fs.readFileSync(path.join(SRC, name + '.ts'), 'utf8');
-  const before230=['discord','role-settlements','roles','roster','interactions'].includes(name)?source230.inverse(name,raw):name==='privacy-serving-erase'?source230.before233(name,raw):source238.originalSource(name,raw);
+  const before230=['discord','role-settlements','roles','roster','interactions'].includes(name)?source230.inverse(name,name==='role-settlements'&&!RECORD?source239.inverse(raw):raw):name==='privacy-serving-erase'?source230.before233(name,raw):source238.originalSource(name,raw);
   const original=RECORD?raw:source228Privacy.originalSource(name,source227.originalSource(name,before230));
   return original===null?null:source211.source211HistoricalDigest(name,original);
 }
@@ -417,11 +420,14 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
     return;
   }
   if (!PINS) throw Error('PINS not recorded');
-  for(const[name,ok]of Object.entries(source238.checks(SRC)))check('.238 exact static origin '+name,ok);
-  for(const row of source238.controls(SRC))check('.238 static origin refuses '+row.name,row.refused);
-  for(const[name,ok]of Object.entries(source230.checks(SRC)))check('.230 current→a984 exact static guard '+name,ok);
+  for(const[name,ok]of Object.entries(source239.checks(SRC)))check('.239 exact static Role prepend '+name,ok);
+  for(const row of source239.controls(SRC))check('.239 static Role refuses '+row.name,row.refused);
+  source239.withStaticView(SRC,static239=>{
+  for(const[name,ok]of Object.entries(source238.checks(static239)))check('.238 exact static origin '+name,ok);
+  for(const row of source238.controls(static239))check('.238 static origin refuses '+row.name,row.refused);
+  for(const[name,ok]of Object.entries(source230.checks(static239)))check('.230 current→a984 exact static guard '+name,ok);
   for(const[name,ok]of Object.entries(source230.copyControls()))check('.230 paired copy-only guard '+name,ok);
-  source238.withStaticView(SRC,static230=>{
+  source238.withStaticView(static239,static230=>{
   const banSources=ban210.sourceChecks(static230,PINS);
   check('ban210 successor binds exact reviewed interactions source, finite paired fixture and unchanged historical PINS',Object.values(banSources).every(Boolean),banSources);
   const heldSources=held210.sourceChecks(SRC);
@@ -440,6 +446,7 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
   for (const row of drift224) check('.211 identity reconstruction refuses ' + row.source + ' ' + row.name, row.refused);
 
   });
+  });
 
   // --- static: whole reviewed .164 integrated sources; the lane modules are never part of a module-load cycle
   for (const name of PROTECTED) check(['role-settlements', 'privacy-global-serving-origin'].includes(name) ? `${name}.ts reconstructs accepted H16 through exact .211 contexts before unchanged historical whole seals` : SOURCE196_COMPAT[name] ? `${name}.ts reconstructs the reviewed .164 whole source through exact pinned .196 contextual reversals only` : `${name}.ts is byte-identical to the reviewed .164 integrated source`, sourceDigest(name) === PINS.files[name]);
@@ -456,7 +463,7 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
   // .198: the owner-approved absent empty duplicate changes three qualification
   // contexts only. Historical file seals and every dynamic trace below stay fixed.
   // Historical intermediate controls inspect reconstructed text only; no old code executes.
-  const role198Raw = source211.original211Source('role-settlements', source227.inverse('role-settlements',source230.inverse('role-settlements',fs.readFileSync(path.join(SRC, 'role-settlements.ts'), 'utf8')))??'') ?? '', role198Pin = SOURCE198_ROLE_SETTLEMENTS;
+  const role198Raw = source211.original211Source('role-settlements', source227.inverse('role-settlements',source230.inverse('role-settlements',source239.inverse(fs.readFileSync(path.join(SRC, 'role-settlements.ts'), 'utf8'))))??'') ?? '', role198Pin = SOURCE198_ROLE_SETTLEMENTS;
   check('.198 role compatibility accepts only the exact raw source and three unique reviewed contexts', sha(role198Raw) === role198Pin.exactCurrentRawSHA256 && role198Pin.edits.length === 3 && role198Pin.edits.every(edit => edit.count === 1 && role198Raw.split(edit.from).length === 2) && source196HistoricalDigest('role-settlements', role198Raw) === PINS.files['role-settlements']);
   const role197Raw = role198Pin.edits.reduce((raw, edit) => raw.replace(edit.from, edit.to), role198Raw);
   check('.198 role compatibility reconstructs the entire accepted .197 source before all unchanged historical seals', sha(role197Raw) === role198Pin.exact197RawSHA256 && source196HistoricalDigest('role-settlements', role197Raw) === PINS.files['role-settlements']);
