@@ -43,4 +43,86 @@ db.prepare('UPDATE members SET banned=1 WHERE discord_id IN(?,?)').run(ids[0],id
 db.prepare('UPDATE role_settlements SET native_profile=? WHERE native_profile<>?').run(PROFILE,PROFILE);db.prepare('UPDATE role_settlements SET native_rank=6 WHERE subject=? AND native_profile=?').run(A,PROFILE);check('without nonrestricted urgent work both slots may continue due restrictions',list().slice(0,2).every(r=>[ids[0],ids[1]].includes(r.subject)));
 check('internal target and restriction ordering fields never expand output columns',JSON.stringify(Object.keys(list()[0]))===JSON.stringify(['subject','top_rank','urgent']));
 check('priority doesnot alter GUID/bound/verification timestamps',JSON.stringify(db.prepare('SELECT guid,bound_at,verified_at FROM characters WHERE discord_id=?').get(A))===JSON.stringify(originalIdentity));
+
+if(args.length===0){
+// .241: the exact emitted selector, synthetic Native history and genuine-shaped
+// receipt/audit data. These remain scheduling hints, never effect authority.
+const PROFILE241='olympus-canonical-ranks-20261106-v1',GEN241='a'.repeat(32),SUBJECT241='999999999999999999',old241=Array.from({length:138},(_,i)=>(800000000000000000n+BigInt(i)).toString());
+const guid241=i=>'Player-4613-'+(0x20000000+i).toString(16).toUpperCase(),name241=i=>'delta fixture '+i,hex241=(n,size=32)=>BigInt(n).toString(16).padStart(size,'0');
+function fixture241(){
+ const d=new DatabaseSync(':memory:');d.exec(fs.readFileSync(path.join(W,'schema.sql'),'utf8'));let at=now;
+ d.function('strftime',(f,v)=>{assert.equal(f,'%s');assert.equal(v,'now');return String(at);});
+ const all=[...old241,SUBJECT241];for(let i=0;i<all.length;i++){const s=all[i];d.prepare('INSERT INTO members(discord_id)VALUES(?)').run(s);d.prepare("INSERT INTO privacy_subjects(subject_id,generation,state,revision,created_at,updated_at)VALUES(?,?,'active',0,?,?)").run(s,GEN241,now-200000,now-200000);d.prepare("INSERT INTO characters(name_key,name,discord_id,status,bound_at,verified_at,source,guid)VALUES(?,?,?,'member',?,?,'whisper',?)").run(name241(i),name241(i),s,now-200000,now-200000,guid241(i));}
+ const snapshot=(id,target,birth,others=8)=>{d.prepare("INSERT INTO roster_snapshots(id,exported_at,received_at,first_received_at,source,member_count,complete,trusted)VALUES(?,?,?,?,?,139,1,1)").run(id,Math.min(at,birth),Math.min(at,birth),birth,'synthetic-native241');for(let i=0;i<all.length;i++){const rank=all[i]===SUBJECT241?target:others;d.prepare('INSERT INTO roster_members(snapshot_id,name_key,name,guid,rank,rank_index)VALUES(?,?,?,?,?,?)').run(id,name241(i),name241(i),guid241(i),['Guild Master','Stewart','High Council','Officer','Officer Alt','Raid Leader','Veteran','Raider','Member','Initiate'][rank],rank);}};
+ const positive=(id,subject,rank,roster,birth,{g=GEN241,observed=false}={})=>{const role=rank===6?'1561096452057596005':rank===7?'1561096598296076460':rank===8?'1552077551839617104':'1561097105974628372';d.prepare("INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,attempts,claim_nonce,request_digest,subject_generation,roster_id,native_guid,native_profile,native_rank,native_rank_name,created_at,expires_at,checked_at)VALUES(?,?,'canonical_routine233',?,?,1,'settled',?,?,?,?,?,?,?,?,?,?,?,?,?)").run(id,subject,G,role,observed?'canonical233_observed_without_dispatch':'canonical233_put_acknowledged_and_confirmed',observed?0:1,observed?null:'c'.repeat(32),'d'.repeat(64),g,roster,guid241(all.indexOf(subject)),PROFILE241,rank,['Guild Master','Stewart','High Council','Officer','Officer Alt','Raid Leader','Veteran','Raider','Member','Initiate'][rank],birth,birth+300,birth+1);};
+ const attempt=(rank,n,result='held',age=0)=>d.prepare("INSERT INTO audit(ts,actor,action,subject,details)VALUES(?,'system','role.native232_attempt',?,?)").run(at-age,SUBJECT241,JSON.stringify({n,rank,result}));
+ snapshot(1,6,now-100000,9);snapshot(2,6,now-90000,8);snapshot(3,7,now-2,8);
+ for(let i=0;i<old241.length;i++)positive(hex241(i+1000),old241[i],9,1,now-99900);d.prepare("UPDATE role_settlements SET purpose='canonical_consumed233' WHERE subject<>?").run(SUBJECT241);
+ positive('b'.repeat(32),SUBJECT241,6,2,now-1000);attempt(6,2,'settled',999);
+ const query=()=>d.prepare(sql).all(G,'',50,0),work=()=>d.prepare(prefix+' SELECT * FROM ranked WHERE subject=?5').get(G,'',50,0,SUBJECT241);
+ return{d,all,snapshot,positive,attempt,list:query,facts:work,get at(){return at;},set at(v){at=v;},close:()=>d.close()};
+}
+{
+ const f=fixture241();check('241 138 genuine initial9to8 catchups no longer bury fresh6to7',f.list()[0]?.subject===SUBJECT241&&f.facts().native_delta_position===1&&f.list()[1]?.subject===old241[0]);
+ check('241 special priority retains exact three output keys',JSON.stringify(Object.keys(f.list()[0]))===JSON.stringify(['subject','top_rank','urgent']));
+ f.d.prepare("UPDATE members SET banned=1 WHERE discord_id=?").run(old241[0]);check('241 first due restriction stays ahead and delta uses only second slot',f.list()[0]?.subject===old241[0]&&f.list()[1]?.subject===SUBJECT241);f.close();
+}
+{
+ const f=fixture241();f.snapshot(4,7,now-1);check('241 unrelated later snapshot does not erase an unserved transition',f.list()[0]?.subject===SUBJECT241&&f.d.prepare(prefix+' SELECT id FROM native_tokens241 WHERE subject=?5').get(G,'',50,0,SUBJECT241)?.id===3);
+ f.d.prepare('UPDATE roster_snapshots SET exported_at=?,received_at=? WHERE id=4').run(now,now);check('241 identical refresh clocks do not replace immutable event birth',f.d.prepare(prefix+' SELECT first_received_at FROM native_tokens241 WHERE subject=?5').get(G,'',50,0,SUBJECT241)?.first_received_at===now-2);f.close();
+}
+{
+ const f=fixture241();f.attempt(7,3,'source_held');check('241 source-held same event retains original300backoff',!f.list().slice(0,2).some(x=>x.subject===SUBJECT241));f.at=now+301;check('241 source-held is not completion and same event becomes due after300',f.list()[0]?.subject===SUBJECT241);f.close();
+}
+for(const badN of[null,'3',-1,999999]){
+ const f=fixture241();f.attempt(7,badN,'held');check('241 malformed latest snapshot cannot repeatedly bypass backoff '+String(badN),!f.list().slice(0,2).some(x=>x.subject===SUBJECT241));f.at=now+301;check('241 malformed latest snapshot retains normal due retry '+String(badN),f.list()[0]?.subject===SUBJECT241);f.close();
+}
+for(const result of['held','unknown','source_held']){
+ const f=fixture241();f.positive('e'.repeat(32),SUBJECT241,7,3,now-1);f.attempt(7,3,result);f.at=now+301;check('241 '+result+' audit never completes token despite positive-shaped row',f.list()[0]?.subject===SUBJECT241);f.close();
+}
+for(const observed of[false,true]){
+ const f=fixture241();f.positive('e'.repeat(32),SUBJECT241,7,3,now-1,{observed});f.attempt(7,3,'settled');check('241 currentG original-shaped '+(observed?'observation':'ACK')+' plus settled audit handles event',f.facts().native_delta_position===null&&!f.list().slice(0,2).some(x=>x.subject===SUBJECT241));f.close();
+}
+{
+ const f=fixture241();f.positive('e'.repeat(32),SUBJECT241,7,3,now-1,{g:'f'.repeat(32)});f.attempt(7,3,'settled');f.at=now+301;check('241 oldG positive cannot corroborate an otherwise matching settled audit',f.list()[0]?.subject===SUBJECT241);f.close();
+}
+{
+ const f=fixture241();f.at=now+1;f.snapshot(4,6,now);f.d.prepare("INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,attempts,subject_generation,native_profile,native_rank,created_at,expires_at,checked_at)VALUES(?,?,'canonical_migration233',?,'1561096598296076460',1,'settled','canonical239_target_put_acknowledged_and_confirmed',1,?,'olympus-canonical-migration-20261106-v1',NULL,?,?,?)").run('a'.repeat(32),SUBJECT241,G,GEN241,now-1,now+299,now);
+ check('241 Native6to7to6 restores priority after M7 even raw last_rank remains6',f.facts().last_rank===6&&f.facts().new_target===0&&f.list()[0]?.subject===SUBJECT241);f.attempt(6,4,'settled');f.at=now+302;check('241 M target ACK cannot substitute for currentG routine event completion',f.list()[0]?.subject===SUBJECT241);f.close();
+}
+for(const [label,change]of[
+ ['unknown matched rank',d=>d.prepare('UPDATE roster_members SET rank=NULL,rank_index=NULL WHERE snapshot_id=3 AND name_key=?').run(name241(138))],
+ ['invalid matched rank',d=>d.prepare("UPDATE roster_members SET rank='Raider',rank_index='7bad' WHERE snapshot_id=3 AND name_key=?").run(name241(138))],
+ ['unknown matched GUID',d=>d.prepare('UPDATE roster_members SET guid=NULL WHERE snapshot_id=3 AND name_key=?').run(name241(138))],
+ ['name-only identity collision',d=>d.prepare("UPDATE roster_members SET guid='Player-4613-FFFFFFFF' WHERE snapshot_id=3 AND name_key=?").run(name241(138))],
+ ['GUID-only identity collision',d=>d.prepare("UPDATE roster_members SET name_key='changed name' WHERE snapshot_id=3 AND guid=?").run(guid241(138))],
+ ['duplicate GUID beside valid exact row',d=>{d.prepare("INSERT INTO roster_members(snapshot_id,name_key,name,guid,rank,rank_index)VALUES(3,'duplicate guid','duplicate guid',?,'Officer',3)").run(guid241(138));d.prepare('UPDATE roster_snapshots SET member_count=140 WHERE id=3').run();}],
+ ['duplicate GUID with unknown rank beside valid exact row',d=>{d.prepare("INSERT INTO roster_members(snapshot_id,name_key,name,guid,rank,rank_index)VALUES(3,'duplicate unknown guid','duplicate unknown guid',?,NULL,NULL)").run(guid241(138));d.prepare('UPDATE roster_snapshots SET member_count=140 WHERE id=3').run();}],
+ ['different physical name and GUID matches',d=>{d.prepare("UPDATE roster_members SET guid='Player-4613-FFFFFFFF' WHERE snapshot_id=3 AND name_key=?").run(name241(138));d.prepare("INSERT INTO roster_members(snapshot_id,name_key,name,guid,rank,rank_index)VALUES(3,'other physical row','other physical row',?,'Raider',7)").run(guid241(138));d.prepare('UPDATE roster_snapshots SET member_count=140 WHERE id=3').run();}],
+ ['partial snapshot',d=>d.prepare('UPDATE roster_snapshots SET complete=0 WHERE id=3').run()],
+ ['untrusted snapshot',d=>d.prepare('UPDATE roster_snapshots SET trusted=0 WHERE id=3').run()],
+ ['different source',d=>d.prepare("UPDATE roster_snapshots SET source='other-source' WHERE id=3").run()],
+ ['wrong complete count',d=>d.prepare('UPDATE roster_snapshots SET member_count=1 WHERE id=3').run()]
+ ]){const f=fixture241();f.at=now+1;f.snapshot(4,6,now);change(f.d);check('241 '+label+' is an unusable barrier, never inferred through MIN',f.facts().native_delta_position===null);f.close();}
+{
+ const f=fixture241();f.d.prepare("INSERT INTO characters(name_key,name,discord_id,status,bound_at,verified_at,source,guid)VALUES('old absent alt','old absent alt',?,'member',?,?,'whisper',?)").run(SUBJECT241,now-200000,now-200000,guid241(9999));check('241 both equality arms absent for a valid old link add no rank or ambiguity',f.list()[0]?.subject===SUBJECT241&&f.d.prepare(prefix+' SELECT top_rank FROM native_samples241 WHERE subject=?5 AND id=3').get(G,'',50,0,SUBJECT241)?.top_rank===7);f.close();
+}
+{
+ const f=fixture241();f.d.prepare('DELETE FROM characters WHERE discord_id=?').run(SUBJECT241);check('241 retained candidate without current member links has NULL sample and no delta',f.facts().native_delta_position===null&&f.d.prepare(prefix+' SELECT top_rank FROM native_samples241 WHERE subject=?5 AND id=3').get(G,'',50,0,SUBJECT241)?.top_rank===null);f.close();
+}
+{
+ const f=fixture241();f.d.prepare("INSERT INTO characters(name_key,name,discord_id,status,bound_at,verified_at,source,guid)VALUES('higher exact alt','higher exact alt',?,'member',?,?,'whisper',?)").run(SUBJECT241,now-200000,now-200000,guid241(9998));for(const id of[1,2,3]){f.d.prepare("INSERT INTO roster_members(snapshot_id,name_key,name,guid,rank,rank_index)VALUES(?,'higher exact alt','higher exact alt',?,'Raid Leader',5)").run(id,guid241(9998));f.d.prepare('UPDATE roster_snapshots SET member_count=140 WHERE id=?').run(id);}check('241 multiple exact linked Native rows preserve account MIN and no false transition',f.facts().top_rank===5&&f.facts().native_delta_position===null&&f.d.prepare(prefix+' SELECT top_rank FROM native_samples241 WHERE subject=?5 AND id=3').get(G,'',50,0,SUBJECT241)?.top_rank===5);f.close();
+}
+for(const birth of[0,now+1,now-86401]){
+ const f=fixture241();f.d.prepare('UPDATE roster_snapshots SET first_received_at=?,exported_at=?,received_at=? WHERE id=3').run(birth,now,now);check('241 immutable missing/future/old event birth falls back '+birth,f.facts().native_delta_position===null);f.close();
+}
+{
+ const f=fixture241();f.at=now+100;for(let i=4;i<=70;i++)f.snapshot(i,7,now+i);check('241 transition outside64samples plus baseline falls back without claiming complete history',f.facts().native_delta_position===null);f.close();
+}
+{
+ const f=fixture241();f.d.prepare("UPDATE roster_members SET rank='Raider',rank_index=7 WHERE snapshot_id=3 AND name_key=?").run(name241(0));f.at=now+1;f.snapshot(4,6,now);check('241 at most one due Native delta is promoted and initial catchup still gets other slot without restriction',f.list()[0]?.subject===old241[0]&&f.list()[1]?.subject===old241[1]&&f.facts().native_delta_position===2);f.close();
+}
+
+}
+
 db.close();console.log(passed+'/'+checks+' canonical238 exact-source priority checks');process.exitCode=passed===checks?0:1;

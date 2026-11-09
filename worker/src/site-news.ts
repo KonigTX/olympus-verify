@@ -78,6 +78,12 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".241", date: "2026-11-09", lines: [
+      "Recent in-game rank changes get priority while older rank updates catch up.",
+      "Existing verification and account-safety checks still apply.",
+    ],
+  },
+  {
     build: ".240", date: "2026-11-08", lines: [
       "Promotions and demotions keep syncing after older cosmetic rank roles are retired.",
       "The official OlympusVerify addon stays at 0.6.21.",

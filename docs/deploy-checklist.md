@@ -7859,3 +7859,16 @@ Rollback requires review of every actual role/nickname effect, reservation and r
 - Rollout: Codex Root only, actual squash/mainCI and exact tree custody; fresh local-restore-verified D1 backup443live/442portable; protected --keep-vars deployment with NativeE2/private5/seal/queue-off and unchanged dual schedules preserved; all90 probes with only exact owner robots/60s audit-bin allowances; healthy natural callbacks; attended RT16 empty-note readback.
 - Acceptance/cleanup: fresh real addon/Watcher sync and rank/nickname results remain separate live gates. Reconcile only from fresh facts. Exact17 role retirement and fixed2 channel reference cleanup require their separately reviewed current protocol/observations and original acknowledgements/closure; no C absence is relabelled M ACK, and no no-renew/drain/external-writer exclusion is inferred.
 - Rollback: preserve original failed/held/unknown custody and all pre-existing P235 operation namespaces; no automatic provider retry, watcher restart, ledger rewrite, or unverified restore.
+
+
+## Worker .241 — 9 November 2026: recent native rank changes before catch-up
+
+A genuine Veteran→Raider change was uploaded in Build .240 but waited behind an initial Initiate→Member reconciliation cohort. The selector now reserves at most one priority visit for an uncompleted recent Native rank transition, after the first due restriction. Other visits retain the existing ordering. When both a restriction and a held transition are due, they can occupy both visits; this does not promise unconditional catch-up progress.
+
+The hint uses a bounded 65-snapshot history, immutable first receipt time and a 24-hour transition horizon. Ambiguous or incomplete history falls back to the existing ordering. A settled current-generation canonical result corroborates completion; a held, unknown or source-held attempt does not. The normal retry delay, two-visit/request/statement limits and original identity, privacy and role-ownership admission remain in force. The audit records the snapshot actually captured by the issuer.
+
+The addon remains OlympusVerify 0.6.21 and the Watcher remains 0.6.19. No addon, download, site layout, schema or runtime configuration change accompanies this scheduler repair. Release evidence and original .240 failure remain in the append-only QA and shared task logs. A fresh exact-head qualification, review, main CI, backup and protected deployment are required for this build.
+
+**Rollout and rollback:** qualify and sign the exact .241 commit/tree, pass PR and main CI, take a fresh export with a successful local restore verification, then use the protected exact-commit deploy with unchanged bindings. Confirm public 90, both natural cron purposes and the attended rank/nickname checks before closing the release. If necessary, use the same protected process to return to prior main 637e7ce4ab72bf9a74be23acb3633aab3646145a (.240, including its known catch-up delay). No database restore or Watcher restart is part of that rollback.
+
+**Validation:** focused TypeScript and 301 assertions passed for the scheduler/static guard iteration. The final release-note/health-pin updates have their own focused leaves; a fresh full 334 run, exact-head hosted CI/review and live acceptance remain required and are recorded outside this historical Source log.
