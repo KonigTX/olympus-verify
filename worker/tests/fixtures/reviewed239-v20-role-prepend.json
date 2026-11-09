@@ -1,0 +1,18 @@
+{
+  "schema": "source239-v20-exact-role-prepend-v1",
+  "file": "role-settlements.ts",
+  "currentSHA256": "8ddf0098cf5504a514060c0f1af7346469e118e1b3ae306ba1386f05784fbb01",
+  "currentBytes": 321243,
+  "predecessorSHA256": "cd5274b3cf869759acf066a8d023fc66102d7db30267c7770eabac81edc713b0",
+  "predecessorBytes": 321224,
+  "edit": {
+    "from": "canonical239And([canonical239And([liveReservation,...reserveClauses]),`(${exactReceipts})`])",
+    "to": "canonical239And([liveReservation,...reserveClauses,`(${exactReceipts})`])",
+    "fromSHA256": "46cf8dbafe8cc6c54a949ef6a981c6c7b405a7847eddba0dd9e09f8cf7f57c84",
+    "toSHA256": "b8db6d9559a464f2a6059e72d02642dfbf19ac000b0f79b695910c32f77856ec",
+    "count": 1
+  },
+  "historicalV19FixtureSHA256": "5aa937108d4f2f8251b223225d7b16aa18e4f5b8eb7cdd1a4fe041c8178099ec",
+  "sourceOnly": true,
+  "currentWholeQualificationClaim": false
+}

@@ -106,6 +106,33 @@ const body239=String.raw`
  }
 
 
+ // .239 incoming-reference regression: these deliberately malformed fixture
+ // children never supply positive custody. Original Native grant/pending rows
+ // come from pendingFrom239; original deadlines are advanced past, not renewed.
+ for(const incoming239 of ['foreign_null_unknown','wrong_parent_role_pending','before_parent_pending','foreign_null_grandchild']){
+  const f=await pendingFrom239(),parentBytes239=JSON.stringify(rows().find(x=>x.id===f.grant.id));
+  if(incoming239==='wrong_parent_role_pending')await env.DB.prepare('UPDATE role_settlements SET role_id=?1 WHERE id=?2').bind(R,f.pending.id).run();
+  else if(incoming239==='before_parent_pending')await env.DB.prepare('UPDATE role_settlements SET created_at=?1,expires_at=?2 WHERE id=?3').bind(f.grant.checked_at-1,f.grant.checked_at+1,f.pending.id).run();
+  else await env.DB.prepare("INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,attempts,subject_generation,request_digest,created_at,expires_at)VALUES(NULL,?1,'canonical_routine233',?2,?3,1,'unknown','synthetic_foreign_incoming_reference',0,?4,?5,?6,?7)").bind('333333333333333333','444444444444444444',C.ADDON_DEVELOPER233.roleId,'9'.repeat(32),incoming239==='foreign_null_grandchild'?f.pending.id:f.grant.id,T,T+100).run();
+  const retained239=JSON.stringify(rows());T=Math.max(T,...rows().filter(x=>x.state==='pending').map(x=>x.expires_at))+1;await plan239(present,C.CANONICAL_RANKS233[4].roleId);r=await run233();
+  check('239 expired FROM '+incoming239+' globally holds before any reservation or role effect',r.state==='held'&&!r.targetOwned&&reservations239().length===0&&put()===0&&del()===0&&JSON.stringify(rows())===retained239&&JSON.stringify(rows().find(x=>x.id===f.grant.id))===parentBytes239);db.close();
+ }
+ {
+  const f=await pendingFrom239(),retained239=JSON.stringify(rows());T=f.pending.expires_at+1;await plan239(present,C.CANONICAL_RANKS233[4].roleId);r=await run233();
+  check('239 expired exact parent-bound pending still coexists without rewriting its Native parent or pending tuple',r.state==='settled'&&r.coordination.release==='original_native_update'&&put()===1&&del()===1&&JSON.parse(retained239).every(x=>JSON.stringify(rows().find(y=>y.id===x.id))===JSON.stringify(x)));db.close();
+ }
+ {
+  const f=await pendingFrom239();await env.DB.prepare("INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,attempts,claim_nonce,subject_generation,request_digest,created_at,expires_at,checked_at,native_profile)VALUES(?1,?2,'fresh_roster_rank',?3,?4,0,'held','native232_never_dispatched',1,?5,?6,?7,?8,?9,?8,?10)").bind('d'.repeat(32),A,G,legacy239,'e'.repeat(32),generation239,f.grant.id,T,T+100,N.NATIVE_RANK_PROFILE232).run();
+  const retained239=JSON.stringify(rows());T=f.pending.expires_at+1;await plan239(present,C.CANONICAL_RANKS233[4].roleId);r=await run233();
+  check('239 original exact never-dispatched exception remains allowed beside parent-bound pending',r.state==='settled'&&r.coordination.release==='original_native_update'&&put()===1&&del()===1&&JSON.parse(retained239).every(x=>JSON.stringify(rows().find(y=>y.id===x.id))===JSON.stringify(x)));db.close();
+ }
+ {
+  await setup239();r=await run233();const retained239=rows().filter(x=>x.purpose==='canonical_migration_remove233'),originalTarget239=rows().find(x=>x.purpose==='canonical_migration233');
+  if(r.state!=='settled'||retained239.length!==2)throw Error('239_original_alias_reference_positive_missing');
+  T++;await plan239(present,veteran239);r=await run233();
+  check('239 strict original different-role M alias children preserve retained target ownership for a later migration',r.state==='settled'&&r.coordination.release==='original_native_update'&&put()===1&&del()===1&&retained239.every(x=>JSON.stringify(rows().find(y=>y.id===x.id))===JSON.stringify(x))&&JSON.stringify(rows().find(x=>x.id===originalTarget239.id))===JSON.stringify(originalTarget239));db.close();
+ }
+
  // Retired live selection is not a deletion allowlist. These parents are
  // genuine original Native grants, not inserted/mutated positive receipts.
  for(const legacyMode239 of ['off','absent']){

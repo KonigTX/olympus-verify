@@ -25,6 +25,8 @@ const subtle = globalThis.crypto.subtle;
 const sha = (b) => nodeCrypto.createHash("sha256").update(b).digest("hex");
 if(sha(fs.readFileSync(path.join(__dirname,'source230-membership-static-projection.cjs')))!=='eb38cbf11209b4ef56f052e5e54b117d6fffdbd40d764faa00aa5708468c5f63')throw Error('reviewed230 Link helper differs');
 const source230=require('./source230-membership-static-projection.cjs');
+if(sha(fs.readFileSync(path.join(__dirname,'source239-migration-static-projection.cjs')))!=='010dc673a291c8fd587d6afc17f05ee1e9c904c16fd3077837e7d31aad0a1408')throw Error('reviewed239 static role helper differs');
+const source239=require('./source239-migration-static-projection.cjs');
 // Upstream's web/test/fixtures/vectors.json at d03ea8a9 with every seed* field and the two derivable backend "token"
 // fields removed (its own "about" says so); pinned, so a changed fixture is a reviewed change. Each token is rebuilt here
 // exactly as upstream defines it: payload + "." + signature_b64url.
@@ -486,7 +488,9 @@ async function councillorLink(core, token, requester, issued, c) {
   const IMPORT = 'import { appendLinkBlock } from "./link"; // .186: the Olympus Link code, last in the two code replies; off, the very same string\n';
   const OPEN = "return reply(await appendLinkBlock(env, user,\n", CLOSE = '].join("\\n")),\n  );';
   const baselineSource = current.split(IMPORT).join("").split(OPEN).join("return reply(\n").split(CLOSE).join('].join("\\n"),\n  );');
-  for(const[name,ok]of Object.entries(source230.checks(path.join(root,'src'))))check('.230 exact source static inverse '+name,ok);
+  for(const[name,ok]of Object.entries(source239.checks(path.join(root,'src'))))check('.239 finite static role prepend '+name,ok);
+  for(const row of source239.controls(path.join(root,'src')))check('.239 static role refuses '+row.name,row.refused);
+  source239.withStaticView(path.join(root,'src'),static239=>{for(const[name,ok]of Object.entries(source230.checks(static239)))check('.230 exact source static inverse '+name,ok);});
   const current229=source230.inverse('interactions',current);
   const compatibility210=require('./reviewed_source_compat210.cjs'),historical210=compatibility210.originalLinkInteractions(current229);
   const historical185=historical210===null?null:historical210.split(IMPORT).join("").split(OPEN).join("return reply(\n").split(CLOSE).join('].join("\\n"),\n  );');
