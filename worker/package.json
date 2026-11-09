@@ -78,8 +78,8 @@
     "test:migration239": "node tests/canonical_migration239_native_test.cjs && node tests/canonical_migration239_workerd_test.cjs"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "5.20261023.1",
+    "@cloudflare/workers-types": "5.20261102.1",
     "typescript": "5.9.3",
-    "wrangler": "4.155.0"
+    "wrangler": "4.156.1"
   }
 }
