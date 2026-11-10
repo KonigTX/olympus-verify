@@ -1,8 +1,9 @@
 -- POST-DEPLOY .242 checks. Authored before deployment; do not treat syntax
 -- compilation as execution or native mailbox/trade/Discord acceptance.
 local passed, failed = 0, 0
+local failureLabels = {}
 local function check(label, value)
-  if value then passed=passed+1;print("PASS "..label) else failed=failed+1;print("FAIL "..label) end
+  if value then passed=passed+1;print("PASS "..label) else failed=failed+1;failureLabels[#failureLabels+1]=label;print("FAIL "..label) end
 end
 local function fixture(withTreasury)
   local e=setmetatable({},{__index=_G});e._G=e
@@ -451,4 +452,4 @@ do
   check("collector-reported delivery cannot satisfy signed mail-deletion authority",row.status=="done" and row.serverReceipt==nil and m.deletes==0)
 end
 print(string.format("live242: %d passed, %d failed",passed,failed))
-if failed>0 then error("live242 post-deploy checks failed") end
+if failed>0 then error("live242 post-deploy checks failed: "..table.concat(failureLabels," | ")) end
