@@ -142,11 +142,19 @@ export const CANONICAL233_WALK_SELECT=`WITH candidates AS (
 // .249: a continuation visits each candidate once in its fixed-snapshot sweep.
 // Keep the original selectors intact for ordinary priority/source consumers.
 function finiteSweep249(sql:string):string{
- const boundary='FROM candidates)',projection='facts AS (';
- if(sql.split(boundary).length!==2||sql.split(projection).length!==2)throw Error('native249_selector_boundary');
- // .253: D1 must not re-expand the same correlated facts through every reused
- // priority/history branch. This is one statement snapshot, not new authority.
- return sql.replace(projection,'facts AS MATERIALIZED (').replace(boundary,`FROM candidates WHERE typeof(subject)='text' AND length(subject) BETWEEN 17 AND 20 AND subject NOT GLOB '*[^0-9]*'
+ const boundary='FROM candidates)';
+ if(sql.split(boundary).length!==2)throw Error('native249_selector_boundary');
+ // .254: facts alone did not bound production D1's repeated CTE expansion.
+ // Materialize only these fixed projections; all predicates/order stay intact,
+ // and the three existing MATERIALIZED history/row/sample CTEs stay exact.
+ const names=['candidates','facts','latest_native241','native_ordered241','native_events241','native_event_ids241','native_tokens241','targets','work','restriction_order','native_delta_order241','ranked'];
+ let finite=sql,changed=0;
+ for(const name of names){const marker=name+' AS (',occurrences=sql.split(marker).length-1;
+  if(occurrences>1)throw Error('native254_materialization_boundary');
+  if(occurrences===1){finite=finite.replace(marker,name+' AS MATERIALIZED (');changed++;}
+ }
+ if(changed!==(sql===CANONICAL233_WALK_SELECT?12:sql===NATIVE232_WALK_SELECT?3:-1))throw Error('native254_materialization_inventory');
+ return finite.replace(boundary,`FROM candidates WHERE typeof(subject)='text' AND length(subject) BETWEEN 17 AND 20 AND subject NOT GLOB '*[^0-9]*'
  AND NOT EXISTS(SELECT 1 FROM privacy_subjects privacy249 WHERE privacy249.subject_id=candidates.subject AND privacy249.state<>'active')
  AND NOT EXISTS(SELECT 1 FROM audit checked WHERE checked.actor='system' AND checked.action='role.native232_attempt' AND checked.subject=candidates.subject
  AND json_extract(CASE WHEN json_valid(checked.details) THEN checked.details ELSE '{}' END,'$.walk')=?5))`);

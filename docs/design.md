@@ -2432,3 +2432,8 @@ Mail uniqueness is historical within a content instance, not merely a count ofon
 ### Build .253 — production D1 query planning
 
 The finite fixed-snapshot scheduler materializes its repeated facts projection so production D1 does not recursively expand its correlated priority/history branches. Original selectors, filters, order, bounds, privacy/current-source issuer and unknown-effect discipline are preserved. This is a Worker-only change; addon and Watcher remain 0.6.25. The .252 production failure and Duke rank discrepancy remain preserved until actual production D1 and guarded role readbacks qualify the repair. Owner-directed deployment precedes affected tests/hosted CI.
+
+
+### Build .254 — finite production query boundaries
+
+Production D1 still rejected the .253 facts-only boundary. The finite selector now materializes an explicit allowlist of its reused CTEs, preserving the exact original selectors, filters, ordering and limits. Source and effect authority are unchanged. The .253 post-serving actual D1 failures and its local52/82 component passes are retained separately. Worker-only; addon/Watcher stay0.6.25. Actual D1 query and guarded live-role readbacks remain decisive after deployment.
