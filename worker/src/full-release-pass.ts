@@ -513,6 +513,7 @@ export async function runFreshPass(env:Env,io:Readonly<{calls:CallBudget;adm?:Ad
  * admission and shared request budget. It never feeds new rows to old ten-rank
  * consumers, nor treats an old unknown as a completed transition. */
 async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admission;reserve?:number;sweep?:NativeSweep249}>,trigger:FreshTrigger,cap:LaneCapture):Promise<FreshPassResult>{
+ const began=Date.now();
   let workRemaining=false,nativeSweep:NativeSweep249|undefined;
   const counts=emptyCounts(),t=now(),done=(state:FreshPassResult['state'],reason:string):FreshPassResult=>Object.freeze({state,reason,counts:Object.freeze({...counts}),continuation:state==='done'&&workRemaining,...(state==='done'&&workRemaining&&nativeSweep?{nativeSweep}:{})}),selected=cap.native232;
  if(!selected||selected.mode!=='enabled'||!selected.policy||!cap.current())return done('held','native232_configuration_held');
@@ -549,6 +550,8 @@ async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admis
   // Each subject is admitted against physical SQL and HTTP room, rather than a fixed two-account quota.
   const subjectLimit=10; // Re-evaluate live SQL/HTTP room before each visit; a cheap held account must not consume a worst-case slot.
   for(const row of window){
+   // Finish the current account and leave time for durable progress, lease release and the signed next invocation.
+   if(visited>0&&Date.now()-began>=12000){stop='wall_clock_budget';workRemaining=true;break;}
    if(visited>=subjectLimit){workRemaining=true;break;}
    if(!ID.test(row.subject)){st.g=row.subject;continue;}
    if(!cap.current()){stop='lane_configuration_changed';break;}

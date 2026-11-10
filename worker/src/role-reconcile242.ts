@@ -27,6 +27,7 @@ export async function requestRoleReconciliation242(env:Env,subject:string,reason
  * An unsuccessful visit is reported as held; it is never an ACK or an automatic
  * retry of a spent effect. A new request can re-evaluate current source facts. */
 async function requested242(env:Env):Promise<boolean>{
+ const began=Date.now();
  const {runNativeSubject232}=await import('./full-release-pass');
  const count={used:0},bounded=countStatements(env,count),calls=callBudget(bounded);
  const rows=await bounded.DB.prepare(`SELECT a.id,a.subject FROM audit a
@@ -36,6 +37,7 @@ async function requested242(env:Env):Promise<boolean>{
  ORDER BY a.id LIMIT 11`).all<{id:number;subject:string}>();
  let visited=0;
  for(const row of rows.results){
+  if(visited>0&&Date.now()-began>=12000)break;
   if(count.used+200>850||calls.limit-calls.attempts<12||visited>=4)break;
   if(!ID.test(row.subject))continue;
   const capture=await readPrivacySubject(bounded,row.subject);

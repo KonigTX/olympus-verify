@@ -284,7 +284,6 @@ export default {
        const verification242=captureLaunchVerification(env);
        if(verification242.mode==='members-only'&&verification242.scope&&verification242.current()){
         deferOriginalServing(ctx,'roles242_requests',()=>kickRoleWork242(env,'requests'));
-        if(path==='/ingest/roster')deferOriginalServing(ctx,'roles242_sweep',()=>kickRoleWork242(env,'sweep'));
        }
       }
       // The watcher polls /queue every 30 seconds while an officer is online, which is exactly when promotions happen.
@@ -741,7 +740,7 @@ async function freshRegistrationRefused(env: Env, trigger: string): Promise<void
 }
 
 /** Bumped with every change that needs a redeploy, so GET /health shows which build is live. */
-const BUILD = "2026-11-10.256 Efficient production role batches";
+const BUILD = "2026-11-10.257 Reliable rank batch handoffs";
 
 /**
  * Presence of each secret (never the value) and a D1 round trip — enough to tell a missing `wrangler secret put` from a

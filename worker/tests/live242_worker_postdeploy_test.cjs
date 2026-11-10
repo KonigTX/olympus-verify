@@ -63,16 +63,17 @@ function load(name,imports={},extra={}){
  const {DatabaseSync}=require('node:sqlite'),queueDb252=new DatabaseSync(':memory:');
  try{
   queueDb252.exec('CREATE TABLE audit(id INTEGER PRIMARY KEY AUTOINCREMENT,ts INTEGER,actor TEXT,action TEXT,subject TEXT,details TEXT);CREATE TABLE privacy_subjects(subject_id TEXT PRIMARY KEY,generation TEXT,state TEXT,revision INTEGER);');
-  let onSelected252=null,count252;const nativeVisits252=[],deferred252=[];
+  let onSelected252=null,count252,wall252=Date.now(),slowVisit257=false;const nativeVisits252=[],deferred252=[];
+  const Date252=class extends Date{static now(){return wall252;}};
   const queueEnv252={DB:{prepare(sql){let args=[];const statement=queueDb252.prepare(sql);return{bind(...values){args=values;return this;},async all(){if(count252)count252.used++;const results=statement.all(...args);if(sql.includes('SELECT a.id,a.subject FROM audit a')){const hook=onSelected252;onSelected252=null;hook?.();}return{results};},async first(){if(count252)count252.used++;return statement.get(...args)??null;},async run(){if(count252)count252.used++;return{meta:{changes:Number(statement.run(...args).changes)}};}};}}};
   const privacy252={readPrivacySubject:async(e,id)=>e.DB.prepare('SELECT subject_id AS subject,generation AS subjectGeneration,state,revision FROM privacy_subjects WHERE subject_id=?1').bind(id).first()};
   const originalAudit252=load('db'),queue252=load('role-reconcile242',{
    './db':originalAudit252,'./privacy-serving-authority':privacy252,
    './roster-effects':{countStatements:(e,c)=>{count252=c;c.protocol=true;c.factor=1;return e;}},
    './roles':{callBudget:()=>({limit:40,attempts:0})},
-   './full-release-pass':{runNativeSubject232:async(_e,id)=>{count252.used+=180;nativeVisits252.push(id);return{state:id.endsWith('900')?'unknown':'held',reason:'synthetic_original_privacy_or_unknown_guard'};}},
+   './full-release-pass':{runNativeSubject232:async(_e,id)=>{count252.used+=180;nativeVisits252.push(id);if(slowVisit257)wall252+=12001;return{state:id.endsWith('900')?'unknown':'held',reason:'synthetic_original_privacy_or_unknown_guard'};}},
    './log':{errorRef:()=> 'synthetic'},
-  });
+  },{Date:Date252});
   const enqueue252=(id,privacy=true)=>{if(privacy)queueDb252.prepare("INSERT INTO privacy_subjects VALUES(?,'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','active',0)").run(id);queueDb252.prepare("INSERT INTO audit(ts,actor,action,subject,details)VALUES(1,'system','role.request242',?,'{}')").run(id);};
   const inactive252=Array.from({length:11},(_,n)=>(200000000000000000n+BigInt(n)).toString());
   for(const[id,n]of inactive252.map((id,n)=>[id,n])){enqueue252(id);queueDb252.prepare('UPDATE privacy_subjects SET state=? WHERE subject_id=?').run(n%2?'retired':'retiring',id);}
@@ -90,6 +91,11 @@ function load(name,imports={},extra={}){
   check('252 current privacy recheck blocks a request retired after selection',()=>{assert(!nativeVisits252.includes(raced252));assert.equal(queueDb252.prepare("SELECT COUNT(*) n FROM audit WHERE action='role.request242_finished' AND subject=?").get(raced252).n,0);assert.equal(deferred252.length,0);});
   await queue252.runRoleWork242(queueEnv252,'requests',(label,work)=>deferred252.push({label,work}));
   check('252 inactive-only remainder terminates without self-wake or original mutation',()=>{assert.equal(deferred252.length,0);assert.equal(nativeVisits252.length,2);assert.equal(queueDb252.prepare("SELECT COUNT(*) n FROM audit WHERE action='role.request242' AND subject=?").get(raced252).n,1);});
+  const slow257='200000000000000903',waiting257='200000000000000904';enqueue252(slow257);enqueue252(waiting257);slowVisit257=true;
+  await queue252.runRoleWork242(queueEnv252,'requests',(label,work)=>deferred252.push({label,work}));
+  check('257 elapsed request admission finishes one held visit and leaves the next request untouched',()=>{assert.equal(nativeVisits252.at(-1),slow257);assert(!nativeVisits252.includes(waiting257));assert.equal(queueDb252.prepare("SELECT COUNT(*) n FROM audit WHERE action='role.request242_finished' AND subject=?").get(slow257).n,1);assert.equal(queueDb252.prepare("SELECT COUNT(*) n FROM audit WHERE action='role.request242_finished' AND subject=?").get(waiting257).n,0);assert.equal(deferred252.length,1);assert.equal(deferred252[0].label,'roles242_continue');});
+  slowVisit257=false;await queue252.runRoleWork242(queueEnv252,'requests',()=>{});
+  check('257 remaining request is still checked on a later invocation without replaying the finished visit',()=>{assert.equal(nativeVisits252.filter(id=>id===slow257).length,1);assert.equal(nativeVisits252.filter(id=>id===waiting257).length,1);assert.equal(queueDb252.prepare("SELECT COUNT(*) n FROM audit WHERE action='role.request242_finished' AND subject=?").get(waiting257).n,1);});
  }finally{queueDb252.close();}
  console.log(JSON.stringify({scope:'postdeploy-memory-components-only',checks,passed:checks,liveEffects:false,nativeIdentityQualified:false}));
 })().catch(e=>{console.error(e);process.exitCode=1;});

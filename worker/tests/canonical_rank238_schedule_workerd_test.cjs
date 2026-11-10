@@ -32,7 +32,7 @@ async function build(qualified,label){
 }
 function packets(text){const x=JSON.parse(text);return Array.isArray(x)?x:[x];}
 async function run(qualified,label,scenario,source){
- const present=new Map([[A,[HIGH]],[B,[HIGH]]]),http=[],selfWakes=[],selfNonces=new Set(),outboundRefusals=[];let mf,callbackPhase=false;
+ const present=new Map([[A,[HIGH]],[B,[HIGH]]]),http=[],selfWakes=[],selfNonces=new Set(),outboundRefusals=[];let mf,callbackPhase=false,slowResponses257=0;
  try{
   mf=new Miniflare(convertV4MiniflareOptions({rootPath:path.join(out,label+'-'+scenario),script:source,modules:true,name:'canonical238',compatibilityDate:'2026-09-01',compatibilityFlags:['nodejs_compat'],host:'127.0.0.1',port:0,cf:false,log:new Log(LogLevel.ERROR),logRequests:false,telemetry:{enabled:false},unsafeRegisterWorker:false,unsafeLocalExplorer:false,unsafeObservability:false,resourceTmpPath:path.join(out,label+'-'+scenario,'tmp'),resourcePersistencePath:path.join(out,label+'-'+scenario,'persist'),isolatedResourcePersistencePath:path.join(out,label+'-'+scenario,'isolated'),bindings:{CASE238:scenario},d1Databases:{DB_veteran:'canonical238-'+label+'-'+scenario},outboundService:async req=>{
    try{
@@ -54,6 +54,8 @@ async function run(qualified,label,scenario,source){
     return new Response(null,{status:202});
    }
    assert.equal(u.origin,'https://discord.com','only_mock_discord');assert.equal(req.headers.get('authorization'),'Bot '+seed.config.DISCORD_BOT_TOKEN+'-veteran','fixed_mock_token');
+   // Real elapsed time, with every individual response below the original eight-second credential deadline.
+   if(scenario==='slow-subject'&&callbackPhase&&slowResponses257<4){slowResponses257++;await new Promise(resolve=>setTimeout(resolve,3100));}
    http.push({method:req.method,path:p,callback:callbackPhase});
    if(req.method==='GET'&&p==='/users/@me')return Response.json({id:BOT,bot:true});
    if(req.method==='GET'&&p==='/guilds/'+G+'/roles')return Response.json([{id:G,name:'@everyone',position:0,permissions:'0',managed:false},{id:BOTROLE,name:'Synthetic Bot',position:40,permissions:'268435456',managed:false},{id:HIGH,name:'Synthetic Unowned',position:50,permissions:'0',managed:false},{id:BLOCK,name:'Synthetic Blocker',position:1,permissions:'0',managed:false},...ranks.map(([name,id],i)=>({id,name,position:30-i,permissions:'0',managed:false}))]);
@@ -87,6 +89,10 @@ async function run(qualified,label,scenario,source){
    if(scenario==='positive'){check(label+' two independent accounts replaced by one current Raider each',effects.length===4&&[A,B].every(id=>present.get(id).includes(ranks[8][1])&&!present.get(id).includes(ranks[7][1])&&present.get(id).includes(HIGH)));check(label+' actual pass visits at most2 with two owned new canonical ACKs',r.rows.filter(x=>x.purpose==='canonical_routine233'&&x.desired===1&&x.state==='settled'&&x.reason==='canonical233_put_acknowledged_and_confirmed').length===2);}
    if(scenario==='stale')check(label+' stale preflight produces no pass/attempt or effect',effects.length===0&&!r.rows.some(x=>x.purpose==='canonical_routine233')&&r.cost.jobs.find(x=>x.job==='runCanonicalRankPass').statements===2);
    if(scenario==='interval')check(label+' old global300s stamp does not suppress owed Native Raider delta',effects.length===4&&[A,B].every(id=>present.get(id).includes(ranks[8][1])&&ranks.filter(([,role])=>present.get(id).includes(role)).length===1&&present.get(id).includes(HIGH)&&effects.filter(x=>x.path.includes('/members/'+id+'/')).length===2&&effects.some(x=>x.method==='PUT'&&x.path==='/guilds/'+G+'/members/'+id+'/roles/'+ranks[8][1])&&effects.some(x=>x.method==='DELETE'&&x.path==='/guilds/'+G+'/members/'+id+'/roles/'+ranks[7][1]))&&r.rows.filter(x=>x.purpose==='canonical_routine233'&&x.desired===1&&x.state==='settled'&&x.attempts===1&&x.reason==='canonical233_put_acknowledged_and_confirmed'&&x.role_id===ranks[8][1]).length===2);
+   if(scenario==='slow-subject'){
+    check(label+' slow original account finishes its own ACK and stops before another account',slowResponses257===4&&r.passState?.stop==='wall_clock_budget'&&r.passState.visits===1&&effects.length===2&&[A,B].filter(id=>present.get(id).includes(ranks[8][1])&&!present.get(id).includes(ranks[7][1])).length===1&&[A,B].filter(id=>present.get(id).includes(ranks[7][1])&&!present.get(id).includes(ranks[8][1])).length===1&&r.rows.filter(x=>x.purpose==='canonical_routine233'&&x.desired===1&&x.state==='settled'&&x.attempts===1&&x.reason==='canonical233_put_acknowledged_and_confirmed').length===1);
+    check(label+' wall stop schedules the same durable generation without claiming child effects',selfWakes.some(w=>w.body.kind==='sweep'&&w.body.sweep?.id===r.passState.walk&&w.body.sweep.n===r.passState.n&&w.childExecuted===false&&w.roleACK===false));
+   }
    if(scenario==='unknown')check(label+' all-generation unknown prevents selected account replacement',r.rows.some(x=>x.state==='unknown'&&x.attempts===0)&&!effects.some(x=>x.path.includes('/members/'+A+'/')));
    if(scenario==='lost-put')check(label+' lost PUT remains unknown without replay or deletion of its new target',r.rows.some(x=>x.state==='unknown'&&x.attempts===1)&&effects.filter(x=>x.method==='PUT'&&x.path.includes('/members/'+A+'/')).length===1&&!effects.some(x=>x.method==='DELETE'&&x.path.endsWith('/'+ranks[8][1])));
    const previous=http.length,repeat=await worker.scheduled({cron:'* * * * *'});check(label+'/'+scenario+' immediate second callback retains30s/no replay',repeat.outcome==='ok'&&repeat.noRetry===true&&http.length===previous);
@@ -100,7 +106,7 @@ async function run(qualified,label,scenario,source){
  await run(shippingQualified,'actual-source','positive',actual);
  await run(!shippingQualified,'one-literal-variant','positive',opposite);
  const qualifiedSource=shippingQualified?actual:opposite,label=shippingQualified?'actual-source':'one-literal-variant';
- for(const scenario of ['collision','inactive','native-off','wrong-layout','interval','stale','unknown','lost-put'])await run(true,label,scenario,qualifiedSource);
+ for(const scenario of ['collision','inactive','native-off','wrong-layout','interval','stale','unknown','lost-put','slow-subject'])await run(true,label,scenario,qualifiedSource);
  for(const p of allPins.values())assert.equal(H(fs.readFileSync(p.path)),p.sha256,'all_source_inputs_preserved');check('all original source and fixture bytes remain exact',true);complete=true;
  }finally{
  const report={schema:'canonical-rank238-genuine-scheduled-local-v1',complete,checks,shippingQualified,operationalSourceQualification:false,actualShippingLiteralGenuineScheduledComponentQualified:complete&&shippingQualified,unpublishedVariantDoesNotQualifyShippingFalse:!shippingQualified,layoutScope:['recorded-live-pre-seal-20261017'],otherLayoutsQualified:false,results,compiled,sourcePins:[...allPins.values()],providerCalls:0,clockOverride:false,handlerOverride:false,continuationBoundary:{schedulingOnly:true,childExecuted:false,roleACK:false,exactSignedSelfPOSTValidated:true},out};

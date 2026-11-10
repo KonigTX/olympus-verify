@@ -524,7 +524,13 @@ export type FreshIngest = Readonly<{ cap: LaneCapture; defer: (label: string, wo
  * or /queue poll runs the pass instead. */
 async function deferFreshIngest(env: Env, counted: Env, count: StatementCount, holder: { calls?: CallBudget }, fresh: FreshIngest): Promise<void> {
   try {
-    fresh.defer("fresh_roles_ingest", () => import("./full-release-pass").then((m) => m.runFreshPass(counted, { calls: holder.calls ?? callBudget(env), adm: fresh.cap.native232?.present ? m.nativeAdmission232(count, ROSTER_INGEST_STATEMENTS) : m.freshAdmission(count, ROSTER_INGEST_STATEMENTS) }, "ingest", fresh.cap)));
+    fresh.defer("fresh_roles_ingest", async () => {
+      const m = await import("./full-release-pass");
+      const result = await m.runFreshPass(counted, { calls: holder.calls ?? callBudget(env), adm: fresh.cap.native232?.present ? m.nativeAdmission232(count, ROSTER_INGEST_STATEMENTS) : m.freshAdmission(count, ROSTER_INGEST_STATEMENTS) }, "ingest", fresh.cap);
+      // runFreshPass has completed its current account and released its lease before this new invocation is scheduled.
+      if (result.continuation && result.nativeSweep) await (await import("./role-reconcile242")).kickRoleWork242(env, "sweep", result.nativeSweep);
+      return result;
+    });
   } catch {
     try {
       await audit(counted, "system", "role.fresh_failed", "ingest", { error: "registration_refused" }); // full-release-roles FRESH_AUDIT.failed

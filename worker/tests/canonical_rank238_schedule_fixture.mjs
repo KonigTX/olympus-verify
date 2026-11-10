@@ -58,7 +58,8 @@ export function fixture238(seed){const spent=new Set(),saved=new Map();let callb
   const rows=(await s.db.prepare("SELECT id,purpose,role_id,desired,state,reason,attempts FROM role_settlements ORDER BY created_at,id").all()).results;
   const originalAfter=(await s.db.prepare("SELECT * FROM role_settlements WHERE id IN(SELECT value FROM json_each(?1)) ORDER BY id").bind(JSON.stringify(s.originalACKs.map(r=>r.id))).all()).results;
   const control=await s.db.prepare("SELECT epoch,mode,active,nonce,purpose FROM privacy_write_admission").first();
-  return Response.json({scenario:s.scenario,observation,observationError,cost,rows,wires:s.wires,start:s.start,end:callbackEnd,originalACKsUnchanged:JSON.stringify(s.originalACKs)===JSON.stringify(originalAfter),controlUnchanged:JSON.stringify(control)===JSON.stringify(s.beforeControl),clockOverride:false,handlerOverride:false,providerCalls:0});
+  const passState=(await s.db.prepare("SELECT details FROM audit WHERE actor='system' AND action='role.fresh_state' AND subject='scheduled' ORDER BY id DESC LIMIT 1").first())?.details;
+  return Response.json({scenario:s.scenario,observation,observationError,cost,rows,passState:passState?JSON.parse(passState):null,wires:s.wires,start:s.start,end:callbackEnd,originalACKsUnchanged:JSON.stringify(s.originalACKs)===JSON.stringify(originalAfter),controlUnchanged:JSON.stringify(control)===JSON.stringify(s.beforeControl),clockOverride:false,handlerOverride:false,providerCalls:0});
  }
 
  const kind=new URL(request.url).pathname.slice(1),kinds=['gm','stewart','veteran','member','unknown0','put-unknown','entitlement','migration','empty-from','empty-mismatch','empty-nonmember','empty-unknown'];

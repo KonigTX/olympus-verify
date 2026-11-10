@@ -7970,3 +7970,8 @@ Production D1 rejects the original finite selector across .252, .253 and .254. T
 ## Worker .256 - 2026-11-10.256 Efficient production role batches
 
 The .255 actual production D1 selector compiled and ran, but read65033887 rows in26888ms. The CTE-free helper now retains derived-table optimization barriers with LIMIT -1 OFFSET0 while preserving all body values, filters, aliases, priority/order and bind positions. Original failed attempts and the .255 performance result are retained. Addon/Watcher remain0.6.25. Actual production D1 duration/reads and current guarded Native effects are required after deployment; this source entry alone asserts neither. The static beta oracle timestamp is restored exactly to253402300799999 after the prior metadata replacement error.
+
+
+## Worker .257 - 2026-11-10.257 Reliable rank batch handoffs
+
+Production .256 reduced SQL execution to1668ms but actual deferred continuations can exceed the30s provider window. Native passes and requested-account passes now stop before starting another account after a12s soft admission window, preserving the completed current account and the original finite generation. The roster ingest pass owns its same-generation handoff after releasing its lease; the parallel competing outer roster kick is removed. Physical/HTTP/max-subject limits and all current-source/privacy/unknown-effect writers remain. A slow individual account may still exceed the soft bound; the timer never cancels an in-flight effect. Addon/Watcher remain0.6.25. Actual complete guarded batch progress, hosted CI and exact-head review remain separate release gates.
