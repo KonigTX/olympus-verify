@@ -333,6 +333,7 @@ local function member626(secret)
   x.e.GetGuildInfo=function() return "OLYMPUS PRIME","Member",8 end
   x.e.GetNumGuildMembers=function() return #x.nativeRows end
   x.rosterRequests=0;x.e.GuildRoster=function() x.rosterRequests=x.rosterRequests+1 end
+  x.e.C_GuildInfo.GuildRoster=x.e.GuildRoster
   x.nativeReads=0
   x.e.GetGuildRosterInfo=function(i) x.nativeReads=x.nativeReads+1;local r=x.nativeRows[i];if r then return r.name,"rank",r.rank,60,"class","zone","","",r.online,nil,"WARRIOR",0,0,false,false,0,r.guid end end
   if not secret then x.e.OlympusVerifyConfig.secret=nil end
