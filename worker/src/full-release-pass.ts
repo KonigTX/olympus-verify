@@ -16,6 +16,7 @@ import type { CallBudget } from './roles';
 import type { PrivacyReference } from './db';
 import { audit, now } from './db';
 import { logLine } from './discord';
+import { errorRef } from './log';
 import { identifyNativeProfile } from './native-rank-adapter';
 import { privacyCaptureFromColumns,privacyGenerationExpressionFenceSql,readPrivacySubject } from './privacy-serving-authority';
 import { DB_NOW,randomGeneration } from './account-generation-contracts';
@@ -535,7 +536,7 @@ async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admis
  // reads, every final admission and one owned compensation. Measured fixtures
  // must stay within this conservative physical-statement reservation.
   const subjectBound=NATIVE_SUBJECT232_STATEMENTS+NATIVE_SWEEP249_PROGRESS_STATEMENTS,admit=(n:number)=>{if(adm)return room(adm,NATIVE_CLOSE232_STATEMENTS)>=n;if(local.used+n+NATIVE_CLOSE232_STATEMENTS>limit)return false;local.used+=n;return true;};
- let lease:string|null=null;
+ let lease:string|null=null,leaseAcknowledged=false;
  try{
   if(!admit(NATIVE_OPEN232_STATEMENTS))return done('held','statement_budget');
   const recent=await env.DB.prepare(L.FRESH_INTERVAL_SELECT).first<{ts:number;action:string;snapshot_id:number|null}>(),snapshot=(await env.DB.prepare(L.NEWEST_SNAPSHOT_SELECT).first<{id:number|null}>())?.id??null;
@@ -544,7 +545,12 @@ async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admis
    if(io.sweep&&io.sweep.n!==snapshot)return done('skipped','native249_sweep_superseded');
   if(recent&&trigger==='watcher'&&t-recent.ts<30)return done('skipped','interval');
   if(!cap.current())return done('held','lane_configuration_changed');lastFreshLocal=t;
-  lease=L.freshLeaseValue(t+L.FRESH_LEASE_SECONDS,randomGeneration());if(!await env.DB.prepare(L.FRESH_LEASE_ACQUIRE).bind(lease).first()){lease=null;return done('skipped','lease_held');}
+  // Keep the exact candidate even if its committed acquisition reply is lost.
+  // Only the original acknowledgement admits work; finally may clear only this value.
+  lease=L.freshLeaseValue(t+L.FRESH_LEASE_SECONDS,randomGeneration());
+  const acquired=await env.DB.prepare(L.FRESH_LEASE_ACQUIRE).bind(lease).first<{key:string}>();
+  if(acquired?.key!==L.FRESH_LEASE_KEY)return done('skipped','lease_held');
+  leaseAcknowledged=true;
   const saved=await env.DB.prepare(L.FRESH_STATE_SELECT).first<{action:string;details:string|null}>(),st=parseState(saved?.details),M=await import('./routine-membership-authority232'),V=await import('./shared-membership-cutover230');
    nativeSweep=io.sweep??(saved?.action===L.FRESH_AUDIT.state?pendingNativeSweep262(saved.details,snapshot):undefined)??Object.freeze({id:randomGeneration(),n:snapshot});
    const walkId=nativeSweep.id;
@@ -601,7 +607,12 @@ async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admis
   }
   counts.statements=adm?adm.count.used-startUsed:local.used;return done('done',stop||'native232_pass_complete');
  }catch(error){try{await audit(env,'system',L.FRESH_AUDIT.failed,trigger,{reason:'native232_pass_failed',error:redact(error)});}catch{}return done('failed','native232_pass_failed');}
- finally{if(lease)try{await env.DB.prepare(L.FRESH_LEASE_RELEASE).bind(lease).run();}catch{/* Original lease expires; no fallback parallel producer. */}}
+ finally{if(lease)try{
+  const released=await env.DB.prepare(L.FRESH_LEASE_RELEASE).bind(lease).run(),changes=released.meta?.changes;
+  if(released.success!==true||changes!==0&&changes!==1)console.error('native232_lease_release_held',errorRef(Error('native232_lease_release_unconfirmed')));
+  else if(!leaseAcknowledged&&changes===1)console.log('native232_lease_unconfirmed_acquisition_cleaned');
+  // Zero changes is a legitimate foreign/newer value; the exact CAS must not clear it.
+ }catch(error){console.error('native232_lease_release_held',errorRef(error));/* Original300s expiry remains the fallback. */}}
 }
 
 export type FreshBanResult=Readonly<{state:Settlement['state'];reason:string;removed:number;unknown:number;attempts:number}>;

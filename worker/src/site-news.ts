@@ -78,6 +78,11 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".263", date: "2026-11-10", lines: [
+      "Role sweeps retain their own lease cleanup attempt when acquisition acknowledgement is unconfirmed.",
+    ],
+  },
+  {
     build: ".262", date: "2026-11-10", lines: [
       "Independent sync work and saved transfer observations recover without replaying unresolved originals.",
     ],
