@@ -10,7 +10,7 @@ import savedvars
 PATH = "/ingest/intake242"
 
 def collect(watcher):
-    state = watcher.state.d.setdefault("intake242", {})
+    state = watcher.state.d.get("intake242", {})
     for name in ("OlympusVerify.lua", "Olympus.lua", "OlympusRecord.lua", "OlympusRecordDB.lua"):
         path = watcher.sv_file.with_name(name)
         if not path.is_file():
@@ -40,14 +40,16 @@ def collect(watcher):
                     digest = hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
                     original = state.get(eid)
                     if original is None:
+                        watcher.state.d["intake242"] = state
                         state[eid] = {"body":body,"sha256":digest,"state":"pending","attempted":False}
                     elif original.get("sha256") != digest:
                         original["sourceConflict"] = True
-    watcher.state.save()
+    if "intake242" in watcher.state.d:
+        watcher.state.save()
     return state
 
 def drain(watcher, collect_inputs=True):
-    state = collect(watcher) if collect_inputs else watcher.state.d.setdefault("intake242", {})
+    state = collect(watcher) if collect_inputs else watcher.state.d.get("intake242", {})
     if watcher.worker.paused() or watcher._custody_halted:
         return
     batch = []

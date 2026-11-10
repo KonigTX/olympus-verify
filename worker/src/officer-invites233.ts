@@ -97,10 +97,14 @@ export async function postOfficerInvite233(original:Env,body:unknown):Promise<Re
  const held=(reason:string)=>json({protocol:OFFICER_INVITE_PROTOCOL233,result:'held',reason,proofId,inviteQueued:false,roleGranted:false,pendingConsumed:false});
  try{
   const check=selection(original),launch=captureLaunchVerification(original);if(launch.mode!=='members-only'||!launch.scope||!launch.current()||canonicalOlympusGuildName(launch.scope.guild)!==FLAGSHIP_GUILD_NAME)return held('native-scope-unavailable');
-  if(!input)return held('native-proof-invalid');const p=input.nativeInvite;const current=()=>{check();if(!launch.current()||p.observedAt<=now()-60||p.observedAt>now()+5)throw Error('officer233_source_expired');};current();
-  const scopeHash=(await sha('native-scope|1|'+launch.scope.guild+'|'+launch.scope.realm)).slice(0,16);current();if(scopeHash!==p.scopeHash)return held('native-scope-mismatch');
-  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(original.VERIFY_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);current();
-  const mac=hex(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(officerInviteMessage233(input)))).slice(0,32);current();if(!equal(mac,p.mac))return held('native-proof-invalid');
+  if(!input)return held('native-proof-invalid');const p=input.nativeInvite;
+  const sourceCurrent=()=>{check();if(!launch.current())throw Error('officer233_source_changed');};
+  const current=()=>{sourceCurrent();if(p.observedAt<=now()-60||p.observedAt>now()+5)throw Error('officer233_source_expired');};sourceCurrent();
+  const scopeHash=(await sha('native-scope|1|'+launch.scope.guild+'|'+launch.scope.realm)).slice(0,16);sourceCurrent();if(scopeHash!==p.scopeHash)return held('native-scope-mismatch');
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(original.VERIFY_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);sourceCurrent();
+  const mac=hex(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(officerInviteMessage233(input)))).slice(0,32);sourceCurrent();if(!equal(mac,p.mac))return held('native-proof-invalid');
+  // Authenticated original identity/proof only. This terminal receipt precedes every D1/provider/effect path.
+  if(p.observedAt<=now()-60)return held('native-source-expired');current();
   const ticket=input.code.length===TICKET_LENGTH,valid=ticket?await isValidTicket(original.VERIFY_SECRET,input.code):await isValidCode(original.VERIFY_SECRET,input.character,input.code);current();if(!valid)return held('verification-code-invalid');
   const nativeEnv=launchVerificationEnv(original,launch);let env=nativeEnv;const rows=await env.DB.prepare(`SELECT p.*,s.generation AS privacy_generation,s.state AS privacy_state,s.revision AS privacy_revision FROM pending p LEFT JOIN privacy_subjects s ON s.subject_id=p.discord_id
    WHERE (${ticket?'p.nonce=?1':'p.name_key=?1'} AND p.created_at<=?2 AND p.expires_at>${DB_NOW}) AND (p.consumed_at IS NULL OR p.consumed_source='membership_refused') ORDER BY p.id DESC LIMIT 2`).bind(ticket?ticketNonce(input.code):normalizeCharacter(input.character),p.whisperAt).all<OriginalPending233>();current();

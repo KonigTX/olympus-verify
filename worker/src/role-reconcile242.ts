@@ -5,8 +5,6 @@ import {audit,now} from './db';
 import {readPrivacySubject} from './privacy-serving-authority';
 import {countStatements} from './roster-effects';
 import {callBudget} from './roles';
-import {captureLaneConfig} from './full-release-roles';
-import {nativeAdmission232,runFreshPass,runNativeSubject232} from './full-release-pass';
 import {errorRef} from './log';
 import {CANONICAL_RANKS233} from './canonical-ranks233';
 
@@ -27,6 +25,7 @@ export async function requestRoleReconciliation242(env:Env,subject:string,reason
  * An unsuccessful visit is reported as held; it is never an ACK or an automatic
  * retry of a spent effect. A new request can re-evaluate current source facts. */
 async function requested242(env:Env):Promise<boolean>{
+ const {runNativeSubject232}=await import('./full-release-pass');
  const count={used:0},bounded=countStatements(env,count),calls=callBudget(bounded);
  const rows=await bounded.DB.prepare(`SELECT a.id,a.subject FROM audit a
  WHERE a.actor='system' AND a.action='${REQUEST}' AND a.id=(SELECT MAX(q.id) FROM audit q WHERE q.actor='system' AND q.action='${REQUEST}' AND q.subject=a.subject)
@@ -63,6 +62,8 @@ export async function runRoleWork242(env:Env,kind:'requests'|'sweep',defer?:Role
  try{
   if(kind==='requests')more=await requested242(env);
   else{
+   const {nativeAdmission232,runFreshPass}=await import('./full-release-pass');
+   const {captureLaneConfig}=await import('./full-release-roles');
    const count={used:0},bounded=countStatements(env,count),calls=callBudget(bounded);
    const result=await runFreshPass(bounded,{calls,adm:nativeAdmission232(count,850)},'continuation',captureLaneConfig(bounded));
    more=result.continuation===true;
@@ -105,6 +106,7 @@ export async function ownRoleStatus242(env:Env,subject:string):Promise<unknown>{
  * Results retain held/unknown outcomes; this is not the migration ownership API. */
 export async function reconcileRoleBatch242(env:Env,subjects:readonly string[]):Promise<{results:{subject:string;state:string;reason:string}[];remaining:string[];statements:number;requests:number}>{
  if(!Array.isArray(subjects)||subjects.length>100||subjects.some(s=>!ID.test(s))||new Set(subjects).size!==subjects.length)throw Error('role242_batch_invalid');
+ const {runNativeSubject232}=await import('./full-release-pass');
  const count={used:0},bounded=countStatements(env,count),calls=callBudget(bounded),results:{subject:string;state:string;reason:string}[]=[],began=Date.now();
  for(const subject of subjects){
   if(count.used+200>850||calls.limit-calls.attempts<12||Date.now()-began>22000)break;

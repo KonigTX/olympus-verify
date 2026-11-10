@@ -7881,3 +7881,8 @@ The owner explicitly replaces pre-deployment suite/peer/CI gates for this rollou
 Features include authenticated own web code/role refresh, bounded signed role continuation, High Council check/Fix, angle-bracket nicknames, durable signed addon intake/receipts, mail/whisper/trade capture, native Discord observation, remote WHO-backed officer invites and safe hardware Sync. Branch membership verification remains pending by explicit owner answer. Native Discord observations corroborate existinglinks; they do not create a new link from display text. Finish exact17 legacy definitions only on fresh official zero-holder counts, preserving unrelated roles and unresolved272.
 
 Rollback uses the archived .241 exact commit and preserved bindings; database replacement remains separately gated on writer quiescence. Post-deploy results must distinguish serving identity, package/install hashes, synthetic regression, hosted CI and live client acceptance.
+
+
+## Worker .243 — follow-up repairs from .242 post-deploy checks
+
+Keeps Native role modules lazy, corrects four High Council contact strings, and ships Watcher0.6.21 with original claim ownership/unique seen-claim custody and explicit authenticated server-expiry outcomes. Malformed SavedVariables does not create empty intake state. Updated addon fixtures retain negative combat/security/identity/freshness/spent checks while matching the approved hardware/remote behavior. Addon stays0.6.22; its public/installed bytes are unchanged. Preserve all .242 failed post-deploy receipts. Compile/bundle and fresh443/442 D1 backup precede this owner-directed live-first repair; rerun affected suites only after serving and installing it. No schema, secret, optional-feature activation or production restore.

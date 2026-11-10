@@ -78,6 +78,13 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".243", date: "2026-11-10", lines: [
+      "Queued verification proofs keep their original ownership and receive explicit server outcomes.",
+      "Watcher 0.6.21 improves mixed old-and-new verification batches without discarding pending evidence.",
+      "Access diagnostics and role refreshes load the existing verification checks when needed.",
+    ],
+  },
+  {
     build: ".242", date: "2026-11-10", lines: [
       "Verified character ranks refresh through continuing batches after a roster sync.",
       "OlympusVerify 0.6.22 adds persistent verification intake, mail handling and donation observations with Watcher 0.6.20.",

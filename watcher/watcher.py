@@ -106,7 +106,7 @@ LINE_TS_RE = re.compile(r"^(?P<mo>\d{1,2})/(?P<d>\d{1,2})\s+(?P<h>\d{1,2}):(?P<m
 CLIENT_IN = "Active Player Created"
 CLIENT_OUT = ("Client Object Manager Destroyed", "Client Destroy")
 
-WATCHER_VERSION = "0.6.20"
+WATCHER_VERSION = "0.6.21"
 STRICT_DISPLAY_PROTOCOL = "launch-roster-display-v1"
 STRICT_DISPLAY_PATH = "/queue/unverified?keyVersion=" + STRICT_DISPLAY_PROTOCOL
 STRICT_DISPLAY_MAX_BYTES = 512 * 1024
@@ -665,7 +665,8 @@ class Watcher:
                 and witness["guidCounts"].get(valid["guid"], 0) == 0)
 
     def forward_officer_invite(self, body: Any) -> None:
-        valid = officer_invites233.validate(self.secret, body, int(time.time()))
+        observed = body.get("nativeInvite", {}).get("observedAt") if isinstance(body, dict) and isinstance(body.get("nativeInvite"), dict) else None
+        valid = officer_invites233.validate(self.secret, body, observed if type(observed) is int and observed < int(time.time()) else int(time.time()))
         if valid is None:
             return
         key = "officer-invite233:" + valid["nativeInvite"]["proofId"]
@@ -698,11 +699,21 @@ class Watcher:
             self._custody_halted = True
             self._warn_custody("original queue order changed; no delivery was adopted")
             return Delivery.HELD
+        seen_before = None
+        if item.get("server_expired") is True:
+            original = self._verification_originals.get(id(item))
+            if not self._verification_claims_owned(item, original):
+                self._warn_custody("server expiry settlement lacks exact original claim ownership")
+                return Delivery.HELD
+            seen_before = list(self.state.d["seen"])
+            self.state.d["seen"] = [claim for claim in seen_before if claim not in original["claims"]]
         box.pop(0)
         try:
             self.state.save()
         except OSError as error:
             box.insert(0, item)
+            if seen_before is not None:
+                self.state.d["seen"] = seen_before
             self._custody_halted = True
             self._ack_settlement_pending = ("outbox", item) if item.get("acknowledged") is True else None
             self._state_write_failed("outbox-settlement", error)
@@ -726,10 +737,36 @@ class Watcher:
         except (KeyError, TypeError, ValueError, OverflowError):
             return False
 
-    def _expire_unattempted_verification(self, item: dict[str, Any], original: dict[str, Any]) -> Delivery | None:
-        # .242: local age is never a delivery receipt. Keep the original pending
-        # payload and let the server explicitly reject its source time.
-        return None
+    def _verification_claims_owned(self, item: dict[str, Any], original: dict[str, Any] | None) -> bool:
+        if original is None or original.get("original") is not item:
+            return False
+        claims = original.get("claims")
+        return (isinstance(claims, tuple) and bool(claims) and len(set(claims)) == len(claims)
+                and all(self._verification_seen_claims.get(claim) is original
+                        and self.state.d["seen"].count(claim) == 1 for claim in claims))
+
+    def _captured_verification_expired(self, path: str, body: Any) -> bool:
+        if not isinstance(body, dict) or body.get("source") != "whisper":
+            return False
+        invite = path == officer_invites233.PATH
+        proof = body.get("nativeInvite" if invite else "nativeMembership")
+        observed = proof.get("observedAt") if isinstance(proof, dict) else None
+        lifetime = officer_invites233.TTL if invite else 600
+        if type(observed) is not int or observed <= 0 or observed > int(time.time()) - lifetime:
+            return False
+        # Authenticate the original captured bytes at their actual captured time;
+        # this grants only one server request, never renewed source authority.
+        return (officer_invites233.validate(self.secret, body, observed) is not None if invite else
+                validate_membership(self.secret, body.get("character", ""), body.get("guid"),
+                                    body.get("code", ""), proof, observed) is not None)
+
+    @staticmethod
+    def _server_expiry_receipt(path: str, body: dict[str, Any], result: dict[str, Any]) -> bool:
+        if path == officer_invites233.PATH:
+            return (officer_invites233.receipt(body, result) and result.get("result") == "held"
+                    and result.get("reason") == "native-source-expired")
+        return (path == "/ingest/verify" and result.get("result") == "source_expired"
+                and all(result.get(k) is False for k in ("pendingConsumed", "roleGranted", "inviteQueued")))
 
     def _dispatch_original(self, item: dict[str, Any], retries: int, settle: Any = None) -> Delivery:
         if self._custody_halted or not self._retained_original(item):
@@ -740,22 +777,21 @@ class Watcher:
         if item.get("refusal_status") is not None:
             self._warn_custody("explicitly refused original retained for attended review")
             return Delivery.HELD
+        expired = False
         if self.membership_only and item.get("path") in ("/ingest/verify", officer_invites233.PATH):
             original = self._verification_originals.get(id(item))
             if (original is None or not self._verification_original_current(item, original)
                     or original["attempted"] is not False):
                 self._warn_custody("verification original already attempted or from an earlier process; no automatic resend")
                 return Delivery.HELD
-            expired = self._expire_unattempted_verification(item, original)
-            if expired is not None:
-                return expired
+            if not self._verification_claims_owned(item, original):
+                self._warn_custody("verification seen claims are missing, duplicated or owned elsewhere; original retained")
+                return Delivery.HELD
+            expired = self._captured_verification_expired(item["path"], item.get("body"))
             if item["path"] == "/ingest/verify" and item.get("body", {}).get("nativeMembership", {}).get("member") is False:
                 self._warn_custody("unattempted nonmember verification held for explicit officer evidence; original was not relabelled")
                 return Delivery.HELD
             ready = (self.officer_invite_roster_ready(item.get("body")) if item["path"] == officer_invites233.PATH else self.verification_roster_ready(item.get("body")))
-            proof = item.get("body", {}).get("nativeInvite" if item["path"] == officer_invites233.PATH else "nativeMembership", {})
-            observed = proof.get("observedAt") if isinstance(proof, dict) else None
-            expired = type(observed) is int and observed <= int(time.time()) - (officer_invites233.TTL if item["path"] == officer_invites233.PATH else 600)
             if not ready and not expired:
                 self._wait_for_verification_roster()
                 return Delivery.HELD
@@ -773,6 +809,15 @@ class Watcher:
             self._warn_custody("transport outcome unknown; exact original remains held")
             return Delivery.HELD
         if ok and isinstance(res, dict):
+            expiry_receipt = self._server_expiry_receipt(item["path"], item.get("body", {}), res)
+            if expired and not expiry_receipt:
+                self._warn_custody("expired original lacks an exact server no-effect expiry receipt; original retained")
+                return Delivery.HELD
+            if expiry_receipt:
+                if not self._verification_claims_owned(item, self._verification_originals.get(id(item))):
+                    self._warn_custody("server expiry receipt cannot release another or duplicate seen claim")
+                    return Delivery.HELD
+                item["server_expired"] = True
             if item["path"] == officer_invites233.PATH and not officer_invites233.receipt(item["body"], res):
                 self._warn_custody("officer invite application receipt unknown; exact original retained without retry")
                 return Delivery.HELD
@@ -832,7 +877,7 @@ class Watcher:
         return self._dispatch_original(item, retries=3)
 
     def _post_claimed(self, path: str, body: Any, label: str, keys: list[str]) -> Delivery:
-        if self.membership_only and path in ("/ingest/verify", officer_invites233.PATH) and not (
+        if self.membership_only and path in ("/ingest/verify", officer_invites233.PATH) and not self._captured_verification_expired(path, body) and not (
                 self.officer_invite_roster_ready(body) if path == officer_invites233.PATH else self.verification_roster_ready(body)):
             self._wait_for_verification_roster()
             raise VerificationDeferred()

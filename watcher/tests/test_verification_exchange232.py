@@ -64,6 +64,8 @@ class VerificationExchangeTests(unittest.TestCase):
             self.accepted = True
             return True, {'snapshot': 7, 'trusted': True, 'members': len(body['members'])}
         if path == '/ingest/verify':
+            if body.get('ts', self.at) <= self.at - 600:
+                return True, dict(result='source_expired', pendingConsumed=False, roleGranted=False, inviteQueued=False)
             return True, {'result': 'member' if self.accepted else 'membership_not_confirmed',
                           'roleOutcome': 'granted' if self.accepted else 'held', 'roleGranted': self.accepted,
                           'pendingConsumed': True}
@@ -346,30 +348,60 @@ class VerificationExchangeTests(unittest.TestCase):
         self.w.sv_file.write_text('OlympusVerifyDB = ' + lua(dict(roster=self.roster(), events=[old, fresh])), encoding='utf-8')
         with patch.object(watcher.time, 'sleep'):
             self.w.check_savedvars()
-        self.assertEqual([c[1] for c in self.calls], ['/ingest/roster', '/ingest/verify'])
-        self.assertEqual(self.calls[1][2]['nativeMembership'], fresh['nativeMembership'])
-        self.assertNotEqual(self.calls[1][2]['nativeMembership'], old['nativeMembership'])
+        self.assertEqual([c[1] for c in self.calls], ['/ingest/roster', '/ingest/verify', '/ingest/verify'])
+        self.assertEqual(self.calls[1][2]['nativeMembership'], old['nativeMembership'])
+        self.assertEqual(self.calls[2][2]['nativeMembership'], fresh['nativeMembership'])
+        self.assertNotEqual(self.calls[2][2]['nativeMembership'], old['nativeMembership'])
 
-    def test_expired_unattempted_head_releases_only_its_claim_then_fresh_proof_recovers(self):
+    def test_server_expired_receipt_releases_only_original_claim_then_fresh_proof_recovers(self):
         item, key = self.reserve_unattempted()
         old = copy.deepcopy(item)
         self.w.state.seen('unrelated-custody')
         self.expire_time()
         with patch.object(watcher, 'log') as messages:
             self.w.flush_outbox()
-        self.assertEqual(item, old)
+        self.assertEqual(item['body'], old['body'])
+        self.assertEqual(item['digest'], old['digest'])
+        self.assertTrue(item['acknowledged'])
+        self.assertTrue(item['server_expired'])
         self.assertFalse(self.w.state.was_seen(key))
         self.assertTrue(self.w.state.was_seen('unrelated-custody'))
         self.assertEqual(self.w.state.d['outbox'], [])
-        self.assertIn('without server ACK', ' '.join(c.args[0] for c in messages.call_args_list))
-        self.assertFalse(any(c[1] == '/ingest/verify' for c in self.calls))
+        self.assertIn('source_expired', ' '.join(c.args[0] for c in messages.call_args_list))
+        self.assertEqual([c[2] for c in self.calls if c[1] == '/ingest/verify'], [old['body']])
         self.w.forward_roster(self.roster())
         self.w.forward_events([dict(type='whisper', name=NAME, guid=GUID, code=self.code, ok=True,
                                    ts=self.at, nativeMembership=self.proof())])
         posts = [c for c in self.calls if c[1] == '/ingest/verify']
-        self.assertEqual(len(posts), 1)
-        self.assertEqual(posts[0][2]['nativeMembership'], self.proof())
-        self.assertNotEqual(posts[0][2]['nativeMembership'], old['body']['nativeMembership'])
+        self.assertEqual(len(posts), 2)
+        self.assertEqual(posts[1][2]['nativeMembership'], self.proof())
+        self.assertNotEqual(posts[1][2]['nativeMembership'], old['body']['nativeMembership'])
+
+    def test_expired_original_cannot_adopt_success_or_incomplete_no_effect_receipt(self):
+        for receipt in (dict(result='member', roleGranted=True), dict(result='source_expired'),
+                        dict(result='source_expired', pendingConsumed=False, roleGranted=True, inviteQueued=False)):
+            with self.subTest(receipt=receipt):
+                original_w, original_calls = self.w, self.calls
+                original_at = self.at
+                self.w = watcher.Watcher({**self.cfg, 'state_file': str(self.root / ('receipt-' + str(len(receipt)) + '.json'))})
+                self.calls = []
+                self.w.worker.call = self.transport
+                try:
+                    item, key = self.reserve_unattempted()
+                    self.expire_time()
+                    def response(method, path, body=None, retries=3):
+                        self.calls.append((method, path, copy.deepcopy(body), retries))
+                        return True, receipt if path == '/ingest/verify' else dict(result='ok')
+                    self.w.worker.call = response
+                    self.w.flush_outbox()
+                    self.assertIs(self.w.state.d['outbox'][0], item)
+                    self.assertTrue(self.w.state.was_seen(key))
+                    self.assertNotIn('acknowledged', item)
+                    before = len(self.calls);self.w.flush_outbox()
+                    self.assertEqual(len(self.calls), before, 'Unknown attempted outcome never retries')
+                finally:
+                    self.w, self.calls = original_w, original_calls
+                    self.at = original_at;self.now.return_value = self.at
 
     def test_expiry_never_overtakes_older_unknown_original(self):
         item, key = self.reserve_unattempted()
@@ -444,6 +476,8 @@ class VerificationExchangeTests(unittest.TestCase):
         self.assertIs(self.w.state.d['outbox'][0], item)
         self.assertTrue(self.w.state.was_seen(key))
 
+        self.assertFalse(any(c[1] == '/ingest/verify' for c in self.calls), 'Unowned or duplicate claims never authorize HTTP')
+
     def test_different_claim_owner_blocks_expiry_even_for_identical_digest(self):
         item, key = self.reserve_unattempted()
         other = self.w._freeze_original('/ingest/verify', self.body(), 'different private original')
@@ -453,6 +487,8 @@ class VerificationExchangeTests(unittest.TestCase):
         self.assertIs(self.w.state.d['outbox'][0], item)
         self.assertTrue(self.w.state.was_seen(key))
 
+        self.assertFalse(any(c[1] == '/ingest/verify' for c in self.calls), 'Unowned or duplicate claims never authorize HTTP')
+
     def test_duplicate_seen_claim_custody_is_held_instead_of_blanket_forgotten(self):
         item, key = self.reserve_unattempted()
         self.w.state.d['seen'].append(self.w.state._k(key))
@@ -461,7 +497,9 @@ class VerificationExchangeTests(unittest.TestCase):
         self.assertIs(self.w.state.d['outbox'][0], item)
         self.assertEqual(self.w.state.d['seen'].count(self.w.state._k(key)), 2)
 
-    def test_unknown_local_expiry_save_restores_original_claim_and_halts_dispatch(self):
+        self.assertFalse(any(c[1] == '/ingest/verify' for c in self.calls), 'Unowned or duplicate claims never authorize HTTP')
+
+    def test_unknown_server_expiry_settlement_save_restores_claim_and_blocks_new_http(self):
         item, key = self.reserve_unattempted()
         self.expire_time()
         save = self.w.state.save
@@ -477,8 +515,13 @@ class VerificationExchangeTests(unittest.TestCase):
         before = len(self.calls)
         self.w.flush_outbox()
         self.assertEqual(len(self.calls), before)
-        with self.assertRaises(watcher.CustodyStopped):
-            self.w._require_custody_continuation()
+        self.assertTrue(item['acknowledged'])
+        self.assertTrue(item['server_expired'])
+        self.assertEqual(self.w._ack_settlement_pending, ('outbox', item))
+        self.assertTrue(self.w.recover_local_settlement())
+        self.assertEqual(len(self.calls), before, 'Known original ACK permits local persistence only, never another HTTP request')
+        self.assertEqual(self.w.state.d['outbox'], [])
+        self.assertFalse(self.w.state.was_seen(key))
 
     def test_local_expiry_result_is_falsey_and_not_delivered(self):
         self.assertFalse(bool(watcher.Delivery.EXPIRED_LOCAL))
@@ -521,7 +564,7 @@ class VerificationExchangeTests(unittest.TestCase):
             self.w.flush_outbox()
             self.assertEqual(len(requests), 2)
 
-    def test_real_worker_long_pause_keeps_local_expiry_and_new_whisper_recovery(self):
+    def test_real_worker_long_pause_preserves_source_until_server_expiry_then_new_whisper_recovers(self):
         self.admit()
         self.real_worker_call()
         requests = []
@@ -533,6 +576,9 @@ class VerificationExchangeTests(unittest.TestCase):
                 raise failure
             if req.full_url.split('?', 1)[0].endswith('/ingest/roster'):
                 return self.http_response(dict(snapshot=8, trusted=True, members=2))
+            original = json.loads(req.data)
+            if original.get('ts', self.at) <= self.at - 600:
+                return self.http_response(dict(result='source_expired', pendingConsumed=False, roleGranted=False, inviteQueued=False))
             return self.http_response(dict(result='member', roleGranted=True))
         with patch.object(self.w.worker.opener, 'open', side_effect=open_request):
             self.w.worker.call('GET', '/queue', retries=1)
@@ -542,8 +588,9 @@ class VerificationExchangeTests(unittest.TestCase):
             self.expire_time()
             self.w.flush_outbox()
             self.assertEqual(len(requests), 1)
-            self.assertEqual(self.w.state.d['outbox'], [])
-            self.assertFalse(self.w.state.was_seen(self.w.code_key('w', NAME, self.code)))
+            self.assertIs(self.w.state.d['outbox'][0], item)
+            self.assertTrue(self.w.state.was_seen(self.w.code_key('w', NAME, self.code)))
+            self.assertFalse(self.w._verification_originals[id(item)]['attempted'])
             self.w.forward_roster(self.roster())  # Its real call is still locally paused.
             self.assertEqual(len(requests), 1)
             self.at += 301
@@ -553,9 +600,10 @@ class VerificationExchangeTests(unittest.TestCase):
             self.w.forward_events([dict(type='whisper', name=NAME, guid=GUID, code=self.code, ok=True,
                                        ts=self.at, nativeMembership=self.proof())])
             posts = [json.loads(r.data) for r in requests if r.get_method() == 'POST' and r.full_url.split('?', 1)[0].endswith('/ingest/verify')]
-            self.assertEqual(len(posts), 1)
-            self.assertEqual(posts[0]['nativeMembership'], self.proof())
-            self.assertNotEqual(posts[0]['nativeMembership'], old_proof)
+            self.assertEqual(len(posts), 2)
+            self.assertEqual(posts[0]['nativeMembership'], old_proof)
+            self.assertEqual(posts[1]['nativeMembership'], self.proof())
+            self.assertNotEqual(posts[1]['nativeMembership'], old_proof)
             self.assertEqual(self.w.state.d['outbox'], [])
 
     def test_real_verification_http429_remains_attempted_and_cannot_expire(self):
@@ -723,18 +771,31 @@ class VerificationExchangeTests(unittest.TestCase):
         self.assertTrue(self.w.state.d['outbox'])
         self.assertEqual(self.calls, [])
 
-    def test_officer233_only_exact_unattempted_expired_original_can_retire_locally(self):
+    def test_officer233_expired_original_persists_until_explicit_server_no_effect_receipt(self):
         self.invite_admit233()
         self.w.worker._pause_data()['worker_retry_at'] = self.at + 120
         body = self.invite_body233()
         self.w.forward_officer_invite(body)
+        original = self.w.state.d['outbox'][0]
         key = 'officer-invite233:' + body['nativeInvite']['proofId']
-        self.assertTrue(self.w.state.was_seen(key))
         self.at += 60; self.now.return_value = self.at
         self.w.flush_outbox()
+        self.assertIs(self.w.state.d['outbox'][0], original)
+        self.assertTrue(self.w.state.was_seen(key))
+        self.assertEqual(self.calls, [], 'A local pause or source age is never server delivery')
+        def expired_response(method, path, source=None, retries=3):
+            self.calls.append((method, path, copy.deepcopy(source), retries))
+            receipt = self.invite_receipt233(source, held=True)
+            receipt['reason'] = 'native-source-expired'
+            return True, receipt
+        self.w.worker.call = expired_response
+        self.at += 61; self.now.return_value = self.at
+        self.w.flush_outbox()
+        self.assertEqual(self.calls, [('POST', officer_invites233.PATH, body, 1)])
         self.assertEqual(self.w.state.d['outbox'], [])
         self.assertFalse(self.w.state.was_seen(key))
-        self.assertEqual(self.calls, [])
+        self.assertTrue(original['acknowledged'])
+        self.assertTrue(original['server_expired'])
 
     def test_officer233_mutated_unattempted_original_cannot_expire_or_send(self):
         self.invite_admit233()
