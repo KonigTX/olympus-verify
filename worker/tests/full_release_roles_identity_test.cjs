@@ -576,7 +576,12 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
           for(const control of source227.traceControls(r.trace))check('.227 trace inverse refuses '+control.name,control.refused);
           const at=r.trace.findIndex(e=>e.tag==='legacy'&&e.k==='sql'),next=r.trace.findIndex((e,i)=>i>at&&e.tag==='legacy'&&JSON.stringify(e)!==JSON.stringify(r.trace[at]));
           const changedBind=r.trace.map((e,i)=>i===at?{...e,params:[...e.params,'unrelated227']}:e),reordered=r.trace.slice();[reordered[at],reordered[next]]=[reordered[next],reordered[at]];
-          for(const[name,trace]of[['unrelated bind',changedBind],['unrelated event order',reordered],['additional SQL',[...r.trace,{k:'sql',tag:'legacy',sql:'SELECT 1 AS unrelated227',params:[]}]]])check('.227 whole historical oracle refuses '+name,!same(digestOf({...r,trace}),pin));
+          for(const[name,trace]of[['unrelated bind',changedBind],['unrelated event order',reordered],['additional SQL',[...r.trace,{k:'sql',tag:'legacy',sql:'SELECT 1 AS unrelated227',params:[]}]]]){
+            let refused;
+            try{refused=!same(digestOf({...r,trace}),pin);}
+            catch(error){if(name!=='unrelated bind'||!(error instanceof Error)||error.message!=='identity265_read_proof_tuple')throw error;refused=true;}
+            check('.227 whole historical oracle refuses '+name,refused);
+          }
         }
       }else if(phase==='pre'&&profile==='plain'&&variant==='absent'&&scenario==='queue')check('.227 query inverse leaves non-ingest traces untouched',source227.traceInverse(r.trace)===r.trace);
       check(`${where}: no deferred work threw`, r.errors.length === 0, r.errors);
