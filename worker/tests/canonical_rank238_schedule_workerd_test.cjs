@@ -32,10 +32,26 @@ async function build(qualified,label){
 }
 function packets(text){const x=JSON.parse(text);return Array.isArray(x)?x:[x];}
 async function run(qualified,label,scenario,source){
- const present=new Map([[A,[HIGH]],[B,[HIGH]]]),http=[];let mf,callbackPhase=false;
+ const present=new Map([[A,[HIGH]],[B,[HIGH]]]),http=[],selfWakes=[],selfNonces=new Set();let mf,callbackPhase=false;
  try{
   mf=new Miniflare(convertV4MiniflareOptions({rootPath:path.join(out,label+'-'+scenario),script:source,modules:true,name:'canonical238',compatibilityDate:'2026-09-01',compatibilityFlags:['nodejs_compat'],host:'127.0.0.1',port:0,cf:false,log:new Log(LogLevel.NONE),logRequests:false,telemetry:{enabled:false},unsafeRegisterWorker:false,unsafeLocalExplorer:false,unsafeObservability:false,resourceTmpPath:path.join(out,label+'-'+scenario,'tmp'),resourcePersistencePath:path.join(out,label+'-'+scenario,'persist'),isolatedResourcePersistencePath:path.join(out,label+'-'+scenario,'isolated'),bindings:{CASE238:scenario},d1Databases:{DB_veteran:'canonical238-'+label+'-'+scenario},outboundService:async req=>{
-   const u=new URL(req.url),p=u.pathname.replace(/^\/api\/v10/,'');assert.equal(u.origin,'https://discord.com','only_mock_discord');assert.equal(req.headers.get('authorization'),'Bot '+seed.config.DISCORD_BOT_TOKEN+'-veteran','fixed_mock_token');
+   const u=new URL(req.url),p=u.pathname.replace(/^\/api\/v10/,'');
+   if(u.origin==='https://verify.example'&&u.pathname==='/internal/roles242/continue'){
+    assert.equal(new URL(seed.config.PUBLIC_BASE_URL).origin,'https://verify.example','fixed_source_self_origin');
+    assert.equal(u.href,'https://verify.example/internal/roles242/continue','exact_self_wake_URL');assert.equal(req.method,'POST','only_signed_self_POST');
+    assert.equal(req.headers.get('content-type'),'application/json','typed_self_wake');assert.equal(req.headers.get('authorization'),null,'no_Discord_credential_at_self_boundary');
+    const text=await req.text();assert(Buffer.byteLength(text)<=256,'bounded_self_wake');const wake=JSON.parse(text);
+    assert(wake&&typeof wake==='object'&&!Array.isArray(wake),'self_wake_object');assert.equal(Object.keys(wake).sort().join(','),'at,kind,nonce','exact_self_wake_keys');
+    assert(['requests','sweep'].includes(wake.kind),'fixed_self_work_kind');assert(Number.isSafeInteger(wake.at)&&Math.abs(Math.floor(Date.now()/1000)-wake.at)<=60,'fresh_self_wake_TTL');
+    assert(typeof wake.nonce==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(wake.nonce),'canonical_self_nonce');assert(!selfNonces.has(wake.nonce),'no_self_nonce_replay');
+    const supplied=req.headers.get('X-Olympus-Role-Continuation')||'',expected=crypto.createHmac('sha256',seed.config.VERIFY_SECRET).update('role-continuation242\n'+text).digest('hex');
+    assert(/^[0-9a-f]{64}$/.test(supplied)&&crypto.timingSafeEqual(Buffer.from(supplied,'hex'),Buffer.from(expected,'hex')),'original_self_body_HMAC');selfNonces.add(wake.nonce);
+    const observation={origin:u.origin,path:u.pathname,method:req.method,body:wake,bodySHA256:H(Buffer.from(text)),HMACValidated:true,TTLValidated:true,nonceReplayChecked:true,schedulingOnly:true,childExecuted:false,roleACK:false};
+    selfWakes.push(observation);wx(label+'-'+scenario+'-self-wake-'+String(selfWakes.length).padStart(3,'0')+'.json',observation);
+    // This double acknowledges only the scheduling boundary; it does not run or qualify a child invocation.
+    return new Response(null,{status:202});
+   }
+   assert.equal(u.origin,'https://discord.com','only_mock_discord');assert.equal(req.headers.get('authorization'),'Bot '+seed.config.DISCORD_BOT_TOKEN+'-veteran','fixed_mock_token');
    http.push({method:req.method,path:p,callback:callbackPhase});
    if(req.method==='GET'&&p==='/users/@me')return Response.json({id:BOT,bot:true});
    if(req.method==='GET'&&p==='/guilds/'+G+'/roles')return Response.json([{id:G,name:'@everyone',position:0,permissions:'0',managed:false},{id:BOTROLE,name:'Synthetic Bot',position:40,permissions:'268435456',managed:false},{id:HIGH,name:'Synthetic Unowned',position:50,permissions:'0',managed:false},{id:BLOCK,name:'Synthetic Blocker',position:1,permissions:'0',managed:false},...ranks.map(([name,id],i)=>({id,name,position:30-i,permissions:'0',managed:false}))]);
@@ -64,7 +80,8 @@ async function run(qualified,label,scenario,source){
    if(scenario==='lost-put')check(label+' lost PUT remains unknown without replay or deletion of its new target',r.rows.some(x=>x.state==='unknown'&&x.attempts===1)&&effects.filter(x=>x.method==='PUT'&&x.path.includes('/members/'+A+'/')).length===1&&!effects.some(x=>x.method==='DELETE'&&x.path.endsWith('/'+ranks[8][1])));
    const previous=http.length,repeat=await worker.scheduled({cron:'* * * * *'});check(label+'/'+scenario+' immediate second callback retains300s/no replay',repeat.outcome==='ok'&&repeat.noRetry===true&&http.length===previous);
   }
-  results.push({label,scenario,qualified,original,cost:r.cost,HTTP:calls.length,effects:effects.length,layout:scenario==='wrong-layout'?'canonical':'recorded-live-pre-seal-20261017',actualGenuineScheduledController:true,providerCalls:0});
+  check(label+'/'+scenario+' signed wake boundary claims no child or role ACK',selfWakes.every(w=>w.schedulingOnly===true&&w.childExecuted===false&&w.roleACK===false)&&calls.length+selfWakes.length<=50);
+  results.push({label,scenario,qualified,original,cost:r.cost,HTTP:calls.length+selfWakes.length,roleHTTP:calls.length,selfWakeHTTP:selfWakes.length,selfWakes,continuationChildExecuted:false,continuationRoleACK:false,effects:effects.length,layout:scenario==='wrong-layout'?'canonical':'recorded-live-pre-seal-20261017',actualGenuineScheduledController:true,providerCalls:0});
  }finally{if(mf)await mf.dispose();}
 }
 (async()=>{try{
@@ -75,7 +92,7 @@ async function run(qualified,label,scenario,source){
  for(const scenario of ['collision','inactive','native-off','wrong-layout','interval','stale','unknown','lost-put'])await run(true,label,scenario,qualifiedSource);
  for(const p of allPins.values())assert.equal(H(fs.readFileSync(p.path)),p.sha256,'all_source_inputs_preserved');check('all original source and fixture bytes remain exact',true);complete=true;
  }finally{
- const report={schema:'canonical-rank238-genuine-scheduled-local-v1',complete,checks,shippingQualified,operationalSourceQualification:false,actualShippingLiteralGenuineScheduledComponentQualified:complete&&shippingQualified,unpublishedVariantDoesNotQualifyShippingFalse:!shippingQualified,layoutScope:['recorded-live-pre-seal-20261017'],otherLayoutsQualified:false,results,compiled,sourcePins:[...allPins.values()],providerCalls:0,clockOverride:false,handlerOverride:false,out};
+ const report={schema:'canonical-rank238-genuine-scheduled-local-v1',complete,checks,shippingQualified,operationalSourceQualification:false,actualShippingLiteralGenuineScheduledComponentQualified:complete&&shippingQualified,unpublishedVariantDoesNotQualifyShippingFalse:!shippingQualified,layoutScope:['recorded-live-pre-seal-20261017'],otherLayoutsQualified:false,results,compiled,sourcePins:[...allPins.values()],providerCalls:0,clockOverride:false,handlerOverride:false,continuationBoundary:{schedulingOnly:true,childExecuted:false,roleACK:false,exactSignedSelfPOSTValidated:true},out};
  wx('result.json',report);if(reportPath)fs.writeFileSync(reportPath,JSON.stringify(report,null,2)+'\n',{flag:'wx'});
  }
  console.log(checks+'/'+checks+' canonical238 genuine scheduled checks; '+out);

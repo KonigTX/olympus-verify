@@ -7891,3 +7891,8 @@ Keeps Native role modules lazy, corrects four High Council contact strings, and 
 ## Worker .244 — lazy feature boundaries, eager privacy registration
 
 Moves the optional .242 handlers behind their route/call boundaries so the original Core/QR initialization graph stays intact. Donation data erasure/export registration lives in an eager pure registry module; no private-data lifecycle registration is lost. Authentication, Native issuers, request/effect guards and persistence predicates are unchanged. Watcher remains0.6.21 and addon0.6.22. Preserve both prior failed regression sets; affected cases run only after this live-first repair serves.
+
+## Worker .245 — use the actual remaining reconciliation budget
+
+Removes the initial fixed worst-case visit-count divisor. The existing live per-account SQL and HTTP admission checks and ten-account maximum remain. A cheap held subject no longer prevents the next urgent rank update when the invocation still has room. Native identity, ownership, unknown-effect and selector checks remain. The owner-directed sequence remains compile/bundle plus fresh restored D1 backup, deploy, then affected regressions. Addon0.6.22 and Watcher0.6.21 are unchanged. Preserve all prior failures.
+

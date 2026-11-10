@@ -534,7 +534,7 @@ async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admis
   const window=(await env.DB.prepare(canonical.present?L.CANONICAL233_WALK_SELECT:L.NATIVE232_WALK_SELECT).bind(cap.guild,st.g,L.FRESH_WALK_WINDOW,canonical.present?0:selected.policy.privileged?1:0).all<{subject:string;top_rank:number|null;urgent:number}>()).results;
   const refs:PrivacyReference[]=[];let visited=0,stop='';
   // Each subject is admitted against physical SQL and HTTP room, rather than a fixed two-account quota.
-  const subjectLimit=Math.max(1,Math.min(10,Math.floor((adm?room(adm,NATIVE_CLOSE232_STATEMENTS):limit-NATIVE_CLOSE232_STATEMENTS)/subjectBound),Math.floor(laneRoom(io.calls)/8)));
+  const subjectLimit=10; // Re-evaluate live SQL/HTTP room before each visit; a cheap held account must not consume a worst-case slot.
   for(const row of window){
    if(visited>=subjectLimit){workRemaining=true;break;}
    if(!ID.test(row.subject)){st.g=row.subject;continue;}
