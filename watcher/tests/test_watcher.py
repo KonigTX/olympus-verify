@@ -471,7 +471,12 @@ class ResilienceTests(unittest.TestCase):
     def test_queue_hash_delivers_receipt_only_change_and_expiry(self):
         at = 2_000_000_000
         self.w.pull_unverified = lambda: None
-        self.w.worker.call = lambda m, p, b=None, retries=3: (True, {"entries": [], "setGuildNote": False})
+        response = {"entries": [], "setGuildNote": False, "verificationResults": [{"guid": "Player-1-ABCD", "character": "First Last", "status": "verified", "discordRole": "Veteran", "observedAt": at, "expiresAt": at+300}]}
+        calls = []
+        def queue_response(m, p, b=None, retries=3):
+            calls.append((m, p, b))
+            return True, response
+        self.w.worker.call = queue_response
         with patch.object(watcher.time, "time", return_value=at), patch.object(watcher, "atomic_local_text", wraps=watcher.atomic_local_text) as write:
             self.w.pull_queue();before = self.w.state.d["queue_hash"]
             self.w.state.d["intake242"] = {"a": {"state": "done", "acknowledgedAt": at, "receipt": {"id": "a", "status": "done", "guid": "", "character": "First Last", "discordRole": ""}}}
@@ -479,11 +484,22 @@ class ResilienceTests(unittest.TestCase):
             self.assertEqual(sum(call.args[0] == self.w.queue_file for call in write.call_args_list), 2)
             self.assertNotEqual(before, self.w.state.d["queue_hash"])
             self.assertIn('id = "a"', self.w.queue_file.read_text(encoding="utf-8"))
+            self.assertIn('status = "verified"', self.w.queue_file.read_text(encoding="utf-8"))
+            original_ack = json.dumps(self.w.state.d["intake242"]["a"], sort_keys=True)
+            original_hash = self.w.state.d["queue_hash"]
         with patch.object(watcher.time, "time", return_value=at+86400), patch.object(watcher, "atomic_local_text", wraps=watcher.atomic_local_text) as write:
             self.w._last_queue_pull = 0;self.w.pull_queue()
             self.assertEqual(sum(call.args[0] == self.w.queue_file for call in write.call_args_list), 1)
-            self.assertNotIn('id = "a"', self.w.queue_file.read_text(encoding="utf-8"))
+            queue = savedvars.parse_file(str(self.w.queue_file))["OlympusQueue"]
+            receipt = queue["intakeReceipts242"][0]
+            self.assertEqual((receipt["id"], receipt["status"], receipt["observedAt"]), ("a", "done", at))
+            self.assertEqual(receipt["expiresAt"], at+86340+86400)
+            self.assertTrue(at+86400 < receipt["expiresAt"] <= at+2*86400)
+            self.assertFalse(queue["verificationResults242"], "terminal ACK delivery must not renew current verification")
+            self.assertNotEqual(original_hash, self.w.state.d["queue_hash"])
             self.assertEqual(self.w.state.d["intake242"]["a"]["acknowledgedAt"], at)
+            self.assertEqual(json.dumps(self.w.state.d["intake242"]["a"], sort_keys=True), original_ack)
+            self.assertEqual([method for method, _, _ in calls], ["GET", "GET", "GET"], "renewal never POSTs or retries the original intake")
 
     def test_queue_hash_includes_cache_role_and_signed_freshness(self):
         at = 2_000_000_000
