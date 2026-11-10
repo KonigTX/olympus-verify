@@ -120,6 +120,18 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .258 reverses only the exact owner-directed diagnostic release note.
+  const release258 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".258\", date: \"2026-11-10\", lines: [",
+    "      \"Guild rank reconciliation now reports bounded handoff failures for reliable operator follow-up.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .258 prepend occurs once', originalNews.split(release258).length === 2);
+  originalNews = originalNews.replace(release258, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
   // .257 reverses only the exact owner-directed live-first release note.
   const release257 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

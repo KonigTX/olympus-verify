@@ -7975,3 +7975,8 @@ The .255 actual production D1 selector compiled and ran, but read65033887 rows i
 ## Worker .257 - 2026-11-10.257 Reliable rank batch handoffs
 
 Production .256 reduced SQL execution to1668ms but actual deferred continuations can exceed the30s provider window. Native passes and requested-account passes now stop before starting another account after a12s soft admission window, preserving the completed current account and the original finite generation. The roster ingest pass owns its same-generation handoff after releasing its lease; the parallel competing outer roster kick is removed. Physical/HTTP/max-subject limits and all current-source/privacy/unknown-effect writers remain. A slow individual account may still exceed the soft bound; the timer never cancels an in-flight effect. Addon/Watcher remain0.6.25. Actual complete guarded batch progress, hosted CI and exact-head review remain separate release gates.
+
+
+## Worker .258 - 2026-11-10.258 Role handoff diagnostics
+
+This prospective release records bounded HTTP status for role-handoff failures so operators can follow up without response bodies or expanded effect authority. The existing identity, current-source, privacy, unknown-effect, generation, lease and budget guards remain. The exact roster static-fixture repair is test-only and preserves the historical oracle; current runtime loaders remain unchanged. Addon and Watcher remain0.6.25. The cumulative local-test budget is spent: no local tests or repeated suites are run for this release. Earlier failures and partial evidence are retained. Compilation, backup, deployment identity, hosted CI, exact-head review and actual guarded role progress remain separate gates; this entry does not claim that they have passed.
