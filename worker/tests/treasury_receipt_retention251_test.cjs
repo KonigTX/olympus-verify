@@ -6,7 +6,7 @@ let checks=0;
 const eq=(label,actual,expected)=>{assert.deepEqual(actual,expected,label);checks++;console.log('PASS '+label);};
 const yes=(label,value)=>{assert.ok(value,label);checks++;console.log('PASS '+label);};
 (async()=>{
- const f=await J.opened('canonical');f.env.WATCHER_TOKEN='synthetic-retention251-only';
+ const f=await J.opened('canonical');f.env.WATCHER_TOKEN='watcher-token-for-tests-only-0123456789';
  const raw=(sql,...values)=>f.db.prepare(sql).get(...values),count=prefix=>raw('SELECT COUNT(*) AS n FROM audit WHERE action=? AND subject LIKE ?',ACTION,'intake242:'+prefix+'%').n;
  const send=async request=>{const response=await f.fetch(request);for(const pending of f.pending.splice(0))await pending;return response;};
  const intake=async entries=>{const response=await send(new Request('https://bot.invalid/ingest/intake242',{method:'POST',headers:{Authorization:'Bearer '+f.env.WATCHER_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({entries})}));eq('actual authenticated intake succeeds',response.status,200);return response.json();};

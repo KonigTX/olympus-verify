@@ -247,6 +247,7 @@ do
   check("generic mirror never replaces a claimed rich transfer or its original MAC",x.rows()[row.id]==row and receipts[1].mac==originalMac)
   x.event("TRADE_SHOW");x.event("TRADE_ACCEPT_UPDATE",1,1);x.wallet=x.wallet+900;x.bags[123]=4
   x.event("UI_INFO_MESSAGE",1,"Trade complete.");x.v.Flush("sync")
+  receipts=x.e.OlympusVerifyDB.treasury.receipts
   count=0;for _,r in pairs(x.rows()) do if r.type=="donation" then count=count+1 end end
   check("equal genuine trades stay distinct through their Native-start sequence",#receipts==2 and count==2 and receipts[1].id~=receipts[2].id)
 end
