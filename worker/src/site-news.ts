@@ -222,7 +222,7 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
   },
   {
     build: ".223", date: "2026-11-02", lines: [
-      "Applicant cards now show one class icon beside the colored class name. Discord portraits still require the applicantâ€™s separate consent and fall back to the neutral member emblem.",
+      "Applicant cards now show one class icon beside the colored class name. Discord portraits still require the applicant’s separate consent and fall back to the neutral member emblem.",
     ],
   },
   {
@@ -400,7 +400,7 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
     build: ".115",
     date: "2026-10-03",
     lines: [
-      "Community â†’ News: notices from the administrators, the guild in figures and what is coming up, for confirmed members once the administrators switch it on.",
+      "Community → News: notices from the administrators, the guild in figures and what is coming up, for confirmed members once the administrators switch it on.",
       "Home, Apply and /verify-status say plainly when Olympus I is full, from the officers' latest roster export, and show your own place in line.",
       "Administrators confirm that each person they name agreed to be named, and remove a name on request by typing Name withheld in its place.",
       "The privacy policy and terms describe News, a full guild, typed names and the backups.",
@@ -410,7 +410,7 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
     build: ".114",
     date: "2026-10-02",
     lines: [
-      "Community â†’ Leadership lists the Guild Master and officers of Olympus I to Olympus X for confirmed members.",
+      "Community → Leadership lists the Guild Master and officers of Olympus I to Olympus X for confirmed members.",
       "The top bar shows your own Discord picture again.",
       "People search shows every name a member goes by: server nickname, display name and username.",
       "Battle.net sign-in is switched off. Verifying with the in-game whisper code works as before.",
@@ -760,7 +760,7 @@ async function createNotice(request: Request, env: Env, ctx: CommunityContext, b
   if (!why?.id_ok) {
     return apiJson({ error: "stale_page", message: `This form can no longer post: a form posts only within ${NEWS_LIMITS.opIssueMaxAgeS / DAY_S} days of being opened. Nothing was posted.` }, 409);
   }
-  if (!newsOnFrom(env, why?.news_on)) return apiJson({ error: "news_off", message: "News is switched off (Admin â†’ Settings); notices cannot be posted while it is off." }, 409);
+  if (!newsOnFrom(env, why?.news_on)) return apiJson({ error: "news_off", message: "News is switched off (Admin → Settings); notices cannot be posted while it is off." }, 409);
   if ((why?.live_count ?? 0) >= NEWS_LIMITS.liveMax) return apiJson({ error: "too_many", message: `At most ${NEWS_LIMITS.liveMax} notices can be shown at once. Delete one first.` }, 409);
   return noticeRefusal(request, env, editor);
 }
@@ -802,7 +802,7 @@ async function updateNotice(request: Request, env: Env, ctx: CommunityContext, b
   if (read === FENCE_REFUSED) return noticeRefusal(request, env, editor);
   const row = rowsOf<AdminRow & { live: number; period_ok: number }>(read[0])[0];
   if (!row) return apiJson({ error: "not_found", message: "That notice no longer exists." }, 404);
-  if (!newsOnFrom(env, rowsOf<{ value: string }>(read[1])[0]?.value)) return apiJson({ error: "news_off", message: "News is switched off (Admin â†’ Settings); notices cannot be changed while it is off. They can still be deleted." }, 409);
+  if (!newsOnFrom(env, rowsOf<{ value: string }>(read[1])[0]?.value)) return apiJson({ error: "news_off", message: "News is switched off (Admin → Settings); notices cannot be changed while it is off. They can still be deleted." }, 409);
   if (!row.live) return apiJson({ error: "expired", message: "That notice's time is up; it can no longer be changed." }, 409);
   if (!row.period_ok) return apiJson({ error: "period_passed", field: "days", message: "That period has already passed since the notice was posted. Choose a longer one." }, 400);
   if (row.revision !== revision) return apiJson({ error: "stale_revision", message: "Someone changed this notice first: reload it.", notice: noticeDto(row, editor) }, 409);
