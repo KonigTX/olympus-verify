@@ -445,12 +445,12 @@ class ResilienceTests(unittest.TestCase):
             self.w.pull_queue();before = self.w.state.d["queue_hash"]
             self.w.state.d["intake242"] = {"a": {"state": "done", "acknowledgedAt": at, "receipt": {"id": "a", "status": "done", "guid": "", "character": "First Last", "discordRole": ""}}}
             self.w._last_queue_pull = 0;self.w.pull_queue()
-            self.assertEqual(write.call_count, 2)
+            self.assertEqual(sum(call.args[0] == self.w.queue_file for call in write.call_args_list), 2)
             self.assertNotEqual(before, self.w.state.d["queue_hash"])
             self.assertIn('id = "a"', self.w.queue_file.read_text(encoding="utf-8"))
         with patch.object(watcher.time, "time", return_value=at+86400), patch.object(watcher, "atomic_local_text", wraps=watcher.atomic_local_text) as write:
             self.w._last_queue_pull = 0;self.w.pull_queue()
-            self.assertEqual(write.call_count, 1)
+            self.assertEqual(sum(call.args[0] == self.w.queue_file for call in write.call_args_list), 1)
             self.assertNotIn('id = "a"', self.w.queue_file.read_text(encoding="utf-8"))
             self.assertEqual(self.w.state.d["intake242"]["a"]["acknowledgedAt"], at)
 
@@ -467,7 +467,7 @@ class ResilienceTests(unittest.TestCase):
             response["verificationResults"][0].update(observedAt=at+1, expiresAt=at+301)
             self.w._last_queue_pull = 0;self.w.pull_queue()
             self.assertNotEqual(role_hash, self.w.state.d["queue_hash"])
-            self.assertEqual(write.call_count, 3)
+            self.assertEqual(sum(call.args[0] == self.w.queue_file for call in write.call_args_list), 3)
 
     def test_unchanged_signed_queue_inputs_do_not_rewrite_for_generated_time(self):
         at = 2_000_000_000
@@ -480,10 +480,10 @@ class ResilienceTests(unittest.TestCase):
             with patch.object(watcher.time, "time", return_value=at+1):
                 self.w._last_queue_pull = 0;self.w.pull_queue()
             self.assertEqual(before, self.w.state.d["queue_hash"])
-            self.assertEqual(write.call_count, 1)
+            self.assertEqual(sum(call.args[0] == self.w.queue_file for call in write.call_args_list), 1)
             with patch.object(watcher.time, "time", return_value=at+301):
                 self.w._last_queue_pull = 0;self.w.pull_queue()
-            self.assertEqual(write.call_count, 2)
+            self.assertEqual(sum(call.args[0] == self.w.queue_file for call in write.call_args_list), 2)
 
     def test_queue_local_retry_does_not_repeat_worker_or_advance_before_replace(self):
         entries = [{"id": 7, "character": "Synthetic Queue", "discordId": "1", "status": "queued"}]
