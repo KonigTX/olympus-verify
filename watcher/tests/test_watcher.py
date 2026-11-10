@@ -403,6 +403,37 @@ class ResilienceTests(unittest.TestCase):
         self.assertEqual([p for p, _ in sent], ["/ingest/verify"], "buffered work is delivered after a restart")
         self.assertEqual(w2.state.d["outbox"], [], "the outbox drains once the Worker answers")
 
+    def test_legacy_saved_verification_keeps_original_route_despite_intake_copy(self):
+        name = "Legacy Member"
+        code = codes.code_for("olympus-test-secret", name, codes.day_bucket(datetime.now(timezone.utc)))
+        at = int(time.time());observation = "a"*32
+        body = {"id": "legacy-intake", "type": "verify", "source": "whisper", "character": name, "code": code, "observationId": observation, "observedAt": at}
+        row = {"body": body, "state": "rejected", "attempted": True, "lastOutcome": "membership-proof-required"}
+        self.w.state.d["intake242"] = {"legacy-intake": row}
+        event = {"type": "whisper", "name": name, "target": name, "code": code, "ok": True, "ts": at, "observationId": observation}
+        self.assertFalse(self.w.membership_only)
+        self.w.forward_events([event])
+        self.assertEqual([(method,path) for method,path,_ in self.calls], [("POST","/ingest/verify")])
+        self.assertEqual(self.calls[0][2]["character"], name)
+        self.assertEqual(self.calls[0][2]["code"], code)
+        self.assertEqual((row["state"], row["attempted"]), ("rejected", True))
+        self.w.forward_events([event])
+        self.assertEqual(len(self.calls), 1, "the unchanged legacy seen/claim guard still prevents duplicate delivery")
+
+    def test_native_saved_verification_same_observation_keeps_unknown_intake_suppression(self):
+        self.w.membership_only = True
+        name = "Native Member"
+        code = codes.code_for("olympus-test-secret", name, codes.day_bucket(datetime.now(timezone.utc)))
+        at = int(time.time());observation = "b"*32
+        row = {"body": {"id": "native-intake", "type": "verify", "source": "whisper", "character": name, "code": code, "guid": "Player-1-ABCD", "observationId": observation, "observedAt": at}, "state": "outcome_unknown", "attempted": True}
+        self.w.state.d["intake242"] = {"native-intake": row}
+        event = {"type": "whisper", "name": name, "target": name, "code": code, "guid": "Player-1-ABCD", "ok": True, "ts": at, "observationId": observation}
+        self.w.forward_events([event])
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.w.state.d["outbox"], [])
+        self.assertFalse(self.w.state.was_seen(self.w.code_key("whisper", name, code)))
+        self.assertEqual((row["state"], row["attempted"]), ("outcome_unknown", True))
+
     def test_zero_byte_log_does_not_swallow_the_next_lines(self):
         code = codes.code_for("olympus-test-secret", "Thrall", codes.day_bucket(datetime.now(timezone.utc)))
         self.log.write_text("", encoding="utf-8")

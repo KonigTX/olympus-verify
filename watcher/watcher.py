@@ -106,7 +106,7 @@ LINE_TS_RE = re.compile(r"^(?P<mo>\d{1,2})/(?P<d>\d{1,2})\s+(?P<h>\d{1,2}):(?P<m
 CLIENT_IN = "Active Player Created"
 CLIENT_OUT = ("Client Object Manager Destroyed", "Client Destroy")
 
-WATCHER_VERSION = "0.6.23"
+WATCHER_VERSION = "0.6.24"
 STRICT_DISPLAY_PROTOCOL = "launch-roster-display-v1"
 STRICT_DISPLAY_PATH = "/queue/unverified?keyVersion=" + STRICT_DISPLAY_PROTOCOL
 STRICT_DISPLAY_MAX_BYTES = 512 * 1024
@@ -1594,7 +1594,7 @@ class Watcher:
                 key = self.code_key(t, name, strict) if strict else f"{t[0]}:{codes.normalize_character(name)}:{raw}"
                 if not strict:
                     continue
-                if intake242.handles_verify(self, name, strict or raw, e) or self.state.was_seen(key) or key in batch_keys:
+                if (self.membership_only and intake242.handles_verify(self, name, strict or raw, e)) or self.state.was_seen(key) or key in batch_keys:
                     continue
                 if strict:
                     self.note_ticket_sender(name, strict)

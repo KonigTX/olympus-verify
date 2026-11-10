@@ -2408,3 +2408,8 @@ Scheduling is not admission. The original Native issuer, privacy generation, rol
 A traversal cursor is not a completion boundary when every settled candidate remains eligible. A server-signed sweep ID tied to one current roster snapshot identifies a finite walk. Each privacy-safe original attempt is marked under that ID, checked candidates leave that walk, and successor requests retain the same ID. Snapshot replacement stops an older walk. The marker never authorizes a role effect or changes source, privacy, ownership or unknown-effect requirements.
 
 Native verification observations also need an identity distinct from character/code. A later genuine whisper may carry fresh membership proof after an earlier observation was explicitly refused; it receives a new durable observation ID. Repeated processing of the same native event retains its original ID and time, while old spent and unknown claim records remain intact. Bridge provenance is transport custody metadata and cannot change the canonical body under an existing ID or turn an untrusted request into membership authority.
+
+
+## 10 November2026 — legacy transport admission (.250)
+
+A durable intake entry is a replacement transport only when that mode can supply its required membership proof. The current membership-only flow deduplicates the exact native observation. Legacy SavedVariables events retain their original verification endpoint and existing claim ownership/idempotency checks instead of being suppressed by an intake row that cannot satisfy Native admission. No new identity proof or replay authority is introduced.

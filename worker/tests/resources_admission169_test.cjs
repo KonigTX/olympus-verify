@@ -120,6 +120,18 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .250 reverses only the exact owner-directed live-first release note.
+  const release250 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".250\", date: \"2026-11-10\", lines: [",
+    "      \"Legacy Watcher installations retain their existing verification forwarding. Membership-only verification keeps its original native-evidence checks.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .250 prepend occurs once', originalNews.split(release250).length === 2);
+  originalNews = originalNews.replace(release250, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
   // .249 reverses only the exact owner-directed live-first release note.
   const release249 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

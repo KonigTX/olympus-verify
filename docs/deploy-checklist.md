@@ -7922,3 +7922,8 @@ OlympusVerify and Watcher become0.6.23. Authentic missing-GUID receipts use the 
 The owner-directed order remains TypeScript/bundle, Lua syntax and fresh restored443/442 D1 backup; protected exact-commit deploy and narrow public-file install; then affected regressions, hosted CI and completed exact-head automated review. A long test must read a frozen checkout. Earlier failed and contaminated attempts remain charged. The exact17 role retirement completed separately under Root custody; the unresolved original272 effect remains held. Approved branch verification stays pending at the owner's direction. In-game acceptance requires a signed-in safely idle client; a disconnected login screen is not acceptance.
 
 Rollback uses a preserved exact deployed commit through the protected deploy entrypoint, with bindings preserved. Do not restore production D1, reset uncertain claims, relink members or recreate removed role IDs as part of rollback.
+
+
+## Worker .250 — legacy verification forwarding
+
+Watcher0.6.24 suppresses a duplicate SavedVariables event in favor of durable intake only in membership-only mode. Legacy SavedVariables keeps its existing /ingest/verify forwarding, because its local observations do not contain Native membership proof. Original seen/batch, claim, expiry and unknown-effect guards remain. The addon/public archive stays0.6.23. Compile and fresh restored443/442 backup precede this owner-directed live-first deployment; run the new forwarding tests and affected release metadata checks afterward. Preserve original249 test failures/timeouts and exact serving/qualification-head distinctions.

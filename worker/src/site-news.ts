@@ -78,6 +78,11 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".250", date: "2026-11-10", lines: [
+      "Legacy Watcher installations retain their existing verification forwarding. Membership-only verification keeps its original native-evidence checks.",
+    ],
+  },
+  {
     build: ".249", date: "2026-11-10", lines: [
       "Account update batches finish after one complete roster traversal. Fresh verification whispers and donation receipts retain their own delivery records.",
     ],
