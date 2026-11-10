@@ -78,6 +78,11 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".261", date: "2026-11-10", lines: [
+      "Addon bridge requests now receive bounded delivery receipts from their configured guild collector.",
+    ],
+  },
+  {
     build: ".260", date: "2026-11-10", lines: [
       "Guild rank updates now continue through the public Worker route across queued batches.",
     ],

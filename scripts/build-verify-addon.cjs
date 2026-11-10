@@ -2,9 +2,9 @@
 'use strict';
 // Public source only. Fixed inputs, ZIP metadata and ordering; never scans a local addon installation.
 const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto');
-const VERSION = '0.6.25';
+const VERSION = '0.6.26';
 const SOURCE = 'addon/OlympusVerify/';
-const ZIP = 'worker/public/static/olympus-verify/olympus-verify-0.6.25.zip';
+const ZIP = 'worker/public/static/olympus-verify/olympus-verify-0.6.26.zip';
 const MANIFEST = 'worker/public/static/olympus-verify/version.json';
 const FILES = Object.freeze(['Bindings.xml', 'Config.example.lua', 'Libs/OlympusHmac.lua', 'Libs/OlympusQr.lua',
   'OlympusVerify.lua', 'OlympusVerify.toc', 'OlympusVerifyAutoSync.lua', 'OlympusVerifyBrowser.lua',
@@ -12,13 +12,13 @@ const FILES = Object.freeze(['Bindings.xml', 'Config.example.lua', 'Libs/Olympus
   'OlympusVerifyPreview.lua', 'OlympusVerifyRanks.lua', 'OlympusVerifyRoster.lua', 'OlympusVerifyTreasury.lua', 'OlympusVerifyUI.lua']);
 // Frozen .242 public-source custody; the .621 repair remains in Git and release235 evidence.
 const REPAIR_PINS = Object.freeze({
-  "OlympusVerify.lua": "72b2683f9e41728ac835386370c33c062f4445cb0fc0e8c8a4b7b6a027f55f8a",
+  "OlympusVerify.lua": "3e7825fe24cfdcca131cb9741bd3282188f8fbb23988d1bc24d521095ff28e07",
   "OlympusVerifyAutoSync.lua": "c48ab475e9a8aa75c4f875d7d40f7fd1f939d86d44da0fae44d7e31047c0bf98",
   "OlympusVerifyOfficerInvites233.lua": "d588cac11990233feb3461cf30cd69a1db8d0f7ca1141343e9b3cd17a899b931",
   "OlympusVerifyLaunch229.lua": "09492b5aeea3e41be48eeeefe40067f79ba7752b41a2e116610cab3c41fdd204",
   "OlympusVerifyTreasury.lua": "733a1b76f8c2476a20a4942069c20b4b33c7cb4a890c6b32e957eb0324f36d67",
-  "OlympusVerifyLive242.lua": "09744cc2fccf796204e2d2cb5ee0b26cf459f3e3a63dd4d33c8adb55086eb419",
-  "OlympusVerify.toc": "128b0a3afbce332d0337df6d6387258e77e2fb959642584f82dd03dc778b066d"
+  "OlympusVerifyLive242.lua": "26715797e47e156198051c5d7c91deb3bc5d2849a5c87bee92526d9b4025e13b",
+  "OlympusVerify.toc": "f81154a2b2a461e89e0659b5269e9590eab673dee5c1d0df52d224fcf297f023"
 });
 const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 function crc32(bytes) {

@@ -47,7 +47,7 @@ function V.Queue(row, key)
   if row.id and d.entries[row.id] then return d.entries[row.id] end
   d.nextId=(tonumber(d.nextId) or 0)+1
   row.id=row.id or H.sha256hex(table.concat({guid(call(UnitGUID,"player")) or ownName() or "unknown",tostring(time()),tostring(d.nextId)},"|")):sub(1,32)
-  row.requestedAt=row.requestedAt or time();row.requestedBy=row.requestedBy or ownName();row.status="pending";row.clientVersion="0.6.25"
+  row.requestedAt=row.requestedAt or time();row.requestedBy=row.requestedBy or ownName();row.status="pending";row.clientVersion="0.6.26"
   row.guild=row.guild or call(GetGuildInfo,"player");row.realm=row.realm or call(GetRealmName)
   d.entries[row.id]=row;if key then d.dedup[key]=row.id end
   if type(OlympusDB)=="table" then
@@ -70,8 +70,14 @@ local function pack(v, depth)
   if type(v)=="number" and v==v and math.abs(v)<1e15 then local s=tostring(v);return "n"..#s..":"..s end
   if type(v)=="boolean" then return v and "b1" or "b0" end
   if type(v)~="table" then return nil end
-  local parts,n={},0
-  for k,x in pairs(v) do
+  local parts,n,keys={},0,{}
+  for k in pairs(v) do
+    if type(k)~="string" and type(k)~="number" then return nil end
+    keys[#keys+1]=k;if #keys>100 then return nil end
+  end
+  table.sort(keys,function(a,b) if type(a)~=type(b) then return type(a)=="number" end;return a<b end)
+  for _,k in ipairs(keys) do
+    local x=v[k]
     local a,b=pack(k,(depth or 0)+1),pack(x,(depth or 0)+1)
     if not a or not b then return nil end
     n=n+1;if n>100 then return nil end;parts[#parts+1]=a..b
@@ -104,15 +110,65 @@ local function transportId(id)
   -- Chunk routing is not the canonical request ID or identity authority.
   return H.sha256hex("OLV242-wire|"..id):sub(1,32)
 end
-local function sendRow(row, recipient)
+local VOLATILE={status=true,acknowledgedAt=true,outcome=true,attempts=true,serverReceipt=true}
+local function bodyBinding(row)
+  if type(row)~="table" then return nil end
+  local body={};for k,v in pairs(row) do if not VOLATILE[k] then body[k]=v end end
+  local raw=pack(body,0);return raw and H.sha256hex(raw) or nil
+end
+-- Fern Melder is the existing exact transport destination, not a trust-any-
+-- Officer fallback. A fresh unique native GUID/rank remains mandatory.
+local function configuredCollector() return text(cfg.bridgeRecipient or cfg.treasuryRecipient or "Fern Melder",128) end
+local function existingSecret() return type(cfg.secret)=="string" and #cfg.secret>0 and not cfg.secret:find("REPLACE",1,true) end
+local applyBridgeACK,returnBridgeACK
+local function queueWire(row, recipient)
   if not text(recipient,128) or not C_ChatInfo or type(C_ChatInfo.SendAddonMessage)~="function" then return end
   local wireId=transportId(row.id);if not wireId then return end
   local raw=pack(row,0);if not raw or #raw>8192 then return end
   local count=math.ceil(#raw/170)
-  for i=1,count do state.outbound[#state.outbound+1]={target=recipient,message=wireId..":"..i..":"..count..":"..raw:sub((i-1)*170+1,i*170)} end
+  for i=1,count do state.outbound[#state.outbound+1]={target=recipient,message=wireId..":"..i..":"..count..":"..raw:sub((i-1)*170+1,i*170),pendingRequestId=row.id} end
+end
+local function sendRow(row, recipient)
+  local d=db();local binding=bodyBinding(row);local me=ownName();local ownGuid=guid(call(UnitGUID,"player"))
+  if not d or not binding or not me or not ownGuid or norm(row.requestedBy)~=norm(me) then return end
+  d.bridgeOutbound242=d.bridgeOutbound242 or {};d.bridgeWireIds626=d.bridgeWireIds626 or {};d.deliveryFailures242=d.deliveryFailures242 or {}
+  if d.deliveryFailures242[row.id]=="unsupported_callback" then return end
+  local original=d.bridgeOutbound242[row.id]
+  if original and (original.bodySHA256~=binding or norm(original.collector)~=norm(recipient) or original.ownGuid~=ownGuid or norm(original.recipient)~=norm(me)) then
+    d.deliveryFailures242[row.id]="original_body_or_recipient_changed";return
+  end
+  d.bridgeOutbound242[row.id]=original or {bodySHA256=binding,collector=recipient,recipient=me,ownGuid=ownGuid,character=row.character,guid=row.guid or ""}
+  local wireId=transportId(row.id);if not wireId or d.bridgeWireIds626[wireId] and d.bridgeWireIds626[wireId]~=row.id then return end
+  d.bridgeWireIds626[wireId]=row.id
+  queueWire(row,recipient)
+end
+local function legacyReturnRoute626(original,stored,sender,d)
+  -- Only the known .625 self-request sanitation can be reconstructed without
+  -- guessing a discarded original body. No server work/claim is retried here.
+  if original.source~="self-addon242" or original.clientVersion~="0.6.25" or stored.clientVersion~="0.6.25"
+    or original.nativeMembership~=nil or original.nativeDiscord~=nil or original.bridgeSender~=nil
+    or original.bridgeUntrusted~=true or not text(original.requestedBy,128) or norm(original.requestedBy)~=norm(sender)
+    or stored.source~="addon-bridge242" or stored.bridgeUntrusted~=true or not text(stored.bridgeSender,128) or norm(stored.bridgeSender)~=norm(sender)
+    or d.bridgeMetadata and d.bridgeMetadata[original.id] or original.requestedAt~=stored.requestedAt then return nil end
+  local candidate=clone(original);candidate.source="addon-bridge242";candidate.bridgeSender=sender
+  local proof=stored.nativeMembership
+  if proof~=nil then
+    if type(proof)~="table" or proof.version~=1 or type(proof.member)~="boolean" or type(proof.observedAt)~="number"
+      or proof.observedAt<=0 or proof.observedAt~=math.floor(proof.observedAt) or proof.observedAt>time()+5
+      or not text(proof.scopeHash,16) or #proof.scopeHash~=16 or not text(proof.mac,32) or #proof.mac~=32
+      or norm(original.character)~=norm(sender) or not guid(original.guid) or not H.strictCode(original.code or "") then return nil end
+    local guildName,realm=call(GetGuildInfo,"player"),call(GetRealmName)
+    if not text(guildName,128) or not text(realm,128) or proof.scopeHash~=H.sha256hex("native-scope|1|"..guildName.."|"..realm):sub(1,16) then return nil end
+    local mac=H.hmacSha256hex(cfg.secret,table.concat({"membership","1",norm(sender),original.guid,original.code,proof.member and "1" or "0",tostring(proof.observedAt),proof.scopeHash},"|")):sub(1,32)
+    if mac~=proof.mac then return nil end
+    candidate.nativeMembership=clone(proof) -- retain its original clock/MAC
+  end
+  if bodyBinding(candidate)~=bodyBinding(stored) then return nil end
+  return {recipient=sender,bodySHA256=bodyBinding(original),character=original.character,guid=original.guid or "",legacy625SourceRecovered=true}
 end
 local function receiveWire(message, sender, distribution)
-  if not V.IsAuthorizedWatcher() or distribution~="WHISPER" or not text(sender,128) or not text(message,255) then return end
+  if distribution~="WHISPER" or not text(sender,128) or not text(message,255) then return end
+  if message:sub(1,5)=="A626|" then applyBridgeACK(message,sender);return end
   local id,part,count,payload=message:match("^(%x+):(%d+):(%d+):(.*)$")
   part,count=tonumber(part),tonumber(count)
   if not id or #id~=32 or not part or not count or count>49 or part<1 or part>count then return end
@@ -125,8 +181,24 @@ local function receiveWire(message, sender, distribution)
   entry.parts[part]=payload
   for i=1,count do if not entry.parts[i] then return end end
   state.incoming[key]=nil
-  local row=unpackWire(table.concat(entry.parts));if not row or transportId(row.id)~=id or not text(row.character,128) or row.status~="pending"
+  local row=unpackWire(table.concat(entry.parts));if not row or transportId(row.id)~=id then return end
+  if not V.IsAuthorizedWatcher() or not text(row.character,128) or row.status~="pending"
     or (row.type~="verify" and row.type~="role" and row.type~="guild" and row.type~="donation") then return end
+  local d=db();if not d then return end
+  local binding=bodyBinding(row);if not binding then return end
+  d.bridgeReturns242=d.bridgeReturns242 or {}
+  local route=d.bridgeReturns242[row.id]
+  local stored=d.entries[row.id]
+  if stored and not route then
+    route=legacyReturnRoute626(row,stored,sender,d)
+    if not route then d.deliveryFailures242=d.deliveryFailures242 or {};d.deliveryFailures242[row.id]="unsupported_callback";return end
+    d.bridgeReturns242[row.id]=route
+    local acknowledged=d.acknowledgements[row.id]
+    if acknowledged then returnBridgeACK(stored,acknowledged) end
+    return -- the retained pending/unknown original is never queued again
+  end
+  if stored and (norm(route.recipient)~=norm(sender) or route.bodySHA256~=binding) then return end
+  local originalName,originalGuid=row.character,row.guid or ""
   -- Remote clients cannot assert officer membership proofs or Native Discord
   -- observations. Keep their original Authority token as untrusted input.
   row.nativeMembership=nil;row.nativeDiscord=nil;row.bridgeUntrusted=true;row.bridgeSender=sender;row.source="addon-bridge242"
@@ -137,7 +209,12 @@ local function receiveWire(message, sender, distribution)
     row.nativeMembership=call(API.NativeBridgeMembership242,sender,row.guid,row.code)
   end
   row.requestedBy=row.requestedBy or sender
-  V.Queue(row,"remote|"..sender.."|"..id)
+  local queued=V.Queue(row,"remote|"..sender.."|"..id)
+  if queued then
+    d.bridgeReturns242[row.id]=route or {recipient=sender,bodySHA256=binding,character=originalName,guid=originalGuid}
+    local acknowledged=d.acknowledgements[row.id]
+    if acknowledged then returnBridgeACK(queued,acknowledged) end
+  end
 end
 -- A local observation ID distinguishes real native events; it is never a code,
 -- membership witness or permission to retry an earlier unknown server effect.
@@ -181,6 +258,113 @@ local function receiptTransportValid(r, at)
   -- Native source proof. The signed original ACK time remains unchanged.
   return offset>0 and offset%86340==0 and r.expiresAt-86400<=at+5
 end
+local function receiptValid(r)
+  return type(r)=="table" and text(r.id,64) and #r.id>0 and (r.status=="done" or r.status=="rejected") and text(r.character,128)
+    and (r.guid==nil or r.guid=="" or guid(r.guid)) and (r.discordRole==nil or text(r.discordRole,128))
+    and text(r.mac,32) and #r.mac==32 and r.mac:match("^%x+$") and receiptTransportValid(r,time())
+end
+local function receiptMAC(r)
+  local payload=table.concat({"intake242",r.id,r.status,r.guid or "",norm(r.character),r.discordRole or "",tostring(r.observedAt),tostring(r.expiresAt)},"|")
+  return H.hmacSha256hex(cfg.secret,payload):sub(1,32)==r.mac
+end
+local function nativeCollector(sender)
+  if norm(sender)~=norm(configuredCollector()) or call(IsInGuild)~=true then return nil end
+  if not state.guildRosterAt or time()-state.guildRosterAt>60 or state.guildRosterAt>time() then return nil,"stale" end
+  local count=call(GetNumGuildMembers)
+  if type(count)~="number" or count<1 or count>1000 or count~=math.floor(count) or type(GetGuildRosterInfo)~="function" then return nil end
+  local cached=state.collectorCache626;local collectorName=norm(sender)
+  if cached and cached.at==state.guildRosterAt and cached.count==count and cached.name==collectorName then return cached.guid or nil end
+  -- One full bounded native roster read per burst/event, including refusals.
+  state.collectorCache626={at=state.guildRosterAt,count=count,name=collectorName,guid=false}
+  local found,hits,rows=nil,0,{}
+  for i=1,count do
+    local name,_,rank,_,_,_,_,_,online,_,_,_,_,_,_,_,memberGuid=call(GetGuildRosterInfo,i)
+    if not text(name,128) or not guid(memberGuid) then return nil end
+    rows[#rows+1]=memberGuid
+    if norm(name)==norm(sender) then
+      hits=hits+1
+      if type(rank)=="number" and rank==math.floor(rank) and rank>=0 and rank<=3 and online==true then found=memberGuid end
+    end
+  end
+  if hits~=1 or not found then return nil end
+  local matches=0;for _,id in ipairs(rows) do if id==found then matches=matches+1 end end
+  if matches==1 then state.collectorCache626.guid=found;return found end
+  return nil
+end
+local function matchingCallback(row,d)
+  local metadata=d.bridgeMetadata and d.bridgeMetadata[row.id]
+  if not metadata then return row end -- the original OlympusVerify entry
+  local container
+  if metadata.origin=="Olympus-pendingRoleUpdates" then container=OlympusDB
+  elseif metadata.origin=="OlympusRecordDB-pendingRoleUpdates" then container=OlympusRecordDB end
+  local candidate=type(container)=="table" and type(container.pendingRoleUpdates)=="table" and container.pendingRoleUpdates[row.id]
+  if type(candidate)~="table" or candidate.id~=row.id or candidate.type~=row.type or not text(candidate.character,128) or norm(candidate.character)~=norm(row.character)
+    or bodyBinding(candidate)~=bodyBinding(row) then return nil end
+  return candidate
+end
+returnBridgeACK=function(row,r)
+  local d=db();local route=d and d.bridgeReturns242 and d.bridgeReturns242[row.id]
+  if not route or not V.IsAuthorizedWatcher() or not receiptValid(r) or not receiptMAC(r)
+    or norm(r.character)~=norm(route.character) or (route.guid~="" and route.guid~=(r.guid or "")) then return end
+  state.returnedACKs=state.returnedACKs or {}
+  local key=row.id.."|"..route.recipient;local last=state.returnedACKs[key]
+  if last and last.mac==r.mac and time()-last.at<2 then return end
+  -- A single bounded delivery report. Its MAC uses the existing shared secret;
+  -- it is deliberately NOT an intake242 server receipt or a role proof.
+  local message=table.concat({"A626",transportId(row.id),route.bodySHA256:sub(1,32),H.sha256hex("bridge-recipient626|"..norm(route.recipient)):sub(1,32),r.status=="done" and "D" or "R",tostring(r.observedAt),tostring(r.expiresAt)},"|")
+  message=message.."|"..H.hmacSha256hex(cfg.secret,message):sub(1,32)
+  if #message>255 then return end
+  state.outbound[#state.outbound+1]={target=route.recipient,message=message}
+  state.returnedACKs[key]={at=time(),mac=r.mac}
+end
+applyBridgeACK=function(message,sender)
+  local wire,body,recipient,status,observed,expires,mac=message:match("^A626|(%x+)|(%x+)|(%x+)|([DR])|(%d+)|(%d+)|(%x+)$")
+  if not wire or #wire~=32 or #body~=32 or #recipient~=32 or #mac~=32 then return end
+  local at,untilAt=tonumber(observed),tonumber(expires)
+  if not at or not untilAt or tostring(at)~=observed or tostring(untilAt)~=expires or not receiptTransportValid({observedAt=at,expiresAt=untilAt},time()) then return end
+  local d=db();local id=d and d.bridgeWireIds626 and d.bridgeWireIds626[wire]
+  local row=d and d.entries[id];local sent=d and d.bridgeOutbound242 and d.bridgeOutbound242[id]
+  if type(row)~="table" or type(sent)~="table" or not text(sent.bodySHA256,64) or #sent.bodySHA256~=64
+    or not text(sent.collector,128) or not text(sent.recipient,128) or not text(row.character,128)
+    or recipient~=H.sha256hex("bridge-recipient626|"..norm(ownName())):sub(1,32)
+    or norm(sent.recipient)~=norm(ownName()) or sent.ownGuid~=guid(call(UnitGUID,"player"))
+    or norm(sender)~=norm(sent.collector) or norm(sender)~=norm(configuredCollector())
+    or body~=sent.bodySHA256:sub(1,32) or bodyBinding(row)~=sent.bodySHA256
+    or row.character~=sent.character or (row.guid or "")~=sent.guid then return end
+  if existingSecret() and H.hmacSha256hex(cfg.secret,message:sub(1,-34)):sub(1,32)~=mac then return end
+  local collector,why=nativeCollector(sender)
+  if not collector then
+    if why=="stale" then
+      state.pendingACKs=state.pendingACKs or {};local n=0;for _ in pairs(state.pendingACKs) do n=n+1 end
+      if n<32 or state.pendingACKs[id] then state.pendingACKs[id]={message=message,sender=sender} end
+      if not state.rosterRequestAt626 or time()-state.rosterRequestAt626>=30 then
+        local request=C_GuildInfo and C_GuildInfo.GuildRoster
+        if type(request)~="function" then request=GuildRoster end
+        if type(request)=="function" then state.rosterRequestAt626=time();call(request) end
+      end
+    end
+    return
+  end
+  if sent.collectorGuid and sent.collectorGuid~=collector then return end
+  local terminal=status=="D" and "done" or "rejected"
+  local observation=H.sha256hex(table.concat({id,body,recipient,terminal,observed},"|"));d.deliveryReceipts242=d.deliveryReceipts242 or {}
+  local previous=d.deliveryReceipts242[id]
+  if previous and previous.observationSHA256~=observation then return end
+  if row.status~="pending" and row.status~=terminal then return end
+  if row.serverReceipt and (type(row.serverReceipt)~="table" or row.serverReceipt.status~=terminal or row.serverReceipt.observedAt~=at) then return end
+  local callback=matchingCallback(row,d)
+  if not callback or callback.status and callback.status~="pending" and callback.status~=terminal then
+    d.deliveryFailures242=d.deliveryFailures242 or {};d.deliveryFailures242[row.id]="unsupported_callback";return
+  end
+  sent.collectorGuid=collector
+  d.deliveryReceipts242[row.id]={status=terminal,observedAt=at,expiresAt=untilAt,collector=sender,collectorGuid=collector,observationSHA256=observation,collectorReportedDeliveryOnly=true,existingSecretMACVerified=existingSecret() and true or false}
+  row.status=terminal;callback.status=terminal
+  if OlympusDB and OlympusDB.pendingRoleUpdates then
+    local mirrored=OlympusDB.pendingRoleUpdates[row.id]
+    if type(mirrored)=="table" and bodyBinding(mirrored)==sent.bodySHA256 then mirrored.status=terminal end
+  end
+  if state.pendingACKs then state.pendingACKs[row.id]=nil end
+end
 local function receipts()
   local d=db();if not d then return end
   for _,r in ipairs(type(OlympusQueue)=="table" and OlympusQueue.intakeReceipts242 or {}) do
@@ -193,6 +377,7 @@ local function receipts()
         if row and norm(row.character)==norm(r.character) and (not row.guid or row.guid=="" or row.guid==r.guid) then
           row.status=r.status;row.serverReceipt=clone(r);d.acknowledgements[r.id]=clone(r)
           if OlympusDB and OlympusDB.pendingRoleUpdates and OlympusDB.pendingRoleUpdates[r.id] then OlympusDB.pendingRoleUpdates[r.id].status=r.status end
+          returnBridgeACK(row,r)
         end
       end
     end
@@ -351,8 +536,8 @@ function V.ScanMailbox()
           end
         end
         local verify=d.entries[mail.verifyId];local donation=mail.donationId and d.entries[mail.donationId]
-        if readableComplete and unique and exactProof and not mail.deleteRequestedAt and h.cod==0 and h.money==0 and not h.hasItems and verify and verify.status=="done"
-          and (not mail.hadValue or mail.collected and donation and donation.status=="done") and type(DeleteInboxItem)=="function" then
+        if readableComplete and unique and exactProof and not mail.deleteRequestedAt and h.cod==0 and h.money==0 and not h.hasItems and verify and verify.status=="done" and verify.serverReceipt
+          and (not mail.hadValue or mail.collected and donation and donation.status=="done" and donation.serverReceipt) and type(DeleteInboxItem)=="function" then
           -- The current header/body must still match immediately before delete.
           local again=mailHeader(i)
           if again and mailSignature(again,text(call(GetInboxText,i),8192) or "")==mailSignature(h,body) then
@@ -463,7 +648,8 @@ local function officerButton()
 end
 function V.Status()
   local d=db();local pending=0;for _,r in pairs(d and d.entries or {}) do if r.status=="pending" then pending=pending+1 end end
-  return {pending=pending,mailGuidAvailable=false,serverDurableDeletionOnly=true}
+  local unsupported=0;for _,reason in pairs(d and d.deliveryFailures242 or {}) do if reason=="unsupported_callback" then unsupported=unsupported+1 end end
+  return {pending=pending,unsupportedCallbacks=unsupported,mailGuidAvailable=false,serverDurableDeletionOnly=true}
 end
 function V.VisibleEntries()
   local d=db();local out={};local me=norm(ownName());local watcher=V.IsAuthorizedWatcher()
@@ -472,7 +658,8 @@ function V.VisibleEntries()
 end
 function V.PrintOwnStatus()
   local rows=V.VisibleEntries();say("Your verification and role requests: "..#rows..". Open Olympus with /oly -> Verify / QR Code tab.")
-  for i=math.max(1,#rows-19),#rows do local r=rows[i];say((r.type or "request")..": "..(r.status or "pending")..(r.serverReceipt and r.serverReceipt.discordRole and " / "..r.serverReceipt.discordRole or "")) end
+  local d=db()
+  for i=math.max(1,#rows-19),#rows do local r=rows[i];local unsupported=d and d.deliveryFailures242 and d.deliveryFailures242[r.id]=="unsupported_callback";say((r.type or "request")..": "..(unsupported and "unsupported_callback" or r.status or "pending")..(r.serverReceipt and r.serverReceipt.discordRole and " / "..r.serverReceipt.discordRole or "")) end
 end
 function V.QueueSelf(code)
   code=H.strictCode(code or "")
@@ -480,7 +667,8 @@ function V.QueueSelf(code)
   if not code or not me or not id then say("Use /olv verify CODE with your own code and a readable native player identity.");return false end
   local row=V.Queue({type="verify",source="self-addon242",character=me,guid=id,guild=guildName,rankName=rankName,rankIndex=rankIndex,
     code=code,requestedBy=me,observedAt=time(),guidSource="UnitGUID-player",bridgeUntrusted=true},"self|"..id.."|"..code)
-  if row then sendRow(row,cfg.bridgeRecipient or cfg.treasuryRecipient or "Fern Melder");say("Your request is saved and silently queued to the Watcher. Open Olympus with /oly -> Verify / QR Code tab.") end
+  if row and row.status=="pending" then sendRow(row,cfg.bridgeRecipient or cfg.treasuryRecipient or "Fern Melder");say("Your request is saved and silently queued to the Watcher. Open Olympus with /oly -> Verify / QR Code tab.")
+  elseif row then say("Your request delivery is "..tostring(row.status)..". Delivery alone does not confirm current verification or a Discord role. Open Olympus with /oly -> Verify / QR Code tab.") end
   return row~=nil
 end
 local function nativeDiscord(info)
@@ -515,7 +703,9 @@ local function boot()
     state.pump=C_Timer.NewTicker(0.3,function()
       local index=(state.outboundHead or 0)+1;local next=state.outbound[index]
       if next then
-        state.outboundHead=index;pcall(C_ChatInfo.SendAddonMessage,"OLV242",next.message,"WHISPER",next.target)
+        state.outboundHead=index
+        local current=db();local pending=next.pendingRequestId and current and current.entries[next.pendingRequestId]
+        if not next.pendingRequestId or pending and pending.status=="pending" then pcall(C_ChatInfo.SendAddonMessage,"OLV242",next.message,"WHISPER",next.target) end
       elseif state.outboundHead then state.outbound={};state.outboundHead=nil end
       -- Only incomplete transport assemblies expire. Saved pending jobs do not.
       if not state.lastWirePrune or time()-state.lastWirePrune>=30 then
@@ -600,5 +790,9 @@ f:SetScript("OnEvent",function(_,event,...)
     local message,sender=text(select(1,...),4096),text(select(2,...),128)
     if message and sender then local d=db();if d then d.nativeGuildChatLast={at=time(),sender=sender,senderGuid=guid(select(12,...)),identityQualified=false} end end
     nativeDiscord(select(18,...))
-  elseif event=="GUILD_ROSTER_UPDATE" then officerButton() end
+  elseif event=="GUILD_ROSTER_UPDATE" then
+    state.guildRosterAt=time();state.collectorCache626=nil;officerButton()
+    local pending=state.pendingACKs or {};state.pendingACKs={}
+    for _,item in pairs(pending) do applyBridgeACK(item.message,item.sender) end
+  end
 end)

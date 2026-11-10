@@ -120,6 +120,18 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .261 reverses only the exact owner-directed bridge-delivery release note.
+  const release261 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".261\", date: \"2026-11-10\", lines: [",
+    "      \"Addon bridge requests now receive bounded delivery receipts from their configured guild collector.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .261 prepend occurs once', originalNews.split(release261).length === 2);
+  originalNews = originalNews.replace(release261, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
   // .260 reverses only the exact owner-directed diagnostic release note.
   const release260 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

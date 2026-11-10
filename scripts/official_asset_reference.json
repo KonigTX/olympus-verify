@@ -4267,16 +4267,16 @@
       "sha256": "0594a381074357b905b0336854d372403003b20121ad28179728b90a1101f8f1"
     },
     {
-      "path": "worker/public/static/olympus-verify/olympus-verify-0.6.25.zip",
+      "path": "worker/public/static/olympus-verify/olympus-verify-0.6.26.zip",
       "mode": "100644",
-      "bytes": 562264,
-      "sha256": "fdce8c9931bb7c5894861742154d019bd38ff5e6efe40e78f613fbc96fe4484a"
+      "bytes": 576419,
+      "sha256": "f43cb47d1a5a0e89adb8e25a54f4644005fb69915f562fd39bff06d67b0f2855"
     },
     {
       "path": "worker/public/static/olympus-verify/version.json",
       "mode": "100644",
       "bytes": 3888,
-      "sha256": "f7d66a9eec2f4a2b94994451dd11303c30de2c3da253bcbd1ca60ca49ddfe750"
+      "sha256": "bda99f87bc1a2f24a6eb2fdfdb1a916fe8cece4ecf6adcc53abba8d8b3eedb56"
     }
   ],
   "login_art_exception": {

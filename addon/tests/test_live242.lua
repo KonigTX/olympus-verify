@@ -315,5 +315,140 @@ do
   x.ack(fresh);x.event("MAIL_INBOX_UPDATE")
   check("new post-absence instance requires its own durable ACK to delete",x.deletes==1)
 end
+-- .626 return protocol: actual codec/pump/collector HMAC acceptance and the
+-- native sender boundary. Synthetic guild/receipt fixtures confer no real role.
+local function wireMessages(x)
+  x.addonMessages={};for _=1,120 do x.pump() end
+  local out={};for _,message in ipairs(x.addonMessages) do if message[1]=="OLV242" then out[#out+1]=message[2] end end
+  return out
+end
+local function deliver(x,messages,sender,distribution)
+  for _,message in ipairs(messages) do x.event("CHAT_MSG_ADDON","OLV242",message,distribution or "WHISPER",sender) end
+end
+local function member626(secret)
+  local x=fixture();x.nativeRows={{name="Fern Melder",guid="Player-1-1234ABCD",rank=1,online=true},{name="Bridge Member",guid="Player-1-11112222",rank=8,online=true}}
+  x.e.OlympusVerifyAPI.TreasuryTransport.Name=function() return "Bridge Member" end
+  x.e.UnitGUID=function(unit) return unit=="player" and "Player-1-11112222" or "Player-1-9999ABCD" end
+  x.e.GetGuildInfo=function() return "OLYMPUS PRIME","Member",8 end
+  x.e.GetNumGuildMembers=function() return #x.nativeRows end
+  x.rosterRequests=0;x.e.GuildRoster=function() x.rosterRequests=x.rosterRequests+1 end
+  x.nativeReads=0
+  x.e.GetGuildRosterInfo=function(i) x.nativeReads=x.nativeReads+1;local r=x.nativeRows[i];if r then return r.name,"rank",r.rank,60,"class","zone","","",r.online,nil,"WARRIOR",0,0,false,false,0,r.guid end end
+  if not secret then x.e.OlympusVerifyConfig.secret=nil end
+  x.event("GUILD_ROSTER_UPDATE")
+  return x
+end
+local function completedBridge626(member,row)
+  member.v.Flush("sync");local request=wireMessages(member)
+  local collector=fixture();deliver(collector,request,"Bridge Member")
+  local original=collector.rows()[row.id];assert(original,"bridge request fixture must reach actual collector decoder")
+  local receipt=collector.ack(original);collector.v.Flush("sync")
+  return wireMessages(collector),collector,receipt,request
+end
+local function pair626(secret,external)
+  local member=member626(secret);local row
+  if external then
+    local source={id="external-626",type="verify",source="original-record",character="Bridge Member",guid="Player-1-11112222",code="ABC1234",requestedBy="Bridge Member"}
+    if external=="OlympusDB" then member.e.OlympusDB.pendingRoleUpdates[source.id]=source
+    else member.e.OlympusRecordDB={pendingRoleUpdates={[source.id]=source}} end
+    member.v.Flush("sync");row=member.rows()[source.id]
+  else row=member.v.Queue({type="verify",source="self-addon242",character="Bridge Member",guid="Player-1-11112222",code="ABC1234",bridgeUntrusted=true},"ack626") end
+  local ack,collector,receipt,request=completedBridge626(member,row)
+  return member,row,ack,collector,receipt,request
+end
+local function ackField626(message,field,value)
+  local fields={};for part in message:gmatch("[^|]+") do fields[#fields+1]=part end
+  fields[field]=value;return table.concat(fields,"|")
+end
+do
+  local m,row,ack=pair626(false)
+  check("return ACK is exactly one bounded addon-message packet",#ack==1 and #ack[1]<=255 and ack[1]:sub(1,5)=="A626|")
+  deliver(m,ack,"Fern Melder")
+  local d=m.e.OlympusVerifyDB.intake242;local original=d.deliveryReceipts242[row.id]
+  check("configured fresh native collector settles the initiating secretless delivery",row.status=="done" and original and original.collectorReportedDeliveryOnly==true and original.collectorGuid=="Player-1-1234ABCD")
+  check("collector delivery never fabricates server receipt, role cache or signed ACK authority",row.serverReceipt==nil and d.acknowledgements[row.id]==nil and not (m.e.OlympusQueue and m.e.OlympusQueue.verificationResults242))
+  check("returned delivery is never already-verified role status",not m.v.VerificationReply(row.character,row.guid):find("already verified",1,true))
+  deliver(m,ack,"Fern Melder")
+  check("two ACKs in one roster event use only one bounded native roster read",m.nativeReads==#m.nativeRows)
+  check("duplicate terminal delivery preserves the same original outcome",row.status=="done" and d.deliveryReceipts242[row.id].observationSHA256==original.observationSHA256)
+  deliver(m,{ackField626(ack[1],5,"R")},"Fern Melder")
+  check("conflicting terminal replay cannot replace the first delivery",row.status=="done" and d.deliveryReceipts242[row.id].status=="done")
+  m.v.Flush("sync");check("settled initiating request is no longer retransmitted",#wireMessages(m)==0)
+end
+do
+  for _,case in ipairs({"wrong native sender","wrong recipient","wrong body","unknown original ID","wrong character","wrong GUID","guild distribution","not Officer","duplicate collector name","duplicate collector GUID","stale roster","expired ACK"}) do
+    local m,row,ack=pair626(false);local messages=ack;local sender="Fern Melder";local distribution="WHISPER"
+    if case=="wrong native sender" then sender="Other Officer"
+    elseif case=="wrong recipient" then messages={ackField626(ack[1],4,string.rep("0",32))}
+    elseif case=="wrong body" then messages={ackField626(ack[1],3,string.rep("0",32))}
+    elseif case=="unknown original ID" then messages={ackField626(ack[1],2,string.rep("0",32))}
+    elseif case=="wrong character" then row.character="Other Member"
+    elseif case=="wrong GUID" then row.guid="Player-1-77778888"
+    elseif case=="guild distribution" then distribution="GUILD"
+    elseif case=="not Officer" then m.nativeRows[1].rank=8
+    elseif case=="duplicate collector name" then m.nativeRows[#m.nativeRows+1]={name="Fern Melder",guid="Player-1-55556666",rank=1,online=true}
+    elseif case=="duplicate collector GUID" then m.nativeRows[#m.nativeRows+1]={name="Other Officer",guid="Player-1-1234ABCD",rank=1,online=true}
+    elseif case=="stale roster" then m.e.NOW=m.e.NOW+61
+    elseif case=="expired ACK" then m.e.NOW=m.e.NOW+301;m.event("GUILD_ROSTER_UPDATE") end
+    deliver(m,messages,sender,distribution)
+    check("return ACK refuses "..case,row.status=="pending")
+    if case=="stale roster" then
+      deliver(m,messages,sender,distribution)
+      check("stale ACK burst coalesces one read-only roster request",m.rosterRequests==1)
+      m.event("GUILD_ROSTER_UPDATE");check("a fresh native roster can admit the same still-valid pending delivery",row.status=="done")
+    end
+  end
+end
+do
+  local m,row,ack=pair626(true)
+  deliver(m,{ackField626(ack[1],8,string.rep("0",32))},"Fern Melder")
+  check("existing-secret client must verify the compact delivery MAC",row.status=="pending")
+  deliver(m,ack,"Fern Melder")
+  check("correct existing-secret MAC admits delivery without server-proof promotion",row.status=="done" and row.serverReceipt==nil and m.e.OlympusVerifyDB.intake242.deliveryReceipts242[row.id].existingSecretMACVerified==true)
+end
+do
+  local m,row,ack=pair626(false,true);local source=m.e.OlympusRecordDB.pendingRoleUpdates[row.id]
+  deliver(m,ack,"Fern Melder")
+  check("exact known original external map receives only its own terminal delivery",row.status=="done" and source.status=="done" and source.id=="external-626" and source.source=="original-record")
+  local n,original,badAck=pair626(false,true);local changed=n.e.OlympusRecordDB.pendingRoleUpdates[original.id];changed.code="ZZZ9999"
+  deliver(n,badAck,"Fern Melder")
+  check("changed external body remains unsupported callback without rewriting it",original.status=="pending" and changed.code=="ZZZ9999" and n.v.Status().unsupportedCallbacks==1)
+  n.v.Flush("sync");check("unsupported callback does not cause endless retransmission",#wireMessages(n)==0)
+  local o,own,ownAck=pair626(false,"OlympusDB");local original=o.e.OlympusDB.pendingRoleUpdates[own.id]
+  deliver(o,ownAck,"Fern Melder")
+  check("actual matching OlympusDB consumer receives its same-ID delivery only",own.status=="done" and original.status=="done" and original.source=="original-record" and own.serverReceipt==nil)
+end
+do
+  local m=member626(false);local row=m.v.Queue({type="verify",source="self-addon242",character="Bridge Member",guid="Player-1-11112222",code="ABC1234",bridgeUntrusted=true},"unknown626")
+  m.v.Flush("sync");local request=wireMessages(m);local collector=fixture();deliver(collector,request,"Bridge Member")
+  local original=collector.rows()[row.id];collector.ack(original,"unknown");collector.v.Flush("sync")
+  check("unknown or nonterminal collector outcome never produces an ACK",#wireMessages(collector)==0 and row.status=="pending" and original.status=="pending")
+end
+do
+  -- Explicit synthetic retained .625 SavedVariables, not a rewritten module or
+  -- a regenerated server receipt. Exercise recovery through the actual codec.
+  local m=member626(false)
+  local row=m.v.Queue({type="verify",source="self-addon242",character="Bridge Member",guid="Player-1-11112222",code="ABC1234",bridgeUntrusted=true},"retained625")
+  row.clientVersion="0.6.25"
+  local _,collector,_,request=completedBridge626(m,row)
+  local d=collector.e.OlympusVerifyDB.intake242;local retained=d.entries[row.id]
+  retained.clientVersion="0.6.25";d.bridgeReturns242[row.id]=nil;collector.e.NOW=collector.e.NOW+3
+  local receipt=retained.serverReceipt;local originalClock=retained.requestedAt
+  deliver(collector,request,"Bridge Member");local ack=wireMessages(collector)
+  check("pre626 exact native bridge row recovers only its missing return route",#ack==1 and d.entries[row.id]==retained and retained.serverReceipt==receipt and retained.requestedAt==originalClock and d.bridgeReturns242[row.id].legacy625SourceRecovered==true)
+  deliver(m,ack,"Fern Melder");check("recovered legacy route settles delivery without retrying the retained effect",row.status=="done" and row.serverReceipt==nil)
+  d.bridgeReturns242[row.id]=nil;retained.bridgeSender="Other Member";collector.e.NOW=collector.e.NOW+3
+  deliver(collector,request,"Bridge Member")
+  check("unprovable pre626 native sender remains explicit unsupported callback",d.deliveryFailures242[row.id]=="unsupported_callback" and #wireMessages(collector)==0 and d.entries[row.id]==retained)
+end
+do
+  local m=member626(true);m.e.GetGuildInfo=function() return "OLYMPUS PRIME","Officer",1 end
+  local code=m.e.OlympusHmac.codeFor(m.e.OlympusVerifyConfig.secret,"Mail Sender",m.e.OlympusHmac.utcDay(m.e.NOW))
+  m.inbox={{sender="Mail Sender",subject="Return boundary",body="!verify "..code}}
+  m.event("MAIL_SHOW");local row;for _,r in pairs(m.rows()) do if r.type=="verify" then row=r end end
+  m.e.OlympusVerifyConfig.secret=nil;m.e.GetGuildInfo=function() return "OLYMPUS PRIME","Member",8 end
+  local ack=completedBridge626(m,row);deliver(m,ack,"Fern Melder");m.event("MAIL_INBOX_UPDATE")
+  check("collector-reported delivery cannot satisfy signed mail-deletion authority",row.status=="done" and row.serverReceipt==nil and m.deletes==0)
+end
 print(string.format("live242: %d passed, %d failed",passed,failed))
 if failed>0 then error("live242 post-deploy checks failed") end
