@@ -120,13 +120,25 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .246 reverses only the exact owner-directed live-first release note.
+  const release246 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".246\", date: \"2026-11-10\", lines: [",
+    "      \"Rank-update continuations now use the supported request mode and refuse redirects.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .246 prepend occurs once', originalNews.split(release246).length === 2);
+  originalNews = originalNews.replace(release246, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
   // .245 reverses only the exact owner-directed live-first release note.
   const release245 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
     "  {",
-    "    build: \".245\",",
-    "    date: \"2026-11-10\",",
-    "    lines: [\"Rank updates continue while the current request has room, with the same per-account identity and request-budget checks.\"],",
+    "    build: \".245\", date: \"2026-11-10\", lines: [",
+    "      \"Rank updates continue while the current request has room, with the same per-account identity and request-budget checks.\",",
+    "    ],",
     "  },",
     ""
   ].join('\n');

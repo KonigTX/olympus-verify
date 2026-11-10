@@ -7896,3 +7896,8 @@ Moves the optional .242 handlers behind their route/call boundaries so the origi
 
 Removes the initial fixed worst-case visit-count divisor. The existing live per-account SQL and HTTP admission checks and ten-account maximum remain. A cheap held subject no longer prevents the next urgent rank update when the invocation still has room. Native identity, ownership, unknown-effect and selector checks remain. The owner-directed sequence remains compile/bundle plus fresh restored D1 backup, deploy, then affected regressions. Addon0.6.22 and Watcher0.6.21 are unchanged. Preserve all prior failures.
 
+
+## Worker .246 — supported signed continuation fetch
+
+Uses the edge runtime's manual redirect mode for signed self-continuation POSTs. Every non-success response, including all redirects, remains refused. HMAC, nonce, TTL, original Native role checks and per-invocation budget fences are unchanged. The owner-directed rollout still compiles and restores a fresh443/442 D1 backup before deployment, then reruns the affected scheduling regression after serving. No addon or Watcher runtime change.
+

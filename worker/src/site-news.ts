@@ -78,9 +78,14 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
-    build: ".245",
-    date: "2026-11-10",
-    lines: ["Rank updates continue while the current request has room, with the same per-account identity and request-budget checks."],
+    build: ".246", date: "2026-11-10", lines: [
+      "Rank-update continuations now use the supported request mode and refuse redirects.",
+    ],
+  },
+  {
+    build: ".245", date: "2026-11-10", lines: [
+      "Rank updates continue while the current request has room, with the same per-account identity and request-budget checks.",
+    ],
   },
   {
     build: ".244", date: "2026-11-10", lines: [

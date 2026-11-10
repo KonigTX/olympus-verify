@@ -52,7 +52,7 @@ export async function kickRoleWork242(env:Env,kind:'requests'|'sweep'):Promise<v
  const base=new URL(env.PUBLIC_BASE_URL);
  if(base.protocol!=='https:'||base.username||base.password||base.pathname!=='/'||base.search||base.hash)throw Error('role242_origin_invalid');
  const text=JSON.stringify({kind,at:now(),nonce:crypto.randomUUID()});
- const response=await fetch(new URL(PATH,base),{method:'POST',headers:{'Content-Type':'application/json','X-Olympus-Role-Continuation':await signature242(env,text)},body:text,redirect:'error'});
+ const response=await fetch(new URL(PATH,base),{method:'POST',headers:{'Content-Type':'application/json','X-Olympus-Role-Continuation':await signature242(env,text)},body:text,redirect:'manual'});
  await response.body?.cancel();
  if(!response.ok)throw Error('role242_continuation_held');
 }

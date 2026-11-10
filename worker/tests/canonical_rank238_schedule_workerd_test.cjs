@@ -32,9 +32,10 @@ async function build(qualified,label){
 }
 function packets(text){const x=JSON.parse(text);return Array.isArray(x)?x:[x];}
 async function run(qualified,label,scenario,source){
- const present=new Map([[A,[HIGH]],[B,[HIGH]]]),http=[],selfWakes=[],selfNonces=new Set();let mf,callbackPhase=false;
+ const present=new Map([[A,[HIGH]],[B,[HIGH]]]),http=[],selfWakes=[],selfNonces=new Set(),outboundRefusals=[];let mf,callbackPhase=false;
  try{
-  mf=new Miniflare(convertV4MiniflareOptions({rootPath:path.join(out,label+'-'+scenario),script:source,modules:true,name:'canonical238',compatibilityDate:'2026-09-01',compatibilityFlags:['nodejs_compat'],host:'127.0.0.1',port:0,cf:false,log:new Log(LogLevel.NONE),logRequests:false,telemetry:{enabled:false},unsafeRegisterWorker:false,unsafeLocalExplorer:false,unsafeObservability:false,resourceTmpPath:path.join(out,label+'-'+scenario,'tmp'),resourcePersistencePath:path.join(out,label+'-'+scenario,'persist'),isolatedResourcePersistencePath:path.join(out,label+'-'+scenario,'isolated'),bindings:{CASE238:scenario},d1Databases:{DB_veteran:'canonical238-'+label+'-'+scenario},outboundService:async req=>{
+  mf=new Miniflare(convertV4MiniflareOptions({rootPath:path.join(out,label+'-'+scenario),script:source,modules:true,name:'canonical238',compatibilityDate:'2026-09-01',compatibilityFlags:['nodejs_compat'],host:'127.0.0.1',port:0,cf:false,log:new Log(LogLevel.ERROR),logRequests:false,telemetry:{enabled:false},unsafeRegisterWorker:false,unsafeLocalExplorer:false,unsafeObservability:false,resourceTmpPath:path.join(out,label+'-'+scenario,'tmp'),resourcePersistencePath:path.join(out,label+'-'+scenario,'persist'),isolatedResourcePersistencePath:path.join(out,label+'-'+scenario,'isolated'),bindings:{CASE238:scenario},d1Databases:{DB_veteran:'canonical238-'+label+'-'+scenario},outboundService:async req=>{
+   try{
    const u=new URL(req.url),p=u.pathname.replace(/^\/api\/v10/,'');
    if(u.origin==='https://verify.example'&&u.pathname==='/internal/roles242/continue'){
     assert.equal(new URL(seed.config.PUBLIC_BASE_URL).origin,'https://verify.example','fixed_source_self_origin');
@@ -59,10 +60,19 @@ async function run(qualified,label,scenario,source){
    for(const id of [A,B]){if(req.method==='GET'&&p==='/guilds/'+G+'/members/'+id)return Response.json({user:{id},roles:present.get(id)});
     const pre='/guilds/'+G+'/members/'+id+'/roles/';if((req.method==='PUT'||req.method==='DELETE')&&p.startsWith(pre)){const role=p.slice(pre.length);assert(ranks.some(r=>r[1]===role),'only_canonical_target');present.set(id,req.method==='PUT'?[...new Set([...present.get(id),role])]:present.get(id).filter(r=>r!==role));if(scenario==='lost-put'&&callbackPhase&&id===A&&req.method==='PUT')throw Error('synthetic_original_reply_lost_after_remote_apply');return new Response(null,{status:204});}}
    throw Error('unplanned_mock_HTTP');
+   }catch(error){
+    const refusal={syntheticFixtureOnly:true,url:req.url,method:req.method,contentType:req.headers.get('content-type'),hasAuthorization:req.headers.has('authorization'),signatureHeaderLength:(req.headers.get('X-Olympus-Role-Continuation')||'').length,errorName:error?.name||null,errorMessage:String(error?.message||error),errorStack:String(error?.stack||error)};
+    outboundRefusals.push(refusal);wx(label+'-'+scenario+'-outbound-refusal-'+String(outboundRefusals.length).padStart(3,'0')+'.json',refusal);throw error;
+   }
   }}));await mf.ready;
   const first=await mf.dispatchFetch('http://fixture.invalid/veteran',{method:'POST'}),firstBody=await first.json();check(label+'/'+scenario+' original first account obtains real own grant ACK',first.status===200&&firstBody.error===null&&firstBody.result.body.roleGranted===true);
   const prep=await mf.dispatchFetch('http://fixture.invalid/prepare',{method:'POST'});wx(label+'-'+scenario+'-prepare.json',await prep.text());assert.equal(prep.status,200,'second_original_setup');
-  const before=http.length;callbackPhase=true;const worker=await mf.getWorker();assert.equal(typeof worker.scheduled,'function','genuine_runtime_scheduled_service');const original=await worker.scheduled({cron:'* * * * *'});wx(label+'-'+scenario+'-scheduled.json',original);check(label+'/'+scenario+' original runtime callback closes without automatic retry',original.outcome==='ok'&&original.noRetry===true);
+  const before=http.length;callbackPhase=true;const worker=await mf.getWorker();assert.equal(typeof worker.scheduled,'function','genuine_runtime_scheduled_service');const original=await worker.scheduled({cron:'* * * * *'});wx(label+'-'+scenario+'-scheduled.json',original);
+  if(original.outcome!=='ok'||original.noRetry!==true){
+   wx(label+'-'+scenario+'-callback-refusal-boundary.json',{syntheticFixtureOnly:true,original,selfWakes,outboundRefusals});
+   try{const diagnostic=await mf.dispatchFetch('http://fixture.invalid/observe');wx(label+'-'+scenario+'-callback-refusal-observation.json',await diagnostic.text());}catch(error){wx(label+'-'+scenario+'-callback-observation-error.json',{name:error?.name,message:String(error?.message||error),stack:String(error?.stack||error)});}
+  }
+  check(label+'/'+scenario+' original runtime callback closes without automatic retry',original.outcome==='ok'&&original.noRetry===true);
   let r;const observeDeadline=Date.now()+20000;for(let poll=0;;poll++){const observation=await mf.dispatchFetch('http://fixture.invalid/observe');r=await observation.json();wx(label+'-'+scenario+'-observation-'+String(poll).padStart(3,'0')+'.json',r);if(!r.pending)break;assert(Date.now()<observeDeadline,'all_original_deferred_scopes_closed_before_cost_acceptance');await new Promise(resolve=>setTimeout(resolve,50));}const calls=http.slice(before),effects=calls.filter(x=>x.method==='PUT'||x.method==='DELETE');
   check(label+'/'+scenario+' original genuine controller captured and no clock/handler substitution',!r.observationError&&r.observation?.scope==='original_scheduled_callback'&&r.clockOverride===false&&r.handlerOverride===false);
   check(label+'/'+scenario+' original two grant ACKs and Native control unchanged',r.originalACKsUnchanged===true&&r.controlUnchanged===true);
