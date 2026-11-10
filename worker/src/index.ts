@@ -281,12 +281,15 @@ export default {
       }
       const res = await route(request, env, path, schemaReady, ctx, namesOrigin,roleDispatch);
       if(request.method==='POST'&&res.ok&&['/ingest/verify','/ingest/roster','/ingest/intake242'].includes(path)){
-       deferOriginalServing(ctx,'roles242_requests',()=>kickRoleWork242(env,'requests'));
-       if(path==='/ingest/roster')deferOriginalServing(ctx,'roles242_sweep',()=>kickRoleWork242(env,'sweep'));
+       const verification242=captureLaunchVerification(env);
+       if(verification242.mode==='members-only'&&verification242.scope&&verification242.current()){
+        deferOriginalServing(ctx,'roles242_requests',()=>kickRoleWork242(env,'requests'));
+        if(path==='/ingest/roster')deferOriginalServing(ctx,'roles242_sweep',()=>kickRoleWork242(env,'sweep'));
+       }
       }
       // The watcher polls /queue every 30 seconds while an officer is online, which is exactly when promotions happen.
       // The Guild Member sweep rides on those polls (throttled to one per five minutes inside), after the response.
-      if (request.method === "GET" && path === "/queue" && res.ok && !url.searchParams.getAll('presenceOnly').includes('1')) {
+      if (request.method === "GET" && path === "/queue" && res.ok && !url.searchParams.getAll('presenceOnly').includes('1') && !url.searchParams.has('cacheOnly242')) {
         // Revision 4 (A1, A4 entry 1): the lane configuration is captured here, synchronously. Unconfigured keeps the
         // original statement exactly; configured shares one Discord-call allowance between the sweep and the fresh pass.
         const lane = captureLaneConfig(env);
@@ -738,7 +741,7 @@ async function freshRegistrationRefused(env: Env, trigger: string): Promise<void
 }
 
 /** Bumped with every change that needs a redeploy, so GET /health shows which build is live. */
-const BUILD = "2026-11-10.247 Donation privacy and relay cache boundaries";
+const BUILD = "2026-11-10.248 Current-scope relay boundaries";
 
 /**
  * Presence of each secret (never the value) and a D1 round trip — enough to tell a missing `wrangler secret put` from a

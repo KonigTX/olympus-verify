@@ -67,6 +67,18 @@ const tests227=String.raw`
     check(label+' preserves the requested queue-driven deferral boundary',readOnly?deferred.length===0:deferred.length>0);db.close();
   }
   const selected={VERIFY_MEMBERSHIP_ONLY:'true',VERIFY_NATIVE_SCOPE:scope};
+  // .248: the outer fetch wrapper must preserve cache-only intent after route() returns.
+  fresh();await queued(QUINN,'Cached Verified Member');
+  await run("UPDATE characters SET status='member',guid='Player-6931-00732934' WHERE discord_id=?1",QUINN);
+  const cacheQueueBefore=JSON.stringify(one('SELECT * FROM invite_queue')),cacheRelaysBefore=JSON.stringify(db.prepare('SELECT * FROM relays ORDER BY officer_id').all()),cacheRolesBefore=JSON.stringify(db.prepare('SELECT * FROM role_settlements ORDER BY id').all());
+  let cacheReads=0,cacheInviteOrRelaySql=0;const cacheDeferred=[];REST=[];FETCHES=[];NOTICES=[];STAFF=[];
+  FAULT=(sql)=>{if(/FROM characters c WHERE c\.status='member'/.test(sql))cacheReads++;if(/\b(?:invite_queue|relays)\b/i.test(sql)){cacheInviteOrRelaySql++;throw Error('cache-only fetch reached invitation or relay SQL');}return false;};
+  const cacheResponse=await indexMod.default.fetch(new Request('https://verify.example/queue?cacheOnly242=1&keyVersion=launch-membership-v1',{headers:{Authorization:'Bearer watcher-token-for-tests-only-0123456789'}}),env(selected),{waitUntil(promise){cacheDeferred.push(promise);}}),cacheBody=await cacheResponse.json();
+  await Promise.allSettled(cacheDeferred);FAULT=null;
+  check('cache-only actual fetch returns the server-read cache without an invitation response',cacheResponse.status===200&&cacheBody.presenceOnly===true&&cacheBody.setGuildNote===false&&cacheBody.entries.length===0&&!Object.hasOwn(cacheBody,'officer')&&cacheBody.verificationResults.length===1&&cacheBody.verificationResults[0].character==='Cached Verified Member'&&cacheBody.verificationResults[0].status==='pending-role');
+  check('cache-only actual fetch allows cache SELECT but never invitation or relay SQL',cacheReads>0&&cacheInviteOrRelaySql===0&&JSON.stringify(one('SELECT * FROM invite_queue'))===cacheQueueBefore&&JSON.stringify(db.prepare('SELECT * FROM relays ORDER BY officer_id').all())===cacheRelaysBefore);
+  check('cache-only actual fetch registers zero background role work or Discord effects',cacheDeferred.length===0&&REST.length===0&&FETCHES.length===0&&NOTICES.length===0&&STAFF.length===0);
+  check('cache-only actual fetch leaves every existing role settlement unchanged',JSON.stringify(db.prepare('SELECT * FROM role_settlements ORDER BY id').all())===cacheRolesBefore);db.close();
   for(const[label,method,path,body,over]of[
     ['marker without presence intent','GET','/queue?keyVersion=launch-membership-v1',null,{}],
     ['marker with explicit zero presence','GET','/queue?presenceOnly=0&keyVersion=launch-membership-v1',null,{}],

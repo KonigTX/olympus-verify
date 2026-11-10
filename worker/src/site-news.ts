@@ -78,6 +78,11 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".248", date: "2026-11-10", lines: [
+      "Status checks do not start account updates. Inactive modes keep their original request behavior.",
+    ],
+  },
+  {
     build: ".247", date: "2026-11-10", lines: [
       "Donation observations are included in account-copy accounting and cleanup. Sync status keeps its lightweight request path.",
     ],

@@ -7906,3 +7906,8 @@ Uses the edge runtime's manual redirect mode for signed self-continuation POSTs.
 
 The current registry is exactly17 families/41 logical reads; account-copy payload and physical98-statement coverage remain bounded as before. Account cleanup combines the existing treasury predicate with the existing terminal audit delete before character removal, preserving standalone registry behavior, transactional failure semantics and exact196/700 erasure/schedule bounds. Presence/default relay polling keeps zero D1 reads; Watcher0.6.22 fetches signed verification cache through a separately explicit two-key intent. Donation ledger gets its proper page title and canonical registration uses the same exact hub/check definition. Native verification enhancements require a current members-only scope; legacy paths preserve their original name limits and avoid new role work. The owner-directed order remains compile/bundle and fresh443/442 restored backup, deploy/install, then affected tests and hostedCI. Addon remains0.6.22 with unchanged archive bytes.
 
+
+## Worker .248 — current-scope relay boundaries
+
+Successful ingest schedules242 role continuations only for a current members-only scope. Legacy queue replies omit the Native verification cache; its explicit cache-only route stays available. Cache-only reads cannot register the outer queue role sweep. The four current help-copy checks now match approved High Council instructions without changing historicalPINS. Watcher remains0.6.22 and addon0.6.22. Compile/bundle plus a fresh restored443/442 D1 backup precede deployment; remaining focused checks run afterward from a separate frozen checkout so working edits cannot invalidate their source custody.
+

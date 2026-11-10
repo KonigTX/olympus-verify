@@ -1016,7 +1016,6 @@ export async function getQueue(env: Env, officer = "", presenceOnly = false, cac
 
   return json({
     generatedAt: t,
-    verificationResults:await (await import('./role-reconcile242')).verificationResults242(env),
     officer: who,
     claimTtlSeconds: ttl,
     setGuildNote: env.SET_GUILD_NOTE === "true",

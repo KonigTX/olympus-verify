@@ -586,7 +586,7 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
           && !lane.some((e) => e.k === 'http' && [OFF, GL, RL].some((x) => e.path.includes('/roles/' + x))), lane.filter((e) => e.k === 'sql' && e.params.includes('role.fresh_config_held')));
       if (NEW_TEXT[scenario] && variant === 'configured') {
         const shown = JSON.stringify(r.trace) + JSON.stringify(r.response);
-        if(scenario==='button')check(`${where}: current progress and held-access instructions replace the automatic-role promise`, r.response.body.includes('Use **My status** to check your verification progress. Follow the current instructions, or ask an officer if access is on hold.')&&r.response.body.includes('**OLYMPUS PRIME**')&&!/follow(?:s)? automatically/.test(r.response.body));
+        if(scenario==='button')check(`${where}: current progress and held-access instructions replace the automatic-role promise`, r.response.body.includes('Use **My status** to check your verification progress. Follow the current instructions, or ask High Council if access is on hold.')&&r.response.body.includes('Your guild must have an approved server-recorded Olympus identity. A typed guild name or a roster name alone never links an account.')&&!/follow(?:s)? automatically/.test(r.response.body));
         else check(`${where}: the A6 text is ${open ? 'shown' : 'not shown before epochStart'}`, shown.includes(NEW_TEXT[scenario]) === open);
       }
     }

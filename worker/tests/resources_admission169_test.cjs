@@ -120,6 +120,18 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .248 reverses only the exact owner-directed live-first release note.
+  const release248 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".248\", date: \"2026-11-10\", lines: [",
+    "      \"Status checks do not start account updates. Inactive modes keep their original request behavior.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .248 prepend occurs once', originalNews.split(release248).length === 2);
+  originalNews = originalNews.replace(release248, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
   // .247 reverses only the exact owner-directed live-first release note.
   const release247 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
