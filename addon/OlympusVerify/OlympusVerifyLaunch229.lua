@@ -87,7 +87,7 @@ function Q.Current()
           if not Number(row.queueId,1,2147483647) or queueIds[row.queueId] or not Text(row.proofId,32) or #row.proofId~=32 or not row.proofId:match("^[0-9a-f]+$") or proofIds[row.proofId]
             or not Text(row.fullName,100) or H.normalizeCharacter(row.fullName)~=H.normalizeCharacter(row.name) or row.scopeHash~=identity.scopeHash
             or not Number(row.observedAt,1,page.fetchedAt+5) or not Number(row.expiresAt,row.observedAt+1,row.observedAt+60)
-            or row.reason~="knight-unguilded" or row.source~="native-who-unit-v233" then return nil,"Unsupported invitation proof; no action taken." end
+            or row.reason~="knight-unguilded" or row.source~="native-who-whisper-v242" then return nil,"Unsupported invitation proof; no action taken." end
           queueIds[row.queueId],proofIds[row.proofId]=true,true
           result.freshness[row.guid].expiresAt=math.min(page.expiresAt,row.expiresAt)
         elseif label == "promotions" then
@@ -144,7 +144,7 @@ function Q.Print()
   Say(string.format("Launch projection: %d promotion(s), %d risk review(s), %d held; %s. No automatic actions.",
     #current.promotions, #current.riskBuffer, #current.held, current.partial and "partial discovery" or "discovery complete"))
   Say("Discovery and action freshness are separate. Stale rows are advisory; Scan/Stop/Recheck are explicit local controls.")
-  Say("Knight invites require a changed explicit empty-guild WHO result and the same visible native unit/GUID. Unknown remains held.")
+  Say("Knight invites require an original remote whisper GUID and changed explicit empty-guild WHO result. Unknown remains held.")
   for i, row in ipairs(current.promotions) do if i <= 40 then local fresh = current.freshness[row.guid]; Say(string.format("%d. %s -> slot%d (%s; %s). /olv promote %s", i, row.name, row.targetSlot, row.reason,
     not current.actionHeld and time() < fresh.expiresAt and time() < fresh.scanExpiresAt and "fresh" or "STALE/held", row.guid)) end end
   return true
@@ -347,7 +347,7 @@ function Q.Show()
   local details=current and ((current.scanComplete and "Discovery complete" or "Discovery incomplete").."; "..#current.pages.."/50 pages; "..used.."/50 explicit rechecks. Actions need a fresh 60-second page and native roster.") or why
   if Q.tab=="invites" then
     local status=OlympusOfficerInvites233 and OlympusOfficerInvites233.Status()
-    details=(details or "").."\nNext checks one original whisper's visible target/WHO. Unknown guild stays held. "..(status and status.reason or "Capability unavailable.")
+    details=(details or "").."\nNext checks the original remote whisperer's explicit WHO guild state. Unknown guild stays held. "..(status and status.reason or "Capability unavailable.")
   elseif Q.tab=="buffer" then details=(details or "").."\nReview only: longest offline, then lowest level. Native guild UI removes; no automatic kick." end
   details=(details or "").."\nScan + reload exports. Wait for the Watcher, then Sync again to load its dated queue. No timer reload or instant delivery."
   Q.windowInfo:SetText(details)

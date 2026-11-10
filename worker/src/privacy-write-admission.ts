@@ -252,7 +252,7 @@ const CURRENT_SCHEMA=`${CATALOGUE_CTE} SELECT CASE WHEN ${SCHEMA_CURRENT} AND ${
  AND EXISTS(SELECT 1 FROM site_settings WHERE key='auditTypedNames' AND value='115')
  AND NOT EXISTS(SELECT 1 FROM site_applications WHERE position IN('raid_leader','raid_assist'))
  AND NOT EXISTS(SELECT 1 FROM site_votes WHERE ballot='raid_leader')
- AND NOT EXISTS(SELECT 1 FROM audit WHERE action='site.settings' AND CASE WHEN json_valid(details)
+ AND NOT EXISTS(SELECT 1 FROM audit INDEXED BY audit_actor_action WHERE action='site.settings' AND CASE WHEN json_valid(details)
  THEN json_type(details,'$.appointed') IS NOT NULL OR json_type(details,'$.notice')='text' ELSE 1 END)
  THEN 1 ELSE json_extract('privacy_current_schema_requires_attended_setup','$') END AS current`;
 /** Data only: this SQL literal issues no admission, operation or origin authority. */

@@ -54,7 +54,11 @@ local function prune(d)
   for _, field in ipairs({ "receipts", "observations" }) do
     local kept, removed = {}, 0
     for _, row in ipairs(d[field]) do
-      if type(row) == "table" and type(row.ts) == "number" and row.ts > cutoff then table.insert(kept, row)
+      local intake=OlympusVerifyDB and OlympusVerifyDB.intake242
+      local ack=type(row)=="table" and intake and intake.acknowledgements and intake.acknowledgements[row.id]
+      -- .242 pending receipts have no age expiry. Only a signed durable server
+      -- receipt permits pruning this redundant local gold record after 30 days.
+      if type(row) == "table" and type(row.ts) == "number" and (row.ts > cutoff or field=="receipts" and not (ack and ack.status=="done")) then table.insert(kept, row)
       else removed = removed + 1 end
     end
     d[field] = kept
@@ -93,20 +97,35 @@ local function relay(row)
   row.relay = ok and "queued_to_chat_log" or "savedvariables_fallback"
   return ok and true or false
 end
-local function record(kind, sender, incoming, outgoing, evidence)
+local function transferContext()
   local me, guid = identity(); local d = db()
-  sender, incoming, outgoing = name(sender), integer(incoming), integer(outgoing)
-  if not me or not d or not sender or not incoming or incoming <= 0 or not outgoing then return false end
-  if #d.receipts >= T.maxReceipts then
-    d.overflows = (d.overflows or 0) + 1
-    observe("ledger_full_sync_and_review", sender, incoming)
-    printLine("local receipt ledger is full; sync and review it. No old receipt was overwritten.")
-    return false
-  end
+  if not me or not d then return nil end
   d.nextId = (tonumber(d.nextId) or 0) + 1
   local at = time()
   local seed = table.concat({ guid or me, tostring(at), tostring(d.nextId), tostring(OlympusVerifyDB.boots or 0), tostring(call(GetTime) or 0) }, "|")
-  local row = { version = 1, id = H.sha256hex(seed):sub(1, 24), ts = at, kind = kind, sender = sender, recipient = me,
+  return { id = H.sha256hex(seed):sub(1, 24), ts = at }
+end
+local function claimIntake(context, kind)
+  local d = db(); if not d or not context then return nil end
+  local intake=OlympusVerifyDB and OlympusVerifyDB.intake242
+  local saved=type(intake)=="table" and (kind=="trade" and intake.tradeCollection242 or intake.mailCollection242)
+  local me, ownGuid=identity()
+  if not ownGuid or type(saved)~="table" or saved.contextVersion~=1 or saved.kind~=kind or saved.transferId~=context.id
+    or saved.ownGuid~=ownGuid or normalize(saved.ownName)~=normalize(me) then return nil end
+  -- Delivery correlation only. The original receipt/MAC remains unchanged;
+  -- the rich intake body is owned before either observer can export it.
+  d.liveIntakeOwners242 = d.liveIntakeOwners242 or {}
+  d.liveIntakeOwners242[context.id] = true
+  return context.id
+end
+local function record(kind, sender, incoming, outgoing, evidence, context)
+  local me, guid = identity(); local d = db()
+  sender, incoming, outgoing = name(sender), integer(incoming), integer(outgoing)
+  if not me or not d or not sender or not incoming or incoming <= 0 or not outgoing then return false end
+  -- Pending transactions are never evicted or rejected for a local batch cap.
+  -- Watcher upload batches are independently bounded and acknowledged.
+  context = context or transferContext(); if not context then return false end
+  local row = { version = 1, id = context.id, ts = time(), kind = kind, sender = sender, recipient = me,
     collectorGuid = guid, incomingCopper = incoming, outgoingCopper = outgoing, netCopper = incoming - outgoing,
     status = "confirmed_local", classification = "unclassified_receipt", evidence = evidence, source = "OlympusVerify" }
   table.insert(d.receipts, row)
@@ -139,7 +158,7 @@ local function settleTrade()
   if not current or not trade.before or not trade.incoming or not trade.outgoing then return false end
   if current - trade.before ~= trade.incoming - trade.outgoing then return false end
   local done = trade; trade = nil
-  if done.incoming > 0 then return record("trade", done.sender, done.incoming, done.outgoing, "trade_complete_and_money_delta") end
+  if done.incoming > 0 then return record("trade", done.sender, done.incoming, done.outgoing, "trade_complete_and_money_delta", done.context) end
   return false
 end
 local function expireTrade(expected)
@@ -186,7 +205,7 @@ local function settleMail()
   local kept = {}
   for _, intent in ipairs(batch.intents) do
     if matched[intent] then
-      record("mail", intent.sender, intent.money, 0, "take_money_inbox_depletion_and_money_delta")
+      record("mail", intent.sender, intent.money, 0, "take_money_inbox_depletion_and_money_delta", intent.context)
       batch.baselines[intent.bucket] = totals[intent.bucket] or 0
     else table.insert(kept, intent) end
   end
@@ -246,10 +265,12 @@ local function takingMoney(index)
     if C_Timer and C_Timer.After then C_Timer.After(8, function() expireMail(expected) end) end
   end
   local key = tostring(scanSerial) .. ":" .. tostring(index)
-  if mailBatch.keys[key] then return end
-  mailBatch.keys[key] = true
-  table.insert(mailBatch.intents, { sender = row.sender, money = row.money, bucket = row.bucket })
+  if mailBatch.keys[key] then return mailBatch.keys[key] end
+  local intent = { sender = row.sender, money = row.money, bucket = row.bucket, context = transferContext() }
+  mailBatch.keys[key] = intent
+  table.insert(mailBatch.intents, intent)
   if #mailBatch.intents > 100 then expireMail(mailBatch) end
+  return intent
 end
 local function interruptedMail()
   if not mailBatch then return end
@@ -290,7 +311,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
   elseif event == "TRADE_SHOW" then
     if not identity() then return end
     if trade then expireTrade(trade) end
-    trade = { sender = partner(), before = balance(), at = time(), accepted = false, ambiguous = time() < uncertainTradeUntil }
+    trade = { sender = partner(), before = balance(), at = time(), accepted = false, ambiguous = time() < uncertainTradeUntil, context = transferContext() }
     tradeMoney()
   elseif event == "TRADE_MONEY_CHANGED" then tradeMoney(); if trade then trade.accepted = false end
   elseif event == "TRADE_ACCEPT_UPDATE" then
@@ -328,6 +349,13 @@ end)
 
 OlympusVerifyTreasury = {
   Normalize = normalize,
+  TradeTransferId627 = function() return trade and trade.context and trade.context.id end,
+  MailTransferId627 = function(index) local intent=takingMoney(index);return intent and intent.context and intent.context.id end,
+  ClaimTradeIntake242 = function() return trade and claimIntake(trade.context,"trade") end,
+  ClaimMailIntake242 = function(index)
+    local intent = takingMoney(index)
+    return intent and claimIntake(intent.context,"mail")
+  end,
   Status = function()
     local d = db() or {}
     return { enabled = identity() ~= nil, recipient = cfg.treasuryRecipient or "Fern Melder", nativeName = transport and name(call(transport.Name)), confirmedLocal = #(d.receipts or {}),
@@ -342,7 +370,7 @@ local function TreasurySlash()
   printLine(string.format("%d confirmed local receipts; %d observations without credit; collector %s (%s).",
     status.confirmedLocal, status.unconfirmed, status.recipient, status.enabled and "this character" or "not active on this character"))
   printLine("Read-only tracking; no automatic tithe credit. SavedVariables reaches disk at /reload/logout; chat-log delivery may be delayed.")
-  printLine("Local named receipts expire after 30 days from the original event. Export/review them before expiry; delivery does not renew retention.")
+  printLine("Pending receipts persist until server acknowledgement; confirmed redundant local copies may be pruned after 30 days.")
 end
 local slashRegistry = OlympusVerifySlash234
 if type(slashRegistry) == "table" and type(slashRegistry.Register) == "function" then

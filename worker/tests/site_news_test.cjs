@@ -749,8 +749,27 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   const build = /const BUILD = "(\d{4}-\d{2}-\d{2})\.(\d+)/.exec(fs.readFileSync(path.join(root, "src", "index.ts"), "utf8"));
   const notes = news.RELEASE_NOTES;
   const num = (b) => Number(b.slice(1));
+  // Owner242 approved this literal nickname notation, not arbitrary markup.
+  const nicknameAngleLine242 = "Character nicknames use <Guild Name>; the previous nickname can still be restored.";
+  const nicknameAngleSource242 = "      " + JSON.stringify(nicknameAngleLine242) + ",";
+  const releaseLine246 = (note, line, source = src) => {
+    if (typeof line !== "string" || !line.length || line.length > 200) return false;
+    if (!/[<>]/.test(line)) return true;
+    return note.build === ".242" && note.date === "2026-11-10" && line === nicknameAngleLine242
+      && line.split("<Guild Name>").length === 2 && !/[<>]/.test(line.replace("<Guild Name>", ""))
+      && source.split(nicknameAngleSource242).length === 2 && source.split(/\r?\n/).filter(value => value === nicknameAngleSource242).length === 1
+      && Buffer.byteLength(nicknameAngleSource242, "utf8") === 91
+      && crypto.createHash("sha256").update(nicknameAngleSource242).digest("hex") === "c273ffcb855d9b70991717cfa7173a0a4631d22abaf90a4871592176c65e006b";
+  };
   check("the newest release note is not newer than index.ts BUILD", build && notes.length > 0 && /^\.\d+$/.test(notes[0].build) && num(notes[0].build) <= Number(build[2]), build && build[2], notes[0] && notes[0].build);
-  check("  builds unique and descending; dates YYYY-MM-DD; lines 1..200 characters, plain text", notes.every((x, i) => i === 0 || num(x.build) < num(notes[i - 1].build)) && new Set(notes.map((x) => x.build)).size === notes.length && notes.every((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.date) && x.lines.length > 0 && x.lines.every((l) => typeof l === "string" && l.length > 0 && l.length <= 200 && !/[<>]/.test(l))));
+  check("  builds unique and descending; dates YYYY-MM-DD; lines 1..200 characters, plain text with one exact owner242 nickname token", notes.every((x, i) => i === 0 || num(x.build) < num(notes[i - 1].build)) && new Set(notes.map((x) => x.build)).size === notes.length && notes.every((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.date) && x.lines.length > 0 && x.lines.every((line) => releaseLine246(x, line))));
+  const nicknameNote242 = notes.find(note => note.build === ".242");
+  check(".242 nickname angle notation has one exact source-bound occurrence", !!nicknameNote242 && nicknameNote242.lines.filter(line => line === nicknameAngleLine242).length === 1 && releaseLine246(nicknameNote242, nicknameAngleLine242));
+  for (const value of ["<script>alert(1)</script>", "<img src=x onerror=alert(1)>", "<Other Guild>", nicknameAngleLine242 + "<b>extra</b>", nicknameAngleLine242.replace("<Guild Name>", "<Guild  Name>")]) {
+    check(".242 nickname exception refuses arbitrary or edited markup " + value.slice(0, 36), !releaseLine246(nicknameNote242, value));
+  }
+  check(".242 nickname notation cannot move to another release or date", !releaseLine246({build:".243",date:"2026-11-10"}, nicknameAngleLine242) && !releaseLine246({build:".242",date:"2026-11-11"}, nicknameAngleLine242));
+  check(".242 edited or duplicated source cannot borrow the nickname exception", !releaseLine246(nicknameNote242, nicknameAngleLine242, src.replace(nicknameAngleSource242, nicknameAngleSource242 + "!")) && !releaseLine246(nicknameNote242, nicknameAngleLine242, src + "\n" + nicknameAngleSource242));
   const forbidden = ["LEADERSHIP_KEY", "/static/", "<svg", "data" + ":", "notify(", "rest("];
   check("site-news.ts names no leadership row key, no static path, no inline svg, no data URI, no notice poster, no Discord REST", forbidden.every((w) => !src.includes(w)), forbidden.filter((w) => src.includes(w)));
   check("  every console call in site-news.ts goes through errorRef", (src.match(/console\.(error|warn|log)\([^\n]*/g) || []).every((l) => /errorRef\(/.test(l)));
@@ -1632,6 +1651,462 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   "historicalParagraph": "const BUILD = \"2026-11-08.240 Retired rank continuity\";"
 }
 ]);
+  const RETAINED_CONTEXTS242 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-09.241 Recent rank changes before catchup\";",
+    "singleLine": true,
+    "paragraphSha256": "6687bc53080f56b931dec12ad65c23eb2b1df2a5bc27cfed92302cad2d3ce94c",
+    "paragraphBytes": 66,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 241,
+    "purpose": "Exact recent-rank-priority BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "7bafa0524df85e2e4b0c7975dbdcfb76a49006add2ef21f44e6ae1433ce62ec4",
+    "predecessorRelease": 240,
+    "currentBuild": true,
+    "editorialRelease": 241,
+    "editorialPredecessorSHA256": "7bafa0524df85e2e4b0c7975dbdcfb76a49006add2ef21f44e6ae1433ce62ec4",
+    "historicalParagraph": "const BUILD = \"2026-11-09.241 Recent rank changes before catchup\";"
+  }
+]);
+  const RETAINED_CONTEXTS243 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.242 Continuous verification and rank sync\";",
+    "singleLine": true,
+    "paragraphSha256": "5a40f0f1e8166fc2e106e1c2822c96978edc3919d26d8c2fab0b11e9c999f533",
+    "paragraphBytes": 69,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 242,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "6687bc53080f56b931dec12ad65c23eb2b1df2a5bc27cfed92302cad2d3ce94c",
+    "predecessorRelease": 241,
+    "currentBuild": true,
+    "editorialRelease": 242,
+    "editorialPredecessorSHA256": "6687bc53080f56b931dec12ad65c23eb2b1df2a5bc27cfed92302cad2d3ce94c",
+    "historicalParagraph": "const BUILD = \"2026-11-10.242 Continuous verification and rank sync\";"
+  }
+]);
+  const RETAINED_CONTEXTS244 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.243 Guarded verification and sync repairs\";",
+    "singleLine": true,
+    "paragraphSha256": "2222cb6fe07d63a2aef2b7c0f8dae050ee757efe6ef27161e2c79303db3c6105",
+    "paragraphBytes": 69,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 243,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "5a40f0f1e8166fc2e106e1c2822c96978edc3919d26d8c2fab0b11e9c999f533",
+    "predecessorRelease": 242,
+    "currentBuild": true,
+    "editorialRelease": 243,
+    "editorialPredecessorSHA256": "5a40f0f1e8166fc2e106e1c2822c96978edc3919d26d8c2fab0b11e9c999f533",
+    "historicalParagraph": "const BUILD = \"2026-11-10.243 Guarded verification and sync repairs\";"
+  }
+]);
+  const RETAINED_CONTEXTS245 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.244 Lazy verification route boundaries\";",
+    "singleLine": true,
+    "paragraphSha256": "80bfee1ee81d512af1785556b1007e5a580ace4f674ee882df1fe66a603e7ed2",
+    "paragraphBytes": 66,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 244,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "2222cb6fe07d63a2aef2b7c0f8dae050ee757efe6ef27161e2c79303db3c6105",
+    "predecessorRelease": 243,
+    "currentBuild": true,
+    "editorialRelease": 244,
+    "editorialPredecessorSHA256": "2222cb6fe07d63a2aef2b7c0f8dae050ee757efe6ef27161e2c79303db3c6105",
+    "historicalParagraph": "const BUILD = \"2026-11-10.244 Lazy verification route boundaries\";"
+  }
+]);
+  const RETAINED_CONTEXTS246 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.245 Reconciliation uses remaining request budget\";",
+    "singleLine": true,
+    "paragraphSha256": "bddd9b3f2b5a6e38c74261b19b63a572e420a662c95f08380179ff2e50142534",
+    "paragraphBytes": 76,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 245,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "80bfee1ee81d512af1785556b1007e5a580ace4f674ee882df1fe66a603e7ed2",
+    "predecessorRelease": 244,
+    "currentBuild": true,
+    "editorialRelease": 245,
+    "editorialPredecessorSHA256": "80bfee1ee81d512af1785556b1007e5a580ace4f674ee882df1fe66a603e7ed2",
+    "historicalParagraph": "const BUILD = \"2026-11-10.245 Reconciliation uses remaining request budget\";"
+  }
+]);
+  const RETAINED_CONTEXTS247 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.246 Supported rank continuation requests\";",
+    "singleLine": true,
+    "paragraphSha256": "6493600d761216a3a51e6ec4a67a8d8c1545b13404c9249d8c74033ea33f7456",
+    "paragraphBytes": 68,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 246,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "bddd9b3f2b5a6e38c74261b19b63a572e420a662c95f08380179ff2e50142534",
+    "predecessorRelease": 245,
+    "currentBuild": true,
+    "editorialRelease": 246,
+    "editorialPredecessorSHA256": "bddd9b3f2b5a6e38c74261b19b63a572e420a662c95f08380179ff2e50142534",
+    "historicalParagraph": "const BUILD = \"2026-11-10.246 Supported rank continuation requests\";"
+  }
+]);
+  const RETAINED_CONTEXTS248 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.247 Donation privacy and relay cache boundaries\";",
+    "singleLine": true,
+    "paragraphSha256": "20af2213957b2d0761e50e5ad94c969d6c655349651fa087dec7ee1da16b74e7",
+    "paragraphBytes": 75,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 247,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "6493600d761216a3a51e6ec4a67a8d8c1545b13404c9249d8c74033ea33f7456",
+    "predecessorRelease": 246,
+    "currentBuild": true,
+    "editorialRelease": 247,
+    "editorialPredecessorSHA256": "6493600d761216a3a51e6ec4a67a8d8c1545b13404c9249d8c74033ea33f7456",
+    "historicalParagraph": "const BUILD = \"2026-11-10.247 Donation privacy and relay cache boundaries\";"
+  }
+]);
+  const RETAINED_CONTEXTS249 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.248 Current-scope relay boundaries\";",
+    "singleLine": true,
+    "paragraphSha256": "871c069d137b543a97a11701b65e5d18832d88e2a7b9215e3b300ce2fffe56dd",
+    "paragraphBytes": 62,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 248,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "20af2213957b2d0761e50e5ad94c969d6c655349651fa087dec7ee1da16b74e7",
+    "predecessorRelease": 247,
+    "currentBuild": true,
+    "editorialRelease": 248,
+    "editorialPredecessorSHA256": "20af2213957b2d0761e50e5ad94c969d6c655349651fa087dec7ee1da16b74e7",
+    "historicalParagraph": "const BUILD = \"2026-11-10.248 Current-scope relay boundaries\";"
+  }
+]);
+  const RETAINED_CONTEXTS250 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.249 Finite role sweeps and durable intake\";",
+    "singleLine": true,
+    "paragraphSha256": "2d5eb093379430a28c5aed35f53da5b45be59581363105422a489f25109bd0da",
+    "paragraphBytes": 69,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 249,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "871c069d137b543a97a11701b65e5d18832d88e2a7b9215e3b300ce2fffe56dd",
+    "predecessorRelease": 248,
+    "currentBuild": true,
+    "editorialRelease": 249,
+    "editorialPredecessorSHA256": "871c069d137b543a97a11701b65e5d18832d88e2a7b9215e3b300ce2fffe56dd",
+    "historicalParagraph": "const BUILD = \"2026-11-10.249 Finite role sweeps and durable intake\";"
+  }
+]);
+  const RETAINED_CONTEXTS251 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.250 Legacy verification forwarding\";",
+    "singleLine": true,
+    "paragraphSha256": "6cc6a8f997b7dbe4b01051e3adc9042dac945990474ff95f239f6bdaa1b38927",
+    "paragraphBytes": 62,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 250,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "2d5eb093379430a28c5aed35f53da5b45be59581363105422a489f25109bd0da",
+    "predecessorRelease": 249,
+    "currentBuild": true,
+    "editorialRelease": 250,
+    "editorialPredecessorSHA256": "2d5eb093379430a28c5aed35f53da5b45be59581363105422a489f25109bd0da",
+    "historicalParagraph": "const BUILD = \"2026-11-10.250 Legacy verification forwarding\";"
+  }
+]);
+  const RETAINED_CONTEXTS252 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.251 Mail bridge delivery and receipt retention\";",
+    "singleLine": true,
+    "paragraphSha256": "d64fd3745d4935a2c90f493cd8797d6881b51fd21b4108564fc7e7513febeee1",
+    "paragraphBytes": 74,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 251,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "6cc6a8f997b7dbe4b01051e3adc9042dac945990474ff95f239f6bdaa1b38927",
+    "predecessorRelease": 250,
+    "currentBuild": true,
+    "editorialRelease": 251,
+    "editorialPredecessorSHA256": "6cc6a8f997b7dbe4b01051e3adc9042dac945990474ff95f239f6bdaa1b38927",
+    "historicalParagraph": "const BUILD = \"2026-11-10.251 Mail bridge delivery and receipt retention\";"
+  }
+]);
+  const RETAINED_CONTEXTS253 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.252 Offline receipts and fair role requests\";",
+    "singleLine": true,
+    "paragraphSha256": "a4425841a2fbfcc04b6918298cf2c565abbcb553092904efa8bb6520cbf19086",
+    "paragraphBytes": 71,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 252,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "d64fd3745d4935a2c90f493cd8797d6881b51fd21b4108564fc7e7513febeee1",
+    "predecessorRelease": 251,
+    "currentBuild": true,
+    "editorialRelease": 252,
+    "editorialPredecessorSHA256": "d64fd3745d4935a2c90f493cd8797d6881b51fd21b4108564fc7e7513febeee1",
+    "historicalParagraph": "const BUILD = \"2026-11-10.252 Offline receipts and fair role requests\";"
+  }
+]);
+  const RETAINED_CONTEXTS254 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.253 D1 bounded role selection\";",
+    "singleLine": true,
+    "paragraphSha256": "fda9eb4f1ba58549553952a771e64616590a48f4a1249e2d8eef82c94bac0697",
+    "paragraphBytes": 57,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 253,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "a4425841a2fbfcc04b6918298cf2c565abbcb553092904efa8bb6520cbf19086",
+    "predecessorRelease": 252,
+    "currentBuild": true,
+    "editorialRelease": 253,
+    "editorialPredecessorSHA256": "a4425841a2fbfcc04b6918298cf2c565abbcb553092904efa8bb6520cbf19086",
+    "historicalParagraph": "const BUILD = \"2026-11-10.253 D1 bounded role selection\";"
+  }
+]);
+  const RETAINED_CONTEXTS255 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.254 Production role query boundaries\";",
+    "singleLine": true,
+    "paragraphSha256": "7759131f7edec7d625a967b515f7166551156686045c3e4291abe4abf837209e",
+    "paragraphBytes": 64,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 254,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "fda9eb4f1ba58549553952a771e64616590a48f4a1249e2d8eef82c94bac0697",
+    "predecessorRelease": 253,
+    "currentBuild": true,
+    "editorialRelease": 254,
+    "editorialPredecessorSHA256": "fda9eb4f1ba58549553952a771e64616590a48f4a1249e2d8eef82c94bac0697",
+    "historicalParagraph": "const BUILD = \"2026-11-10.254 Production role query boundaries\";"
+  }
+]);
+  const RETAINED_CONTEXTS256 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.255 Reduced-reference role batches\";",
+    "singleLine": true,
+    "paragraphSha256": "e6f4ece8e13efaef1584e661679efa61e9337eaaf5ca9d28635e47a1bc758f19",
+    "paragraphBytes": 62,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 255,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "7759131f7edec7d625a967b515f7166551156686045c3e4291abe4abf837209e",
+    "predecessorRelease": 254,
+    "currentBuild": true,
+    "editorialRelease": 255,
+    "editorialPredecessorSHA256": "7759131f7edec7d625a967b515f7166551156686045c3e4291abe4abf837209e",
+    "historicalParagraph": "const BUILD = \"2026-11-10.255 Reduced-reference role batches\";"
+  }
+]);
+  const RETAINED_CONTEXTS257 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.256 Efficient production role batches\";",
+    "singleLine": true,
+    "paragraphSha256": "0622297af0bc311869b33ded2f4188c4db333c7872f18ed95906bd296f7183c3",
+    "paragraphBytes": 65,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 256,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "e6f4ece8e13efaef1584e661679efa61e9337eaaf5ca9d28635e47a1bc758f19",
+    "predecessorRelease": 255,
+    "currentBuild": true,
+    "editorialRelease": 256,
+    "editorialPredecessorSHA256": "e6f4ece8e13efaef1584e661679efa61e9337eaaf5ca9d28635e47a1bc758f19",
+    "historicalParagraph": "const BUILD = \"2026-11-10.256 Efficient production role batches\";"
+  }
+]);
+  const RETAINED_CONTEXTS258 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.257 Reliable rank batch handoffs\";",
+    "singleLine": true,
+    "paragraphSha256": "9f7954543d753d5a7f6cd0b0a4fd0c4b0dbbff736a19d1af532112f3cff7140f",
+    "paragraphBytes": 60,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 257,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "0622297af0bc311869b33ded2f4188c4db333c7872f18ed95906bd296f7183c3",
+    "predecessorRelease": 256,
+    "currentBuild": true,
+    "editorialRelease": 257,
+    "editorialPredecessorSHA256": "0622297af0bc311869b33ded2f4188c4db333c7872f18ed95906bd296f7183c3",
+    "historicalParagraph": "const BUILD = \"2026-11-10.257 Reliable rank batch handoffs\";"
+  }
+]);
+  const RETAINED_CONTEXTS259 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.258 Role handoff diagnostics\";",
+    "singleLine": true,
+    "paragraphSha256": "86e5cc3a9ab466e7316e483406f2e86dce409c240b079673f51473bf61a15374",
+    "paragraphBytes": 56,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 258,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "9f7954543d753d5a7f6cd0b0a4fd0c4b0dbbff736a19d1af532112f3cff7140f",
+    "predecessorRelease": 257,
+    "currentBuild": true,
+    "editorialRelease": 258,
+    "editorialPredecessorSHA256": "9f7954543d753d5a7f6cd0b0a4fd0c4b0dbbff736a19d1af532112f3cff7140f",
+    "historicalParagraph": "const BUILD = \"2026-11-10.258 Role handoff diagnostics\";"
+  }
+]);
+  const RETAINED_CONTEXTS260 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.259 Observable role handoffs\";",
+    "singleLine": true,
+    "paragraphSha256": "4ceed3f625c1336f0d210ff8d59d998f8850465789ca9ac04bcf4210384936a9",
+    "paragraphBytes": 56,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 259,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "86e5cc3a9ab466e7316e483406f2e86dce409c240b079673f51473bf61a15374",
+    "predecessorRelease": 258,
+    "currentBuild": true,
+    "editorialRelease": 259,
+    "editorialPredecessorSHA256": "86e5cc3a9ab466e7316e483406f2e86dce409c240b079673f51473bf61a15374",
+    "historicalParagraph": "const BUILD = \"2026-11-10.259 Observable role handoffs\";"
+  }
+]);
+  const RETAINED_CONTEXTS261 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.260 Public role handoff routing\";",
+    "singleLine": true,
+    "paragraphSha256": "980ed730b7a6b0dbe2e9aa1a8d7d0da81ab762ae9d1c31aa97df293905369d25",
+    "paragraphBytes": 59,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 260,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "4ceed3f625c1336f0d210ff8d59d998f8850465789ca9ac04bcf4210384936a9",
+    "predecessorRelease": 259,
+    "currentBuild": true,
+    "editorialRelease": 260,
+    "editorialPredecessorSHA256": "4ceed3f625c1336f0d210ff8d59d998f8850465789ca9ac04bcf4210384936a9",
+    "historicalParagraph": "const BUILD = \"2026-11-10.260 Public role handoff routing\";"
+  }
+]);
+  const RETAINED_CONTEXTS262 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.261 Bridge delivery receipts\";",
+    "singleLine": true,
+    "paragraphSha256": "be8b3350a48f12ba29315302d8e3724e8fdf3ad4a13b57760682b58d97061995",
+    "paragraphBytes": 56,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 261,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "980ed730b7a6b0dbe2e9aa1a8d7d0da81ab762ae9d1c31aa97df293905369d25",
+    "predecessorRelease": 260,
+    "currentBuild": true,
+    "editorialRelease": 261,
+    "editorialPredecessorSHA256": "980ed730b7a6b0dbe2e9aa1a8d7d0da81ab762ae9d1c31aa97df293905369d25",
+    "historicalParagraph": "const BUILD = \"2026-11-10.261 Bridge delivery receipts\";"
+  }
+]);
+  const RETAINED_CONTEXTS263 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.262 Independent durable sync\";",
+    "singleLine": true,
+    "paragraphSha256": "d5277dfcf02fa03146bed5701f816fe790cae7453d1811212d3580e87c5ce960",
+    "paragraphBytes": 56,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 262,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "be8b3350a48f12ba29315302d8e3724e8fdf3ad4a13b57760682b58d97061995",
+    "predecessorRelease": 261,
+    "currentBuild": true,
+    "editorialRelease": 262,
+    "editorialPredecessorSHA256": "be8b3350a48f12ba29315302d8e3724e8fdf3ad4a13b57760682b58d97061995",
+    "historicalParagraph": "const BUILD = \"2026-11-10.262 Independent durable sync\";"
+  }
+]);
+  const RETAINED_CONTEXTS264 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.263 Owned sweep lease cleanup\";",
+    "singleLine": true,
+    "paragraphSha256": "4c59b8e93e9aa1c031cfa3a992a97e65c3209fd01db1be8fccb9fec0533845d4",
+    "paragraphBytes": 57,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 263,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "d5277dfcf02fa03146bed5701f816fe790cae7453d1811212d3580e87c5ce960",
+    "predecessorRelease": 262,
+    "currentBuild": true,
+    "editorialRelease": 263,
+    "editorialPredecessorSHA256": "d5277dfcf02fa03146bed5701f816fe790cae7453d1811212d3580e87c5ce960",
+    "historicalParagraph": "const BUILD = \"2026-11-10.263 Owned sweep lease cleanup\";"
+  }
+]);
+  const RETAINED_CONTEXTS265 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.264 Independent role wakeups\";",
+    "singleLine": true,
+    "paragraphSha256": "5eaaf00d61626e5d1df9761f62618980664d94cec7651f79f659a25e25165e6c",
+    "paragraphBytes": 56,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 264,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "4c59b8e93e9aa1c031cfa3a992a97e65c3209fd01db1be8fccb9fec0533845d4",
+    "predecessorRelease": 263,
+    "currentBuild": true,
+    "editorialRelease": 264,
+    "editorialPredecessorSHA256": "4c59b8e93e9aa1c031cfa3a992a97e65c3209fd01db1be8fccb9fec0533845d4",
+    "historicalParagraph": "const BUILD = \"2026-11-10.264 Independent role wakeups\";"
+  }
+]);
   const CURRENT_CONTEXTS = Object.freeze([
   {
     "file": "docs/launch-runbook.md",
@@ -1966,22 +2441,22 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
     "predecessorSHA256": "437d986083c837391fc4653333712ddc8a21a8d22086bd54a505a7d6e228a6a4",
     "historicalParagraph": "        const row = office199(family.primaryKey), reserved = [\"leader\",\"high_council\",\"officer_corps\"].includes(family.tier) || family.sourceKeys.some(reservedKey201);"
   },
-{
-  "file": "worker/src/index.ts",
-  "startMarker": "const BUILD = \"2026-11-09.241 Recent rank changes before catchup\";",
-  "singleLine": true,
-  "paragraphSha256": "6687bc53080f56b931dec12ad65c23eb2b1df2a5bc27cfed92302cad2d3ce94c",
-  "paragraphBytes": 66,
-  "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
-  "count": 0,
-  "ownerRelease": 241,
-  "purpose": "Exact recent-rank-priority BUILD with zero guarded-vocabulary credit.",
-  "predecessorSHA256": "7bafa0524df85e2e4b0c7975dbdcfb76a49006add2ef21f44e6ae1433ce62ec4",
-  "predecessorRelease": 240,
-  "currentBuild": true,
-  "editorialRelease": 241,
-  "editorialPredecessorSHA256": "7bafa0524df85e2e4b0c7975dbdcfb76a49006add2ef21f44e6ae1433ce62ec4"
-},
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.265 Bounded audit lookups\";",
+    "singleLine": true,
+    "paragraphSha256": "bbd137d9158017f28b430c52ce9bc9190f582746ac39d09bd2cbe3c29bfeddad",
+    "paragraphBytes": 53,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 265,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "5eaaf00d61626e5d1df9761f62618980664d94cec7651f79f659a25e25165e6c",
+    "predecessorRelease": 264,
+    "currentBuild": true,
+    "editorialRelease": 265,
+    "editorialPredecessorSHA256": "5eaaf00d61626e5d1df9761f62618980664d94cec7651f79f659a25e25165e6c"
+  },
   {
     "file": "worker/public/static/app.js",
     "startMarker": "    const role = o?.key || { member: \"member\", raider: \"raider\", artisan: \"artisan\", officer: \"officer\", high_council: \"high_council\", patron: \"tithe\" }[t.id];",
@@ -2082,6 +2557,303 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
     "count": 1,
     "ownerRelease": 224,
     "purpose": "Exact owner-only .224 Cabinet release note; no global vocabulary allowance"
+  },
+  {
+    "file": "worker/src/site-news.ts",
+    "startMarker": "      \"Use Verify my character on the site, or ask High Council to use /olympus check for access diagnostics.\",",
+    "singleLine": true,
+    "paragraphSha256": "c17fe87931b5b5adbc23e24301112836d3f3c4a6be480985e16691735c1a6319",
+    "paragraphBytes": 111,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/public/static/app.js",
+    "startMarker": "          h(\"li\", { text: \"Use My status or /verify-status in the bot to check progress. High Council can use /olympus check to inspect a blocker and refresh the verified rank. Keep the code private.\" })),",
+    "singleLine": true,
+    "paragraphSha256": "49d773cf448aa1ca7cfee2175822af2144c2a2302d5b5a85050f35f3f17332c3",
+    "paragraphBytes": 205,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/public/static/app.js",
+    "startMarker": "        if (live()) add(result, h(\"p\", {class:\"err\",text:explain(error,\"Verification could not be refreshed. Try again or ask High Council to use /olympus check.\")}));",
+    "singleLine": true,
+    "paragraphSha256": "40059ff0f4fdbd9bcfb7eba1c072564db9747b26799fb7146d237d3b5a42cd58",
+    "paragraphBytes": 167,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "  const officers = env.OFFICER_CHARACTERS || \"High Council\";",
+    "singleLine": true,
+    "paragraphSha256": "d52efbca5ac6b48ed4cedb05b51a51f25e4aa60ec336d61f5aca7a975a80b6d2",
+    "paragraphBytes": 60,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "    ? \" If you are applying, High Council reviews the confirmed request before your invite enters the queue; High Council sends the invite from the game client when the guild has room.\"",
+    "singleLine": true,
+    "paragraphSha256": "54591a94c460156fdc9c2d9733ecfe08e9c21e194d1a06c1acb8205ba9289c9d",
+    "paragraphBytes": 185,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 2,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "    : \" If you are applying, your invite enters the queue; High Council sends it from the game client when the guild has room.\";",
+    "singleLine": true,
+    "paragraphSha256": "99914bdb7be08b4b9439ff139fd9074bbbf2d233baf5d98a4bf6cbfaca2a85e2",
+    "paragraphBytes": 128,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "    ? \" Your **Olympus Guild Member** role opens the member channels once your verified character appears on the High Council-exported guild roster and the access checks pass.\"",
+    "singleLine": true,
+    "paragraphSha256": "2594f24339e9d340a892968bc9ac2c986277b2621106e6f34408e0b72beb7d07",
+    "paragraphBytes": 176,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "            : `Joining ${FLAGSHIP_GUILD_NAME}? Ask ${FLAGSHIP_GUILD_NAME} High Council for an in-game invite. The website invite queue is paused. Once your character is in ${FLAGSHIP_GUILD_NAME}, follow the steps below to link Discord. The website is optional for this verification flow.`,",
+    "singleLine": true,
+    "paragraphSha256": "d3aca03bd2efd2110019c99e610a25ccb73e7f9e27c2c5d0fa9e0b177e9a4ab8",
+    "paragraphBytes": 289,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "          \"**1. Get a code** \u2014 press **Get my code**. The bot shows the line to use in game. If the current High Council relay needs a character name first, enter it exactly as it appears in game.\",",
+    "singleLine": true,
+    "paragraphSha256": "296223fa41757e107c1e47dd5d2967f69c545b636bdcca4d7ff2a9da8e74120f",
+    "paragraphBytes": 200,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "          `**2. Send it from your character** \u2014 log in as the character you want linked, paste the shown line into the in-game chat box and press Enter. It whispers the code to an available High Council relay (${officers}); the character that sends it is the one linked. Follow the bot's current instructions if no High Council relay is online; mailing the code to High Council works too.`,",
+    "singleLine": true,
+    "paragraphSha256": "802f5cc4ea3eae33a72e5563f79ad7382a73c2b10dcf28aee99094bb8291c153",
+    "paragraphBytes": 392,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 3,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "          `The High Council relay addon confirms the code from that character.${invite}${access}${nick} In game, use **/oly \u2192 Verify / QR Code** for the current server response. Use **/olympus check** here to diagnose access.`,",
+    "singleLine": true,
+    "paragraphSha256": "2bfcff7232487c4ef64b2ae88692ed0912502dcdda5d3fa3b727d4010945de5c",
+    "paragraphBytes": 229,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "          `Already linked? **Get my code** refreshes your current trusted roster rank without another whisper. **My status** shows progress. For a different character, use **Verify another character**. Follow the current instructions, or ask High Council if access is on hold.`,",
+    "singleLine": true,
+    "paragraphSha256": "961a3fe996141b3e2bc1043988e4c80acc54395d9765a3cef7cbd767f6c28452",
+    "paragraphBytes": 278,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "        footer: { text: `Olympus Verify \u00b7 My status for progress \u00b7 Ask ${FLAGSHIP_GUILD_NAME} High Council for account help` },",
+    "singleLine": true,
+    "paragraphSha256": "56bd4faf99043b554981536f6f543cbedb4bdc1f630eb5853123e3950f3c762e",
+    "paragraphBytes": 129,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "        if (!host || !/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,}$/i.test(host)) return reply(\"The account-controls website is not configured. Ask High Council for the current privacy page.\");",
+    "singleLine": true,
+    "paragraphSha256": "3061bb93561d3e61351a9e4f7d9c9d27a462538d4169972f9c53125b2afbe46f",
+    "paragraphBytes": 198,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "          : `Open the [privacy account connection](${base}/privacy/access) to review account-removal options. For a linked game character, ask authorized High Council to use the guarded unbind workflow. Remove an optional Discord connection in Discord Settings \u2192 Connections. This command unlinks or erases nothing.`);",
+    "singleLine": true,
+    "paragraphSha256": "acbc910e3c8198c04254d4bbfb9d1b87042751119bb374c7d6d4a149b471c645",
+    "paragraphBytes": 320,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "  // Battle.net is not required. The bnet login only ever requested scope=openid, so it proved \"this Discord",
+    "singleLine": false,
+    "paragraphSha256": "6ab52ae8ce2f112f2063b45f223d11bcb798f944a36dcef1d25701cf6ff0d2c9",
+    "paragraphBytes": 497,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "      `**${raw}** is already linked to another Discord account. If that character is yours, ask High Council in #help-desk \u2014 the bot never re-links a name on its own.`,",
+    "singleLine": true,
+    "paragraphSha256": "8f4f90f5eebf6c29ab44e905acceb60b9b770732f6dc6dc6bf822680190c6612",
+    "paragraphBytes": 170,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "  // One open request per character name at a time (first come, first served, 24 h).",
+    "singleLine": false,
+    "paragraphSha256": "4f10d188a12ce3e8f1ebefcde2e969265f66878269a922f902d9c46557f0f738",
+    "paragraphBytes": 3758,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 2,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "    ? \"press **Get my code** in the guide and whisper the request code it gives you from the character, or ask High Council\"",
+    "singleLine": true,
+    "paragraphSha256": "50f0d1f4fdb3aed8a38ba3cdb03c7f66131030bef3470d6bf8cbf784d599ea85",
+    "paragraphBytes": 124,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "    : \"ask High Council, or try again later: a request lasts at most 24 hours\";",
+    "singleLine": true,
+    "paragraphSha256": "ec1547b057c8fb83e45d568ce6caf582642c06af1e5c5e8a8573246c2b0d65cb",
+    "paragraphBytes": 79,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "/**\n * The guide's Verify button, and /verify with no character: a request code (a \"ticket\", see codes.ts). Nothing to type",
+    "singleLine": false,
+    "paragraphSha256": "c6a2f3b517d6bdd87da84931730f9bccebbe469747b5fee2ce211ae924228203",
+    "paragraphBytes": 1738,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "  let row: PendingRow | null = await openTicketFor(env, user.id);",
+    "singleLine": false,
+    "paragraphSha256": "c50c90ae3e518f30f4860bc9dd0c2bcf4f02a17e6588ad1dcf5207c6c7e1cfed",
+    "paragraphBytes": 2389,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 2,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "/** Right-click a member \u2192 Apps \u2192 \"Olympus linked characters\". Same answer as /olympus-admin lookup user:. */",
+    "singleLine": false,
+    "paragraphSha256": "32bcf2666d32dcf7fa68dd75c05c4a3ee32760bb6672f6c64c69b2105c7b2c0a",
+    "paragraphBytes": 605,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "    (out.held ? `\\nLeft for High Council (${out.held}): characters that appear to have swapped names \\u2014 see the server log.` : \"\") +",
+    "singleLine": true,
+    "paragraphSha256": "ba3fdf1896ae3407daa5bbe08100929cfe2f1b221aab3e3a9cf2091135e14f1e",
+    "paragraphBytes": 136,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "async function cmdAdmin(env: Env, i: Interaction, lane?: LaneCapture, defer?: Defer,roleDispatch:BetaRoleDispatch=captureBetaRoleDispatch(env)): Promise<Response> {",
+    "singleLine": false,
+    "paragraphSha256": "0f6d7b496fcc80b86b0f172bdc189e04b6356f7a9c2ed3366880ef99a29ce125",
+    "paragraphBytes": 8990,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "      if (!hasAnyRole(i, officerRoles(env))) return reply(\"High Council only.\");",
+    "singleLine": true,
+    "paragraphSha256": "12bbb1eeac224707776510737c3061eb1a1cf8d15f45e8e23ac25362c386d015",
+    "paragraphBytes": 80,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "  if (ns !== \"review\") return reply(\"Unknown component.\");",
+    "singleLine": false,
+    "paragraphSha256": "f2cf9f21f9b4452664a0c2ecb3f01702ce98ef67d8a26e358c733294751cdc1d",
+    "paragraphBytes": 416,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
   }
 ]);
   const RETIRED_CONTEXTS221 = Object.freeze([
@@ -2210,7 +2982,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   const originalIconContext = qualifiedIcon.paragraphs[0] || "";
   const retainedApp228 = RETAINED_CONTEXTS228.filter(spec => spec.file === iconFile);
   const currentApp228 = CURRENT_CONTEXTS.filter(spec => spec.file === iconFile && spec.ownerRelease === 228);
-  const appContextCount228 = 30, appCredit228 = 31;
+  const appContextCount228 = 32, appCredit228 = 33;
   check('.228 retains three prior app contexts and the .227 BUILD as exact non-crediting history', RETAINED_CONTEXTS228.length === 4 && retainedApp228.length === 3
     && RETAINED_CONTEXTS228.every(spec => sha(spec.historicalParagraph) === spec.paragraphSha256 && Buffer.byteLength(spec.historicalParagraph,'utf8') === spec.paragraphBytes
       && !CURRENT_CONTEXTS.some(active => active.paragraphSha256 === spec.paragraphSha256 || active.startMarker === spec.startMarker)));
@@ -2232,7 +3004,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
       && currentContextQualification(iconFile,iconText+'\n'+paragraph).errors.length>0
       && Object.keys(currentContextQualification('README.md',paragraph).credits).length===0);
   }
-  check("current app contexts qualify exactly thirty pinned lineage and Evergreen contexts", qualifiedIcon.errors.length === 0 && qualifiedIcon.paragraphs.length === appContextCount228 && qualifiedIcon.credits[currentDigest] === appCredit228 && Object.keys(qualifiedIcon.credits).length === 1);
+  check("current app contexts qualify thirty prior contexts plus two exact owner242 copy contexts", qualifiedIcon.errors.length === 0 && qualifiedIcon.paragraphs.length === appContextCount228 && qualifiedIcon.credits[currentDigest] === appCredit228 && Object.keys(qualifiedIcon.credits).length === 1);
   const extraIconText = `${iconText}\n\n${approvedGram}`;
   const extraIconQualification = currentContextQualification(iconFile, extraIconText);
   check("an extra occurrence outside the exact approved app contexts remains restricted", !!approvedGram && extraIconQualification.errors.length === 0 && extraIconQualification.credits[currentDigest] === appCredit228 && vocabularyOverages(iconFile, extraIconText).some((s) => s.includes(`${currentDigest.slice(0, 12)} x1`)));
@@ -2317,7 +3089,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
 
   // .218's exact release label contains no guarded rank term, so it grants zero credit.
   // Keep the byte, duplicate, planted-term and wrong-file refusals without raising ALLOWED or changing GUARD.
-  const buildSpecs217 = CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===241 && spec.currentBuild===true && spec.file==='worker/src/index.ts'), buildFile217='worker/src/index.ts';
+  const buildSpecs217 = CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===265 && spec.currentBuild===true && spec.file==='worker/src/index.ts'), buildFile217='worker/src/index.ts';
   const buildText217=guarded.find(([file])=>file===buildFile217)[1], buildQualification217=currentContextQualification(buildFile217,buildText217);
   const buildLine217=buildSpecs217.length===1 ? buildQualification217.paragraphs.find(value=>value.startsWith(buildSpecs217[0].startMarker))||'' : '';
   check('.218 pins exactly one current release label with zero guarded vocabulary credit',buildSpecs217.length===1 && buildSpecs217[0].file===buildFile217 && buildSpecs217[0].singleLine===true && buildSpecs217[0].digest===currentDigest && buildSpecs217[0].count===0 && buildQualification217.errors.length===0 && buildQualification217.credits[currentDigest]===0 && Object.keys(guardedCounts(buildLine217)).length===0 && Buffer.byteLength(buildLine217,'utf8')===buildSpecs217[0].paragraphBytes && sha(buildLine217)===buildSpecs217[0].paragraphSha256 && GUARD.size===28 && Object.keys(ALLOWED[buildFile217]).length===1 && ALLOWED[buildFile217][currentDigest]===undefined);
@@ -2397,7 +3169,55 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   const current239=RETAINED_CONTEXTS240[0];
   const current240=RETAINED_CONTEXTS241[0];
   check('.240 current BUILD preserves .239 as exact non-crediting history', sha(current239.historicalParagraph)===current239.paragraphSha256 && Buffer.byteLength(current239.historicalParagraph)===current239.paragraphBytes && RETAINED_CONTEXTS241.length===1 && current240.ownerRelease===240 && current240.predecessorRelease===239 && current240.predecessorSHA256===current239.paragraphSha256 && current240.count===0 && current239.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current239.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current239.historicalParagraph).errors.length>0);
-  check('.241 current BUILD preserves .240 as exact non-crediting history', sha(current240.historicalParagraph)===current240.paragraphSha256 && Buffer.byteLength(current240.historicalParagraph)===current240.paragraphBytes && buildSpecs217.length===1 && buildSpecs217[0].ownerRelease===241 && buildSpecs217[0].predecessorRelease===240 && buildSpecs217[0].predecessorSHA256===current240.paragraphSha256 && buildSpecs217[0].count===0 && current240.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current240.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current240.historicalParagraph).errors.length>0);
+  check('.241 current BUILD preserves .240 as exact non-crediting history', sha(current240.historicalParagraph)===current240.paragraphSha256 && Buffer.byteLength(current240.historicalParagraph)===current240.paragraphBytes && RETAINED_CONTEXTS242.length===1 && RETAINED_CONTEXTS242[0].ownerRelease===241 && RETAINED_CONTEXTS242[0].predecessorRelease===240 && RETAINED_CONTEXTS242[0].predecessorSHA256===current240.paragraphSha256 && RETAINED_CONTEXTS242[0].count===0 && current240.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current240.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current240.historicalParagraph).errors.length>0);
+  const current241=RETAINED_CONTEXTS242[0];
+  check('.242 current BUILD preserves .241 as exact non-crediting history', sha(current241.historicalParagraph)===current241.paragraphSha256 && Buffer.byteLength(current241.historicalParagraph)===current241.paragraphBytes && RETAINED_CONTEXTS243.length===1 && RETAINED_CONTEXTS243[0].ownerRelease===242 && RETAINED_CONTEXTS243[0].predecessorRelease===241 && RETAINED_CONTEXTS243[0].predecessorSHA256===current241.paragraphSha256 && RETAINED_CONTEXTS243[0].count===0 && current241.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current241.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current241.historicalParagraph).errors.length>0);
+  const current242=RETAINED_CONTEXTS243[0];
+  check('.243 current BUILD preserves .242 as exact non-crediting history', sha(current242.historicalParagraph)===current242.paragraphSha256 && Buffer.byteLength(current242.historicalParagraph)===current242.paragraphBytes && RETAINED_CONTEXTS244.length===1 && RETAINED_CONTEXTS244[0].ownerRelease===243 && RETAINED_CONTEXTS244[0].predecessorRelease===242 && RETAINED_CONTEXTS244[0].predecessorSHA256===current242.paragraphSha256 && RETAINED_CONTEXTS244[0].count===0 && current242.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current242.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current242.historicalParagraph).errors.length>0);
+  const current243=RETAINED_CONTEXTS244[0];
+  check('.244 current BUILD preserves .243 as exact non-crediting history', sha(current243.historicalParagraph)===current243.paragraphSha256 && Buffer.byteLength(current243.historicalParagraph)===current243.paragraphBytes && RETAINED_CONTEXTS245.length===1 && RETAINED_CONTEXTS245[0].ownerRelease===244 && RETAINED_CONTEXTS245[0].predecessorRelease===243 && RETAINED_CONTEXTS245[0].predecessorSHA256===current243.paragraphSha256 && RETAINED_CONTEXTS245[0].count===0 && current243.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current243.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current243.historicalParagraph).errors.length>0);
+  const current244=RETAINED_CONTEXTS245[0];
+  check('.245 current BUILD preserves .244 as exact non-crediting history', sha(current244.historicalParagraph)===current244.paragraphSha256 && Buffer.byteLength(current244.historicalParagraph)===current244.paragraphBytes && RETAINED_CONTEXTS246.length===1 && RETAINED_CONTEXTS246[0].ownerRelease===245 && RETAINED_CONTEXTS246[0].predecessorRelease===244 && RETAINED_CONTEXTS246[0].predecessorSHA256===current244.paragraphSha256 && RETAINED_CONTEXTS246[0].count===0 && current244.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current244.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current244.historicalParagraph).errors.length>0);
+  const current245=RETAINED_CONTEXTS246[0];
+  check('.246 current BUILD preserves .245 as exact non-crediting history', sha(current245.historicalParagraph)===current245.paragraphSha256 && Buffer.byteLength(current245.historicalParagraph)===current245.paragraphBytes && RETAINED_CONTEXTS247.length===1 && RETAINED_CONTEXTS247[0].ownerRelease===246 && RETAINED_CONTEXTS247[0].predecessorRelease===245 && RETAINED_CONTEXTS247[0].predecessorSHA256===current245.paragraphSha256 && RETAINED_CONTEXTS247[0].count===0 && current245.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current245.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current245.historicalParagraph).errors.length>0);
+  const current246=RETAINED_CONTEXTS247[0];
+  check('.247 current BUILD preserves .246 as exact non-crediting history', sha(current246.historicalParagraph)===current246.paragraphSha256 && Buffer.byteLength(current246.historicalParagraph)===current246.paragraphBytes && RETAINED_CONTEXTS248.length===1 && RETAINED_CONTEXTS248[0].ownerRelease===247 && RETAINED_CONTEXTS248[0].predecessorRelease===246 && RETAINED_CONTEXTS248[0].predecessorSHA256===current246.paragraphSha256 && RETAINED_CONTEXTS248[0].count===0 && current246.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current246.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current246.historicalParagraph).errors.length>0);
+  const current247=RETAINED_CONTEXTS248[0];
+  check('.248 current BUILD preserves .247 as exact non-crediting history', sha(current247.historicalParagraph)===current247.paragraphSha256 && Buffer.byteLength(current247.historicalParagraph)===current247.paragraphBytes && RETAINED_CONTEXTS249.length===1 && RETAINED_CONTEXTS249[0].ownerRelease===248 && RETAINED_CONTEXTS249[0].predecessorRelease===247 && RETAINED_CONTEXTS249[0].predecessorSHA256===current247.paragraphSha256 && RETAINED_CONTEXTS249[0].count===0 && current247.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current247.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current247.historicalParagraph).errors.length>0);
+  const current248=RETAINED_CONTEXTS249[0];
+  check('.249 current BUILD preserves .248 as exact non-crediting history', sha(current248.historicalParagraph)===current248.paragraphSha256 && Buffer.byteLength(current248.historicalParagraph)===current248.paragraphBytes && RETAINED_CONTEXTS250.length===1 && RETAINED_CONTEXTS250[0].ownerRelease===249 && RETAINED_CONTEXTS250[0].predecessorRelease===248 && RETAINED_CONTEXTS250[0].predecessorSHA256===current248.paragraphSha256 && RETAINED_CONTEXTS250[0].count===0 && current248.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current248.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current248.historicalParagraph).errors.length>0);
+  const current249=RETAINED_CONTEXTS250[0];
+  check('.250 current BUILD preserves .249 as exact non-crediting history', sha(current249.historicalParagraph)===current249.paragraphSha256 && Buffer.byteLength(current249.historicalParagraph)===current249.paragraphBytes && RETAINED_CONTEXTS251.length===1 && RETAINED_CONTEXTS251[0].ownerRelease===250 && RETAINED_CONTEXTS251[0].predecessorRelease===249 && RETAINED_CONTEXTS251[0].predecessorSHA256===current249.paragraphSha256 && RETAINED_CONTEXTS251[0].count===0 && current249.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current249.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current249.historicalParagraph).errors.length>0);
+  const current250=RETAINED_CONTEXTS251[0];
+  check('.251 current BUILD preserves .250 as exact non-crediting history', sha(current250.historicalParagraph)===current250.paragraphSha256 && Buffer.byteLength(current250.historicalParagraph)===current250.paragraphBytes && RETAINED_CONTEXTS252.length===1 && RETAINED_CONTEXTS252[0].ownerRelease===251 && RETAINED_CONTEXTS252[0].predecessorRelease===250 && RETAINED_CONTEXTS252[0].predecessorSHA256===current250.paragraphSha256 && RETAINED_CONTEXTS252[0].count===0 && current250.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current250.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current250.historicalParagraph).errors.length>0);
+  const current251=RETAINED_CONTEXTS252[0];
+  check('.252 current BUILD preserves .251 as exact non-crediting history', sha(current251.historicalParagraph)===current251.paragraphSha256 && Buffer.byteLength(current251.historicalParagraph)===current251.paragraphBytes && RETAINED_CONTEXTS253.length===1 && RETAINED_CONTEXTS253[0].ownerRelease===252 && RETAINED_CONTEXTS253[0].predecessorRelease===251 && RETAINED_CONTEXTS253[0].predecessorSHA256===current251.paragraphSha256 && RETAINED_CONTEXTS253[0].count===0 && current251.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current251.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current251.historicalParagraph).errors.length>0);
+  const current252=RETAINED_CONTEXTS253[0];
+  check('.253 current BUILD preserves .252 as exact non-crediting history', sha(current252.historicalParagraph)===current252.paragraphSha256 && Buffer.byteLength(current252.historicalParagraph)===current252.paragraphBytes && RETAINED_CONTEXTS254.length===1 && RETAINED_CONTEXTS254[0].ownerRelease===253 && RETAINED_CONTEXTS254[0].predecessorRelease===252 && RETAINED_CONTEXTS254[0].predecessorSHA256===current252.paragraphSha256 && RETAINED_CONTEXTS254[0].count===0 && current252.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current252.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current252.historicalParagraph).errors.length>0);
+  const current253=RETAINED_CONTEXTS254[0];
+  check('.254 current BUILD preserves .253 as exact non-crediting history', sha(current253.historicalParagraph)===current253.paragraphSha256 && Buffer.byteLength(current253.historicalParagraph)===current253.paragraphBytes && RETAINED_CONTEXTS255.length===1 && RETAINED_CONTEXTS255[0].ownerRelease===254 && RETAINED_CONTEXTS255[0].predecessorRelease===253 && RETAINED_CONTEXTS255[0].predecessorSHA256===current253.paragraphSha256 && RETAINED_CONTEXTS255[0].count===0 && current253.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current253.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current253.historicalParagraph).errors.length>0);
+  const current254=RETAINED_CONTEXTS255[0];
+  check('.255 current BUILD preserves .254 as exact non-crediting history', sha(current254.historicalParagraph)===current254.paragraphSha256 && Buffer.byteLength(current254.historicalParagraph)===current254.paragraphBytes && RETAINED_CONTEXTS256.length===1 && RETAINED_CONTEXTS256[0].ownerRelease===255 && RETAINED_CONTEXTS256[0].predecessorRelease===254 && RETAINED_CONTEXTS256[0].predecessorSHA256===current254.paragraphSha256 && RETAINED_CONTEXTS256[0].count===0 && current254.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current254.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current254.historicalParagraph).errors.length>0);
+  const current255=RETAINED_CONTEXTS256[0];
+  check('.256 current BUILD preserves .255 as exact non-crediting history', sha(current255.historicalParagraph)===current255.paragraphSha256 && Buffer.byteLength(current255.historicalParagraph)===current255.paragraphBytes && RETAINED_CONTEXTS257.length===1 && RETAINED_CONTEXTS257[0].ownerRelease===256 && RETAINED_CONTEXTS257[0].predecessorRelease===255 && RETAINED_CONTEXTS257[0].predecessorSHA256===current255.paragraphSha256 && RETAINED_CONTEXTS257[0].count===0 && current255.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current255.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current255.historicalParagraph).errors.length>0);
+  const current256=RETAINED_CONTEXTS257[0];
+  check('.257 current BUILD preserves .256 as exact non-crediting history', sha(current256.historicalParagraph)===current256.paragraphSha256 && Buffer.byteLength(current256.historicalParagraph)===current256.paragraphBytes && RETAINED_CONTEXTS258.length===1 && RETAINED_CONTEXTS258[0].ownerRelease===257 && RETAINED_CONTEXTS258[0].predecessorRelease===256 && RETAINED_CONTEXTS258[0].predecessorSHA256===current256.paragraphSha256 && RETAINED_CONTEXTS258[0].count===0 && current256.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current256.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current256.historicalParagraph).errors.length>0);
+  const current257=RETAINED_CONTEXTS258[0];
+  check('.258 current BUILD preserves .257 as exact non-crediting history', sha(current257.historicalParagraph)===current257.paragraphSha256 && Buffer.byteLength(current257.historicalParagraph)===current257.paragraphBytes && RETAINED_CONTEXTS259.length===1 && RETAINED_CONTEXTS259[0].ownerRelease===258 && RETAINED_CONTEXTS259[0].predecessorRelease===257 && RETAINED_CONTEXTS259[0].predecessorSHA256===current257.paragraphSha256 && RETAINED_CONTEXTS259[0].count===0 && current257.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current257.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current257.historicalParagraph).errors.length>0);
+  const current258=RETAINED_CONTEXTS259[0];
+  check('.259 current BUILD preserves .258 as exact non-crediting history', sha(current258.historicalParagraph)===current258.paragraphSha256 && Buffer.byteLength(current258.historicalParagraph)===current258.paragraphBytes && RETAINED_CONTEXTS260.length===1 && RETAINED_CONTEXTS260[0].ownerRelease===259 && RETAINED_CONTEXTS260[0].predecessorRelease===258 && RETAINED_CONTEXTS260[0].predecessorSHA256===current258.paragraphSha256 && RETAINED_CONTEXTS260[0].count===0 && current258.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current258.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current258.historicalParagraph).errors.length>0);
+  const current259=RETAINED_CONTEXTS260[0];
+  check('.260 current BUILD preserves .259 as exact non-crediting history', sha(current259.historicalParagraph)===current259.paragraphSha256 && Buffer.byteLength(current259.historicalParagraph)===current259.paragraphBytes && RETAINED_CONTEXTS261.length===1 && RETAINED_CONTEXTS261[0].ownerRelease===260 && RETAINED_CONTEXTS261[0].predecessorRelease===259 && RETAINED_CONTEXTS261[0].predecessorSHA256===current259.paragraphSha256 && RETAINED_CONTEXTS261[0].count===0 && current259.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current259.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current259.historicalParagraph).errors.length>0);
+  const current260=RETAINED_CONTEXTS261[0];
+  check('.261 current BUILD preserves .260 as exact non-crediting history', sha(current260.historicalParagraph)===current260.paragraphSha256 && Buffer.byteLength(current260.historicalParagraph)===current260.paragraphBytes && RETAINED_CONTEXTS262.length===1 && RETAINED_CONTEXTS262[0].ownerRelease===261 && RETAINED_CONTEXTS262[0].predecessorRelease===260 && RETAINED_CONTEXTS262[0].predecessorSHA256===current260.paragraphSha256 && RETAINED_CONTEXTS262[0].count===0 && current260.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current260.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current260.historicalParagraph).errors.length>0);
+  const current261=RETAINED_CONTEXTS262[0];
+  check('.262 current BUILD preserves .261 as exact non-crediting history', sha(current261.historicalParagraph)===current261.paragraphSha256 && Buffer.byteLength(current261.historicalParagraph)===current261.paragraphBytes && RETAINED_CONTEXTS263.length===1 && RETAINED_CONTEXTS263[0].ownerRelease===262 && RETAINED_CONTEXTS263[0].predecessorRelease===261 && RETAINED_CONTEXTS263[0].predecessorSHA256===current261.paragraphSha256 && RETAINED_CONTEXTS263[0].count===0 && current261.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current261.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current261.historicalParagraph).errors.length>0);
+  const current262=RETAINED_CONTEXTS263[0];
+  check('.263 current BUILD preserves .262 as exact non-crediting history', sha(current262.historicalParagraph)===current262.paragraphSha256 && Buffer.byteLength(current262.historicalParagraph)===current262.paragraphBytes && RETAINED_CONTEXTS264.length===1 && RETAINED_CONTEXTS264[0].ownerRelease===263 && RETAINED_CONTEXTS264[0].predecessorRelease===262 && RETAINED_CONTEXTS264[0].predecessorSHA256===current262.paragraphSha256 && RETAINED_CONTEXTS264[0].count===0 && current262.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current262.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current262.historicalParagraph).errors.length>0);
+  const current263=RETAINED_CONTEXTS264[0];
+  check('.264 current BUILD preserves .263 as exact non-crediting history', sha(current263.historicalParagraph)===current263.paragraphSha256 && Buffer.byteLength(current263.historicalParagraph)===current263.paragraphBytes && RETAINED_CONTEXTS265.length===1 && RETAINED_CONTEXTS265[0].ownerRelease===264 && RETAINED_CONTEXTS265[0].predecessorRelease===263 && RETAINED_CONTEXTS265[0].predecessorSHA256===current263.paragraphSha256 && RETAINED_CONTEXTS265[0].count===0 && current263.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current263.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current263.historicalParagraph).errors.length>0);
+  const current264=RETAINED_CONTEXTS265[0];
+  check('.265 current BUILD preserves .264 as exact non-crediting history', sha(current264.historicalParagraph)===current264.paragraphSha256 && Buffer.byteLength(current264.historicalParagraph)===current264.paragraphBytes && buildSpecs217.length===1 && buildSpecs217[0].ownerRelease===265 && buildSpecs217[0].predecessorRelease===264 && buildSpecs217[0].predecessorSHA256===current264.paragraphSha256 && buildSpecs217[0].count===0 && current264.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current264.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current264.historicalParagraph).errors.length>0);
   // Explicit Master218 scope; original GUARD and ALLOWED remain byte-identical.
   const ownerContexts218=CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===218);
   const retiredLineage218=[...RETAINED_CONTEXTS222.filter(spec=>spec.retirement222),...retainedApp228].filter(spec=>spec.ownerRelease===218||spec.predecessorRelease===218);
@@ -2420,8 +3240,29 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
     const historicalPresent218=text.split(/\r?\n/).some(line=>{const start=line.indexOf(spec.startMarker);return start>=0&&line.slice(start)===spec.historicalParagraph;}),baseline218=currentContextQualification(spec.file,text),appended218=text+'\n'+spec.historicalParagraph,appendedQualification218=currentContextQualification(spec.file,appended218),appendedHits218=guardedCounts(appended218),appendedUncredited218=(appendedHits218[spec.digest]||0)-(appendedQualification218.credits[spec.digest]||0);
     check('.218 retired bytes remain uncredited '+spec.paragraphSha256.slice(0,12),!historicalPresent218&&!appendedQualification218.paragraphs.some(paragraph=>sha(paragraph)===spec.paragraphSha256)&&(appendedQualification218.credits[spec.digest]||0)<=(baseline218.credits[spec.digest]||0)&&(spec.count===0?currentContextQualification(spec.file,buildText217.replace(buildLine217,spec.startMarker)).errors.length>0:appendedUncredited218>((ALLOWED[spec.file]||{})[spec.digest]||0)&&overOriginalVocabularyAllowance(spec.file,appendedHits218,appendedQualification218).some(value=>value===spec.file+': digest '+spec.digest.slice(0,12)+' x'+appendedUncredited218)));
   }
+  const ownerCopy242 = CURRENT_CONTEXTS.filter(spec => spec.ownerRelease === 242 && spec.purpose.startsWith("Owner242 exact High Council"));
+  check(".242 copy grants only32 exact hits in four fixed files; the current BUILD still grants zero", ownerCopy242.length === 27
+    && ownerCopy242.reduce((sum,spec) => sum + spec.count, 0) === 32
+    && JSON.stringify([...new Set(ownerCopy242.map(spec => spec.file))].sort()) === JSON.stringify(["worker/src/site-news.ts","worker/public/static/app.js","worker/src/guide.ts","worker/src/interactions.ts"].sort())
+    && buildSpecs217.length === 1 && buildSpecs217[0].ownerRelease === 265 && buildSpecs217[0].count === 0 && GUARD.size === 28);
+  for (const spec of ownerCopy242) {
+    const text = guarded.find(([file]) => file === spec.file)[1], qualified = currentContextQualification(spec.file,text);
+    const paragraph = qualified.paragraphs.find(value => value.startsWith(spec.startMarker)) || "", changed = paragraph.slice(0,-1) + "!";
+    check(".242 exact source copy is file/byte/count bound " + spec.paragraphSha256.slice(0,12), qualified.errors.length === 0
+      && Buffer.byteLength(paragraph,"utf8") === spec.paragraphBytes && sha(paragraph) === spec.paragraphSha256
+      && (guardedCounts(paragraph)[currentDigest] || 0) === spec.count && spec.digest === currentDigest);
+    check(".242 edited or duplicated copy cannot borrow credit " + spec.paragraphSha256.slice(0,12), !!paragraph
+      && currentContextQualification(spec.file,text.replace(paragraph,changed)).errors.length > 0
+      && vocabularyOverages(spec.file,text.replace(paragraph,changed)).length > 0
+      && currentContextQualification(spec.file,text + "\n\n" + paragraph).errors.length > 0
+      && vocabularyOverages(spec.file,text + "\n\n" + paragraph).length > 0);
+    check(".242 extra outside or wrong-file copy remains restricted " + spec.paragraphSha256.slice(0,12), !!approvedGram
+      && vocabularyOverages(spec.file,text + "\n" + approvedGram).some(value => value === spec.file + ': digest ' + currentDigest.slice(0,12) + ' x1')
+      && Object.keys(currentContextQualification("README.md",paragraph).credits).length === 0
+      && vocabularyOverages("README.md",paragraph).some(value => value.includes(currentDigest.slice(0,12))));
+  }
   const currentBuildTuple218=/^const BUILD = "(\d{4}-\d{2}-\d{2})\.(\d+) [^"]+";$/.exec(buildLine217),currentNews218=news.RELEASE_NOTES[0];
-  check('.241 exact BUILD version/date equals the newest actual release-note metadata',!!currentBuildTuple218&&currentBuildTuple218[1]==='2026-11-09'&&currentBuildTuple218[2]==='241'&&currentNews218.build==='.'+currentBuildTuple218[2]&&currentNews218.date===currentBuildTuple218[1]);
+  check('.265 exact BUILD version/date equals the newest actual release-note metadata',!!currentBuildTuple218&&currentBuildTuple218[1]==='2026-11-10'&&currentBuildTuple218[2]==='265'&&currentNews218.build==='.'+currentBuildTuple218[2]&&currentNews218.date===currentBuildTuple218[1]);
   const retiredBuildSpec217=RETIRED_CONTEXTS218.find(spec=>spec.ownerRelease===217&&spec.file===buildFile217);
   check('.218 the retired217 label cannot replace or accompany the unique current label',!!retiredBuildSpec217&&currentContextQualification(buildFile217,buildText217.replace(buildLine217,retiredBuildSpec217.startMarker)).errors.length>0&&currentContextQualification(buildFile217,buildText217+'\n'+retiredBuildSpec217.startMarker).errors.length>0&&Object.keys(currentContextQualification('README.md',retiredBuildSpec217.startMarker).credits).length===0);
 

@@ -1,10 +1,12 @@
 /** .224 adds only /olympus to the nineteen established guild commands. */
 import {normalizeCommands219 as normalize,digestCommands219 as digest,VERIFY_APP219 as APP,ASMON_GUILD219 as GUILD} from './guild-command-plan219.mjs';
+import {readFileSync} from 'node:fs';
 
 const key=c=>(c.type??1)+':'+c.name;
 const expected=['branches','council','event','forever','guide','launch','olympus-admin','olympus-intros','olympus-lookup','olympus-privacy','olympus-status','olympus-unlink','raid','stockades','treasury','verify','verify-status','workshop'].map(x=>'1:'+x).concat('2:Olympus linked characters').sort();
 const utility=['branches','council','event','forever','guide','launch','olympus','raid','stockades','treasury','workshop'].sort();
-const HUB={type:1,name:'olympus',description:'Open your private Olympus hub: verification, guides, Workshop, branches and guild roles'};
+// .242 adds /olympus check; registration still admits this exact public definition only.
+const HUB=normalize([JSON.parse(readFileSync(new URL('./olympus-check242-command.json',import.meta.url),'utf8'))])[0];
 function scope(rows){if(!Array.isArray(rows)||rows.some(r=>r?.application_id!==APP||r?.guild_id!==GUILD))throw Error('guild_registration_destination_mismatch');}
 export function prepareGuildCommandPlan224(existing,utilities,{head,tree,definitionSHA256,expectedExistingSHA256}){
  if(!/^[a-f0-9]{40}$/.test(head)||!/^[a-f0-9]{40}$/.test(tree)||![definitionSHA256,expectedExistingSHA256].every(x=>/^[a-f0-9]{64}$/.test(x)))throw Error('command_source_custody');

@@ -36,9 +36,9 @@ async function review(){
 
  eq('independent34 static retained array cases',nativeCases.cases.length,34);
  eq('independent37 exact history coverage',nativeCases.collections.length,37);
- eq('actual production registers original13 plus exact2 metadata and1 private nickname family',Array.from(registry.communityDataNames()).length,16);
+ eq('actual production registers original13 plus exact2 metadata,1 private nickname and1 treasury family',Array.from(registry.communityDataNames()).length,17);
  const census=fixture(),plan=registry.communityExportPlan(census.env,A);
- eq('actual production registers original36 plus exact3 metadata and1 nickname SQL statement',plan.statements.length,40);census.db.close();
+ eq('actual production registers original36 plus exact3 metadata,1 nickname and1 treasury SQL statement',plan.statements.length,41);census.db.close();
  async function prepared(f,id=A){const c=await connect(f,id),frm=await form(f,c);provider=null;return frm;}
  async function download(f,collection,cursor=null){
   const frm=await prepared(f),footprint=['site_users','members','privacy_subjects','role_settlements'].map(t=>count(f,t));
@@ -149,7 +149,10 @@ async function review(){
  eq('aggregate original97 plus exactly1 packed own metadata attempt',attempts,98);ok('aggregate physical copy remains strictly below100',attempts<100);eq('aggregate original read2 and payload95 plus1 packed read',batches,[2,96]);
  eq('aggregate exact38 descriptors retain all37 independent retained-row fixtures plus exact B1 participant history',Object.keys(aggregate.coverage.histories).sort(),[...nativeCases.collections,'community.councillor_verification.betaFernWindows'].sort());
  for(const c of nativeCases.collections){const h=aggregate.coverage.histories[c];eq(c+' aggregate metadata collection binding',h.collection,c);eq(c+' aggregate selected capture deadline86400',Date.parse(h.capture.expiresAt)-Date.parse(h.capture.at),86400*1000);}
- eq('aggregate original thirteen plus exact two metadata and one nickname family projections',Object.keys(aggregate.community).sort(),Array.from(registry.communityDataNames()).sort());
+ const curatedFamilies=['refs','directory','events','trials','restrictions','departures','contributions','news','event_delivery','event_reminders','privacy_access','councillor_verification','ruleset_publication','discord_directory_visibility','news_webhook','member_nickname'];
+ eq('aggregate original thirteen plus exact two metadata and one nickname family projections',Object.keys(aggregate.community).sort(),curatedFamilies.slice().sort());
+ eq('registered treasury family remains separate from the exact curated projection',Array.from(registry.communityDataNames()).sort(),[...curatedFamilies,'treasury242'].sort());
+ ok('aggregate retains the explicit private-payment exclusion',!Object.hasOwn(aggregate.community,'treasury242')&&aggregate.coverage.excluded.includes('private payment details'));
  ok('aggregate retains scalar refs/profile/period projections',Object.hasOwn(aggregate.community.refs,'ref')&&Object.hasOwn(aggregate.community.directory,'main')&&Object.hasOwn(aggregate.community.restrictions,'watchListPeriod'));
  f.db.close();provider=null;console.log('privacy_history_whole_coverage_review_test: '+checks+' checks PASS');
 }

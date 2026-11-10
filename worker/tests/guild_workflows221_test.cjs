@@ -54,7 +54,7 @@ const scenarios221=String.raw`
  r=await send219('olympus-admin','release',{character:pendingName221});
  check('authorized release closes an open request without removing any binding',r.initial.type===4&&r.initial.data.content.includes('is closed')&&one('SELECT consumed_source FROM pending WHERE name_key=?',pendingKey221)?.consumed_source==='release'&&JSON.stringify(db.prepare('SELECT * FROM characters ORDER BY name_key').all())===chars221);
  r=await send219('olympus-admin','release',{character:releaseName221},MEMBER);
- check('a normal member cannot use the request-release alias',r.initial.type===4&&r.initial.data.content==='Officers only.'&&JSON.stringify(db.prepare('SELECT * FROM characters ORDER BY name_key').all())===chars221);
+ check('a normal member cannot use the request-release alias',r.initial.type===4&&r.initial.data.content==='High Council only.'&&JSON.stringify(db.prepare('SELECT * FROM characters ORDER BY name_key').all())===chars221);
  const index221=load('./index');
  check('account guidance is read-only while release and role-sync retain the durable write ledger',index221.isReadOnly({type:2,data:{name:'olympus-privacy'}})&&index221.isReadOnly({type:2,data:{name:'olympus-unlink'}})&&!index221.isReadOnly({type:2,data:{name:'olympus-admin',options:[{type:1,name:'release'}]}})&&!index221.isReadOnly({type:2,data:{name:'olympus-admin',options:[{type:1,name:'role-sync'}]}}));
  check('guild workflow additions preserve the existing physical schema',JSON.stringify(db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").all())===schema221);

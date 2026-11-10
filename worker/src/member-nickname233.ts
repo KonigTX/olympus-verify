@@ -15,7 +15,7 @@ export const nicknameButtons233=()=>[
 export const isNicknameInteraction233=(i:Interaction)=>i.type===3&&[NICKNAME_USE233,NICKNAME_RESET233].includes(i.data?.custom_id??'');
 const ID=/^[1-9][0-9]{16,19}$/,at=()=>Math.floor(Date.now()/1000);
 const held='Your nickname could not be changed. Verify your current character and wait for a fresh complete roster, then try this button again.';
-const unknown='The previous nickname request has an unconfirmed outcome. No second change was sent. Ask an officer for help before another nickname change.';
+const unknown='The previous nickname request has an unconfirmed outcome. No second change was sent. Ask High Council for help before another nickname change.';
 function data(o:unknown,k:string):unknown{if(!o||typeof o!=='object')throw Error('nickname_provider_held');const d=Object.getOwnPropertyDescriptor(o,k);if(!d)return undefined;if(!Object.hasOwn(d,'value'))throw Error('nickname_provider_held');return d.value;}
 function graph(input:unknown):()=>void{
  const seen=new Set<object>(),checks:(()=>void)[]=[];const visit=(v:unknown)=>{if(!v||typeof v!=='object'||seen.has(v))return;seen.add(v);const proto=Object.getPrototypeOf(v),keys=Reflect.ownKeys(v),slots=keys.map(k=>{const d=Object.getOwnPropertyDescriptor(v,k)!;if(!Object.hasOwn(d,'value'))throw Error('nickname_provider_held');return d;});
@@ -25,7 +25,7 @@ function graph(input:unknown):()=>void{
  * cutting at grapheme boundaries and never inside a surrogate pair. */
 export function formatNickname233(character:string):string{
  if(typeof character!=='string'||!character.trim()||/[\u0000-\u001f\u007f]/u.test(character)||!validStoredNickname233(character))throw Error('nickname_character_held');
- const suffix=' [OLYMPUS PRIME]',limit=32-suffix.length;let head='';
+ const suffix=' <OLYMPUS PRIME>',limit=32-suffix.length;let head='';
  for(const {segment} of new Intl.Segmenter('en',{granularity:'grapheme'}).segment(character.trim())){if(head.length+segment.length>limit)break;head+=segment;}
  if(!head.trim())throw Error('nickname_character_held');return head.trimEnd()+suffix;
 }

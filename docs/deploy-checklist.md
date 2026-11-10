@@ -7872,3 +7872,146 @@ The addon remains OlympusVerify 0.6.21 and the Watcher remains 0.6.19. No addon,
 **Rollout and rollback:** qualify and sign the exact .241 commit/tree, pass PR and main CI, take a fresh export with a successful local restore verification, then use the protected exact-commit deploy with unchanged bindings. Confirm public 90, both natural cron purposes and the attended rank/nickname checks before closing the release. If necessary, use the same protected process to return to prior main 637e7ce4ab72bf9a74be23acb3633aab3646145a (.240, including its known catch-up delay). No database restore or Watcher restart is part of that rollback.
 
 **Validation:** focused TypeScript and 301 assertions passed for the scheduler/static guard iteration. The final release-note/health-pin updates have their own focused leaves; a fresh full 334 run, exact-head hosted CI/review and live acceptance remain required and are recorded outside this historical Source log.
+
+
+## Worker .242 — owner-directed live-first verification and intake
+
+The owner explicitly replaces pre-deployment suite/peer/CI gates for this rollout with TypeScript/bundle compilation, Lua syntax and a fresh443/442-object restored D1 backup. Deploy exact committed source and install OlympusVerify0.6.22/Watcher0.6.20 first; run regressions and collect hosted CI after serving. See live-first242.md and append-only launch242 evidence. Existing runtime privacy, issuer, unknown-effect and rank ownership guards remain. No schema change or production restore.
+
+Features include authenticated own web code/role refresh, bounded signed role continuation, High Council check/Fix, angle-bracket nicknames, durable signed addon intake/receipts, mail/whisper/trade capture, native Discord observation, remote WHO-backed officer invites and safe hardware Sync. Branch membership verification remains pending by explicit owner answer. Native Discord observations corroborate existinglinks; they do not create a new link from display text. Finish exact17 legacy definitions only on fresh official zero-holder counts, preserving unrelated roles and unresolved272.
+
+Rollback uses the archived .241 exact commit and preserved bindings; database replacement remains separately gated on writer quiescence. Post-deploy results must distinguish serving identity, package/install hashes, synthetic regression, hosted CI and live client acceptance.
+
+
+## Worker .243 — follow-up repairs from .242 post-deploy checks
+
+Keeps Native role modules lazy, corrects four High Council contact strings, and ships Watcher0.6.21 with original claim ownership/unique seen-claim custody and explicit authenticated server-expiry outcomes. Malformed SavedVariables does not create empty intake state. Updated addon fixtures retain negative combat/security/identity/freshness/spent checks while matching the approved hardware/remote behavior. Addon stays0.6.22; its public/installed bytes are unchanged. Preserve all .242 failed post-deploy receipts. Compile/bundle and fresh443/442 D1 backup precede this owner-directed live-first repair; rerun affected suites only after serving and installing it. No schema, secret, optional-feature activation or production restore.
+
+
+## Worker .244 — lazy feature boundaries, eager privacy registration
+
+Moves the optional .242 handlers behind their route/call boundaries so the original Core/QR initialization graph stays intact. Donation data erasure/export registration lives in an eager pure registry module; no private-data lifecycle registration is lost. Authentication, Native issuers, request/effect guards and persistence predicates are unchanged. Watcher remains0.6.21 and addon0.6.22. Preserve both prior failed regression sets; affected cases run only after this live-first repair serves.
+
+## Worker .245 — use the actual remaining reconciliation budget
+
+Removes the initial fixed worst-case visit-count divisor. The existing live per-account SQL and HTTP admission checks and ten-account maximum remain. A cheap held subject no longer prevents the next urgent rank update when the invocation still has room. Native identity, ownership, unknown-effect and selector checks remain. The owner-directed sequence remains compile/bundle plus fresh restored D1 backup, deploy, then affected regressions. Addon0.6.22 and Watcher0.6.21 are unchanged. Preserve all prior failures.
+
+
+## Worker .246 — supported signed continuation fetch
+
+Uses the edge runtime's manual redirect mode for signed self-continuation POSTs. Every non-success response, including all redirects, remains refused. HMAC, nonce, TTL, original Native role checks and per-invocation budget fences are unchanged. The owner-directed rollout still compiles and restores a fresh443/442 D1 backup before deployment, then reruns the affected scheduling regression after serving. No addon or Watcher runtime change.
+
+
+## Worker .247 — donation privacy, lightweight status and registration
+
+The current registry is exactly17 families/41 logical reads; account-copy payload and physical98-statement coverage remain bounded as before. Account cleanup combines the existing treasury predicate with the existing terminal audit delete before character removal, preserving standalone registry behavior, transactional failure semantics and exact196/700 erasure/schedule bounds. Presence/default relay polling keeps zero D1 reads; Watcher0.6.22 fetches signed verification cache through a separately explicit two-key intent. Donation ledger gets its proper page title and canonical registration uses the same exact hub/check definition. Native verification enhancements require a current members-only scope; legacy paths preserve their original name limits and avoid new role work. The owner-directed order remains compile/bundle and fresh443/442 restored backup, deploy/install, then affected tests and hostedCI. Addon remains0.6.22 with unchanged archive bytes.
+
+
+## Worker .248 — current-scope relay boundaries
+
+Successful ingest schedules242 role continuations only for a current members-only scope. Legacy queue replies omit the Native verification cache; its explicit cache-only route stays available. Cache-only reads cannot register the outer queue role sweep. The four current help-copy checks now match approved High Council instructions without changing historicalPINS. Watcher remains0.6.22 and addon0.6.22. Compile/bundle plus a fresh restored443/442 D1 backup precede deployment; remaining focused checks run afterward from a separate frozen checkout so working edits cannot invalidate their source custody.
+
+
+
+## Worker .249 — finite role traversal and durable intake delivery
+
+The original .242 review found an unbounded continuation: the candidate selector rotates settled accounts too, so merely reaching the per-request limit cannot prove more distinct work remains. A signed, fixed-snapshot traversal ID now follows each continuation. The existing attempt audit marks visited subjects; the generation-filtered selector excludes them, and a superseded snapshot or unrecordable privacy-safe progress holds the chain. The token supplies scheduling context only. Native identity, current scope, account standing, unknown-effect custody, statement and HTTP admission remain authoritative. No schema or provider configuration changes.
+
+OlympusVerify and Watcher become0.6.23. Authentic missing-GUID receipts use the same empty MAC field; genuine whisper observations have distinct durable IDs while repeated delivery of one observation stays idempotent. Bridge mirrors retain the original body with untrusted provenance outside it. Signed receipt/cache changes participate in the legacy queue change detector. Rebuild the exact18-file public download, manifest and asset custody pins; preserve Config.lua, generated exchanges, SavedVariables and all Watcher state/locks.
+
+The owner-directed order remains TypeScript/bundle, Lua syntax and fresh restored443/442 D1 backup; protected exact-commit deploy and narrow public-file install; then affected regressions, hosted CI and completed exact-head automated review. A long test must read a frozen checkout. Earlier failed and contaminated attempts remain charged. The exact17 role retirement completed separately under Root custody; the unresolved original272 effect remains held. Approved branch verification stays pending at the owner's direction. In-game acceptance requires a signed-in safely idle client; a disconnected login screen is not acceptance.
+
+Rollback uses a preserved exact deployed commit through the protected deploy entrypoint, with bindings preserved. Do not restore production D1, reset uncertain claims, relink members or recreate removed role IDs as part of rollback.
+
+
+## Worker .250 — legacy verification forwarding
+
+Watcher0.6.24 suppresses a duplicate SavedVariables event in favor of durable intake only in membership-only mode. Legacy SavedVariables keeps its existing /ingest/verify forwarding, because its local observations do not contain Native membership proof. Original seen/batch, claim, expiry and unknown-effect guards remain. The addon/public archive stays0.6.23. Compile and fresh restored443/442 backup precede this owner-directed live-first deployment; run the new forwarding tests and affected release metadata checks afterward. Preserve original249 test failures/timeouts and exact serving/qualification-head distinctions.
+
+
+## Worker .251 — mail delivery, transfer identity and receipt lifetime
+
+OlympusVerify0.6.24 supports bounded external request IDs through a separate hashed chunk-routing ID while retaining each canonical request ID. Verification commands and chat filters share the anchored command boundary. Mail observation IDs belong to a specific content instance; a complete readable absence is required before identical content can start another instance. Duplicate current mail stays held, original claims remain intact and mail deletion requires the matching original signed receipt. Gold transfer observers share the Treasury native-context ID before either exports; equal real transfers retain distinct durable sequence IDs. No fuzzy name/time/amount matching or post-export body enrichment occurs. Watcher remains0.6.24.
+
+Server donation visibility and bounded cleanup use the recorded original observation deadline. Unreadable deadlines stay hidden and use arrival+30days only as a deletion fallback. An exactly expired receipt is refused before re-insertion. The ownership/erasure predicate and196/700 accounting remain unchanged; no schema or extra SQL statement is added.
+
+Keep the owner's live-first order: compile/bundle/Lua syntax and fresh restored443/442 backup, exact protected deployment and public-file install, then the authored affected tests, hosted CI and completed exact-head review. Source-only fixes to stale privacy projections, beta historical reconstruction, named-character wording and an existing census helper hash preserve historical anchors and negative checks. Preserve prior failed/time-limited attempts and the original unknown272 effect. Current native acceptance remains separate from synthetic tests and requires the signed-in client.
+
+
+## Worker .252 — offline ACK delivery and active request progress
+
+OlympusVerify and Watcher0.6.25 renew only bounded signed transport validity for an already stored terminal ACK. The original acknowledgement time, source observation, request body and server claim remain unchanged; this does not reissue a POST or renew Native verification evidence. Original24-hour receipts remain compatible. A mailbox content instance that ever becomes ambiguous stays held even when its count returns toone; only complete readable absence permits a new instance. Transient body reads cannot trap the mailbox scanner.
+
+The guarded role-request selector excludes non-active privacy subjects before its existing11-row window; the original per-account recheck, opaque issuer, unknown-effect handling and SQL/HTTP caps remain. No schema or statement-count change. The finite static beta fixture retargets only current input metadata and its exact BUILD window while preserving the accepted241 oracle and all negative controls.
+
+Apply the owner's live-first sequence: compile/bundle/Lua syntax and fresh restored443/442 backup, exact deployment/public-file install, then focused new tests and hosted CI/exact-head review. Preserve all226 prior charged attempts; no whole local suite restart. Current in-game and production receipt observations remain separately qualified. Branch verification stays owner-held and original unknown role custody is not replayed.
+
+
+### Build .253 — production D1 query planning
+
+The finite fixed-snapshot scheduler materializes its repeated facts projection so production D1 does not recursively expand its correlated priority/history branches. Original selectors, filters, order, bounds, privacy/current-source issuer and unknown-effect discipline are preserved. This is a Worker-only change; addon and Watcher remain 0.6.25. The .252 production failure and Duke rank discrepancy remain preserved until actual production D1 and guarded role readbacks qualify the repair. Owner-directed deployment precedes affected tests/hosted CI.
+
+
+### Build .254 — finite production query boundaries
+
+Production D1 still rejected the .253 facts-only boundary. The finite selector now materializes an explicit allowlist of its reused CTEs, preserving the exact original selectors, filters, ordering and limits. Source and effect authority are unchanged. The .253 post-serving actual D1 failures and its local52/82 component passes are retained separately. Worker-only; addon/Watcher stay0.6.25. Actual D1 query and guarded live-role readbacks remain decisive after deployment.
+
+
+## Worker .254 — 2026-11-10.254 Production role query boundaries
+
+Exact-source runtime receipts are under launch254-2026-11-10. The production selector still fails7500; this build is not final accepted. Original failure and component evidence are preserved. Follow the next correction rather than treating a healthy callback as role convergence.
+
+
+## Worker .255 — 2026-11-10.255 Reduced-reference role batches
+
+Production D1 rejects the original finite selector across .252, .253 and .254. The exact7500 errors, clean local component tests and failed .254 doc projection are preserved; no final acceptance is asserted for those builds. A reduced-reference equivalent must pass real production D1, current guarded Native effects, exact-head CI and review before final merge. Addon and Watcher remain0.6.25. No branch verification or owner-held member interaction tests are claimed.
+
+
+## Worker .256 - 2026-11-10.256 Efficient production role batches
+
+The .255 actual production D1 selector compiled and ran, but read65033887 rows in26888ms. The CTE-free helper now retains derived-table optimization barriers with LIMIT -1 OFFSET0 while preserving all body values, filters, aliases, priority/order and bind positions. Original failed attempts and the .255 performance result are retained. Addon/Watcher remain0.6.25. Actual production D1 duration/reads and current guarded Native effects are required after deployment; this source entry alone asserts neither. The static beta oracle timestamp is restored exactly to253402300799999 after the prior metadata replacement error.
+
+
+## Worker .257 - 2026-11-10.257 Reliable rank batch handoffs
+
+Production .256 reduced SQL execution to1668ms but actual deferred continuations can exceed the30s provider window. Native passes and requested-account passes now stop before starting another account after a12s soft admission window, preserving the completed current account and the original finite generation. The roster ingest pass owns its same-generation handoff after releasing its lease; the parallel competing outer roster kick is removed. Physical/HTTP/max-subject limits and all current-source/privacy/unknown-effect writers remain. A slow individual account may still exceed the soft bound; the timer never cancels an in-flight effect. Addon/Watcher remain0.6.25. Actual complete guarded batch progress, hosted CI and exact-head review remain separate release gates.
+
+
+## Worker .258 - 2026-11-10.258 Role handoff diagnostics
+
+This prospective release records bounded HTTP status for role-handoff failures so operators can follow up without response bodies or expanded effect authority. The existing identity, current-source, privacy, unknown-effect, generation, lease and budget guards remain. The exact roster static-fixture repair is test-only and preserves the historical oracle; current runtime loaders remain unchanged. Addon and Watcher remain0.6.25. The cumulative local-test budget is spent: no local tests or repeated suites are run for this release. Earlier failures and partial evidence are retained. Compilation, backup, deployment identity, hosted CI, exact-head review and actual guarded role progress remain separate gates; this entry does not claim that they have passed.
+
+
+## Worker .259 - 2026-11-10.259 Observable role handoffs
+
+The .258 error property alone was not observable through the redacted global defer logger, so that diagnostic change was not accepted. This prospective release emits a fixed diagnostic label and bounded HTTP status through errorRef inside the non-OK handoff branch before throwing the same error. It retains the same identity, current-source, privacy, unknown-effect, generation, lease, budget and effect guards; no raw provider body or expanded authority is added. Addon and Watcher remain0.6.25. No local tests or repeated suites are run: the cumulative local-test budget is spent. Prior failures and partial evidence remain preserved. Compilation, backup, deployed source identity, hosted CI, exact-head review and actual guarded role progress remain separate gates, not claims made by this checklist entry.
+
+
+## Worker .260 - 2026-11-10.260 Public role handoff routing
+
+The actual .259 bounded handoff diagnostic recorded HTTP404 for the child fetch. This prospective release enables global_fetch_strictly_public in the two public Worker configurations so same-zone global fetches use the public route rather than bypassing the Worker. The routing-flag correction matches the observed404 diagnosis; it does not establish a successful further queued hop, complete role convergence or any error1042 result. The current identity, privacy, source, generation, unknown-effect, lease, budget and effect guards remain unchanged. Addon and Watcher remain0.6.25. No local tests are run because the cumulative local-test budget is spent. Original failures and partial evidence remain preserved. Compilation, backup, deployed source and flag identity, a genuine further live hop, new exact-head13-job hosted CI and completed review remain required separate gates.
+
+
+## Worker .261 - 2026-11-10.261 Bridge delivery receipts
+
+This prospective release adds bounded delivery-only receipts for addon bridge requests through their configured guild collector. A collector delivery observation does not establish verified identity, current Discord rank, a role effect, Native acceptance or retry authority. The .260 public-routing configuration remains unchanged; its observed further live handoff hops remain historical component evidence, not .261 qualification. Addon0.6.26 is the proposed package; Watcher0.6.25 remains unchanged. No local tests are run because the cumulative local-test budget is spent. Compilation, fresh backup, exact package/install and serving identity, current-head hosted CI and completed review remain separate required evidence. The requested real member interaction remains owner-held, and fresh .261 validation is still required. Original failures, unknown custody and partial acceptance remain preserved.
+
+
+## Worker .262 - 2026-11-10.262 Independent durable sync
+
+This prospective owner-directed live-first repair preserves unresolved original requests while allowing independent newly observed roster and verification work to proceed. A confirmed pending role-sweep checkpoint can resume after a bounded self-handoff chain ends. Native trade/mail contexts survive reload without repeating protected collection or ledger effects, and a genuine new explicit self-verification command creates a new observation. Addon0.6.27 and Watcher0.6.26 are the proposed public versions. No local regression tests are run because all 236 attempts and the exhausted cumulative allowance remain charged. Compilation, package custody, fresh D1 backup, production serving identity, exact-head hosted CI, automated review and native observations remain separately recorded. Member interaction checks and branch verification remain explicitly owner-held. Historical failures and unknown outcomes remain preserved; this paragraph does not assert live or aggregate acceptance.
+
+
+## Worker .263 - 2026-11-10.263 Owned sweep lease cleanup
+
+This prospective owner-directed live-first repair retains the attempted lease value before acquisition acknowledgement so the same invocation can attempt only its own equality-guarded cleanup when that acknowledgement is unconfirmed. It grants no foreign lease release, unknown effect retry or role authority. Historical .262 progression, its remaining unvisited subjects and freshness/lease stalls remain preserved rather than relabelled complete. Addon0.6.27 and Watcher0.6.26 are unchanged. No local regression tests are run because the cumulative allowance is exhausted. Compilation, fresh D1 backup, exact deployed source/version, current-head hosted CI/review and fresh current-snapshot progression remain separate required evidence. Member interaction checks and branch verification remain owner-held. This section does not assert .263 serving, a cleared historical unknown or aggregate acceptance.
+
+
+## Worker .264 - 2026-11-10.264 Independent role wakeups
+
+This prospective owner-directed live-first repair gives the Watcher an independent wakeup for pending role checks while guarded, owned lease cleanup reports bounded provider failures. The existing source freshness, Native identity, original effect custody, unknown fences and exact-value lease ownership guards remain required; a wakeup is not a role acknowledgement or completed sweep. The partial .262 walk and .263 cleanup observations remain preserved, with no drain or whole-roster conformance claim. Addon0.6.27 is unchanged; Watcher0.6.27 is the separately authored wakeup companion. No local regression tests are run because the cumulative allowance is exhausted. Compilation, fresh D1 backup, exact deployed source/version, current-head hosted CI/review and fresh current-snapshot progression remain separate required evidence. Member interaction checks and branch verification remain owner-held. This section does not assert .264 serving, historical unknown closure or aggregate acceptance.
+
+
+## Worker .265 - 2026-11-10.265 Bounded audit lookups
+
+This prospective owner-directed live-first change narrows existing audit lookups: CURRENT_SCHEMA uses an existing audit index, and current-walk visit exclusion reads a bounded visited set through NOT IN. It adds no DDL, index, role or identity authority, request budget or freshness allowance. The original Native eligibility, privacy, unknown-effect, exact owned lease and source-custody guards remain required. Addon and Watcher both remain0.6.27. The earlier .264 current-head hosted13 checks and review were reported clean by Root; that history is not .265 qualification, a measured latency result, whole-roster completion or drain evidence. No local regression tests are run because the cumulative allowance is exhausted. Compilation, fresh D1 backup, exact deployed source/version, current-head hosted CI/review and actual fresh-snapshot progression remain separate required evidence. Member interaction checks and branch verification remain owner-held. This section does not assert .265 serving, historical unknown closure or aggregate acceptance.

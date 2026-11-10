@@ -220,9 +220,9 @@ do
   check("expired unverified classification is never offered as current purge evidence",#f.q.RiskBuffer()==0 and f.removals==0)
 end
 do
-  local f=fixture();local row={queueId=1,proofId=string.rep("a",32),name="Visible Candidate",guid="Player-1-ABCDEF12",fullName="Visible Candidate",scopeHash=f.page.scopeHash,observedAt=f.env.NOW,expiresAt=f.env.NOW+30,reason="knight-unguilded",source="native-who-unit-v233"}
+  local f=fixture();local row={queueId=1,proofId=string.rep("a",32),name="Visible Candidate",guid="Player-1-ABCDEF12",fullName="Visible Candidate",scopeHash=f.page.scopeHash,observedAt=f.env.NOW,expiresAt=f.env.NOW+30,reason="knight-unguilded",source="native-who-whisper-v242"}
   f.page.invites={row};local current=f.q.Current()
-  check("exact positive officer proof is projected with the shorter native expiry",current and #current.invites==1 and current.freshness[row.guid].expiresAt==row.expiresAt)
+  check("exact remote v242 officer proof is projected with the shorter native expiry",current and #current.invites==1 and current.freshness[row.guid].expiresAt==row.expiresAt)
   local calls=0;f.env.OlympusOfficerInvites233={Next=function(rows) calls=calls+1;return rows and rows[1]==row end,Status=function() return {reason="test status"} end}
   f.q.Show();f.q.tab="invites";f.q.Show();check("invite tab routes only its approved source row to the hardware dispatcher",f.q.NextAction() and calls==1 and f.invites==0 and f.direct==0)
   row.scopeHash=string.rep("0",16);check("mismatched invitation scope holds the entire projection",f.q.Current()==nil)

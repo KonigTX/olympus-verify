@@ -2,18 +2,23 @@
 'use strict';
 // Public source only. Fixed inputs, ZIP metadata and ordering; never scans a local addon installation.
 const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto');
-const VERSION = '0.6.21';
+const VERSION = '0.6.27';
 const SOURCE = 'addon/OlympusVerify/';
-const ZIP = 'worker/public/static/olympus-verify/olympus-verify-0.6.21.zip';
+const ZIP = 'worker/public/static/olympus-verify/olympus-verify-0.6.27.zip';
 const MANIFEST = 'worker/public/static/olympus-verify/version.json';
 const FILES = Object.freeze(['Bindings.xml', 'Config.example.lua', 'Libs/OlympusHmac.lua', 'Libs/OlympusQr.lua',
   'OlympusVerify.lua', 'OlympusVerify.toc', 'OlympusVerifyAutoSync.lua', 'OlympusVerifyBrowser.lua',
-  'OlympusVerifyCensus.lua', 'OlympusVerifyGuild.lua', 'OlympusVerifyLaunch229.lua', 'OlympusVerifyOfficerInvites233.lua',
+  'OlympusVerifyCensus.lua', 'OlympusVerifyGuild.lua', 'OlympusVerifyLaunch229.lua', 'OlympusVerifyLive242.lua', 'OlympusVerifyOfficerInvites233.lua',
   'OlympusVerifyPreview.lua', 'OlympusVerifyRanks.lua', 'OlympusVerifyRoster.lua', 'OlympusVerifyTreasury.lua', 'OlympusVerifyUI.lua']);
+// Frozen .242 public-source custody; the .621 repair remains in Git and release235 evidence.
 const REPAIR_PINS = Object.freeze({
-  'OlympusVerify.lua': '49737166e4fc695d1b953502261b509c949e6d7f4da97eb76f4933ac64fe5669',
-  'OlympusVerifyAutoSync.lua': 'd98de9551dc423423d14b1fdd412e33fd2ab7b19dad59d302b38909f7918b520',
-  'OlympusVerify.toc': '16e4d2477fe0acde31ffe0a1cbfd69613448336ce6c61e4278c2244ea73c9321'
+  "OlympusVerify.lua": "b274d69f44ac254c40ae7df59cdc59221c4735f7ad99e3af794c116545af50d7",
+  "OlympusVerifyAutoSync.lua": "c48ab475e9a8aa75c4f875d7d40f7fd1f939d86d44da0fae44d7e31047c0bf98",
+  "OlympusVerifyOfficerInvites233.lua": "d588cac11990233feb3461cf30cd69a1db8d0f7ca1141343e9b3cd17a899b931",
+  "OlympusVerifyLaunch229.lua": "09492b5aeea3e41be48eeeefe40067f79ba7752b41a2e116610cab3c41fdd204",
+  "OlympusVerifyTreasury.lua": "f986d86bde634935ad15b269790d165372285c55fc4c7eb59c38c3a557846922",
+  "OlympusVerifyLive242.lua": "a73260a04b8acc85c98de8d119add3d138bdb42e208bdbb8c2239489e465ef27",
+  "OlympusVerify.toc": "0f0e0856b2d22b3e071b31c6ab58cac8e2b8b44af6de515273e0867c822c5f47"
 });
 const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 function crc32(bytes) {
@@ -27,7 +32,7 @@ function prepare(get) {
     const bytes = get(SOURCE + file);
     if (!Buffer.isBuffer(bytes) || !bytes.length || bytes.length > 1024 * 1024) throw Error('Bounded public addon source required: ' + file);
     const digest = sha(bytes);
-    if (REPAIR_PINS[file] && REPAIR_PINS[file] !== digest) throw Error('Reviewed repair byte mismatch: ' + file);
+    if (REPAIR_PINS[file] && REPAIR_PINS[file] !== digest) throw Error('Frozen addon source byte mismatch: ' + file);
     const name = Buffer.from('OlympusVerify/' + file), crc = crc32(bytes), h = Buffer.alloc(30), c = Buffer.alloc(46);
     h.writeUInt32LE(0x04034b50); h.writeUInt16LE(20, 4); h.writeUInt16LE(0x800, 6); h.writeUInt16LE(33, 12);
     h.writeUInt32LE(crc, 14); h.writeUInt32LE(bytes.length, 18); h.writeUInt32LE(bytes.length, 22); h.writeUInt16LE(name.length, 26);

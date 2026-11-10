@@ -2401,3 +2401,54 @@ A live Veteran→Raider change reached the trusted roster but was ranked 137th b
 The hint retains 65 snapshots and uses immutable first receipt times within 24 hours. Unknown or inconsistent identity/rank samples are barriers. Completion requires a successful original routine observation corroborated in the current source origin; held, unknown and migration records do not complete it. Lookup rows and samples are materialised and matched separately by name and GUID, preserving collision checks without rescanning a full roster for each link. A read-only production-scale check reduced selection from 9.77 seconds/20.4 million rows read to 0.56 seconds/1.3 million, with the test account first in both cases. These are observations for that dataset, not a global cost bound.
 
 Scheduling is not admission. The original Native issuer, privacy generation, role custody and request/statement limits remain authoritative. The unchanged addon 0.6.21 still offers the attended Pending Sync hardware action; the unchanged Watcher 0.6.19 exports after reload. No layout, schema, runtime-setting or secret change is needed.
+
+
+## 10 November2026 — finite continuation and observation identity (.249)
+
+A traversal cursor is not a completion boundary when every settled candidate remains eligible. A server-signed sweep ID tied to one current roster snapshot identifies a finite walk. Each privacy-safe original attempt is marked under that ID, checked candidates leave that walk, and successor requests retain the same ID. Snapshot replacement stops an older walk. The marker never authorizes a role effect or changes source, privacy, ownership or unknown-effect requirements.
+
+Native verification observations also need an identity distinct from character/code. A later genuine whisper may carry fresh membership proof after an earlier observation was explicitly refused; it receives a new durable observation ID. Repeated processing of the same native event retains its original ID and time, while old spent and unknown claim records remain intact. Bridge provenance is transport custody metadata and cannot change the canonical body under an existing ID or turn an untrusted request into membership authority.
+
+
+## 10 November2026 — legacy transport admission (.250)
+
+A durable intake entry is a replacement transport only when that mode can supply its required membership proof. The current membership-only flow deduplicates the exact native observation. Legacy SavedVariables events retain their original verification endpoint and existing claim ownership/idempotency checks instead of being suppressed by an intake row that cannot satisfy Native admission. No new identity proof or replay authority is introduced.
+
+
+## 10 November2026 — mail instances and native transfer correlation (.251)
+
+Content is not a durable mail identity: two different messages may carry one valid code, and identical text may arrive after an earlier message is removed. Native mail has no stable UUID, so the addon retains an original per-instance observation and requires a complete readable absence before reusing content as a new instance. Ambiguous simultaneous duplicates stay held. A separate chunk-routing hash transports bounded third-party IDs without changing their canonical identity.
+
+The existing Treasury observer and rich donation observer must share one native transfer identity. The original Treasury sequence allocates that identity in the actual trade/mail collection context; rich-intake ownership is recorded separately before export, preserving original receipt/MAC/ACK bytes. It supplies correlation only, never proof of an unconfirmed transfer. Original receipt deadlines likewise remain independent of delayed ingestion time.
+
+
+## 10 November2026 — terminal transport lifetime and request fairness (.252)
+
+A terminal server result must remain deliverable when an officer returns after a day offline. Transport expiry may roll in bounded signed windows anchored to the original ACK time; neither the original observation/ACK clock nor its effect is renewed. The addon accepts those terminal-ACK windows separately from current verification evidence.
+
+Mail uniqueness is historical within a content instance, not merely a count ofone at the latest scan. Once two indistinguishable messages have existed together, the survivor cannot inherit an earlier message's receipt. That instance remains held until complete readable absence. Similarly, privacy-inactive requests remain held without occupying the limited active request window; per-account execution admission remains mandatory.
+
+
+### Build .253 — production D1 query planning
+
+The finite fixed-snapshot scheduler materializes its repeated facts projection so production D1 does not recursively expand its correlated priority/history branches. Original selectors, filters, order, bounds, privacy/current-source issuer and unknown-effect discipline are preserved. This is a Worker-only change; addon and Watcher remain 0.6.25. The .252 production failure and Duke rank discrepancy remain preserved until actual production D1 and guarded role readbacks qualify the repair. Owner-directed deployment precedes affected tests/hosted CI.
+
+
+### Build .254 — finite production query boundaries
+
+Production D1 still rejected the .253 facts-only boundary. The finite selector now materializes an explicit allowlist of its reused CTEs, preserving the exact original selectors, filters, ordering and limits. Source and effect authority are unchanged. The .253 post-serving actual D1 failures and its local52/82 component passes are retained separately. Worker-only; addon/Watcher stay0.6.25. Actual D1 query and guarded live-role readbacks remain decisive after deployment.
+
+
+### Build .255 — reduce CTE reference expansion
+
+The production D1 7500 failure persisted through facts-only and full MATERIALIZED hints. Finite selector derivation now targets equivalent CTE-free derived tables while retaining the original query bodies, selection filters, ordering, binding positions and current Native/effect guards. The canonical expansion is about35KB, below the100KB statement limit; it adds no query or schema change. Production D1 acceptance and live guarded role results must be observed separately from local SQLite/Workerd and automated review. See the independent provider report https://github.com/cloudflare/workers-sdk/issues/16786 for a consistent upstream symptom; it does not prove the exact provider engine cause here. Addon/Watcher remain0.6.25.
+
+
+### Build .256 - derived-table optimization boundaries
+
+The .255 actual production D1 selector compiled and ran, but read65033887 rows in26888ms. The CTE-free helper now retains derived-table optimization barriers with LIMIT -1 OFFSET0 while preserving all body values, filters, aliases, priority/order and bind positions. Original failed attempts and the .255 performance result are retained. Addon/Watcher remain0.6.25. Actual production D1 duration/reads and current guarded Native effects are required after deployment; this source entry alone asserts neither. The static beta oracle timestamp is restored exactly to253402300799999 after the prior metadata replacement error.
+
+
+### Build .257 - bounded continuation handoffs
+
+Production .256 reduced SQL execution to1668ms but actual deferred continuations can exceed the30s provider window. Native passes and requested-account passes now stop before starting another account after a12s soft admission window, preserving the completed current account and the original finite generation. The roster ingest pass owns its same-generation handoff after releasing its lease; the parallel competing outer roster kick is removed. Physical/HTTP/max-subject limits and all current-source/privacy/unknown-effect writers remain. A slow individual account may still exceed the soft bound; the timer never cancels an in-flight effect. Addon/Watcher remain0.6.25. Actual complete guarded batch progress, hosted CI and exact-head review remain separate release gates.

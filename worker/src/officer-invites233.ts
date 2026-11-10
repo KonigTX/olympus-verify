@@ -11,13 +11,16 @@ import { createPrivacyAdmissionAlias } from './privacy-write-admission';
 
 export const OFFICER_INVITE_PROTOCOL233='officer-operations-v233' as const;
 export const OFFICER_INVITE_SOURCE233='native-who-unit-v233' as const;
+export const OFFICER_INVITE_SOURCE242='native-who-whisper-v242' as const;
+type InviteSource=typeof OFFICER_INVITE_SOURCE233|typeof OFFICER_INVITE_SOURCE242;
+const sourcePair=(p:Record<string,unknown>)=>(p.version===233&&p.source===OFFICER_INVITE_SOURCE233)||(p.version===242&&p.source===OFFICER_INVITE_SOURCE242);
 const GUILD='236932545793490944',HEX32=/^[0-9a-f]{32}$/,HEX64=/^[0-9a-f]{64}$/,GUID=/^Player-[0-9]{1,6}-[0-9A-Fa-f]{4,16}$/;
 const DB_NOW="CAST(strftime('%s','now') AS INTEGER)";
-type Proof233=Readonly<{version:233;proofId:string;fullName:string;unitGuid:string;unitFullName:string;whisperAt:number;requestedAt:number;observedAt:number;scopeHash:string;guildState:'unguilded';source:typeof OFFICER_INVITE_SOURCE233;before:string;after:string;mac:string}>;
+type Proof233=Readonly<{version:233|242;proofId:string;fullName:string;unitGuid:string;unitFullName:string;whisperAt:number;requestedAt:number;observedAt:number;scopeHash:string;guildState:'unguilded';source:InviteSource;before:string;after:string;mac:string}>;
 type Input233=Readonly<{character:string;code:string;guid:string;source:'whisper';nativeInvite:Proof233}>;
 type OriginalPending233=PendingRow & {consumed_source:string|null};
-type Stored233=Readonly<{version:233;proofId:string;guid:string;fullName:string;scopeHash:string;observedAt:number;expiresAt:number;generation:string|null;pendingId:number;source:typeof OFFICER_INVITE_SOURCE233}>;
-export type OfficerInvite233=Readonly<{queueId:number;proofId:string;name:string;guid:string;fullName:string;scopeHash:string;observedAt:number;expiresAt:number;reason:'knight-unguilded';source:typeof OFFICER_INVITE_SOURCE233}>;
+type Stored233=Readonly<{version:233|242;proofId:string;guid:string;fullName:string;scopeHash:string;observedAt:number;expiresAt:number;generation:string|null;pendingId:number;source:InviteSource}>;
+export type OfficerInvite233=Readonly<{queueId:number;proofId:string;name:string;guid:string;fullName:string;scopeHash:string;observedAt:number;expiresAt:number;reason:'knight-unguilded';source:InviteSource}>;
 const text=(x:unknown,max=100):x is string=>typeof x==='string'&&!!x&&x===x.trim()&&new TextEncoder().encode(x).length<=max&&!/[\x00-\x1f\x7f|]/.test(x);
 const integer=(x:unknown):x is number=>Number.isSafeInteger(x)&&Number(x)>0;
 function own(object:unknown,names:readonly string[]):Record<string,unknown>|null{
@@ -30,8 +33,8 @@ export function captureOfficerInvite233(input:unknown):Input233|null{
  const b=own(input,['character','code','guid','source','nativeInvite']);
  if(!b||!text(b.character)||typeof b.code!=='string'||!/^([A-HJ-NP-Z2-9]{6}|[A-HJ-NP-Z2-9]{7})$/.test(b.code)||typeof b.guid!=='string'||!GUID.test(b.guid)||b.source!=='whisper')return null;
  const p=own(b.nativeInvite,['version','proofId','fullName','unitGuid','unitFullName','whisperAt','requestedAt','observedAt','scopeHash','guildState','source','before','after','mac']);
- if(!p||p.version!==233||typeof p.proofId!=='string'||!HEX32.test(p.proofId)||!text(p.fullName)||p.fullName!==p.unitFullName||p.unitGuid!==b.guid
-  ||normalizeCharacter(p.fullName)!==normalizeCharacter(b.character)||p.guildState!=='unguilded'||p.source!==OFFICER_INVITE_SOURCE233
+ if(!p||!sourcePair(p)||typeof p.proofId!=='string'||!HEX32.test(p.proofId)||!text(p.fullName)||p.fullName!==p.unitFullName||p.unitGuid!==b.guid
+  ||normalizeCharacter(p.fullName)!==normalizeCharacter(b.character)||p.guildState!=='unguilded'||![OFFICER_INVITE_SOURCE233,OFFICER_INVITE_SOURCE242].includes(p.source as InviteSource)
   ||!integer(p.whisperAt)||!integer(p.requestedAt)||!integer(p.observedAt)||p.whisperAt>p.requestedAt||p.requestedAt>p.observedAt||p.observedAt-p.requestedAt>15||p.observedAt-p.whisperAt>=600
   ||typeof p.scopeHash!=='string'||!/^[0-9a-f]{16}$/.test(p.scopeHash)||typeof p.before!=='string'||!HEX64.test(p.before)||typeof p.after!=='string'||!HEX64.test(p.after)||p.before===p.after
   ||typeof p.mac!=='string'||!HEX32.test(p.mac))return null;
@@ -72,8 +75,8 @@ const standing=(subjectAt:number)=>`COALESCE((SELECT banned FROM members WHERE d
 function stored(value:unknown):Stored233|null{
  if(typeof value!=='string'||value.length>2048)return null;
  try{const n=JSON.parse(value),p=own(n,['version','proofId','guid','fullName','scopeHash','observedAt','expiresAt','generation','pendingId','source']);
-  if(!p||p.version!==233||typeof p.proofId!=='string'||!HEX32.test(p.proofId)||typeof p.guid!=='string'||!GUID.test(p.guid)||!text(p.fullName)||typeof p.scopeHash!=='string'||!/^[0-9a-f]{16}$/.test(p.scopeHash)
-   ||!integer(p.observedAt)||!integer(p.expiresAt)||p.expiresAt>p.observedAt+60||p.expiresAt<=p.observedAt||!integer(p.pendingId)||p.source!==OFFICER_INVITE_SOURCE233||p.generation!==null&&(typeof p.generation!=='string'||!HEX32.test(p.generation)))return null;
+  if(!p||!sourcePair(p)||typeof p.proofId!=='string'||!HEX32.test(p.proofId)||typeof p.guid!=='string'||!GUID.test(p.guid)||!text(p.fullName)||typeof p.scopeHash!=='string'||!/^[0-9a-f]{16}$/.test(p.scopeHash)
+   ||!integer(p.observedAt)||!integer(p.expiresAt)||p.expiresAt>p.observedAt+60||p.expiresAt<=p.observedAt||!integer(p.pendingId)||![OFFICER_INVITE_SOURCE233,OFFICER_INVITE_SOURCE242].includes(p.source as InviteSource)||p.generation!==null&&(typeof p.generation!=='string'||!HEX32.test(p.generation)))return null;
   return Object.freeze(p) as unknown as Stored233;
  }catch{return null;}
 }
@@ -94,10 +97,14 @@ export async function postOfficerInvite233(original:Env,body:unknown):Promise<Re
  const held=(reason:string)=>json({protocol:OFFICER_INVITE_PROTOCOL233,result:'held',reason,proofId,inviteQueued:false,roleGranted:false,pendingConsumed:false});
  try{
   const check=selection(original),launch=captureLaunchVerification(original);if(launch.mode!=='members-only'||!launch.scope||!launch.current()||canonicalOlympusGuildName(launch.scope.guild)!==FLAGSHIP_GUILD_NAME)return held('native-scope-unavailable');
-  if(!input)return held('native-proof-invalid');const p=input.nativeInvite;const current=()=>{check();if(!launch.current()||p.observedAt<=now()-60||p.observedAt>now()+5)throw Error('officer233_source_expired');};current();
-  const scopeHash=(await sha('native-scope|1|'+launch.scope.guild+'|'+launch.scope.realm)).slice(0,16);current();if(scopeHash!==p.scopeHash)return held('native-scope-mismatch');
-  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(original.VERIFY_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);current();
-  const mac=hex(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(officerInviteMessage233(input)))).slice(0,32);current();if(!equal(mac,p.mac))return held('native-proof-invalid');
+  if(!input)return held('native-proof-invalid');const p=input.nativeInvite;
+  const sourceCurrent=()=>{check();if(!launch.current())throw Error('officer233_source_changed');};
+  const current=()=>{sourceCurrent();if(p.observedAt<=now()-60||p.observedAt>now()+5)throw Error('officer233_source_expired');};sourceCurrent();
+  const scopeHash=(await sha('native-scope|1|'+launch.scope.guild+'|'+launch.scope.realm)).slice(0,16);sourceCurrent();if(scopeHash!==p.scopeHash)return held('native-scope-mismatch');
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(original.VERIFY_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);sourceCurrent();
+  const mac=hex(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(officerInviteMessage233(input)))).slice(0,32);sourceCurrent();if(!equal(mac,p.mac))return held('native-proof-invalid');
+  // Authenticated original identity/proof only. This terminal receipt precedes every D1/provider/effect path.
+  if(p.observedAt<=now()-60)return held('native-source-expired');current();
   const ticket=input.code.length===TICKET_LENGTH,valid=ticket?await isValidTicket(original.VERIFY_SECRET,input.code):await isValidCode(original.VERIFY_SECRET,input.character,input.code);current();if(!valid)return held('verification-code-invalid');
   const nativeEnv=launchVerificationEnv(original,launch);let env=nativeEnv;const rows=await env.DB.prepare(`SELECT p.*,s.generation AS privacy_generation,s.state AS privacy_state,s.revision AS privacy_revision FROM pending p LEFT JOIN privacy_subjects s ON s.subject_id=p.discord_id
    WHERE (${ticket?'p.nonce=?1':'p.name_key=?1'} AND p.created_at<=?2 AND p.expires_at>${DB_NOW}) AND (p.consumed_at IS NULL OR p.consumed_source='membership_refused') ORDER BY p.id DESC LIMIT 2`).bind(ticket?ticketNonce(input.code):normalizeCharacter(input.character),p.whisperAt).all<OriginalPending233>();current();
@@ -112,7 +119,7 @@ export async function postOfficerInvite233(original:Env,body:unknown):Promise<Re
   const memberRoles=await roles(original,pending.discord_id,{limit:1,attempts:0,retries:0},current);current();
   if(!memberRoles)return held('discord-standing-unknown');if(classifyKnightRoles229(memberRoles)!=='knight')return held('knight-standing-required');if(blocked.some(x=>memberRoles.includes(x)))return held('blocking-role-held');
   const expires=Math.min(p.observedAt+60,pending.expires_at);if(expires<=now())return held('native-source-expired');
-  const note=JSON.stringify({version:233,proofId:p.proofId,guid:input.guid,fullName:p.fullName,scopeHash:p.scopeHash,observedAt:p.observedAt,expiresAt:expires,generation:capture?.subjectGeneration??null,pendingId:pending.id,source:OFFICER_INVITE_SOURCE233});
+  const note=JSON.stringify({version:p.version,proofId:p.proofId,guid:input.guid,fullName:p.fullName,scopeHash:p.scopeHash,observedAt:p.observedAt,expiresAt:expires,generation:capture?.subjectGeneration??null,pendingId:pending.id,source:p.source});
   const nameKey=normalizeCharacter(input.character);
   const guard=`EXISTS(SELECT 1 FROM pending p WHERE (p.id=?1 AND p.discord_id=?2 AND p.created_at=?3 AND p.expires_at=?4) AND (p.nonce IS ?5 AND p.name_key=?6 AND p.name=?7 AND p.consumed_at IS ?8 AND p.consumed_source IS ?9))
    AND (${standing(2)}) AND ?10>${DB_NOW}
@@ -176,7 +183,7 @@ export async function readOfficerInvites233(env:Env,budget:AttemptBudget,limit=3
 
     .bind(row.id,row.discord_id,row.name_key,row.note,n.generation,n.expiresAt,n.guid,launch.scope.provenance).first();check();if(!launch.current())throw Error('scope');
    if(!current){result.heldReasons.push('officer-invite-current-policy-held');continue;}
-   result.invites.push(Object.freeze({queueId:row.id,proofId:n.proofId,name:row.name,guid:n.guid,fullName:n.fullName,scopeHash:n.scopeHash,observedAt:n.observedAt,expiresAt:n.expiresAt,reason:'knight-unguilded',source:OFFICER_INVITE_SOURCE233}));
+   result.invites.push(Object.freeze({queueId:row.id,proofId:n.proofId,name:row.name,guid:n.guid,fullName:n.fullName,scopeHash:n.scopeHash,observedAt:n.observedAt,expiresAt:n.expiresAt,reason:'knight-unguilded',source:n.source}));
   }
   return result;
  }catch{return {invites:[],heldReasons:['officer-invite-read-unknown']};}

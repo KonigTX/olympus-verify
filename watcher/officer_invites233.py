@@ -10,6 +10,7 @@ import codes
 PROTOCOL = "officer-operations-v233"
 PATH = "/ingest/officer-invite?keyVersion=" + PROTOCOL
 SOURCE = "native-who-unit-v233"
+SOURCE242 = "native-who-whisper-v242"
 TTL = 60
 _GUID = re.compile(r"Player-[0-9]{1,6}-[0-9A-Fa-f]{4,16}")
 _HEX32 = re.compile(r"[0-9a-f]{32}")
@@ -36,10 +37,10 @@ def validate(secret: str, body: Any, at: int) -> dict[str, Any] | None:
             or not isinstance(guid, str) or _GUID.fullmatch(guid) is None or body["source"] != "whisper"
             or not isinstance(p, dict) or set(p) != _FIELDS):
         return None
-    if (type(p["version"]) is not int or p["version"] != 233 or not isinstance(p["proofId"], str) or _HEX32.fullmatch(p["proofId"]) is None
+    if (type(p["version"]) is not int or (p["version"], p.get("source")) not in ((233, SOURCE), (242, SOURCE242)) or not isinstance(p["proofId"], str) or _HEX32.fullmatch(p["proofId"]) is None
             or not _text(p["fullName"]) or p["fullName"] != p["unitFullName"] or p["unitGuid"] != guid
             or codes.normalize_character(p["fullName"]) != codes.normalize_character(name)
-            or p["guildState"] != "unguilded" or p["source"] != SOURCE
+            or p["guildState"] != "unguilded" or p["source"] not in (SOURCE, SOURCE242)
             or any(type(p[k]) is not int or p[k] < 1 for k in ("whisperAt", "requestedAt", "observedAt"))
             or not p["whisperAt"] <= p["requestedAt"] <= p["observedAt"] <= p["requestedAt"] + 15
             or p["observedAt"] - p["whisperAt"] >= 600 or not at - TTL < p["observedAt"] <= at + 5

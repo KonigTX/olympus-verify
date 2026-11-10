@@ -78,6 +78,132 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".265", date: "2026-11-10", lines: [
+      "Background guild rank checks now use narrower audit lookups while retaining the same eligibility and safety checks.",
+    ],
+  },
+  {
+    build: ".264", date: "2026-11-10", lines: [
+      "The Watcher can resume pending role checks independently while guarded lease cleanup reports bounded provider failures.",
+    ],
+  },
+  {
+    build: ".263", date: "2026-11-10", lines: [
+      "Role sweeps retain their own lease cleanup attempt when acquisition acknowledgement is unconfirmed.",
+    ],
+  },
+  {
+    build: ".262", date: "2026-11-10", lines: [
+      "Independent sync work and saved transfer observations recover without replaying unresolved originals.",
+    ],
+  },
+  {
+    build: ".261", date: "2026-11-10", lines: [
+      "Addon bridge requests now receive bounded delivery receipts from their configured guild collector.",
+    ],
+  },
+  {
+    build: ".260", date: "2026-11-10", lines: [
+      "Guild rank updates now continue through the public Worker route across queued batches.",
+    ],
+  },
+  {
+    build: ".259", date: "2026-11-10", lines: [
+      "Guild rank handoff diagnostics now remain visible across deferred callbacks.",
+    ],
+  },
+  {
+    build: ".258", date: "2026-11-10", lines: [
+      "Guild rank reconciliation now reports bounded handoff failures for reliable operator follow-up.",
+    ],
+  },
+  {
+    build: ".257", date: "2026-11-10", lines: [
+      "Guild rank updates continue reliably across bounded sync batches.",
+    ],
+  },
+  {
+    build: ".256", date: "2026-11-10", lines: [
+      "Guild rank changes are reconciled after each roster sync.",
+    ],
+  },
+  {
+    build: ".255", date: "2026-11-10", lines: [
+      "Guild rank changes are processed across the full roster after syncing.",
+    ],
+  },
+  {
+    build: ".254", date: "2026-11-10", lines: [
+      "Guild rank updates continue across the full roster after syncing.",
+    ],
+  },
+  {
+    build: ".253", date: "2026-11-10", lines: [
+      "Guild rank updates continue through bounded production batches after a roster sync.",
+    ],
+  },
+  {
+    build: ".252", date: "2026-11-10", lines: [
+      "Verification delivery resumes after time away. Account updates keep moving when an older request is held.",
+    ],
+  },
+  {
+    build: ".251", date: "2026-11-10", lines: [
+      "Verification mail keeps separate delivery records. Donation records expire from their original observation date.",
+    ],
+  },
+  {
+    build: ".250", date: "2026-11-10", lines: [
+      "Legacy Watcher installations retain their existing verification forwarding. Membership-only verification keeps its original native-evidence checks.",
+    ],
+  },
+  {
+    build: ".249", date: "2026-11-10", lines: [
+      "Account update batches finish after one complete roster traversal. Fresh verification whispers and donation receipts retain their own delivery records.",
+    ],
+  },
+  {
+    build: ".248", date: "2026-11-10", lines: [
+      "Status checks do not start account updates. Inactive modes keep their original request behavior.",
+    ],
+  },
+  {
+    build: ".247", date: "2026-11-10", lines: [
+      "Donation observations are included in account-copy accounting and cleanup. Sync status keeps its lightweight request path.",
+    ],
+  },
+  {
+    build: ".246", date: "2026-11-10", lines: [
+      "Rank-update continuations now use the supported request mode and refuse redirects.",
+    ],
+  },
+  {
+    build: ".245", date: "2026-11-10", lines: [
+      "Rank updates continue while the current request has room, with the same per-account identity and request-budget checks.",
+    ],
+  },
+  {
+    build: ".244", date: "2026-11-10", lines: [
+      "Verification, access checks and donation pages preserve the core service's startup order.",
+      "Donation privacy handling remains available independently of opening the ledger.",
+    ],
+  },
+  {
+    build: ".243", date: "2026-11-10", lines: [
+      "Queued verification proofs keep their original ownership and receive explicit server outcomes.",
+      "Watcher 0.6.21 improves mixed old-and-new verification batches without discarding pending evidence.",
+      "Access diagnostics and role refreshes load the existing verification checks when needed.",
+    ],
+  },
+  {
+    build: ".242", date: "2026-11-10", lines: [
+      "Verified character ranks refresh through continuing batches after a roster sync.",
+      "OlympusVerify 0.6.22 adds persistent verification intake, mail handling and donation observations with Watcher 0.6.20.",
+      "Use Verify my character on the site, or ask High Council to use /olympus check for access diagnostics.",
+      "Character nicknames use <Guild Name>; the previous nickname can still be restored.",
+    ],
+  },
+  {
     build: ".241", date: "2026-11-09", lines: [
       "Recent in-game rank changes get priority while older rank updates catch up.",
       "Existing verification and account-safety checks still apply.",

@@ -27,6 +27,10 @@ import { openRenameHold, reapplyText } from "./rename-review";
 import { captureLaneConfig, FRESH_AUDIT, laneClock, LEGACY_BAN_ALLOWANCE, type LaneCapture } from "./full-release-roles";
 import { appendLinkBlock } from "./link"; // .186: the Olympus Link code, last in the two code replies; off, the very same string
 import { isNicknameInteraction233,handleNicknameInteraction233 } from './member-nickname233';
+async function requestRoleReconciliation242(...args:Parameters<typeof import('./role-reconcile242').requestRoleReconciliation242>){if(currentNativeVerification242(args[0]))return (await import('./role-reconcile242')).requestRoleReconciliation242(...args);}
+async function kickRoleWork242(...args:Parameters<typeof import('./role-reconcile242').kickRoleWork242>){if(currentNativeVerification242(args[0]))return (await import('./role-reconcile242')).kickRoleWork242(...args);}
+import {captureLaunchVerification} from './launch-verification227';
+function currentNativeVerification242(env:Env):boolean{const capture=captureLaunchVerification(env);return capture.mode==='members-only'&&capture.scope!==null&&capture.current();}
 
 /** Revision 4: registers deferred work past the reply (index.ts deferOriginalServing). Absent in tests and direct callers. */
 type Defer = (label: string, work: () => Promise<unknown>) => void;
@@ -64,6 +68,15 @@ const PENDING_TTL = 24 * 3600; // one code per character per day, plus the bound
 const NONCE_REUSE_AFTER = 48 * 3600;
 // Forever uses two-part names; allow one space and apostrophes, and accented letters (EU realms) via Unicode classes.
 const NAME_RE = /^\p{L}[\p{L}' ]{1,30}$/u;
+const NATIVE_NAME_RE242 = /^\p{L}[\p{L}' ]{1,31}$/u;
+export function normalizeVerificationName242(env:Env,input:string):string|null{
+ if(typeof input!=='string')return null;
+ const capture=captureLaunchVerification(env);
+ if(capture.mode==='legacy'&&capture.current()){const raw=input.trim();return NAME_RE.test(raw)?raw:null;}
+ if(capture.mode!=='members-only'||!capture.scope||!capture.current()||/[\u0000-\u001f\u007f]/.test(input))return null;
+ const raw=input.trim().replace(/\s+/g,' '),forever=/forever|camwow/i.test(capture.scope.realm);
+ return NATIVE_NAME_RE242.test(raw)&&(!forever||raw.split(' ').length>=2)?raw:null;
+}
 const BAN_REASON_MAX = 400; // .210: the reason appears in the reply and the staff card, both inside Discord's 2,000 characters
 export const USER_MENU_LOOKUP = "Olympus linked characters"; // user context-menu command (right-click a member → Apps)
 
@@ -85,7 +98,8 @@ export async function handleInteraction(env: Env, i: Interaction, defer?: Defer,
         // With a character: a code bound to that name (the original path). Without one: a request code, and the
         // character is whichever one whispers it (27 Sep). The option is optional once scripts/register.mjs has run.
         const character = (option<string>(i, "character") ?? "").trim();
-        return character ? issueCode(env, i, character, lane,roleDispatch) : issueTicket(env, i, lane);
+        const response=await (character ? issueCode(env,i,character,lane,roleDispatch) : issueTicket(env,i,lane));
+        if(currentNativeVerification242(env))defer?.('interaction_roles242',()=>kickRoleWork242(env,'requests'));return response;
       }
       case "verify-status":
       case "olympus-status":
@@ -93,11 +107,11 @@ export async function handleInteraction(env: Env, i: Interaction, defer?: Defer,
       case "olympus-privacy":
       case "olympus-unlink": {
         const host = env.SITE_HOST;
-        if (!host || !/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i.test(host)) return reply("The account-controls website is not configured. Ask an officer for the current privacy page.");
+        if (!host || !/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i.test(host)) return reply("The account-controls website is not configured. Ask High Council for the current privacy page.");
         const base = `https://${host}`;
         return reply(i.data.name === "olympus-privacy"
           ? `Open the [privacy account connection](${base}/privacy/access) to authenticate with Discord and see your export and erasure options. [Privacy policy](${base}/legal/privacy). This command copies or erases nothing.`
-          : `Open the [privacy account connection](${base}/privacy/access) to review account-removal options. For a linked game character, ask an authorized officer to use the guarded unbind workflow. Remove an optional Discord connection in Discord Settings → Connections. This command unlinks or erases nothing.`);
+          : `Open the [privacy account connection](${base}/privacy/access) to review account-removal options. For a linked game character, ask authorized High Council to use the guarded unbind workflow. Remove an optional Discord connection in Discord Settings → Connections. This command unlinks or erases nothing.`);
       }
       case "olympus-admin":
         return cmdAdmin(env, i, lane, defer,roleDispatch);
@@ -105,10 +119,10 @@ export async function handleInteraction(env: Env, i: Interaction, defer?: Defer,
     return reply("Unknown command.");
   }
   if (i.type === 4) return handleAutocomplete(env, i);
-  if (i.type === 3) return handleComponent(env, i, lane,roleDispatch);
+  if (i.type === 3) return handleComponent(env,i,lane,roleDispatch,defer);
   if (i.type === 5) {
     // modal submit — the "Verify a character" button in the pinned guide
-    if (i.data?.custom_id === GUIDE_MODAL) return issueCode(env, i, modalField(i, GUIDE_FIELD) ?? "", lane,roleDispatch);
+    if (i.data?.custom_id === GUIDE_MODAL) {const response=await issueCode(env,i,modalField(i,GUIDE_FIELD)??'',lane,roleDispatch);if(currentNativeVerification242(env))defer?.('interaction_roles242',()=>kickRoleWork242(env,'requests'));return response;}
     return reply("Unknown form.");
   }
   return reply("Unsupported interaction.");
@@ -116,28 +130,36 @@ export async function handleInteraction(env: Env, i: Interaction, defer?: Defer,
 
 // ---------- /verify <character>: a code bound to that character (the guide's button issues request codes below) ----------
 async function issueCode(env: Env, i: Interaction, input: string, lane?: LaneCapture,roleDispatch:BetaRoleDispatch=captureBetaRoleDispatch(env)): Promise<Response> {
-  const user = userOf(i);
-  const raw = input.trim();
-  if (!NAME_RE.test(raw)) return reply("Give the character name exactly as it appears in game (letters only; two-part names with one space).");
+ return requestCharacterCode242(env,userOf(i),input,lane,roleDispatch,i.member?.roles);
+}
+
+/** Shared authenticated Discord/web service. The caller supplies a real authenticated account, never a fabricated interaction. */
+export async function requestCharacterCode242(env:Env,user:{id:string;username?:string;global_name?:string|null},input:string,lane?:LaneCapture,roleDispatch:BetaRoleDispatch=captureBetaRoleDispatch(env),roles?:string[]):Promise<Response>{
+  const raw=normalizeVerificationName242(env,input);
+  if(!raw)return reply(currentNativeVerification242(env)?"Enter your full in-game name as **First Last**, with a space between the two names.":"Give the character name exactly as it appears in game (letters only; two-part names with one space).");
 
   // Battle.net is not required. The bnet login only ever requested scope=openid, so it proved "this Discord
   // account holds BattleTag X" and nothing about who controls the character — the in-game whisper is the actual
   // proof of control. getMember is null for a first-time applicant, so `banned` is read optionally here.
   const member = await getMember(env, user.id);
-  if (member?.banned) return reply("This account cannot verify. Contact an officer if you think that is a mistake.");
+  if (member?.banned) return reply("This account cannot verify. Contact High Council if you think that is a mistake.");
 
   const nameKey = normalizeCharacter(raw);
   const existing = await getCharacter(env, nameKey);
   if (existing && existing.discord_id !== user.id && existing.status !== "unbound") {
     await audit(env, user.id, "verify.refused_bound", raw, { boundTo: existing.discord_id });
     return reply(
-      `**${raw}** is already linked to another Discord account. If that character is yours, ask an officer in #help-desk — the bot never re-links a name on its own.`,
+      `**${raw}** is already linked to another Discord account. If that character is yours, ask High Council in #help-desk — the bot never re-links a name on its own.`,
     );
   }
-  if (existing && existing.discord_id === user.id && existing.status === "member") {
-    // This is the answer someone gets after MEE6 has taken their role away (see restore.ts), so it comes back here.
-    const note = restoreNote(await restoreMemberRole(env, user.id, i.member?.roles, "verify",roleDispatch));
-    // Revision 4 (A6): a same-name beta member creates no pending row here, so the fresh roles need the guide's button.
+  if (currentNativeVerification242(env) && existing && existing.discord_id === user.id && ['member','verified','queued'].includes(existing.status) && existing.verified_at) {
+    // Ownership is already recorded; the latest roster can update rank immediately.
+    // The queue carries no identity authority: the original Native issuer rechecks it.
+    await requestRoleReconciliation242(env,user.id,'existing_verified_request');
+    return reply(`**${existing.name}** is already linked to your account. Your current guild role is queued for an immediate guarded refresh. No new code is needed. In game, use **/oly → Verify / QR Code** for your current status.`);
+  }
+  if (captureLaunchVerification(env).mode==='legacy' && existing && existing.discord_id === user.id && existing.status === "member") {
+    const note = restoreNote(await restoreMemberRole(env, user.id, roles, "verify",roleDispatch));
     if (freshGrantText(lane)) return reply(`**${existing.name}** is already linked to your account. For the guild roles, press **Get my code** in the guide and whisper the code from your highest-ranked character in the guild.${note ? `\n${note}` : ""}`);
     return reply(`**${existing.name}** is already verified and in the guild.${note ? `\n${note}` : ""}`);
   }
@@ -187,9 +209,9 @@ async function issueCode(env: Env, i: Interaction, input: string, lane?: LaneCap
       ``,
       ...whisperInstructions(env, code, expiresAt!, await relayStatus(env), raw),
       env.ROLE_GUILD_MEMBER
-        ? `Use **My status** to check your verification progress. Follow the current instructions, or ask an officer if access is on hold.`
-        : `Your guild invite is queued as soon as the code is confirmed${env.ADMISSION_MODE === "review" ? " and an officer approves" : ""} \u2014 already in the guild? Then your Discord account is linked to the character on the spot.`,
-      `This is for **${FLAGSHIP_GUILD_NAME}** only \u2014 Olympus 2 and the later Olympus guilds are not verified here (their members use ${visitorChat(env)}).`,
+        ? `Use **My status** to check your verification progress. Follow the current instructions, or ask High Council if access is on hold.`
+        : `Your guild invite is queued as soon as the code is confirmed${env.ADMISSION_MODE === "review" ? " and High Council approves" : ""} \u2014 already in the guild? Then your Discord account is linked to the character on the spot.`,
+      `Your guild must have an approved server-recorded Olympus identity. A typed guild name or a roster name alone never links an account.`,
     ].join("\n")),
   );
 }
@@ -202,8 +224,8 @@ async function issueCode(env: Env, i: Interaction, input: string, lane?: LaneCap
  */
 async function heldElsewhere(env: Env, raw: string): Promise<string> {
   const route = (await ticketsReady(env))
-    ? "press **Get my code** in the guide and whisper the request code it gives you from the character, or ask an officer"
-    : "ask an officer, or try again later: a request lasts at most 24 hours";
+    ? "press **Get my code** in the guide and whisper the request code it gives you from the character, or ask High Council"
+    : "ask High Council, or try again later: a request lasts at most 24 hours";
   return `A verification for **${raw}** is already in progress from another account. If the character is yours, ${route}.`;
 }
 
@@ -225,14 +247,19 @@ async function takenToday(env: Env, raw: string, t: number): Promise<string> {
  * that a leaked code could be whispered from the wrong character; the link then shows that character to its owner
  * in /verify-status, and an officer unbinds it.
  */
-async function issueTicket(env: Env, i: Interaction, lane?: LaneCapture): Promise<Response> {
+async function issueTicket(env: Env, i: Interaction, lane?: LaneCapture,newCharacter=false): Promise<Response> {
   const user = userOf(i);
   const member = await getMember(env, user.id);
-  if (member?.banned) return reply("This account cannot verify. Contact an officer if you think that is a mistake.");
+  if (member?.banned) return reply("This account cannot verify. Contact High Council if you think that is a mistake.");
+  if(currentNativeVerification242(env)&&!newCharacter){
+    const linked=await env.DB.prepare("SELECT name FROM characters WHERE discord_id=?1 AND status IN('member','verified','queued') AND verified_at IS NOT NULL AND guid IS NOT NULL ORDER BY verified_at DESC LIMIT 1").bind(user.id).first<{name:string}>();
+    if(linked){await requestRoleReconciliation242(env,user.id,'existing_verified_button');return reply(`**${linked.name}** is already linked. Your current roster rank is queued for a guarded refresh; no new whisper is needed. Use **/oly → Verify / QR Code** in game, or **My status** here. To link a different character, press **Verify another character**.`);}
+  }
+
   // Until an officer's addon and watcher that understand request codes have checked in (relays.ts), a request code
   // would be refused in game ("not valid") and dropped by the watcher, so the button asks for the character instead,
   // exactly as it did before 27 Sep. This is what makes the rollout order not matter.
-  if (!(await ticketsReady(env))) return json(verifyModal());
+  if (!(await ticketsReady(env))) return json(verifyModal(env));
 
   let row: PendingRow | null = await openTicketFor(env, user.id);
   for (let tries = 0; tries < 20 && !row; tries++) {
@@ -263,9 +290,9 @@ async function issueTicket(env: Env, i: Interaction, lane?: LaneCapture): Promis
       ...whisperInstructions(env, code, row.expires_at, await relayStatus(env, { tickets: true })),
       `The character that sends it is the one linked to your Discord account. Another character later? Press the button again once this one is confirmed.`,
       env.ROLE_GUILD_MEMBER
-        ? `Use **My status** to check your verification progress. Follow the current instructions, or ask an officer if access is on hold.`
-        : `Your guild invite is queued as soon as the code is confirmed${env.ADMISSION_MODE === "review" ? " and an officer approves" : ""}.`,
-      `This is for **${FLAGSHIP_GUILD_NAME}** only \u2014 Olympus 2 and the later Olympus guilds are not verified here (their members use ${visitorChat(env)}).`,
+        ? `Use **My status** to check your verification progress. Follow the current instructions, or ask High Council if access is on hold.`
+        : `Your guild invite is queued as soon as the code is confirmed${env.ADMISSION_MODE === "review" ? " and High Council approves" : ""}.`,
+      `Your guild must have an approved server-recorded Olympus identity. A typed guild name or a roster name alone never links an account.`,
     ].join("\n")),
   );
 }
@@ -437,7 +464,7 @@ async function describeUser(env: Env, userId: string): Promise<{ text: string; i
 /** Right-click a member → Apps → "Olympus linked characters". Same answer as /olympus-admin lookup user:. */
 async function cmdUserMenu(env: Env, i: Interaction): Promise<Response> {
   if (i.data?.name !== USER_MENU_LOOKUP) return reply("Unknown command.");
-  if (!hasAnyRole(i, officerRoles(env))) return reply("Officers only.");
+  if (!hasAnyRole(i, officerRoles(env))) return reply("High Council only.");
   const target = i.data?.target_id;
   if (!target) return reply("No member selected.");
   // Build .41: the same answer as /olympus-lookup in Asmongold's server, guild-site entries included (lookup.ts).
@@ -639,7 +666,7 @@ async function runAdminSync(env: Env, actor: string, roleDispatch: BetaRoleDispa
     `Removed (${out.stripped.length}): ${out.stripped.join(", ") || "\u2014"}` +
     (out.renamed.length ? `\nRenamed, link kept (${out.renamed.length}): ${out.renamed.join(", ")}` : "") +
     (out.released.length ? `\nLinks released \u2014 not the character that was linked (${out.released.length}): ${out.released.join(", ")}` : "") +
-    (out.held ? `\nLeft for an officer (${out.held}): characters that appear to have swapped names \u2014 see the server log.` : "") +
+    (out.held ? `\nLeft for High Council (${out.held}): characters that appear to have swapped names \u2014 see the server log.` : "") +
     // .115, third review round (Codex, 3 Oct 2026 16:48 UTC, finding A): one sync applies only what fits in its
     // invocation's statement budget (roster.ts syncFromLatest); a repeat applies only what is still due
     (out.deferred ? `\nNot applied yet (${out.deferred}): more than one sync can change in one go. Run sync again to apply the rest.` : "");
@@ -647,7 +674,7 @@ async function runAdminSync(env: Env, actor: string, roleDispatch: BetaRoleDispa
 }
 
 async function cmdAdmin(env: Env, i: Interaction, lane?: LaneCapture, defer?: Defer,roleDispatch:BetaRoleDispatch=captureBetaRoleDispatch(env)): Promise<Response> {
-  if (!hasAnyRole(i, officerRoles(env))) return reply("Officers only.");
+  if (!hasAnyRole(i, officerRoles(env))) return reply("High Council only.");
   const actor = userOf(i).id;
   switch (subcommand(i)) {
     case "release":
@@ -866,11 +893,12 @@ async function cmdAdmin(env: Env, i: Interaction, lane?: LaneCapture, defer?: De
 }
 
 // ---------- buttons: the pinned guide (anyone) and the review card (officers) ----------
-async function handleComponent(env: Env, i: Interaction, lane?: LaneCapture,roleDispatch:BetaRoleDispatch=captureBetaRoleDispatch(env)): Promise<Response> {
+async function handleComponent(env: Env, i: Interaction, lane?: LaneCapture,roleDispatch:BetaRoleDispatch=captureBetaRoleDispatch(env),defer?:Defer): Promise<Response> {
   const id = i.data?.custom_id ?? "";
   // One click, no typing: a request code whose character is decided by who whispers it (27 Sep). The modal that asked
   // for the name is still answered below, for anyone who had it open across the deploy.
-  if (id === GUIDE_VERIFY) return issueTicket(env, i, lane);
+  if(id===GUIDE_VERIFY){const response=await issueTicket(env,i,lane);if(currentNativeVerification242(env))defer?.('interaction_roles242',()=>kickRoleWork242(env,'requests'));return response;}
+  if(id==='guide:another'&&currentNativeVerification242(env))return issueTicket(env,i,lane,true);
   if (id === GUIDE_STATUS) return cmdStatus(env, i,roleDispatch);
   const [ns, action, arg] = id.split(":");
 
@@ -881,7 +909,7 @@ async function handleComponent(env: Env, i: Interaction, lane?: LaneCapture,role
 
   if (ns === "ban") {
     if (action === "dismiss") {
-      if (!hasAnyRole(i, officerRoles(env))) return reply("Officers only.");
+      if (!hasAnyRole(i, officerRoles(env))) return reply("High Council only.");
       return updateMessage({ content: `${i.message ? "" : ""}Left as it is by <@${userOf(i).id}> \u2014 no Discord ban.`, components: [] });
     }
     if (action !== "discord" || !arg) return reply("Unknown component.");
@@ -911,7 +939,7 @@ async function handleComponent(env: Env, i: Interaction, lane?: LaneCapture,role
   }
 
   if (ns !== "review") return reply("Unknown component.");
-  if (!hasAnyRole(i, officerRoles(env))) return reply("Officers only.");
+  if (!hasAnyRole(i, officerRoles(env))) return reply("High Council only.");
   const actor = userOf(i).id;
   const result = action === "approve" ? await approvePending(env, Number(arg), actor) : await denyPending(env, Number(arg), actor);
   if (!result.ok) return reply(result.message);

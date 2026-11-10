@@ -123,6 +123,56 @@ for(const birth of[0,now+1,now-86401]){
  const f=fixture241();f.d.prepare("UPDATE roster_members SET rank='Raider',rank_index=7 WHERE snapshot_id=3 AND name_key=?").run(name241(0));f.at=now+1;f.snapshot(4,6,now);check('241 at most one due Native delta is promoted and initial catchup still gets other slot without restriction',f.list()[0]?.subject===old241[0]&&f.list()[1]?.subject===old241[1]&&f.facts().native_delta_position===2);f.close();
 }
 
+// .265: execute the actual emitted CTE-free selectors and their exact narrow
+// historical inverse over real SQLite. These rows are scheduling debt only;
+// HELD/unclaimed hints do not qualify Native identity or an effect.
+const emitted265=require('./helpers/pure_source218.cjs').loadPureSource218(W,'full-release-roles');
+const newFilter265="AND candidates.subject NOT IN(SELECT checked.subject FROM audit checked WHERE checked.actor='system' AND checked.action='role.native232_attempt' AND checked.subject IS NOT NULL\n AND json_extract(CASE WHEN json_valid(checked.details) THEN checked.details ELSE '{}' END,'$.walk')=?5))";
+const oldFilter265="AND NOT EXISTS(SELECT 1 FROM audit checked WHERE checked.actor='system' AND checked.action='role.native232_attempt' AND checked.subject=candidates.subject\n AND json_extract(CASE WHEN json_valid(checked.details) THEN checked.details ELSE '{}' END,'$.walk')=?5))";
+const subjects265=['700000000000000001','700000000000000002','700000000000000003','700000000000000004'],walk265='a'.repeat(32),foreignWalk265='b'.repeat(32);
+const auditCases265=[
+ ['empty',[],subjects265.slice(0,3)],
+ ['NULL subject cannot poison membership',[['system','role.native232_attempt',null,JSON.stringify({walk:walk265})]],subjects265.slice(0,3)],
+ ['current walk excludes only exact subject',[['system','role.native232_attempt',subjects265[0],JSON.stringify({walk:walk265})]],subjects265.slice(1,3)],
+ ['duplicate visits preserve set membership',Array.from({length:2},()=>['system','role.native232_attempt',subjects265[0],JSON.stringify({walk:walk265})]),subjects265.slice(1,3)],
+ ['foreign walk',[['system','role.native232_attempt',subjects265[0],JSON.stringify({walk:foreignWalk265})]],subjects265.slice(0,3)],
+ ['malformed JSON',[['system','role.native232_attempt',subjects265[0],'not-json']],subjects265.slice(0,3)],
+ ['SQL NULL details',[['system','role.native232_attempt',subjects265[0],null]],subjects265.slice(0,3)],
+ ['missing walk',[['system','role.native232_attempt',subjects265[0],'{}']],subjects265.slice(0,3)],
+ ['JSON NULL walk',[['system','role.native232_attempt',subjects265[0],'{"walk":null}']],subjects265.slice(0,3)],
+ ['nontext walk',[['system','role.native232_attempt',subjects265[0],'{"walk":1}']],subjects265.slice(0,3)],
+ ['foreign actor',[['watcher','role.native232_attempt',subjects265[0],JSON.stringify({walk:walk265})]],subjects265.slice(0,3)],
+ ['foreign action',[['system','role.other',subjects265[0],JSON.stringify({walk:walk265})]],subjects265.slice(0,3)],
+ ['BLOB subject is not a text subject',[['system','role.native232_attempt',Buffer.from(subjects265[0]),JSON.stringify({walk:walk265})]],subjects265.slice(0,3)],
+ ['inactive privacy remains excluded',[['system','role.native232_attempt',subjects265[3],JSON.stringify({walk:foreignWalk265})]],subjects265.slice(0,3)]
+];
+for(const[name,profile,oldBytes,newBytes,copies]of[
+ ['NATIVE232_SWEEP249_SELECT','olympus-prime-live-20261105-v1',2993,3015,1],
+ ['CANONICAL233_SWEEP249_SELECT',PROFILE241,38081,38169,4]
+]){
+ const current=emitted265[name],historical=current.replaceAll(newFilter265,oldFilter265);
+ check('265 '+name+' keeps exact CTE-free shape and five bindings',current.split(newFilter265).length===copies+1&&historical.split(oldFilter265).length===copies+1&&Buffer.byteLength(current)===newBytes&&Buffer.byteLength(historical)===oldBytes&&!/\bWITH\b/i.test(current)&&Math.max(...[...current.matchAll(/\?(\d+)/g)].map(match=>Number(match[1])))===5);
+ for(const[label,audits,expected]of auditCases265){
+  const d=new DatabaseSync(':memory:');try{
+   d.exec(fs.readFileSync(path.join(W,'schema.sql'),'utf8'));d.function('strftime',(format,value)=>{assert.equal(format,'%s');assert.equal(value,'now');return String(now);});
+   d.prepare("INSERT INTO roster_snapshots(id,exported_at,received_at,first_received_at,source,member_count,complete,trusted)VALUES(1,?,?,?,'synthetic-no-Native-authority',4,1,1)").run(now,now,now);
+   for(let i=0;i<subjects265.length;i++){
+    const subject=subjects265[i],key='scan fixture '+i,guid='Player-4613-'+(0x30000000+i).toString(16).toUpperCase();
+    d.prepare('INSERT INTO members(discord_id)VALUES(?)').run(subject);
+    d.prepare("INSERT INTO characters(name_key,name,discord_id,status,bound_at,verified_at,source,guid)VALUES(?,?,?,'member',?,?,'whisper',?)").run(key,key,subject,now-1000,now-1000,guid);
+    d.prepare("INSERT INTO roster_members(snapshot_id,name_key,name,guid,rank,rank_index)VALUES(1,?,?,?,'Member',8)").run(key,key,guid);
+    d.prepare("INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,attempts,native_profile,created_at,expires_at)VALUES(?,?,'canonical_routine233',?,'1552077551839617104',1,'held','synthetic_unproved_scan265',0,?,?,?)").run(i.toString(16).padStart(32,'0'),subject,G,profile,now-400,now-100);
+    if(i!==1)d.prepare('INSERT INTO privacy_subjects(subject_id,generation,state,revision,created_at,updated_at)VALUES(?,?,?,0,?,?)').run(subject,'a'.repeat(32),i===3?'retiring':'active',now-1000,now-1000);
+   }
+   for(const[actor,action,subject,details]of audits)d.prepare('INSERT INTO audit(ts,actor,action,subject,details)VALUES(?,?,?,?,?)').run(now,actor,action,subject,details);
+   const before=JSON.stringify({roles:d.prepare('SELECT * FROM role_settlements ORDER BY id').all(),privacy:d.prepare('SELECT * FROM privacy_subjects ORDER BY subject_id').all(),audit:d.prepare('SELECT * FROM audit ORDER BY id').all()});
+   const original=d.prepare(historical).all(G,'',50,0,walk265),optimized=d.prepare(current).all(G,'',50,0,walk265);
+   check('265 '+name+' '+label+' preserves every selected row and ordering',JSON.stringify(optimized)===JSON.stringify(original)&&JSON.stringify(optimized.map(row=>row.subject).sort())===JSON.stringify([...expected].sort())&&optimized.every(row=>Object.keys(row).join(',')==='subject,top_rank,urgent'));
+   check('265 '+name+' '+label+' preserves privacy, unclaimed debt and audit bytes',JSON.stringify({roles:d.prepare('SELECT * FROM role_settlements ORDER BY id').all(),privacy:d.prepare('SELECT * FROM privacy_subjects ORDER BY subject_id').all(),audit:d.prepare('SELECT * FROM audit ORDER BY id').all()})===before);
+  }finally{d.close();}
+ }
+}
+
 }
 
 db.close();console.log(passed+'/'+checks+' canonical238 exact-source priority checks');process.exitCode=passed===checks?0:1;

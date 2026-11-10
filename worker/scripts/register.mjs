@@ -95,6 +95,7 @@ console.log("role-connection metadata registered");
 
 // 2. Guild commands.
 const STRING = 3, USER = 6, CHANNEL = 7, SUB = 1;
+const OLYMPUS_COMMAND_242 = JSON.parse(_readFileSync(new URL('./olympus-check242-command.json', import.meta.url), 'utf8'));
 const commands = [
   {
     name: "verify",
@@ -103,6 +104,7 @@ const commands = [
     options: [{ type: STRING, name: "character", autocomplete: true, description: "Optional: only this character may use the code", required: false, max_length: 32 }],
   },
   { name: "verify-status", description: "Show your verified characters and your Olympus access" },
+  OLYMPUS_COMMAND_242,
   { name: "olympus-qr", description: "Get a ten-minute code to whisper to a qualified High Councillor" },
   {
     name: "olympus-admin",

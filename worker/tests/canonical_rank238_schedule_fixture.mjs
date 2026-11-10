@@ -3,8 +3,11 @@ import app,{originalScheduledCallbackObservation,originalScheduledCallbackPhysic
 import {postVerify} from '../src/ingest.ts';
 import {codeFor,dayBucket} from '../src/codes.ts';
 import {createPrivacyWriteAdmissionDatabase} from '../src/privacy-write-admission.ts';
-import {runNativeSubject232} from '../src/full-release-pass.ts';
+import {runNativeSubject232,runFreshPass,nativeAdmission232} from '../src/full-release-pass.ts';
+import {captureLaneConfig,FRESH_LEASE_KEY,FRESH_LEASE_ACQUIRE,FRESH_LEASE_RELEASE,FRESH_LEASE_SECONDS,freshLeaseValue,CANONICAL233_SWEEP249_SELECT} from '../src/full-release-roles.ts';
+import {countStatements} from '../src/roster-effects.ts';
 import {callBudget} from '../src/roles.ts';
+import {handleRoleContinuation242} from '../src/role-reconcile242.ts';
 import {migrateCanonicalRank233} from '../src/role-settlements.ts';
 import {captureRuntimeVenue230,runtimeVenue230Facts} from '../src/shared-membership-cutover230.ts';
 import {betaResetReceiptRetentionStatements} from '../src/beta-reset-retention.ts';
@@ -20,6 +23,66 @@ export function fixture238(seed){const spent=new Set(),saved=new Map();let callb
  },
  async fetch(request,bindings){
  const route=new URL(request.url).pathname;
+ if(route==='/independent264'){
+  const s=saved.get('veteran');if(!s)return new Response(null,{status:409});
+  const jobs=[],count={used:0},bounded=countStatements(s.env,count);
+  const nonceBefore=(await s.db.prepare('SELECT COUNT(*) n FROM seen_interactions').first()).n;
+  const start=s.wires.length;
+  // The actual signed handler and actual Native body run in this independently
+  // dispatched Workerd HTTP invocation. No capability/issuer/clock is supplied.
+  const response=await handleRoleContinuation242(request,bounded,(label,work)=>jobs.push({label,work})),registered=jobs.map(job=>job.label);
+  if(response.status===202&&jobs.length===1)await jobs.shift().work();
+  const end=s.wires.length,wire=s.wires.slice(start,end);
+  const stateRow=await s.db.prepare("SELECT details FROM audit WHERE actor='system' AND action='role.fresh_state' ORDER BY id DESC LIMIT 1").first(),state=stateRow?JSON.parse(stateRow.details):null;
+  const visits=state?(await s.db.prepare("SELECT subject,COUNT(*) n FROM audit WHERE action='role.native232_attempt' AND json_extract(details,'$.walk')=?1 GROUP BY subject").bind(state.walk).all()).results:[];
+  const sourceHeld=state?(await s.db.prepare("SELECT COUNT(*) n FROM audit WHERE actor='system' AND action='role.native232_attempt' AND json_extract(details,'$.walk')=?1 AND json_extract(details,'$.result')='source_held'").bind(state.walk).first()).n:0;
+  const hintRows=(await s.db.prepare('SELECT * FROM role_settlements WHERE id IN(SELECT value FROM json_each(?1)) ORDER BY id').bind(JSON.stringify(s.independentHintIds264??[])).all()).results;
+  const originalAfter=(await s.db.prepare('SELECT * FROM role_settlements WHERE id IN(SELECT value FROM json_each(?1)) ORDER BY id').bind(JSON.stringify(s.originalACKs.map(row=>row.id))).all()).results;
+  const nonceAfter=(await s.db.prepare('SELECT COUNT(*) n FROM seen_interactions').first()).n;
+  return Response.json({status:response.status,registered,pendingJobs:jobs.length,state,visits,sourceHeld,hintsUnchanged:JSON.stringify(hintRows)===JSON.stringify(s.independentHintRows264??[]),originalACKsUnchanged:JSON.stringify(originalAfter)===JSON.stringify(s.originalACKs),statements:count.used,wires:wire,nonceDelta:nonceAfter-nonceBefore,actualLocalWorkerdD1:true,actualSignedHandler:true,clockOverride:false,issuerOverride:false,providerCalls:0},{status:response.status});
+ }
+ if(route==='/lease-ack263'){
+  const s=saved.get('veteran'),mode=new URL(request.url).searchParams.get('mode');
+  if(request.method!=='POST'||!s||!['lost-acquire','foreign-lease','malformed-lease','release-error','release-unconfirmed','transient-overload'].includes(mode))return new Response(null,{status:409});
+  const controlSQL='SELECT epoch,mode,active,nonce,purpose FROM privacy_write_admission';
+  const originalACKs=(await s.db.prepare('SELECT * FROM role_settlements ORDER BY id').all()).results,control=await s.db.prepare(controlSQL).first();
+  const beforeVisits=(await s.db.prepare("SELECT COUNT(*) n FROM audit WHERE action='role.native232_attempt'").first()).n;
+  let foreign=freshLeaseValue(Math.floor(Date.now()/1000)+FRESH_LEASE_SECONDS,'b'.repeat(32));
+  if(mode==='foreign-lease'||mode==='malformed-lease')await s.env.DB.prepare(FRESH_LEASE_ACQUIRE).bind(foreign).first();
+  if(mode==='malformed-lease'){foreign='not-json';await s.env.DB.prepare('UPDATE site_settings SET value=?1 WHERE key=?2').bind(foreign,FRESH_LEASE_KEY).run();}
+  const fault=s.leaseFault263;fault.mode=mode;fault.armed=true;fault.events=[];fault.releaseFailures=0;
+  const logs=[],originalLog=console.log,originalError=console.error;
+  console.log=(...args)=>logs.push({level:'log',args});console.error=(...args)=>logs.push({level:'error',args});
+  const wireStart=s.wires.length,count={used:0},bounded=countStatements(s.env,count),calls=callBudget(bounded);let result;
+  try{result=await runFreshPass(bounded,{calls,adm:nativeAdmission232(count,850)},'ingest',captureLaneConfig(bounded));}
+  finally{fault.armed=false;console.log=originalLog;console.error=originalError;}
+  const wires=s.wires.slice(wireStart);
+  const lease=(await s.db.prepare('SELECT value FROM site_settings WHERE key=?1').bind(FRESH_LEASE_KEY).first())?.value;
+  const afterACKs=(await s.db.prepare('SELECT * FROM role_settlements ORDER BY id').all()).results,afterControl=await s.db.prepare(controlSQL).first(),afterVisits=(await s.db.prepare("SELECT COUNT(*) n FROM audit WHERE action='role.native232_attempt'").first()).n;
+  const observation={mode,result,statements:count.used,wires,events:fault.events,logs,lease,foreign:['foreign-lease','malformed-lease'].includes(mode)?foreign:null,originalACKsUnchanged:JSON.stringify(originalACKs)===JSON.stringify(afterACKs),controlUnchanged:JSON.stringify(control)===JSON.stringify(afterControl),newVisits:afterVisits-beforeVisits,actualLocalWorkerdD1:true,actualOriginalNativeTransport:true,clockOverride:false,issuerOverride:false,providerCalls:0};
+  if(mode==='lost-acquire'){
+   const recoveredCount={used:0},recoveredEnv=countStatements(s.env,recoveredCount);
+   observation.recovered=await runFreshPass(recoveredEnv,{calls:callBudget(recoveredEnv),adm:nativeAdmission232(recoveredCount,850)},'ingest',captureLaneConfig(recoveredEnv));
+   observation.recoveredStatements=recoveredCount.used;
+  }
+  return Response.json(observation);
+ }
+ if(route==='/resume-walk'){
+  const s=saved.get('veteran');if(request.method!=='POST'||!s)return new Response(null,{status:409});
+  const mode=new URL(request.url).searchParams.get('checkpoint')||'pending';
+  if(!['pending','superseded','tick'].includes(mode))return new Response(null,{status:400});
+  const previous=await s.db.prepare("SELECT details FROM audit WHERE actor='system' AND action='role.fresh_state' ORDER BY id DESC LIMIT 1").first();
+  const before=previous?.details?JSON.parse(previous.details):null;if(!before)return new Response(null,{status:409});
+  // Synthetic scheduling hints carry no copied cursors or private references; the original checkpoint stays intact.
+  const checkpoint=mode==='pending'?before:{n:mode==='superseded'?before.n-1:before.n,walk:before.walk,profile:before.profile,continuation:true};
+  if(mode!=='pending')await s.env.DB.prepare("INSERT INTO audit(ts,actor,action,subject,details)VALUES(CAST(strftime('%s','now')AS INTEGER),'system',?1,'synthetic262_checkpoint',?2)").bind(mode==='tick'?'role.fresh_tick':'role.fresh_state',JSON.stringify(checkpoint)).run();
+  const count={used:0},bounded=countStatements(s.env,count),calls=callBudget(bounded);
+  // An independent root has no supplied sweep and still uses the actual Native issuer.
+  const result=await runFreshPass(bounded,{calls,adm:nativeAdmission232(count,850)},'ingest',captureLaneConfig(bounded));
+  const after=JSON.parse((await s.db.prepare("SELECT details FROM audit WHERE actor='system' AND action='role.fresh_state' ORDER BY id DESC LIMIT 1").first()).details);
+  const visits=(await s.db.prepare("SELECT subject,COUNT(*) AS n FROM audit WHERE actor='system' AND action='role.native232_attempt' AND json_extract(details,'$.walk')=?1 GROUP BY subject").bind(after.walk).all()).results;
+  return Response.json({mode,before:checkpoint,after,result,statements:count.used,visits,actualLocalWorkerdD1:true,independentRoot:true,suppliedSweep:false,providerCalls:0});
+ }
  if(route==='/prepare'){
   const s=saved.get('veteran');if(!s)return new Response(null,{status:409});
   const {env,db}=s;const scenario=bindings.CASE238||'positive';s.scenario=scenario;
@@ -44,9 +107,19 @@ export function fixture238(seed){const spent=new Set(),saved=new Map();let callb
   if(scenario==='stale')await env.DB.prepare("UPDATE roster_snapshots SET exported_at=CAST(strftime('%s','now')AS INTEGER)-601 WHERE id=2").run();
   if(scenario==='interval')await env.DB.prepare("INSERT INTO audit(ts,actor,action,subject,details)VALUES(CAST(strftime('%s','now')AS INTEGER),'system','role.fresh_state','ingest',?1)").bind(JSON.stringify({n:2,g:''})).run();
   if(scenario==='unknown')await env.DB.prepare("INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,attempts,subject_generation,created_at,expires_at,native_profile)VALUES(?1,?2,'canonical_routine233',?3,?4,1,'unknown','synthetic_unresolved',0,?5,1,2,?6)").bind('e'.repeat(32),s.subject,env.GUILD_ID,CANONICAL_RANKS233[8].roleId,'a'.repeat(32),CANONICAL_PROFILE233).run();
+  if(scenario==='independent264'){s.independentHintIds264=[];for(let i=0;i<11;i++){
+   const id=(900000000000000000n+BigInt(i)).toString(),name='Synthetic '+i;
+   const hint='f'.repeat(24)+i.toString(16).padStart(8,'0'),guid='Player-4613-'+(0x10000000+i).toString(16).toUpperCase();s.independentHintIds264.push(hint);
+   // Selection debt only: expired HELD, never settled, claimed or an identity
+   // anchor. Bare links alone are correctly absent from the canonical selector.
+   await env.DB.batch([env.DB.prepare('INSERT INTO members(discord_id)VALUES(?1)').bind(id),env.DB.prepare("INSERT INTO characters(name_key,name,discord_id,status,bound_at,verified_at,source,guid)VALUES(?1,?2,?3,'member',?4,?4,'whisper',?5)").bind(name.toLowerCase(),name,id,at-3600,guid),env.DB.prepare("INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,attempts,native_profile,native_guid,roster_id,created_at,expires_at)VALUES(?1,?2,'canonical_routine233',?3,?4,1,'held','synthetic_unproved_backlog264',0,?5,?6,2,?7,?8)").bind(hint,id,env.GUILD_ID,CANONICAL_RANKS233[9].roleId,CANONICAL_PROFILE233,guid,at-2000,at-1700)]);
+  }
+   s.independentHintRows264=(await db.prepare('SELECT * FROM role_settlements WHERE id IN(SELECT value FROM json_each(?1)) ORDER BY id').bind(JSON.stringify(s.independentHintIds264)).all()).results;
+   s.independentCandidates264=(await env.DB.prepare(CANONICAL233_SWEEP249_SELECT).bind(env.GUILD_ID,'',50,0,'0'.repeat(32)).all()).results;
+  }
   s.originalACKs=(await db.prepare("SELECT * FROM role_settlements WHERE desired=1 AND attempts=1 AND state='settled' ORDER BY id").all()).results;
   s.beforeControl=await db.prepare("SELECT epoch,mode,active,nonce,purpose FROM privacy_write_admission").first();
-  s.start=s.wires.length;return Response.json({prepared:true,scenario});
+  s.start=s.wires.length;return Response.json({prepared:true,scenario,...(scenario==='independent264'?{independentCandidates:s.independentCandidates264,selectionHints:s.independentHintRows264}:{})});
  }
  if(route==='/observe'){
   const s=saved.get('veteran');let observation=null,cost=null,observationError=false;
@@ -58,7 +131,8 @@ export function fixture238(seed){const spent=new Set(),saved=new Map();let callb
   const rows=(await s.db.prepare("SELECT id,purpose,role_id,desired,state,reason,attempts FROM role_settlements ORDER BY created_at,id").all()).results;
   const originalAfter=(await s.db.prepare("SELECT * FROM role_settlements WHERE id IN(SELECT value FROM json_each(?1)) ORDER BY id").bind(JSON.stringify(s.originalACKs.map(r=>r.id))).all()).results;
   const control=await s.db.prepare("SELECT epoch,mode,active,nonce,purpose FROM privacy_write_admission").first();
-  return Response.json({scenario:s.scenario,observation,observationError,cost,rows,wires:s.wires,start:s.start,end:callbackEnd,originalACKsUnchanged:JSON.stringify(s.originalACKs)===JSON.stringify(originalAfter),controlUnchanged:JSON.stringify(control)===JSON.stringify(s.beforeControl),clockOverride:false,handlerOverride:false,providerCalls:0});
+  const passState=(await s.db.prepare("SELECT details FROM audit WHERE actor='system' AND action='role.fresh_state' AND subject='scheduled' ORDER BY id DESC LIMIT 1").first())?.details;
+  return Response.json({scenario:s.scenario,observation,observationError,cost,rows,passState:passState?JSON.parse(passState):null,wires:s.wires,start:s.start,end:callbackEnd,originalACKsUnchanged:JSON.stringify(s.originalACKs)===JSON.stringify(originalAfter),controlUnchanged:JSON.stringify(control)===JSON.stringify(s.beforeControl),clockOverride:false,handlerOverride:false,providerCalls:0});
  }
 
  const kind=new URL(request.url).pathname.slice(1),kinds=['gm','stewart','veteran','member','unknown0','put-unknown','entitlement','migration','empty-from','empty-mismatch','empty-nonmember','empty-unknown'];
@@ -89,7 +163,46 @@ export function fixture238(seed){const spent=new Set(),saved=new Map();let callb
  if(kind==='unknown0'||kind==='empty-unknown')await db.prepare("INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,attempts,subject_generation,created_at,expires_at)VALUES(?1,?2,'fresh_roster_rank',?3,?4,1,'unknown','synthetic_old_unresolved',0,?5,?6,?6)").bind('e'.repeat(32),subject,config.GUILD_ID,'1561095379909353472','f'.repeat(32),seed.now-900).run();
  await db.prepare("INSERT INTO privacy_subjects(subject_id,generation,state,revision,created_at,updated_at)VALUES(?1,?2,'active',0,?3,?3) ON CONFLICT(subject_id)DO NOTHING").bind(subject,'a'.repeat(32),seed.now-3600).run();
  const triggers=seed.objects.filter(x=>x.type==='trigger').map(x=>db.prepare(x.sql));while(triggers.length)await db.batch(triggers.splice(0,40));
- const schema=await db.prepare('SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name').all(),wires=[],fetcher=Object.getOwnPropertyDescriptor(db,'fetcher').value,send=method(fetcher,'fetch');Object.defineProperty(fetcher,'fetch',{configurable:true,writable:false,value:async function(input,init){const w={requestBody:init?.body,status:null,responseBody:null};wires.push(w);const r=await Reflect.apply(send,fetcher,[input,init]);w.status=r.status;w.responseBody=await r.clone().text();return r;}});
+ const schema=await db.prepare('SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name').all(),wires=[],leaseFault263={armed:false,mode:null,events:[]},fetcher=Object.getOwnPropertyDescriptor(db,'fetcher').value,send=method(fetcher,'fetch');
+ // One fixed observer is installed before the original Native binding capture.
+ // Acquisition loss hides only its business response after the genuine D1 commit;
+ // a release error rejects its transport before dispatch. All other replies,
+ // original admission controls and immutable statements remain untouched.
+ Object.defineProperty(fetcher,'fetch',{configurable:true,writable:false,value:async function(input,init){
+  const w={requestBody:init?.body,status:null,responseBody:null};wires.push(w);
+  const requestBody=JSON.parse(init.body),statements=Array.isArray(requestBody)?requestBody:[requestBody],acquire=statements.findIndex(s=>s.sql===FRESH_LEASE_ACQUIRE),release=statements.findIndex(s=>s.sql===FRESH_LEASE_RELEASE);
+  if(leaseFault263.armed&&release>=0&&(leaseFault263.mode==='release-error'||leaseFault263.mode==='transient-overload'&&leaseFault263.releaseFailures===0)){
+   leaseFault263.releaseFailures++;
+   leaseFault263.events.push({kind:'release-transport-error',candidate:statements[release].params[0],status:503});
+   w.status=503;w.responseBody=JSON.stringify({success:false,error:leaseFault263.mode==='transient-overload'?'D1_ERROR: D1 DB is overloaded. Too many requests queued.':'D1_synthetic_private_release_message263'});w.syntheticTransportFailure=true;
+   return new Response(w.responseBody,{status:503,headers:{'Content-Type':'application/json'}});
+  }
+  const r=await Reflect.apply(send,fetcher,[input,init]);w.status=r.status;w.responseBody=await r.clone().text();
+  if(!leaseFault263.armed||acquire<0&&release<0)return r;
+  const responseBody=JSON.parse(w.responseBody),results=Array.isArray(responseBody)?responseBody:[responseBody];
+  if(acquire>=0){
+   const actual=results[acquire],original=actual.results,array=Array.isArray(original);
+   // The original binding's wire format can be ROWS_AND_COLUMNS. Keep its
+   // columns and complete envelope; hide only the one business result's rows.
+   if(!array&&(!original||JSON.stringify(original.columns)!=='["key"]'||!Array.isArray(original.rows)))throw Error('264_original_acquisition_format_required');
+   const keys=array?original.map(row=>row.key):original.rows.map(row=>{if(!Array.isArray(row)||row.length!==1)throw Error('264_original_key_row_required');return row[0];});
+   const event={kind:'acquire-committed-original-reply',candidate:statements[acquire].params[0],success:actual.success,changes:actual.meta?.changes,format:array?'ARRAY_OF_OBJECTS':'ROWS_AND_COLUMNS',keys,hidden:false};leaseFault263.events.push(event);
+   if(!['foreign-lease','malformed-lease'].includes(leaseFault263.mode)){
+    if(actual.success!==true||keys.length!==1||keys[0]!==FRESH_LEASE_KEY||actual.meta?.changes!==1)throw Error('263_original_acquisition_commit_required');
+    const others=results.map((packet,i)=>i===acquire?null:JSON.stringify(packet));
+    if(array)actual.results=[];else actual.results={...original,rows:[]};w.hiddenAcquisitionReply=true;event.hidden=true;
+    event.otherPacketsUnchanged=results.every((packet,i)=>i===acquire||JSON.stringify(packet)===others[i]);event.deliveredRows=0;
+   }
+  }
+  if(release>=0){
+   const actual=results[release];leaseFault263.events.push({kind:'release-original-reply',candidate:statements[release].params[0],success:actual.success,changes:actual.meta?.changes});
+   // Required numeric metadata must still pass the original driver schema.
+   // Two is an unconfirmed logical result, outside the runtime's exact0/1 set.
+   if(leaseFault263.mode==='release-unconfirmed'){actual.meta.changes=2;w.hiddenReleaseMetadata=true;}
+  }
+  if(w.hiddenAcquisitionReply||w.hiddenReleaseMetadata){w.deliveredResponseBody=JSON.stringify(responseBody);return new Response(w.deliveredResponseBody,{status:r.status,statusText:r.statusText,headers:r.headers});}
+  return r;
+ }});
  const env={...config,DB:createPrivacyWriteAdmissionDatabase(db,'writer','recorded-live-pre-seal-20261017',config.PRIVACY_WRITE_ADMISSION_EPOCH)};let result,error=null,repeat=null,retention=null;const start=wires.length;
  try{
   if(kind==='migration'||kind.startsWith('empty-')){
@@ -102,6 +215,6 @@ export function fixture238(seed){const spent=new Set(),saved=new Map();let callb
   }
   const retentionStart=wires.length;const out=await env.DB.batch(betaResetReceiptRetentionStatements(env));retention={start:retentionStart,end:wires.length,success:out.every(r=>r.success===true)};
  }catch(e){error=String(e?.stack||e);}
- const end=wires.length,rows=await db.prepare('SELECT id,purpose,role_id,desired,state,reason,attempts,request_digest,claim_nonce IS NOT NULL AS claimed,native_profile FROM role_settlements ORDER BY created_at,id').all(),control=await db.prepare('SELECT epoch,mode,active,nonce,purpose FROM privacy_write_admission').first(),after=await db.prepare('SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name').all();saved.set(kind,{env,db,subject,wires});
+ const end=wires.length,rows=await db.prepare('SELECT id,purpose,role_id,desired,state,reason,attempts,request_digest,claim_nonce IS NOT NULL AS claimed,native_profile FROM role_settlements ORDER BY created_at,id').all(),control=await db.prepare('SELECT epoch,mode,active,nonce,purpose FROM privacy_write_admission').first(),after=await db.prepare('SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name').all();saved.set(kind,{env,db,subject,wires,leaseFault263});
  return Response.json({kind,actualLocalWorkerdD1:true,clockOverride:false,sourceCallbackOverride:false,result,error,repeat,retention,rows:rows.results,wires,start,end,rosterRows:907,schemaUnchanged:JSON.stringify(schema.results)===JSON.stringify(after.results),control,providerCalls:0});
 }};}

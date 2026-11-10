@@ -77,7 +77,7 @@ export const LINK_HOSTS = [
 ];
 
 const LEGACY_GUIDE_INVITE = "You can request a guild invite this way before joining.";
-const IN_GAME_GUIDE_INVITE = `Ask an ${FLAGSHIP_GUILD_NAME} officer for an in-game invite first. The website invite queue is paused.`;
+const IN_GAME_GUIDE_INVITE = `Ask ${FLAGSHIP_GUILD_NAME} High Council for an in-game invite first. The website invite queue is paused.`;
 
 export const INTROS: Intro[] = [
   {
@@ -297,7 +297,7 @@ export const INTROS: Intro[] = [
         "",
         "Use {#council-chat} for discussion and {#council-decisions} for short notes of what was agreed. Voice: Olympus I–X Council.",
         "",
-        "**Private is not confidential:** server administrators and bots with Administrator can access these channels. Keep member case files, appeals, personal data and credentials out of Council channels. Use the existing private staff tools or contact an officer.",
+        "**Private is not confidential:** server administrators and bots with Administrator can access these channels. Keep member case files, appeals, personal data and credentials out of Council channels. Use the existing private staff tools or contact High Council.",
         "",
         "When restricting an account, remove its Council roles and review its other roles: a Council role allow or Administrator access can override restrictions.",
       ].join("\n"),
@@ -314,7 +314,7 @@ export const INTROS: Intro[] = [
         "",
         "Council arrangements follow the adopted Olympus governance book (R7, 13 October 2026). Discussion here does not appoint anyone or grant website, bot or in-game authority.",
         "",
-        "No personal reports, appeals, member case details or credentials. Use the existing private staff tools or contact an officer. Server administrators and bots with Administrator can read this channel.",
+        "No personal reports, appeals, member case details or credentials. Use the existing private staff tools or contact High Council. Server administrators and bots with Administrator can read this channel.",
       ].join("\n"),
     }],
   },
@@ -329,7 +329,7 @@ export const INTROS: Intro[] = [
         "",
         "How binding decisions are made is set by the adopted Olympus governance book (R7, 13 October 2026). A note here does not amend it, appoint anyone or grant website, bot or in-game authority.",
         "",
-        "Keep personal data, member case files, appeals and credentials out of these notes. Use the existing private staff tools or contact an officer.",
+        "Keep personal data, member case files, appeals and credentials out of these notes. Use the existing private staff tools or contact High Council.",
       ].join("\n"),
     }],
   },

@@ -192,10 +192,10 @@ export const EPOCH2_SCHEDULE_QUALIFIED=true as const;
  * Root promotes the guard after exact local scheduled-controller/Native proof;
  * production still requires the complete source and live release gates. */
 export const CANONICAL_RANK_SCHEDULE_QUALIFIED=true as const;
-export const CANONICAL_RANK_PASS_STATEMENTS=388; // 13 open + 2*180 subject +15 close
+export const CANONICAL_RANK_PASS_STATEMENTS=748; // .242: 13 open + up to 4*180 admitted subjects +15 close
 export const CANONICAL_RANK_PREFLIGHT_STATEMENTS=2; // one original Native metadata read
 export const CANONICAL_RANK_CHILD_STATEMENTS=CANONICAL_RANK_PREFLIGHT_STATEMENTS+CANONICAL_RANK_PASS_STATEMENTS;
-export const CANONICAL_RANK_SCHEDULE_HTTP=40;
+export const CANONICAL_RANK_SCHEDULE_HTTP=50;
 export const CANONICAL_RANK_SCHEDULED_BUDGET:ReadonlyArray<{job:string;worst:number}>=Object.freeze([
  {job:'ensureSchema',worst:1},{job:'runCanonicalRankPass',worst:CANONICAL_RANK_CHILD_STATEMENTS},
 ]);

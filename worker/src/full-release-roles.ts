@@ -139,6 +139,67 @@ export const CANONICAL233_WALK_SELECT=`WITH candidates AS (
  ranked AS (SELECT w.*,r.restriction_position,d.native_delta_position FROM work w LEFT JOIN restriction_order r ON r.subject=w.subject LEFT JOIN native_delta_order241 d ON d.subject=w.subject)
  SELECT subject,top_rank,urgent FROM ranked ORDER BY CASE WHEN restriction_position=1 THEN 0 WHEN native_delta_position=1 THEN 1 WHEN NOT restricted AND new_target THEN 2 WHEN NOT restricted AND urgent THEN 3 WHEN restricted AND urgent THEN 4 ELSE 5 END,CASE WHEN urgent THEN last_attempt ELSE CASE WHEN subject>?2 THEN 0 ELSE 1 END END,subject LIMIT ?3`;
 
+// .249: a continuation visits each candidate once in its fixed-snapshot sweep.
+// Keep the original selectors intact for ordinary priority/source consumers.
+type SweepSQLToken255={kind:'word'|'literal'|'punct';text:string;start:number;end:number};
+/** .255: production D1 counts repeated CTE/view expansion cumulatively. Expand
+ * only these trusted readonly constants into equivalent derived tables. All
+ * bodies share one statement snapshot; no token supplies effect authority. */
+function inlineFiniteSweep255(sql:string,canonical:boolean):string{
+ const fail=():never=>{throw Error('native255_sql_shape');};
+ const expected=canonical?['candidates','facts','latest_native241','native_history241','native_roster_rows241','native_samples241','native_ordered241','native_events241','native_event_ids241','native_tokens241','targets','work','restriction_order','native_delta_order241','ranked']:['candidates','facts','work'];
+ const tokenize=(text:string):SweepSQLToken255[]=>{
+  const out:SweepSQLToken255[]=[];let i=0;
+  while(i<text.length){if(/\s/.test(text[i]!)){i++;continue;}const start=i,c=text[i]!;
+   if(c==="'"||c==='"'){const quote=c;i++;let closed=false;
+    while(i<text.length){if(text[i]===quote){i++;if(text[i]===quote){i++;continue;}closed=true;break;}i++;}
+    if(!closed)fail();out.push({kind:'literal',text:text.slice(start,i),start,end:i});continue;
+   }
+   if(/[A-Za-z_]/.test(c)){i++;while(i<text.length&&/[A-Za-z0-9_]/.test(text[i]!))i++;out.push({kind:'word',text:text.slice(start,i),start,end:i});continue;}
+   i++;out.push({kind:'punct',text:c,start,end:i});
+  }return out;
+ };
+ if(sql.length>20000)fail();const input=tokenize(sql);if(input[0]?.text!=='WITH')fail();
+ const bodies=new Map<string,string>();let i=1,main='';
+ for(;;){const name=input[i++]?.text;if(!name||!expected.includes(name)||bodies.has(name)||input[i++]?.text!=='AS')fail();
+  if(input[i]?.text==='MATERIALIZED')i++;
+  if(input[i]?.text!=='(')fail();const start=input[i++]!.end;let depth=1,end=-1;
+  while(i<input.length&&depth){const t=input[i++]!;if(t.kind==='punct'){if(t.text==='(')depth++;else if(t.text===')')depth--;}if(!depth)end=t.start;}
+  if(end<0||depth)fail();bodies.set(name,sql.slice(start,end));
+  if(input[i]?.text!==','){if(!input[i])fail();main=sql.slice(input[i]!.start);break;}i++;
+ }
+ if(JSON.stringify([...bodies.keys()])!==JSON.stringify(expected))fail();
+ const reserved=new Set(['WHERE','GROUP','ORDER','LIMIT','OFFSET','UNION','INTERSECT','EXCEPT','LEFT','RIGHT','FULL','INNER','OUTER','CROSS','JOIN','ON','USING','WINDOW','HAVING','INDEXED','NOT']);
+ const memo=new Map<string,string>(),active=new Set<string>();
+ // .256: OFFSET0 prevents flattening each derived projection into its parent.
+ // LIMIT-1 retains every original row; it is not a shared-result/cache claim.
+ const resolve=(name:string):string=>{const prior=memo.get(name);if(prior!==undefined)return prior;if(active.has(name))return fail();active.add(name);const body=bodies.get(name);if(body===undefined)return fail();const value='SELECT * FROM ('+replace(body)+') AS __olv256_'+name+' LIMIT -1 OFFSET 0';active.delete(name);memo.set(name,value);return value;};
+ const replace=(text:string):string=>{
+  const tokens=tokenize(text),edits:[number,number,string][]=[];
+  for(let n=0;n+1<tokens.length;n++){const t=tokens[n]!,next=tokens[n+1]!;
+   if(t.kind!=='word'||!['FROM','JOIN'].includes(t.text.toUpperCase())||next.kind!=='word'||!bodies.has(next.text))continue;
+   const following=tokens[n+2],hasAlias=following?.kind==='word'&&(following.text.toUpperCase()==='AS'||!reserved.has(following.text.toUpperCase()));
+   edits.push([next.start,next.end,'('+resolve(next.text)+')'+(hasAlias?'':' AS '+next.text)]);
+  }
+  for(let n=edits.length-1;n>=0;n--){const [start,end,value]=edits[n]!;text=text.slice(0,start)+value+text.slice(end);if(text.length>=100000)fail();}
+  return text;
+ };
+ const result=replace(main),tokens=tokenize(result);
+ for(let n=0;n<tokens.length;n++){const t=tokens[n]!;if(t.kind==='word'&&t.text.toUpperCase()==='WITH')fail();if(['FROM','JOIN'].includes(t.text.toUpperCase())&&tokens[n+1]?.kind==='word'&&bodies.has(tokens[n+1]!.text))fail();}
+ const bytes=new TextEncoder().encode(result).length,binds=[...result.matchAll(/\?([0-9]+)/g)].map(m=>Number(m[1]));
+ if(bytes!==(canonical?38169:3015)||bytes>=100000||Math.max(...binds)!==5)fail();return result;
+}
+function finiteSweep249(sql:string):string{
+ const canonical=sql===CANONICAL233_WALK_SELECT,boundary='FROM candidates)';
+ if(!canonical&&sql!==NATIVE232_WALK_SELECT||sql.split(boundary).length!==2)throw Error('native249_selector_boundary');
+ return inlineFiniteSweep255(sql.replace(boundary,`FROM candidates WHERE typeof(subject)='text' AND length(subject) BETWEEN 17 AND 20 AND subject NOT GLOB '*[^0-9]*'
+ AND NOT EXISTS(SELECT 1 FROM privacy_subjects privacy249 WHERE privacy249.subject_id=candidates.subject AND privacy249.state<>'active')
+ AND candidates.subject NOT IN(SELECT checked.subject FROM audit checked WHERE checked.actor='system' AND checked.action='role.native232_attempt' AND checked.subject IS NOT NULL
+ AND json_extract(CASE WHEN json_valid(checked.details) THEN checked.details ELSE '{}' END,'$.walk')=?5))`),canonical);
+}
+export const NATIVE232_SWEEP249_SELECT=finiteSweep249(NATIVE232_WALK_SELECT);
+export const CANONICAL233_SWEEP249_SELECT=finiteSweep249(CANONICAL233_WALK_SELECT);
+
 // --- configuration capture (A1, Q6). Synchronous, descriptor-based: an accessor or inherited key is never invoked.
 export const LANE_CONFIG_KEYS=Object.freeze(['CANONICAL_ENTITLEMENTS233','CANONICAL_RANKS233','FULL_RELEASE_ROLES','STAFF_TEN_RANK_ROLES','LINKS_NOT_BEFORE','LINKS_NOT_BEFORE_CLOCK_GATED','ROSTER_MIN_MEMBERS','ROSTER_MAX_SHRINK_PCT',
  'ROLE_CALL_BUDGET','GUILD_ID','DISCORD_APP_ID','DISCORD_BOT_TOKEN','ROLE_GUILD_MEMBER','ROLE_OFFICER','ROLE_MODERATOR','ROLE_GUILD_LEADER',
@@ -621,8 +682,8 @@ export const FRESH_INTERVAL_SELECT=`SELECT ts,action,CASE WHEN json_valid(detail
  WHERE ts>${DB_NOW}-${FRESH_INTERVAL_SECONDS} AND action IN(${[FRESH_AUDIT.state,FRESH_AUDIT.tick,FRESH_AUDIT.failed,FRESH_AUDIT.configHeld,FRESH_AUDIT.grantsHeld].map(a=>`'${a}'`).join(',')})
  ORDER BY ts DESC,id DESC LIMIT 1`;
 /** Cursor state: the newest role.fresh_state or reference-free role.fresh_tick, each through audit_actor_action. */
-export const FRESH_STATE_SELECT=`SELECT id,details FROM (SELECT id,details FROM audit WHERE actor='system' AND action='${FRESH_AUDIT.state}' ORDER BY id DESC LIMIT 1)
- UNION ALL SELECT id,details FROM (SELECT id,details FROM audit WHERE actor='system' AND action='${FRESH_AUDIT.tick}' ORDER BY id DESC LIMIT 1) ORDER BY id DESC LIMIT 1`;
+export const FRESH_STATE_SELECT=`SELECT id,action,details FROM (SELECT id,action,details FROM audit WHERE actor='system' AND action='${FRESH_AUDIT.state}' ORDER BY id DESC LIMIT 1)
+ UNION ALL SELECT id,action,details FROM (SELECT id,action,details FROM audit WHERE actor='system' AND action='${FRESH_AUDIT.tick}' ORDER BY id DESC LIMIT 1) ORDER BY id DESC LIMIT 1`;
 export const NEWEST_SNAPSHOT_SELECT='SELECT MAX(id) AS id FROM roster_snapshots';
 /** The :110 form; identifyNativeProfile on these rows must return 'ten-rank' before any grant or staff step. */
 export const PROFILE_ROWS_SELECT='SELECT DISTINCT rank,rank_index FROM roster_members WHERE snapshot_id=?1 LIMIT 11';
