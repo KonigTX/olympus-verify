@@ -28,8 +28,9 @@ export function fixture238(seed){const spent=new Set(),saved=new Map();let callb
   if(!['pending','superseded','tick'].includes(mode))return new Response(null,{status:400});
   const previous=await s.db.prepare("SELECT details FROM audit WHERE actor='system' AND action='role.fresh_state' ORDER BY id DESC LIMIT 1").first();
   const before=previous?.details?JSON.parse(previous.details):null;if(!before)return new Response(null,{status:409});
-  const checkpoint=mode==='pending'?before:{...before,continuation:true,...(mode==='superseded'?{n:before.n-1}:{})};
-  if(mode!=='pending')await s.db.prepare("INSERT INTO audit(ts,actor,action,subject,details)VALUES(CAST(strftime('%s','now')AS INTEGER),'system',?1,'synthetic262_checkpoint',?2)").bind(mode==='tick'?'role.fresh_tick':'role.fresh_state',JSON.stringify(checkpoint)).run();
+  // Synthetic scheduling hints carry no copied cursors or private references; the original checkpoint stays intact.
+  const checkpoint=mode==='pending'?before:{n:mode==='superseded'?before.n-1:before.n,walk:before.walk,profile:before.profile,continuation:true};
+  if(mode!=='pending')await s.env.DB.prepare("INSERT INTO audit(ts,actor,action,subject,details)VALUES(CAST(strftime('%s','now')AS INTEGER),'system',?1,'synthetic262_checkpoint',?2)").bind(mode==='tick'?'role.fresh_tick':'role.fresh_state',JSON.stringify(checkpoint)).run();
   const count={used:0},bounded=countStatements(s.env,count),calls=callBudget(bounded);
   // An independent root has no supplied sweep and still uses the actual Native issuer.
   const result=await runFreshPass(bounded,{calls,adm:nativeAdmission232(count,850)},'ingest',captureLaneConfig(bounded));
