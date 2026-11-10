@@ -187,14 +187,14 @@ function inlineFiniteSweep255(sql:string,canonical:boolean):string{
  const result=replace(main),tokens=tokenize(result);
  for(let n=0;n<tokens.length;n++){const t=tokens[n]!;if(t.kind==='word'&&t.text.toUpperCase()==='WITH')fail();if(['FROM','JOIN'].includes(t.text.toUpperCase())&&tokens[n+1]?.kind==='word'&&bodies.has(tokens[n+1]!.text))fail();}
  const bytes=new TextEncoder().encode(result).length,binds=[...result.matchAll(/\?([0-9]+)/g)].map(m=>Number(m[1]));
- if(bytes!==(canonical?38081:2993)||bytes>=100000||Math.max(...binds)!==5)fail();return result;
+ if(bytes!==(canonical?38169:3015)||bytes>=100000||Math.max(...binds)!==5)fail();return result;
 }
 function finiteSweep249(sql:string):string{
  const canonical=sql===CANONICAL233_WALK_SELECT,boundary='FROM candidates)';
  if(!canonical&&sql!==NATIVE232_WALK_SELECT||sql.split(boundary).length!==2)throw Error('native249_selector_boundary');
  return inlineFiniteSweep255(sql.replace(boundary,`FROM candidates WHERE typeof(subject)='text' AND length(subject) BETWEEN 17 AND 20 AND subject NOT GLOB '*[^0-9]*'
  AND NOT EXISTS(SELECT 1 FROM privacy_subjects privacy249 WHERE privacy249.subject_id=candidates.subject AND privacy249.state<>'active')
- AND NOT EXISTS(SELECT 1 FROM audit checked WHERE checked.actor='system' AND checked.action='role.native232_attempt' AND checked.subject=candidates.subject
+ AND candidates.subject NOT IN(SELECT checked.subject FROM audit checked WHERE checked.actor='system' AND checked.action='role.native232_attempt' AND checked.subject IS NOT NULL
  AND json_extract(CASE WHEN json_valid(checked.details) THEN checked.details ELSE '{}' END,'$.walk')=?5))`),canonical);
 }
 export const NATIVE232_SWEEP249_SELECT=finiteSweep249(NATIVE232_WALK_SELECT);
