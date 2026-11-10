@@ -254,7 +254,11 @@ const A6 = [
 const mask = (text) => A6.reduce((t, [re, to]) => t.replace(re, to), text);
 const digestOf = (r, masked = false) => {
   // Exact paired public-copy comparison only; raw r.trace/r.response remain current.
-  if(!RECORD&&!DUMP)r={...r,trace:source230.copyTrace(r.trace,masked,{guide:r.comparisonScenario==='guide'?1:0,cache:r.comparisonScenario==='button'?1:0}),response:source230.copyResponse(r.response,masked,r.comparisonScenario==='button')};
+  if(!RECORD&&!DUMP){
+    const required={guide:r.comparisonScenario==='guide'?1:0,cache:r.comparisonScenario==='button'?1:0};
+    const comparison247={trace:source247.comparisonTrace(r.trace,masked,required),response:source247.comparisonResponse(r.response,masked,r.comparisonScenario==='button')};
+    r={...r,trace:source230.copyTrace(comparison247.trace,masked,required),response:source230.copyResponse(comparison247.response,masked,r.comparisonScenario==='button')};
+  }
   const legacy = JSON.stringify(legacyOf(r)), response = JSON.stringify(r.response);
   return { trace: sha(masked ? mask(legacy) : legacy), response: sha(masked ? mask(response) : response), twelve: sha(r.twelve), statements: legacyOf(r).filter((e) => e.k === 'sql').length, requests: legacyOf(r).filter((e) => e.k === 'http').length };
 };
@@ -363,12 +367,17 @@ const source238=require('./source238-canonical-minute-static-projection.cjs');
 // .239 exact Role prepend is static-only. Never pass reconstructed source to load().
 if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source239-migration-static-projection.cjs'))).digest('hex')!=='39f12bb39335e0234d7e43daa6ae2bc4c8e1aaf58b9dc65507012aac069594eb')throw Error('reviewed239 static role helper differs');
 const source239=require('./source239-migration-static-projection.cjs');
+// .247 reverses finite guarded Native242/privacy247 additions for STATIC checks
+// only. Actual load()/runOnce() and raw traces above always use current SRC.
+if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source247-native-historical-static-adapter.cjs'))).digest('hex')!=='970aca425f691e204f6049897fca2f6494caa7efbd6c7083fd54f32486a23e7c'||nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'fixtures/reviewed247-native-historical-static-contexts.json'))).digest('hex')!=='ea0b9b0bf7198c2251e75a6d7e9f53e0fd106d36bee781bf4705ce8a7a706491')throw Error('reviewed247 historical static adapter differs');
+const source247=require('./source247-native-historical-static-adapter.cjs');
 // .228 C09 reverses only two exact current sources for the original static seals.
 if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'source228-privacy-historical-projection.cjs'))).digest('hex') !== '1314b9a32a95348ae6092bcc5963cb16526ad8eecbc8bf1dcd7414dbff84324c') throw Error('reviewed228 C09 identity helper differs');
 const source228Privacy = require('./source228-privacy-historical-projection.cjs');
 function sourceDigest(name) {
   const raw=fs.readFileSync(path.join(SRC, name + '.ts'), 'utf8');
-  const before230=['discord','role-settlements','roles','roster','interactions'].includes(name)?source230.inverse(name,name==='role-settlements'&&!RECORD?source239.inverse(raw):raw):name==='privacy-serving-erase'?source230.before233(name,raw):source238.originalSource(name,raw);
+  const current247=RECORD?raw:source247.originalSource(name,raw);
+  const before230=['discord','role-settlements','roles','roster','interactions'].includes(name)?source230.inverse(name,name==='role-settlements'&&!RECORD?source239.inverse(current247):current247):name==='privacy-serving-erase'?source230.before233(name,current247):source238.originalSource(name,current247);
   const original=RECORD?raw:source228Privacy.originalSource(name,source227.originalSource(name,before230));
   return original===null?null:source211.source211HistoricalDigest(name,original);
 }
@@ -420,9 +429,12 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
     return;
   }
   if (!PINS) throw Error('PINS not recorded');
+  for(const[name,ok]of Object.entries(source247.checks(SRC)))check('.247 historical-only finite static adapter '+name,ok);
+  for(const row of source247.controls(SRC))check('.247 historical-only static refuses '+row.source+' '+row.name,row.refused);
+  for(const[name,ok]of Object.entries(source247.comparisonControls()))check('.247 exact whole comparison pair '+name,ok);
   for(const[name,ok]of Object.entries(source239.checks(SRC)))check('.239 exact static Role prepend '+name,ok);
   for(const row of source239.controls(SRC))check('.239 static Role refuses '+row.name,row.refused);
-  source239.withStaticView(SRC,static239=>{
+  source247.withStaticView(SRC,static239=>{
   for(const[name,ok]of Object.entries(source238.checks(static239)))check('.238 exact static origin '+name,ok);
   for(const row of source238.controls(static239))check('.238 static origin refuses '+row.name,row.refused);
   for(const[name,ok]of Object.entries(source230.checks(static239)))check('.230 current→a984 exact static guard '+name,ok);
@@ -450,7 +462,7 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
 
   // --- static: whole reviewed .164 integrated sources; the lane modules are never part of a module-load cycle
   for (const name of PROTECTED) check(['role-settlements', 'privacy-global-serving-origin'].includes(name) ? `${name}.ts reconstructs accepted H16 through exact .211 contexts before unchanged historical whole seals` : SOURCE196_COMPAT[name] ? `${name}.ts reconstructs the reviewed .164 whole source through exact pinned .196 contextual reversals only` : `${name}.ts is byte-identical to the reviewed .164 integrated source`, sourceDigest(name) === PINS.files[name]);
-  const erase228Raw = source230.before233('privacy-serving-erase',fs.readFileSync(path.join(SRC, 'privacy-serving-erase.ts'), 'utf8'));
+  const erase228Raw = source230.before233('privacy-serving-erase',source247.originalSource('privacy-serving-erase',fs.readFileSync(path.join(SRC, 'privacy-serving-erase.ts'), 'utf8')));
   const jobs228Raw = fs.readFileSync(path.join(SRC, 'privacy-serving-jobs.ts'), 'utf8');
   for (const [name, raw] of [['privacy-serving-erase', erase228Raw], ['privacy-serving-jobs', jobs228Raw]]) {
     for (const {label, refused} of source228Privacy.controls(name, raw)) check('.228 C09 ' + name + ' refuses ' + label, refused);
