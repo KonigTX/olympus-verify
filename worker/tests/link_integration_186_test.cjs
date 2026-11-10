@@ -28,7 +28,7 @@ const source230=require('./source230-membership-static-projection.cjs');
 if(sha(fs.readFileSync(path.join(__dirname,'source239-migration-static-projection.cjs')))!=='39f12bb39335e0234d7e43daa6ae2bc4c8e1aaf58b9dc65507012aac069594eb')throw Error('reviewed239 static role helper differs');
 const source239=require('./source239-migration-static-projection.cjs');
 // Finite guarded Native242/privacy247 HISTORICAL STATIC adapter, never a loader override.
-if(sha(fs.readFileSync(path.join(__dirname,'source247-native-historical-static-adapter.cjs')))!=='970aca425f691e204f6049897fca2f6494caa7efbd6c7083fd54f32486a23e7c'||sha(fs.readFileSync(path.join(__dirname,'fixtures/reviewed247-native-historical-static-contexts.json')))!=='ea0b9b0bf7198c2251e75a6d7e9f53e0fd106d36bee781bf4705ce8a7a706491')throw Error('reviewed247 historical static adapter differs');
+if(sha(fs.readFileSync(path.join(__dirname,'source247-native-historical-static-adapter.cjs')))!=='c84c96a4494b8f9f2e586fb9efce3ba47a048f5b8a3a2c3fc1c5f4cfadc05019'||sha(fs.readFileSync(path.join(__dirname,'fixtures/reviewed247-native-historical-static-contexts.json')))!=='fea6e5400a2faa7fc7f2dd984dc90d2008e3ba182f9f75d01d95b35667408397')throw Error('reviewed247 historical static adapter differs');
 const source247=require('./source247-native-historical-static-adapter.cjs');
 // Upstream's web/test/fixtures/vectors.json at d03ea8a9 with every seed* field and the two derivable backend "token"
 // fields removed (its own "about" says so); pinned, so a changed fixture is a reviewed change. Each token is rebuilt here

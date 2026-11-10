@@ -28,7 +28,7 @@ const source238=require('./source238-canonical-minute-static-projection.cjs');
 if(crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source239-migration-static-projection.cjs'))).digest('hex')!=='39f12bb39335e0234d7e43daa6ae2bc4c8e1aaf58b9dc65507012aac069594eb')throw Error('reviewed239 static role helper differs');
 const source239=require('./source239-migration-static-projection.cjs');
 // Historical static checks only: runtime lane/child-budget evaluation stays current.
-if(crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source247-native-historical-static-adapter.cjs'))).digest('hex')!=='970aca425f691e204f6049897fca2f6494caa7efbd6c7083fd54f32486a23e7c'||crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'fixtures/reviewed247-native-historical-static-contexts.json'))).digest('hex')!=='ea0b9b0bf7198c2251e75a6d7e9f53e0fd106d36bee781bf4705ce8a7a706491')throw Error('reviewed247 historical static adapter differs');
+if(crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source247-native-historical-static-adapter.cjs'))).digest('hex')!=='c84c96a4494b8f9f2e586fb9efce3ba47a048f5b8a3a2c3fc1c5f4cfadc05019'||crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'fixtures/reviewed247-native-historical-static-contexts.json'))).digest('hex')!=='fea6e5400a2faa7fc7f2dd984dc90d2008e3ba182f9f75d01d95b35667408397')throw Error('reviewed247 historical static adapter differs');
 const source247=require('./source247-native-historical-static-adapter.cjs');
 const state=(b,p)=>JSON.stringify({limit:b.limit,attempts:b.attempts,calls:b.calls,retries:b.retries,exhausted:b.exhausted,parent:p});
 function apply(b,op){try{op(b);return 'ok';}catch(e){return 'throw:'+e.message;}}

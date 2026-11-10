@@ -369,7 +369,7 @@ if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'s
 const source239=require('./source239-migration-static-projection.cjs');
 // .247 reverses finite guarded Native242/privacy247 additions for STATIC checks
 // only. Actual load()/runOnce() and raw traces above always use current SRC.
-if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source247-native-historical-static-adapter.cjs'))).digest('hex')!=='970aca425f691e204f6049897fca2f6494caa7efbd6c7083fd54f32486a23e7c'||nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'fixtures/reviewed247-native-historical-static-contexts.json'))).digest('hex')!=='ea0b9b0bf7198c2251e75a6d7e9f53e0fd106d36bee781bf4705ce8a7a706491')throw Error('reviewed247 historical static adapter differs');
+if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source247-native-historical-static-adapter.cjs'))).digest('hex')!=='c84c96a4494b8f9f2e586fb9efce3ba47a048f5b8a3a2c3fc1c5f4cfadc05019'||nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'fixtures/reviewed247-native-historical-static-contexts.json'))).digest('hex')!=='fea6e5400a2faa7fc7f2dd984dc90d2008e3ba182f9f75d01d95b35667408397')throw Error('reviewed247 historical static adapter differs');
 const source247=require('./source247-native-historical-static-adapter.cjs');
 // .228 C09 reverses only two exact current sources for the original static seals.
 if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'source228-privacy-historical-projection.cjs'))).digest('hex') !== '1314b9a32a95348ae6092bcc5963cb16526ad8eecbc8bf1dcd7414dbff84324c') throw Error('reviewed228 C09 identity helper differs');

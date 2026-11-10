@@ -5,9 +5,9 @@
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto');
 const sha=v=>crypto.createHash('sha256').update(v).digest('hex'),need=(v,s)=>{if(!v)throw Error('reviewed247 '+s);};
 const manifestBytes=fs.readFileSync(path.join(__dirname,'fixtures/reviewed247-native-historical-static-contexts.json'));
-need(sha(manifestBytes)==='ea0b9b0bf7198c2251e75a6d7e9f53e0fd106d36bee781bf4705ce8a7a706491','historical manifest changed');
+need(sha(manifestBytes)==='fea6e5400a2faa7fc7f2dd984dc90d2008e3ba182f9f75d01d95b35667408397','historical manifest changed');
 const manifest=JSON.parse(manifestBytes.toString('utf8'));
-const COUNTS=Object.freeze({interactions:16,guide:7,'privacy-serving-erase':5});
+const COUNTS=Object.freeze({interactions:16,guide:7,'privacy-serving-erase':5,roster:1});
 need(manifest.schema==='source247-exact-historical-static-adapter-v1'&&manifest.currentSourceQualification===false&&manifest.sourceEvaluationAuthorized===false&&Object.keys(manifest.files).sort().join(',')===Object.keys(COUNTS).sort().join(','),'scope');
 const predecessorBytes=fs.readFileSync(path.join(__dirname,'fixtures/reviewed233-canonical-source-contexts.json'));
 need(sha(predecessorBytes)==='fa186b69c01c3973107e6503f9460762fd5a98fe248f6266a6b3a9b41a78b7e8'&&manifest.predecessorFixtureSHA256===sha(predecessorBytes),'original233 fixture');
@@ -40,11 +40,11 @@ function controls(sourceRoot){
  for(const[name,row]of Object.entries(manifest.files)){
   const raw=fs.readFileSync(path.join(sourceRoot,name+'.ts'),'utf8'),old=inverse(name,raw);need(old!==null,'positive static source '+name);
   const probes=[['unrelated prefix','// unreviewed247\n'+raw],['unrelated suffix',raw+'\n// unreviewed247\n'],['raw CRLF drift',raw.replace(/\n/g,'\r\n')],['historical source cannot masquerade as current',old]];
-  // The introductory comment is outside every changed hunk for all three files.
+  // The introductory comment is outside every changed hunk for all four files.
   const first=raw.indexOf('\n');probes.push(['outside-window comment byte',raw.slice(0,first)+' '+raw.slice(first)]);
   for(const[i,e]of row.edits.entries())probes.push(['missing window '+i,raw.replace(e.from,'')],['duplicate window '+i,raw.replace(e.from,e.from+e.from)],['changed window '+i,raw.replace(e.from,e.from+'/* unrelated247 */')]);
   for(const[label,candidate]of probes)out.push({source:name,name:label,refused:candidate!==raw&&inverse(name,candidate)===null,scope:'Static-only source inverse; no runtime qualification'});
-  for(const other of [...Object.keys(COUNTS).filter(x=>x!==name),'roles','../'+name])out.push({source:name,name:'wrong file '+other,refused:inverse(other,raw)===null,scope:'Exact fixed three-file scope'});
+  for(const other of [...Object.keys(COUNTS).filter(x=>x!==name),'roles','../'+name])out.push({source:name,name:'wrong file '+other,refused:inverse(other,raw)===null,scope:'Exact fixed four-file scope'});
  }
  return out;
 }
