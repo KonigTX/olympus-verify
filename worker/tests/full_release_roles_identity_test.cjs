@@ -362,7 +362,7 @@ if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'s
 const source238=require('./source238-canonical-minute-static-projection.cjs');
 // .239 exact Role prepend is static-only. Never pass reconstructed source to load().
 if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source239-migration-static-projection.cjs'))).digest('hex')!=='39f12bb39335e0234d7e43daa6ae2bc4c8e1aaf58b9dc65507012aac069594eb')throw Error('reviewed239 static role helper differs');
-const source239=require('./source239-migration-static-projection.cjs');
+const source239=require('./source-livelink-static-projection.cjs'); // Live Link counted prepend over the byte-pinned reviewed239 chain
 // .228 C09 reverses only two exact current sources for the original static seals.
 if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'source228-privacy-historical-projection.cjs'))).digest('hex') !== '1314b9a32a95348ae6092bcc5963cb16526ad8eecbc8bf1dcd7414dbff84324c') throw Error('reviewed228 C09 identity helper differs');
 const source228Privacy = require('./source228-privacy-historical-projection.cjs');
