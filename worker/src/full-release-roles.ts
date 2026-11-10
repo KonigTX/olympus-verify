@@ -142,9 +142,11 @@ export const CANONICAL233_WALK_SELECT=`WITH candidates AS (
 // .249: a continuation visits each candidate once in its fixed-snapshot sweep.
 // Keep the original selectors intact for ordinary priority/source consumers.
 function finiteSweep249(sql:string):string{
- const boundary='FROM candidates)';
- if(sql.split(boundary).length!==2)throw Error('native249_selector_boundary');
- return sql.replace(boundary,`FROM candidates WHERE typeof(subject)='text' AND length(subject) BETWEEN 17 AND 20 AND subject NOT GLOB '*[^0-9]*'
+ const boundary='FROM candidates)',projection='facts AS (';
+ if(sql.split(boundary).length!==2||sql.split(projection).length!==2)throw Error('native249_selector_boundary');
+ // .253: D1 must not re-expand the same correlated facts through every reused
+ // priority/history branch. This is one statement snapshot, not new authority.
+ return sql.replace(projection,'facts AS MATERIALIZED (').replace(boundary,`FROM candidates WHERE typeof(subject)='text' AND length(subject) BETWEEN 17 AND 20 AND subject NOT GLOB '*[^0-9]*'
  AND NOT EXISTS(SELECT 1 FROM privacy_subjects privacy249 WHERE privacy249.subject_id=candidates.subject AND privacy249.state<>'active')
  AND NOT EXISTS(SELECT 1 FROM audit checked WHERE checked.actor='system' AND checked.action='role.native232_attempt' AND checked.subject=candidates.subject
  AND json_extract(CASE WHEN json_valid(checked.details) THEN checked.details ELSE '{}' END,'$.walk')=?5))`);

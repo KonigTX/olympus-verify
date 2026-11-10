@@ -2427,3 +2427,8 @@ The existing Treasury observer and rich donation observer must share one native 
 A terminal server result must remain deliverable when an officer returns after a day offline. Transport expiry may roll in bounded signed windows anchored to the original ACK time; neither the original observation/ACK clock nor its effect is renewed. The addon accepts those terminal-ACK windows separately from current verification evidence.
 
 Mail uniqueness is historical within a content instance, not merely a count ofone at the latest scan. Once two indistinguishable messages have existed together, the survivor cannot inherit an earlier message's receipt. That instance remains held until complete readable absence. Similarly, privacy-inactive requests remain held without occupying the limited active request window; per-account execution admission remains mandatory.
+
+
+### Build .253 — production D1 query planning
+
+The finite fixed-snapshot scheduler materializes its repeated facts projection so production D1 does not recursively expand its correlated priority/history branches. Original selectors, filters, order, bounds, privacy/current-source issuer and unknown-effect discipline are preserved. This is a Worker-only change; addon and Watcher remain 0.6.25. The .252 production failure and Duke rank discrepancy remain preserved until actual production D1 and guarded role readbacks qualify the repair. Owner-directed deployment precedes affected tests/hosted CI.

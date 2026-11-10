@@ -78,6 +78,11 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".253", date: "2026-11-10", lines: [
+      "Guild rank updates continue through bounded production batches after a roster sync.",
+    ],
+  },
+  {
     build: ".252", date: "2026-11-10", lines: [
       "Verification delivery resumes after time away. Account updates keep moving when an older request is held.",
     ],

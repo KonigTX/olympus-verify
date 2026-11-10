@@ -7945,3 +7945,8 @@ OlympusVerify and Watcher0.6.25 renew only bounded signed transport validity for
 The guarded role-request selector excludes non-active privacy subjects before its existing11-row window; the original per-account recheck, opaque issuer, unknown-effect handling and SQL/HTTP caps remain. No schema or statement-count change. The finite static beta fixture retargets only current input metadata and its exact BUILD window while preserving the accepted241 oracle and all negative controls.
 
 Apply the owner's live-first sequence: compile/bundle/Lua syntax and fresh restored443/442 backup, exact deployment/public-file install, then focused new tests and hosted CI/exact-head review. Preserve all226 prior charged attempts; no whole local suite restart. Current in-game and production receipt observations remain separately qualified. Branch verification stays owner-held and original unknown role custody is not replayed.
+
+
+### Build .253 — production D1 query planning
+
+The finite fixed-snapshot scheduler materializes its repeated facts projection so production D1 does not recursively expand its correlated priority/history branches. Original selectors, filters, order, bounds, privacy/current-source issuer and unknown-effect discipline are preserved. This is a Worker-only change; addon and Watcher remain 0.6.25. The .252 production failure and Duke rank discrepancy remain preserved until actual production D1 and guarded role readbacks qualify the repair. Owner-directed deployment precedes affected tests/hosted CI.
