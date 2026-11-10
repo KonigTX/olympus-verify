@@ -105,8 +105,13 @@ local function transferContext()
   local seed = table.concat({ guid or me, tostring(at), tostring(d.nextId), tostring(OlympusVerifyDB.boots or 0), tostring(call(GetTime) or 0) }, "|")
   return { id = H.sha256hex(seed):sub(1, 24), ts = at }
 end
-local function claimIntake(context)
+local function claimIntake(context, kind)
   local d = db(); if not d or not context then return nil end
+  local intake=OlympusVerifyDB and OlympusVerifyDB.intake242
+  local saved=type(intake)=="table" and (kind=="trade" and intake.tradeCollection242 or intake.mailCollection242)
+  local me, ownGuid=identity()
+  if not ownGuid or type(saved)~="table" or saved.contextVersion~=1 or saved.kind~=kind or saved.transferId~=context.id
+    or saved.ownGuid~=ownGuid or normalize(saved.ownName)~=normalize(me) then return nil end
   -- Delivery correlation only. The original receipt/MAC remains unchanged;
   -- the rich intake body is owned before either observer can export it.
   d.liveIntakeOwners242 = d.liveIntakeOwners242 or {}
@@ -344,10 +349,12 @@ end)
 
 OlympusVerifyTreasury = {
   Normalize = normalize,
-  ClaimTradeIntake242 = function() return trade and claimIntake(trade.context) end,
+  TradeTransferId627 = function() return trade and trade.context and trade.context.id end,
+  MailTransferId627 = function(index) local intent=takingMoney(index);return intent and intent.context and intent.context.id end,
+  ClaimTradeIntake242 = function() return trade and claimIntake(trade.context,"trade") end,
   ClaimMailIntake242 = function(index)
     local intent = takingMoney(index)
-    return intent and claimIntake(intent.context)
+    return intent and claimIntake(intent.context,"mail")
   end,
   Status = function()
     local d = db() or {}

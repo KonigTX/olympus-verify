@@ -78,6 +78,11 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".262", date: "2026-11-10", lines: [
+      "Independent sync work and saved transfer observations recover without replaying unresolved originals.",
+    ],
+  },
+  {
     build: ".261", date: "2026-11-10", lines: [
       "Addon bridge requests now receive bounded delivery receipts from their configured guild collector.",
     ],

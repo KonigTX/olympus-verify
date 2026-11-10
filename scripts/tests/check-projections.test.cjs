@@ -25,7 +25,7 @@ function fixture(changes = new Map(), repin = false) {
 }
 check('real staged projection graph passes', verify(base).result === 'PASS');
 const verifyFolder235 = 'worker/public/static/olympus-verify/';
-for (const name of ['olympus-verify-0.6.26.zip', 'version.json']) {
+for (const name of ['olympus-verify-0.6.27.zip', 'version.json']) {
   const file = verifyFolder235 + name;
   rejects('Verify package resource drift is refused: ' + name, () => verify(fixture(new Map([[file, Buffer.concat([base.get(file), Buffer.from('\n')])]]))), /byte pin drift|closed Verify archive/);
   rejects('Verify package resource is mandatory: ' + name, () => verify(fixture(changed('scripts/official_asset_reference.json', s => { const r=JSON.parse(s);r.required_public_resources=r.required_public_resources.filter(row=>row.path!==file);return JSON.stringify(r); }), true)), /576-public-path binding/);

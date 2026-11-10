@@ -3,7 +3,9 @@ import app,{originalScheduledCallbackObservation,originalScheduledCallbackPhysic
 import {postVerify} from '../src/ingest.ts';
 import {codeFor,dayBucket} from '../src/codes.ts';
 import {createPrivacyWriteAdmissionDatabase} from '../src/privacy-write-admission.ts';
-import {runNativeSubject232} from '../src/full-release-pass.ts';
+import {runNativeSubject232,runFreshPass,nativeAdmission232} from '../src/full-release-pass.ts';
+import {captureLaneConfig} from '../src/full-release-roles.ts';
+import {countStatements} from '../src/roster-effects.ts';
 import {callBudget} from '../src/roles.ts';
 import {migrateCanonicalRank233} from '../src/role-settlements.ts';
 import {captureRuntimeVenue230,runtimeVenue230Facts} from '../src/shared-membership-cutover230.ts';
@@ -20,6 +22,21 @@ export function fixture238(seed){const spent=new Set(),saved=new Map();let callb
  },
  async fetch(request,bindings){
  const route=new URL(request.url).pathname;
+ if(route==='/resume-walk'){
+  const s=saved.get('veteran');if(request.method!=='POST'||!s)return new Response(null,{status:409});
+  const mode=new URL(request.url).searchParams.get('checkpoint')||'pending';
+  if(!['pending','superseded','tick'].includes(mode))return new Response(null,{status:400});
+  const previous=await s.db.prepare("SELECT details FROM audit WHERE actor='system' AND action='role.fresh_state' ORDER BY id DESC LIMIT 1").first();
+  const before=previous?.details?JSON.parse(previous.details):null;if(!before)return new Response(null,{status:409});
+  const checkpoint=mode==='pending'?before:{...before,continuation:true,...(mode==='superseded'?{n:before.n-1}:{})};
+  if(mode!=='pending')await s.db.prepare("INSERT INTO audit(ts,actor,action,subject,details)VALUES(CAST(strftime('%s','now')AS INTEGER),'system',?1,'synthetic262_checkpoint',?2)").bind(mode==='tick'?'role.fresh_tick':'role.fresh_state',JSON.stringify(checkpoint)).run();
+  const count={used:0},bounded=countStatements(s.env,count),calls=callBudget(bounded);
+  // An independent root has no supplied sweep and still uses the actual Native issuer.
+  const result=await runFreshPass(bounded,{calls,adm:nativeAdmission232(count,850)},'ingest',captureLaneConfig(bounded));
+  const after=JSON.parse((await s.db.prepare("SELECT details FROM audit WHERE actor='system' AND action='role.fresh_state' ORDER BY id DESC LIMIT 1").first()).details);
+  const visits=(await s.db.prepare("SELECT subject,COUNT(*) AS n FROM audit WHERE actor='system' AND action='role.native232_attempt' AND json_extract(details,'$.walk')=?1 GROUP BY subject").bind(after.walk).all()).results;
+  return Response.json({mode,before:checkpoint,after,result,statements:count.used,visits,actualLocalWorkerdD1:true,independentRoot:true,suppliedSweep:false,providerCalls:0});
+ }
  if(route==='/prepare'){
   const s=saved.get('veteran');if(!s)return new Response(null,{status:409});
   const {env,db}=s;const scenario=bindings.CASE238||'positive';s.scenario=scenario;

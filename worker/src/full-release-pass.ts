@@ -186,6 +186,16 @@ function parseState(details:string|null|undefined):FreshState{
  const c=(v:unknown)=>typeof v==='string'&&(v===''||ID.test(v))?v:'';
  return {r:c(o.r),d:c(o.d),g:c(o.g),s:c(o.s),p:c(o.p),k:o.k===1?1:0,h:typeof o.h==='number'&&Number.isSafeInteger(o.h)&&o.h>=0?o.h:null};
 }
+/** .262: a lost/depth-limited self-wake must not reset durable visit exclusion.
+ * This is only a scheduling hint; every resumed visit captures fresh Native authority. */
+function pendingNativeSweep262(details:string|null|undefined,snapshot:number):NativeSweep249|undefined{
+ try{const value:unknown=details?JSON.parse(details):null;
+  if(!value||typeof value!=='object'||Array.isArray(value))return;
+  const row=value as Record<string,unknown>;
+  if(row.profile==='olympus-prime-live-20261105-v1'&&row.continuation===true&&row.n===snapshot
+    &&Number.isSafeInteger(row.n)&&typeof row.walk==='string'&&/^[a-f0-9]{32}$/.test(row.walk))return Object.freeze({id:row.walk,n:snapshot});
+ }catch{/* Missing, malformed or unconfirmed state cannot resume a walk. */}
+}
 function remember(x:Ctx,row:WalkRow){
  if(!row.discord_id||x.refs.has(row.discord_id)||x.refs.size>=FRESH_STATE_REFERENCES)return;
  try{x.refs.set(row.discord_id,{subject:row.discord_id,capture:privacyCaptureFromColumns(row.discord_id,row)});}catch{/* never reference a non-active subject */}
@@ -532,7 +542,11 @@ async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admis
    if(!Number.isSafeInteger(snapshot)||snapshot===null||snapshot<1)return done('held','native249_snapshot_required');
    if(io.sweep&&(!/^[a-f0-9]{32}$/.test(io.sweep.id)||!Number.isSafeInteger(io.sweep.n)||io.sweep.n<1))return done('held','native249_sweep_invalid');
    if(io.sweep&&io.sweep.n!==snapshot)return done('skipped','native249_sweep_superseded');
-   nativeSweep=io.sweep??Object.freeze({id:randomGeneration(),n:snapshot});
+  if(recent&&trigger==='watcher'&&t-recent.ts<30)return done('skipped','interval');
+  if(!cap.current())return done('held','lane_configuration_changed');lastFreshLocal=t;
+  lease=L.freshLeaseValue(t+L.FRESH_LEASE_SECONDS,randomGeneration());if(!await env.DB.prepare(L.FRESH_LEASE_ACQUIRE).bind(lease).first()){lease=null;return done('skipped','lease_held');}
+  const saved=await env.DB.prepare(L.FRESH_STATE_SELECT).first<{action:string;details:string|null}>(),st=parseState(saved?.details),M=await import('./routine-membership-authority232'),V=await import('./shared-membership-cutover230');
+   nativeSweep=io.sweep??(saved?.action===L.FRESH_AUDIT.state?pendingNativeSweep262(saved.details,snapshot):undefined)??Object.freeze({id:randomGeneration(),n:snapshot});
    const walkId=nativeSweep.id;
    const recordVisit=async(writer:Env,subject:string,reference:PrivacyReference,details:{n:number|null;rank:number|null;result:string}):Promise<boolean>=>{
     await audit(writer,'system','role.native232_attempt',subject,{...details,walk:walkId},reference);
@@ -540,10 +554,6 @@ async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admis
     // force that private write or self-wake a sweep without durable progress.
     return !!await writer.DB.prepare("SELECT 1 AS recorded FROM audit WHERE actor='system' AND action='role.native232_attempt' AND subject=?1 AND json_extract(CASE WHEN json_valid(details) THEN details ELSE '{}' END,'$.walk')=?2 LIMIT 1").bind(subject,walkId).first();
    };
-  if(recent&&trigger==='watcher'&&t-recent.ts<30)return done('skipped','interval');
-  if(!cap.current())return done('held','lane_configuration_changed');lastFreshLocal=t;
-  lease=L.freshLeaseValue(t+L.FRESH_LEASE_SECONDS,randomGeneration());if(!await env.DB.prepare(L.FRESH_LEASE_ACQUIRE).bind(lease).first()){lease=null;return done('skipped','lease_held');}
-  const st=parseState((await env.DB.prepare(L.FRESH_STATE_SELECT).first<{details:string|null}>())?.details),M=await import('./routine-membership-authority232'),V=await import('./shared-membership-cutover230');
   const canonical=captureCanonicalRankConfig233(env);
    const window=(await env.DB.prepare(canonical.present?L.CANONICAL233_SWEEP249_SELECT:L.NATIVE232_SWEEP249_SELECT).bind(cap.guild,st.g,L.FRESH_WALK_WINDOW,canonical.present?0:selected.policy.privileged?1:0,nativeSweep.id).all<{subject:string;top_rank:number|null;urgent:number}>()).results;
    const refs:PrivacyReference[]=[];let visited=0,stop='',progressHeld=false;
@@ -583,9 +593,12 @@ async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admis
   }
    if(progressHeld){counts.statements=adm?adm.count.used-startUsed:local.used;return done('held','native249_progress_unconfirmed');}
    if(!window.length||window.length<L.FRESH_WALK_WINDOW&&visited>=window.length)st.g='';
-   const details={r:st.r,d:st.d,g:st.g,s:st.s,p:st.p,k:st.k,h:st.h,n:snapshot,walk:nativeSweep.id,profile:'olympus-prime-live-20261105-v1',stop:stop||null,visits:counts.visits,settled:counts.settled,unknown:counts.unknown,held:counts.held,attempts:counts.requests};
+   const details={r:st.r,d:st.d,g:st.g,s:st.s,p:st.p,k:st.k,h:st.h,n:snapshot,walk:nativeSweep.id,continuation:workRemaining,profile:'olympus-prime-live-20261105-v1',stop:stop||null,visits:counts.visits,settled:counts.settled,unknown:counts.unknown,held:counts.held,attempts:counts.requests};
   const stored=await env.DB.prepare(STATE_AUDIT).bind(now(),L.FRESH_AUDIT.state,trigger,JSON.stringify(refs.length?{...details,_privacySubjectIds:refs.map(r=>r.subject)}:details),JSON.stringify(refs.map(r=>({id:r.subject,g:r.capture?.subjectGeneration??null})))).run();
-  if(!Number(stored?.meta?.changes??0))await audit(env,'system',L.FRESH_AUDIT.tick,trigger,{n:snapshot,profile:'olympus-prime-live-20261105-v1',stop:stop||null});
+  if(!Number(stored?.meta?.changes??0)){
+   await audit(env,'system',L.FRESH_AUDIT.tick,trigger,{n:snapshot,profile:'olympus-prime-live-20261105-v1',stop:stop||null,continuation:false});
+   counts.statements=adm?adm.count.used-startUsed:local.used;return done('held','native249_progress_unconfirmed');
+  }
   counts.statements=adm?adm.count.used-startUsed:local.used;return done('done',stop||'native232_pass_complete');
  }catch(error){try{await audit(env,'system',L.FRESH_AUDIT.failed,trigger,{reason:'native232_pass_failed',error:redact(error)});}catch{}return done('failed','native232_pass_failed');}
  finally{if(lease)try{await env.DB.prepare(L.FRESH_LEASE_RELEASE).bind(lease).run();}catch{/* Original lease expires; no fallback parallel producer. */}}

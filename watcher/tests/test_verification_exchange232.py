@@ -327,7 +327,10 @@ class VerificationExchangeTests(unittest.TestCase):
             self.w.state.seen(key)
         self.w.worker.call = lambda method, path, body=None, retries=3: (self.calls.append((method, path, copy.deepcopy(body), retries)) or (False, 'synthetic older outcome'))
         self.w.post('/ingest/events', {'events': []}, 'older synthetic event')
-        self.w._post_claimed('/ingest/verify', self.body(), 'unattempted synthetic whisper', [key])
+        # An explicit transport pause, rather than an unrelated FIFO head, keeps
+        # this fixture genuinely unattempted under the independent626 contract.
+        with patch.object(self.w.worker, 'paused', return_value='synthetic local pause'):
+            self.w._post_claimed('/ingest/verify', self.body(), 'unattempted synthetic whisper', [key])
         item = self.w.state.d['outbox'][1]
         self.assertFalse(self.w._verification_originals[id(item)]['attempted'])
         self.calls.clear()
@@ -728,20 +731,23 @@ class VerificationExchangeTests(unittest.TestCase):
         self.assertEqual(len(self.calls), 1)
         self.assertIs(self.w.state.d['outbox'][0], item)
 
-    def test_officer233_unknown_transport_holds_original_and_blocks_later_member(self):
+    def test_officer233_unknown_original_stays_held_while_fresh_roster_and_member_progress(self):
         self.invite_admit233()
-        self.w.worker.call = lambda *a, **k: (self.calls.append((a, k)) or (False, None))
+        self.w.worker.call = lambda method, path, body=None, retries=3: (self.calls.append((method, path, copy.deepcopy(body), retries)) or (False, None))
         self.w.forward_officer_invite(self.invite_body233())
         item = self.w.state.d['outbox'][0]
-        self.w.forward_roster(self.roster(self.at + 1))
-        with self.assertRaises(watcher.VerificationDeferred):
-            self.w.forward_events([dict(type='whisper', name=NAME, guid=GUID, code=self.code, ok=True, ts=self.at, nativeMembership=self.proof())])
+        before = copy.deepcopy(item)
+        self.w.worker.call = self.transport
+        self.at += 1; self.now.return_value = self.at
+        self.w.forward_roster(self.roster())
+        self.w.forward_events([dict(type='whisper', name=NAME, guid=GUID, code=self.code, ok=True, ts=self.at, nativeMembership=self.proof())])
         self.w.flush_outbox()
         self.assertIs(self.w.state.d['outbox'][0], item)
-        self.assertEqual(len([x for x in self.calls if x[0][1] == officer_invites233.PATH]), 1)
-        self.assertEqual(len([x for x in self.calls if x[0][1] == '/ingest/verify']), 0)
+        self.assertEqual(item, before)
+        self.assertEqual(len([x for x in self.calls if x[1] == officer_invites233.PATH]), 1)
+        self.assertEqual(len([x for x in self.calls if x[1] == '/ingest/verify']), 1)
 
-    def test_officer233_prior_unknown_or_refused_fifo_is_never_skipped_or_relabelled(self):
+    def test_officer233_prior_unknown_or_refused_original_is_never_relabelled_by_fresh_invite(self):
         for refused in (False, True):
             with self.subTest(refused=refused):
                 self.w = watcher.Watcher(dict(self.cfg, state_file=str(self.root / ('separate' + str(refused) + '.json'))))
@@ -753,12 +759,13 @@ class VerificationExchangeTests(unittest.TestCase):
                 if refused: item['refusal_status'] = 403
                 before = copy.deepcopy(item)
                 self.calls.clear()
-                self.w.worker.call = lambda *a, **k: (False, None)
+                self.w.worker.call = lambda method, path, body=None, retries=3: (self.calls.append((method, path, copy.deepcopy(body), retries)) or (False, None))
                 self.w.forward_officer_invite(self.invite_body233())
                 self.w.flush_outbox()
                 self.assertEqual(item, before)
                 self.assertIs(self.w.state.d['outbox'][0], item)
-                self.assertEqual([x for x in self.calls if x[1] == officer_invites233.PATH], [])
+                self.assertEqual(len([x for x in self.calls if x[1] == officer_invites233.PATH]), 1)
+                self.assertEqual(len(self.w.state.d['outbox']), 2)
 
     def test_officer233_restart_cannot_acquire_fresh_original_or_resend(self):
         self.invite_admit233()
@@ -807,6 +814,131 @@ class VerificationExchangeTests(unittest.TestCase):
         self.w.flush_outbox()
         self.assertIs(self.w.state.d['outbox'][0], item)
         self.assertEqual(self.calls, [])
+
+    def spent_head626(self, restart=False):
+        self.admit()
+        self.w.worker.call = lambda method, path, body=None, retries=3: (self.calls.append((method, path, copy.deepcopy(body), retries)) or (False, None))
+        self.w.handle_chat_line(self.line())
+        head = self.w.state.d['outbox'][0]
+        before = json.dumps(head, sort_keys=True)
+        if restart:
+            self.w = watcher.Watcher(self.cfg)
+            head = self.w.state.d['outbox'][0]
+            self.assertEqual(json.dumps(head, sort_keys=True), before)
+        self.calls.clear()
+        self.w.worker.call = self.transport
+        return head, before
+
+    def test_626_reloaded_unknown_head_does_not_block_a_genuinely_new_roster(self):
+        head, before = self.spent_head626(restart=True)
+        self.w.forward_roster(self.roster())
+        self.assertEqual(self.calls, [], 'The committed old export watermark is never reset or replayed')
+        self.at += 1; self.now.return_value = self.at
+        self.w.forward_roster(self.roster())
+        self.assertEqual([c[1] for c in self.calls], ['/ingest/roster'])
+        self.assertTrue(self.w.verification_roster_ready(self.body()))
+        self.assertEqual(self.w.state.d['outbox'], [head])
+        self.assertIs(self.w.state.d['outbox'][0], head)
+        self.assertEqual(json.dumps(head, sort_keys=True), before)
+        self.assertEqual(json.loads(self.w.state.path.read_text())['outbox'], [head])
+        self.w.flush_outbox()
+        self.assertEqual(len(self.calls), 1, 'The old unknown verification never receives another HTTP attempt')
+
+    def test_626_nonhead_roster_ack_rollback_keeps_index_and_local_recovery_has_no_http(self):
+        head, before = self.spent_head626()
+        self.at += 1; self.now.return_value = self.at
+        save = self.w.state.save
+        def fail_settlement():
+            if len(self.w.state.d['outbox']) == 1:
+                raise OSError('synthetic nonhead settlement outcome unknown')
+            save()
+        with patch.object(self.w.state, 'save', side_effect=fail_settlement):
+            self.w.forward_roster(self.roster())
+        item = self.w.state.d['outbox'][1]
+        self.assertTrue(item['acknowledged'])
+        self.assertTrue(self.w._custody_halted)
+        self.assertIs(self.w.state.d['outbox'][0], head)
+        self.assertEqual(json.dumps(head, sort_keys=True), before)
+        self.assertIsNone(self.w._verification_roster)
+        calls = len(self.calls)
+        self.w.flush_outbox()
+        self.assertEqual(len(self.calls), calls)
+        self.assertTrue(self.w.recover_local_settlement())
+        self.assertEqual(len(self.calls), calls)
+        self.assertEqual(self.w.state.d['outbox'], [head])
+        self.assertTrue(self.w.verification_roster_ready(self.body()))
+
+    def test_626_nonhead_expiry_ack_restores_only_its_own_claim_after_failed_save(self):
+        item, key = self.reserve_unattempted()
+        head = self.w.state.d['outbox'][0]; before = copy.deepcopy(head)
+        self.expire_time()
+        def expiry(method, path, body=None, retries=3):
+            self.calls.append((method, path, copy.deepcopy(body), retries))
+            return (False, None) if path == '/ingest/events' else (True, dict(result='source_expired', pendingConsumed=False, roleGranted=False, inviteQueued=False))
+        self.w.worker.call = expiry
+        save = self.w.state.save
+        def fail_settlement():
+            if len(self.w.state.d['outbox']) == 1:
+                raise OSError('synthetic independent expiry persistence failure')
+            save()
+        with patch.object(self.w.state, 'save', side_effect=fail_settlement):
+            self.w.flush_outbox()
+        self.assertEqual(self.w.state.d['outbox'], [head, item])
+        self.assertIs(self.w.state.d['outbox'][1], item)
+        self.assertEqual(head, before)
+        self.assertTrue(item['acknowledged'] and item['server_expired'])
+        self.assertTrue(self.w.state.was_seen(key))
+        self.assertTrue(self.w._custody_halted)
+        calls = len(self.calls)
+        self.assertTrue(self.w.recover_local_settlement())
+        self.assertEqual(len(self.calls), calls)
+        self.assertEqual(self.w.state.d['outbox'], [head])
+        self.assertFalse(self.w.state.was_seen(key))
+
+    def test_626_independent_dispatch_never_adopts_unowned_or_changed_originals(self):
+        for case in ('changed-rehashed', 'duplicate-claim', 'foreign-owner', 'refused', 'attempted', 'no-roster', 'duplicate-object', 'fake-ack', 'reloaded'):
+            with self.subTest(case=case):
+                self.cfg = dict(self.cfg, state_file=str(self.root / (case + '.json')))
+                self.w = watcher.Watcher(self.cfg)
+                self.w.worker.call = self.transport
+                item, key = self.reserve_unattempted()
+                if case == 'changed-rehashed':
+                    item['body']['code'] += 'changed';item['digest'] = self.w._original_digest(item)
+                elif case == 'duplicate-claim': self.w.state.d['seen'].append(self.w.state._k(key))
+                elif case == 'foreign-owner': self.w.worker.token = 'different-owner'
+                elif case == 'refused': item['refusal_status'] = 403
+                elif case == 'attempted': self.w._verification_originals[id(item)]['attempted'] = True
+                elif case == 'no-roster': self.w._verification_roster = None
+                elif case == 'duplicate-object': self.w.state.d['outbox'].append(item)
+                elif case == 'fake-ack': item['acknowledged'] = True
+                elif case == 'reloaded': self.w = watcher.Watcher(self.cfg)
+                self.calls.clear()
+                self.w.worker.call = lambda method, path, body=None, retries=3: (self.calls.append((method, path, copy.deepcopy(body), retries)) or (False, None))
+                before = copy.deepcopy(self.w.state.d['outbox'])
+                self.w.flush_outbox()
+                self.assertFalse(any(c[1] == '/ingest/verify' for c in self.calls))
+                self.assertEqual(self.w.state.d['outbox'], before)
+
+    def test_626_pause_and_capacity_still_gate_fresh_independent_roster(self):
+        head, before = self.spent_head626()
+        self.at += 1; self.now.return_value = self.at
+        with patch.object(self.w.worker, 'paused', return_value='synthetic auth pause'):
+            self.w.forward_roster(self.roster())
+            item = self.w.state.d['outbox'][1]
+            self.w.flush_outbox()
+            self.assertFalse(self.w._independent_originals[id(item)]['attempted'])
+            self.assertEqual(self.calls, [])
+        self.w.flush_outbox()
+        self.assertEqual([c[1] for c in self.calls], ['/ingest/roster'])
+        self.assertEqual(self.w.state.d['outbox'], [head])
+        self.assertEqual(json.dumps(head, sort_keys=True), before)
+        self.w.max_outbox = 1
+        self.at += 1; self.now.return_value = self.at
+        watermark = self.w.state.d['roster_sent']
+        with self.assertRaises(watcher.NoCustody): self.w.forward_roster(self.roster())
+        self.assertEqual(self.w.state.d['outbox'], [head])
+        self.assertEqual(self.w.state.d['roster_sent'], watermark)
+        self.assertEqual(len(self.calls), 1)
 
 
 if __name__ == '__main__':

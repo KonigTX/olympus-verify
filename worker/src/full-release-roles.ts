@@ -682,8 +682,8 @@ export const FRESH_INTERVAL_SELECT=`SELECT ts,action,CASE WHEN json_valid(detail
  WHERE ts>${DB_NOW}-${FRESH_INTERVAL_SECONDS} AND action IN(${[FRESH_AUDIT.state,FRESH_AUDIT.tick,FRESH_AUDIT.failed,FRESH_AUDIT.configHeld,FRESH_AUDIT.grantsHeld].map(a=>`'${a}'`).join(',')})
  ORDER BY ts DESC,id DESC LIMIT 1`;
 /** Cursor state: the newest role.fresh_state or reference-free role.fresh_tick, each through audit_actor_action. */
-export const FRESH_STATE_SELECT=`SELECT id,details FROM (SELECT id,details FROM audit WHERE actor='system' AND action='${FRESH_AUDIT.state}' ORDER BY id DESC LIMIT 1)
- UNION ALL SELECT id,details FROM (SELECT id,details FROM audit WHERE actor='system' AND action='${FRESH_AUDIT.tick}' ORDER BY id DESC LIMIT 1) ORDER BY id DESC LIMIT 1`;
+export const FRESH_STATE_SELECT=`SELECT id,action,details FROM (SELECT id,action,details FROM audit WHERE actor='system' AND action='${FRESH_AUDIT.state}' ORDER BY id DESC LIMIT 1)
+ UNION ALL SELECT id,action,details FROM (SELECT id,action,details FROM audit WHERE actor='system' AND action='${FRESH_AUDIT.tick}' ORDER BY id DESC LIMIT 1) ORDER BY id DESC LIMIT 1`;
 export const NEWEST_SNAPSHOT_SELECT='SELECT MAX(id) AS id FROM roster_snapshots';
 /** The :110 form; identifyNativeProfile on these rows must return 'ten-rank' before any grant or staff step. */
 export const PROFILE_ROWS_SELECT='SELECT DISTINCT rank,rank_index FROM roster_members WHERE snapshot_id=?1 LIMIT 11';

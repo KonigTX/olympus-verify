@@ -452,5 +452,99 @@ do
   local ack=completedBridge626(m,row);deliver(m,ack,"Fern Melder");m.event("MAIL_INBOX_UPDATE")
   check("collector-reported delivery cannot satisfy signed mail-deletion authority",row.status=="done" and row.serverReceipt==nil and m.deletes==0)
 end
+-- .627 persistent transfer custody and fresh explicit self-command observation.
+local function reloadLive627(x)
+  local before=#x.frames
+  setfenv(assert(loadfile("../OlympusVerify/OlympusVerifyLive242.lua")),x.e)("OlympusVerify")
+  x.v=x.e.OlympusVerifyLive242;x.frame=x.frames[before+1]
+  x.event("PLAYER_LOGIN")
+end
+local function pendingTrade627(x,itemsReady)
+  x.incoming=900;x.tradeItems={{id=123,count=2,name="Pending Item"}}
+  x.event("TRADE_SHOW");x.event("TRADE_ACCEPT_UPDATE",1,1);x.wallet=x.wallet+900
+  if itemsReady then x.bags[123]=2 end
+  x.event("UI_INFO_MESSAGE",1,"Trade complete.")
+end
+local function pendingMail627(x,itemsReady)
+  local h=x.e.OlympusHmac;local code=h.codeFor(x.e.OlympusVerifyConfig.secret,"Durable Sender",h.utcDay(x.e.NOW))
+  x.inbox={{sender="Durable Sender",subject="!verify "..code,body="Original payment note",money=500,items={{id=321,count=3,name="Pending Mail Item"}}}}
+  x.event("MAIL_SHOW");x.inbox[1].money=0;x.inbox[1].items={};x.wallet=x.wallet+500
+  if itemsReady then x.bags[321]=3 end
+  x.event("MAIL_INBOX_UPDATE");x.event("PLAYER_MONEY")
+end
+do
+  local m=member626(false)
+  m.v.QueueSelf("ABCDEF");local first;for _,r in pairs(m.rows()) do first=r end
+  local originalTime=first.observedAt;first.status="rejected"
+  m.e.NOW=m.e.NOW+1;m.v.QueueSelf("ABCDEF")
+  local second;for _,r in pairs(m.rows()) do if r.id~=first.id then second=r end end
+  check("each explicit self-command has its own durable real observation",second and second.observationId~=first.observationId and second.id~=first.id and second.observedAt==m.e.NOW)
+  check("fresh command never resets old rejected body, timestamp or claim",first.status=="rejected" and first.observedAt==originalTime and first.code==second.code)
+  local id=second.id;local observation=second.observationId;m.v.Flush("retry");wireMessages(m);m.v.Flush("retry")
+  check("transport retries preserve the original new command ID and proof clock",m.rows()[id]==second and second.observationId==observation and second.observedAt==m.e.NOW)
+end
+do
+  local x=fixture(true);local originalClaim=x.e.OlympusVerifyTreasury.ClaimTradeIntake242;local savedBeforeClaim=false
+  x.e.OlympusVerifyTreasury.ClaimTradeIntake242=function()
+    local id=x.e.OlympusVerifyTreasury.TradeTransferId627();local p=x.e.OlympusVerifyDB.intake242.tradeCollection242
+    savedBeforeClaim=p and p.transferId==id and p.contextVersion==1 and p.ownGuid==x.e.UnitGUID("player") and not (x.e.OlympusVerifyDB.treasury.liveIntakeOwners242 and x.e.OlympusVerifyDB.treasury.liveIntakeOwners242[id])
+    return originalClaim()
+  end
+  pendingTrade627(x,false)
+  local first=x.e.OlympusVerifyDB.intake242.tradeCollection242;local id=first.transferId
+  check("full native trade context is persisted before exclusive Treasury claim",savedBeforeClaim and x.e.OlympusVerifyDB.treasury.liveIntakeOwners242[id]==true and first.moneyConfirmed==true and first.itemsConfirmed~=true)
+  x.incoming=500;x.tradeItems={};x.event("TRADE_SHOW");x.event("TRADE_ACCEPT_UPDATE",1,1);x.wallet=x.wallet+500;x.event("UI_INFO_MESSAGE",1,"Trade complete.")
+  local held=x.e.OlympusVerifyDB.intake242.heldTransfers627[id]
+  check("a new trade cannot overwrite an older claimed item-proof-pending transfer",held and held.context.transferId==id and held.context.items[1].itemId==123 and x.rows()[id]==nil)
+end
+do
+  local x=fixture(true);pendingTrade627(x,false)
+  local saved=x.e.OlympusVerifyDB.intake242.tradeCollection242;local id=saved.transferId;local at=saved.completedAt
+  x.e.NOW=x.e.NOW+5;reloadLive627(x);x.bags[123]=2;x.event("BAG_UPDATE_DELAYED")
+  local restored=x.e.OlympusVerifyDB.intake242.tradeCollection242
+  check("reload retains the same unproved trade as held, not a new body or credit",restored and restored.transferId==id and restored.completedAt==at and restored.restored==true and x.rows()[id]==nil and x.v.Status().heldTransfers>0)
+end
+do
+  local x=fixture(true);local queue=x.v.Queue
+  x.v.Queue=function(row,key) if row.type=="donation" then return nil end;return queue(row,key) end
+  pendingTrade627(x,true)
+  local saved=x.e.OlympusVerifyDB.intake242.tradeCollection242;local id=saved.transferId;local at=saved.completedAt
+  check("confirmed trade saves the exact export body before queue handoff",saved.exportBody and saved.exportBody.id==id and saved.moneyConfirmed==true and saved.itemsConfirmed==true)
+  x.e.NOW=x.e.NOW+5;reloadLive627(x)
+  local row=x.rows()[id]
+  check("reload completes only the same already-proven trade ID/body/original clock",row and row.id==id and row.observedAt==at and row.requestedAt==at and row.donation.copper==900 and row.donation.items[1].count==2 and x.e.OlympusVerifyDB.intake242.tradeCollection242==nil)
+  check("trade restoration never repeats native transfer, loot or deletion",#x.e.OlympusVerifyDB.treasury.receipts==1 and x.takes==0 and x.deletes==0)
+end
+do
+  local x=fixture(true);local queue=x.v.Queue;local claim=x.e.OlympusVerifyTreasury.ClaimMailIntake242;local beforeClaim=false
+  x.e.OlympusVerifyTreasury.ClaimMailIntake242=function(i)
+    local p=x.e.OlympusVerifyDB.intake242.mailCollection242;local id=x.e.OlympusVerifyTreasury.MailTransferId627(i)
+    beforeClaim=p and p.transferId==id and p.header.items[1].count==3 and p.body=="Original payment note"
+    return claim(i)
+  end
+  x.v.Queue=function(row,key) if row.type=="donation" then return nil end;return queue(row,key) end
+  pendingMail627(x,true)
+  local saved=x.e.OlympusVerifyDB.intake242.mailCollection242;local id=saved.transferId;local at=saved.completedAt;local takes=x.takes
+  check("mail custody and original value/items precede exclusive claim",beforeClaim and saved.exportBody and saved.inboxConfirmed==true and saved.itemsConfirmed==true and saved.moneyConfirmed==true)
+  x.e.NOW=x.e.NOW+5;reloadLive627(x)
+  local row=x.rows()[id]
+  check("restored confirmed mail completes its original ID/body/note/clock",row and row.observedAt==at and row.donation.copper==500 and row.donation.items[1].count==3 and row.donation.note=="Original payment note" and x.e.OlympusVerifyDB.intake242.mailCollection242==nil)
+  check("mail restore never repeats Take/Delete or supplies automatic tithe credit",x.takes==takes and x.deletes==0 and row and row.evidence.automaticCredit==false)
+end
+do
+  local x=fixture(true);pendingMail627(x,false)
+  local saved=x.e.OlympusVerifyDB.intake242.mailCollection242;local id=saved.transferId;local takes=x.takes
+  reloadLive627(x);x.bags[321]=3;x.event("BAG_UPDATE_DELAYED")
+  local p=x.e.OlympusVerifyDB.intake242.mailCollection242
+  check("unproved restored mail remains held under its original ID without retrying loot",p and p.transferId==id and p.restored==true and p.itemsConfirmed~=true and x.rows()[id]==nil and x.takes==takes and x.deletes==0)
+end
+do
+  local x=fixture(true);pendingTrade627(x,false)
+  local d=x.e.OlympusVerifyDB.intake242;local id=d.tradeCollection242.transferId
+  d.heldTransfers627={};for i=1,1000 do d.heldTransfers627["retained-"..i]={context={original=i},reason="synthetic retained original"} end
+  reloadLive627(x);x.event("TRADE_SHOW");x.event("TRADE_ACCEPT_UPDATE",1,1);x.event("UI_INFO_MESSAGE",1,"Trade complete.")
+  local n=0;for _ in pairs(d.heldTransfers627) do n=n+1 end
+  check("retained-context capacity visibly refuses new intake without dropping originals",n==1000 and x.v.Status().transferCapacityHeld==true and d.tradeCollection242.transferId==id and x.e.OlympusVerifyDB.treasury.liveIntakeOwners242[id]==true and x.rows()[id]==nil)
+end
 print(string.format("live242: %d passed, %d failed",passed,failed))
 if failed>0 then error("live242 post-deploy checks failed: "..table.concat(failureLabels," | ")) end

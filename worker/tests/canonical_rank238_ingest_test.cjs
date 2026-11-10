@@ -107,6 +107,53 @@ const body238=String.raw`
  try{await W249.kickRoleWork242(env,'sweep');await drain249();}finally{globalThis.fetch=oldFetch249;}
  check('249 changed-G refused visit stamp holds chain without a second self-wake or role replay',raced249&&signals249.length===1&&jobs249.length===0&&put()===0&&del()===0&&db.prepare("SELECT COUNT(*) n FROM audit WHERE action='role.native232_attempt' AND subject=? AND json_type(details,'$.walk')='text'").get(A).n===0);db.close();
 
+
+ // .262: exceed the real16-hop transport boundary, lose the next self-wake,
+ // then enter through an independent root with no supplied sweep token.
+ code=await setup233(6,{putUnknown:true});reply=await invoke(code);
+ const originalUnknown262=rows().find(r=>r.state==='unknown'&&r.attempts===1),unknownBytes262=JSON.stringify(originalUnknown262),identity262=identity238();
+ check('262 deep-resume fixture preserves a genuine original unknown rather than minting authority',!!originalUnknown262&&put()===1);
+ options.putUnknown=false;await backlog238(206);await stage241(6);http=[];
+ const snapshot262=db.prepare('SELECT MAX(id) n FROM roster_snapshots').get().n,jobs262=[],signals262=[],physical262=[];
+ let refuseHandoff262=true,handoffFailures262=0,steps262=0;
+ const state262=()=>JSON.parse(db.prepare("SELECT details FROM audit WHERE actor='system' AND action='role.fresh_state' ORDER BY id DESC LIMIT 1").get().details);
+ const visits262=walk=>db.prepare("SELECT subject,COUNT(*) n FROM audit WHERE actor='system' AND action='role.native232_attempt' AND json_extract(details,'$.walk')=? GROUP BY subject").all(walk);
+ const bridge262=async(url,init)=>{
+  if(String(url)!=='https://verify.example/internal/roles242/continue')return oldFetch249(url,init);
+  const payload=JSON.parse(init.body);signals262.push(payload);
+  if(refuseHandoff262&&signals262.length===17)return new Response('synthetic private failed handoff body',{status:503});
+  const count={used:0},childEnv=E238.countStatements(env,count);
+  const response=await W249.handleRoleContinuation242(new Request(url,{method:init.method,headers:init.headers,body:init.body}),childEnv,(label,work)=>jobs262.push({label,work,count}));
+  if(response.status!==202)throw Error('262_actual_signed_child_refused');return response;
+ };
+ async function drain262(){while(jobs262.length){if(++steps262>200)throw Error('262_finite_resume_bound');const job=jobs262.shift();try{await job.work();}catch(error){if(error?.message!=='role242_continuation_held'||error?.status!==503)throw error;handoffFailures262++;}physical262.push(job.count.used);}}
+ globalThis.fetch=bridge262;
+ try{await W249.kickRoleWork242(env,'sweep');await drain262();}finally{globalThis.fetch=oldFetch249;}
+ const pending262=state262(),walk262=pending262.walk,firstVisits262=visits262(walk262),restart262=signals262.length;
+ check('262 failed seventeenth signed self-handoff leaves one confirmed pending generation',handoffFailures262===1&&signals262.length===17&&jobs262.length===0&&pending262.continuation===true&&pending262.n===snapshot262&&/^[a-f0-9]{32}$/.test(walk262)&&firstVisits262.length>0&&firstVisits262.length<207);
+ check('262 pending max-ten checkpoint does not infer continuation from a nonnull stop',db.prepare("SELECT details FROM audit WHERE action='role.fresh_state' AND json_extract(details,'$.walk')=?").all(walk262).some(r=>{const d=JSON.parse(r.details);return d.continuation===true&&d.visits===10&&d.stop===null;}));
+ refuseHandoff262=false;globalThis.fetch=bridge262;
+ try{await W249.kickRoleWork242(env,'sweep');await drain262();}finally{globalThis.fetch=oldFetch249;}
+ const allVisits262=visits262(walk262),complete262=state262();
+ check('262 independent root resumes after depth16 without a supplied token or new walk',signals262[restart262].kind==='sweep'&&!signals262[restart262].sweep&&signals262.slice(restart262+1).every(p=>p.sweep?.id===walk262&&p.sweep.n===snapshot262)&&complete262.walk===walk262&&complete262.n===snapshot262);
+ check('262 root-resumed real Native chain completes207 distinct subjects without repeating visits',allVisits262.length===207&&allVisits262.every(r=>r.n===1)&&complete262.continuation===false&&jobs262.length===0);
+ check('262 resumption retains original physical850+5 and per-pass10/40 admission',physical262.every(n=>n<=855)&&db.prepare("SELECT details FROM audit WHERE action='role.fresh_state' AND json_extract(details,'$.walk')=?").all(walk262).every(r=>{const d=JSON.parse(r.details);return d.visits<=10&&d.attempts<=40;}));
+ const root262=async()=>{const count={used:0},bounded=E238.countStatements(env,count),calls=load('./roles').callBudget(bounded);return F238.runFreshPass(bounded,{calls,adm:F238.nativeAdmission232(count,850)},'ingest',L238.captureLaneConfig(bounded));};
+ const oldCount262=allVisits262.length;await root262();
+ check('262 completed checkpoint is not reused by a later normal root',state262().walk!==walk262&&visits262(walk262).length===oldCount262);
+ const hint262={...state262(),walk:'c'.repeat(32),n:snapshot262,continuation:true};
+ for(const [label,action,value] of [
+  ['reference-free tick','role.fresh_tick',hint262],
+  ['completed state','role.fresh_state',{...hint262,continuation:false}],
+  ['superseded snapshot','role.fresh_state',{...hint262,n:snapshot262-1}],
+  ['malformed walk','role.fresh_state',{...hint262,walk:'C'.repeat(32)}],
+  ['truthy nonboolean','role.fresh_state',{...hint262,continuation:1}]
+ ]){
+  await env.DB.prepare("INSERT INTO audit(ts,actor,action,subject,details)VALUES(?,'system',?,'ingest',?)").bind(T,action,JSON.stringify(value)).run();const before=visits262(value.walk).length;await root262();
+  check('262 '+label+' cannot be inferred into resumable Native state',state262().walk!==value.walk&&state262().n===snapshot262&&visits262(value.walk).length===before);
+ }
+ check('262 deep failure/resume and rejected checkpoints never retry or alter original unknown/G/GUID',put()===0&&del()===0&&JSON.stringify(rows().find(r=>r.id===originalUnknown262.id))===unknownBytes262&&identity238()===identity262);db.close();
+
  globalThis.fetch=originalFetch257;
  console.log(ok+'/'+n+' canonical238 original Native ingest checks passed');process.exitCode=ok===n?0:1;
 `;

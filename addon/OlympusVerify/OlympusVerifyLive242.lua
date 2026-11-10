@@ -47,7 +47,7 @@ function V.Queue(row, key)
   if row.id and d.entries[row.id] then return d.entries[row.id] end
   d.nextId=(tonumber(d.nextId) or 0)+1
   row.id=row.id or H.sha256hex(table.concat({guid(call(UnitGUID,"player")) or ownName() or "unknown",tostring(time()),tostring(d.nextId)},"|")):sub(1,32)
-  row.requestedAt=row.requestedAt or time();row.requestedBy=row.requestedBy or ownName();row.status="pending";row.clientVersion="0.6.26"
+  row.requestedAt=row.requestedAt or time();row.requestedBy=row.requestedBy or ownName();row.status="pending";row.clientVersion="0.6.27"
   row.guild=row.guild or call(GetGuildInfo,"player");row.realm=row.realm or call(GetRealmName)
   d.entries[row.id]=row;if key then d.dedup[key]=row.id end
   if type(OlympusDB)=="table" then
@@ -432,13 +432,86 @@ end
 local function bagCount(id)
   return type(id)=="number" and call(GetItemCount,id,false) or nil
 end
+local function transferId627(kind)
+  local d=db();if not d then return nil end
+  d.transferNext627=(tonumber(d.transferNext627) or 0)+1
+  return H.sha256hex(table.concat({"transfer627",guid(call(UnitGUID,"player")) or ownName() or "",kind,tostring(time()),tostring(d.transferNext627)},"|")):sub(1,32)
+end
+local function transferBase627(kind,id)
+  return {contextVersion=1,kind=kind,transferId=id,ownGuid=guid(call(UnitGUID,"player")),ownName=ownName(),guild=call(GetGuildInfo,"player"),realm=call(GetRealmName),observedAt=time()}
+end
+local function saveTransfer627(p)
+  local d=db();if not d then return false end
+  if p.kind=="trade" then d.tradeCollection242=clone(p) else d.mailCollection242=clone(p) end
+  return true
+end
+local function heldCount627(d)
+  if state.heldTransferCount627~=nil then return state.heldTransferCount627 end
+  local n=0
+  for _ in pairs(type(d.heldTransfers627)=="table" and d.heldTransfers627 or {}) do n=n+1;if n>1000 then break end end
+  state.heldTransferCount627=n;return n
+end
+local function transferRoom627()
+  local d=db();if not d or heldCount627(d)>=1000 then state.transferCapacityHeld627=true;return false end
+  return true
+end
+local function holdTransfer627(p,reason)
+  local d=db();if not d then return end
+  if not transferRoom627() then return false end
+  d.heldTransfers627=d.heldTransfers627 or {};d.heldTransferNext627=(tonumber(d.heldTransferNext627) or 0)+1
+  local key=type(p)=="table" and text(p.transferId,64) or nil
+  key=key or ("untyped-"..d.heldTransferNext627)
+  if d.heldTransfers627[key] then key=key.."-"..d.heldTransferNext627 end
+  d.heldTransfers627[key]={context=p,reason=reason,heldAt=time()}
+  state.heldTransferCount627=heldCount627(d)+1
+  return true
+end
+local function validTransfer627(p,kind)
+  if type(p)~="table" or p.contextVersion~=1 or p.kind~=kind or not text(p.transferId,32)
+    or (#p.transferId~=24 and #p.transferId~=32) or not p.transferId:match("^%x+$")
+    or not guid(p.ownGuid) or p.ownGuid~=guid(call(UnitGUID,"player")) or not text(p.ownName,128) or norm(p.ownName)~=norm(ownName())
+    or not text(p.guild,128) or not text(p.realm,128) or type(p.observedAt)~="number" or p.observedAt<=0 or p.observedAt~=math.floor(p.observedAt) or p.observedAt>time()+5 then return false end
+  if p.completedAt~=nil and (type(p.completedAt)~="number" or p.completedAt<p.observedAt or p.completedAt>time()+5 or p.completedAt~=math.floor(p.completedAt)) then return false end
+  local items=kind=="trade" and p.items or type(p.header)=="table" and p.header.items
+  if type(items)~="table" or #items>16 or type(p.beforeMoney)~="number" or p.beforeMoney<0 then return false end
+  for _,item in ipairs(items) do
+    if type(item)~="table" or type(item.itemId)~="number" or item.itemId<=0 or item.itemId~=math.floor(item.itemId)
+      or type(item.count)~="number" or item.count<1 or item.count~=math.floor(item.count) then return false end
+  end
+  if kind=="trade" then return text(p.partner,128) and type(p.incoming)=="number" and p.incoming>=0 and type(p.outgoing)=="number" and p.outgoing>=0 end
+  return text(p.header.sender,128) and text(p.header.subject,512) and text(p.body,8192) and type(p.header.money)=="number" and p.header.money>=0
+    and type(p.expected)=="table" and type(p.beforeItems)=="table" and type(p.mail)=="table" and text(p.key,128)
+end
+local function queueTransfer627(p,row,key)
+  local d=db();if not d then return nil end
+  local at=p.completedAt or p.observedAt
+  row.id=p.transferId;row.observedAt=at;row.requestedAt=at;row.requestedBy=p.ownName;row.guild=p.guild;row.realm=p.realm;row.clientVersion="0.6.27"
+  local expected=bodyBinding(row)
+  if not expected or p.exportBody and bodyBinding(p.exportBody)~=expected then p.heldReason="saved_transfer_body_unproved";saveTransfer627(p);return nil end
+  if not p.exportBody then p.exportBody=clone(row);saveTransfer627(p) end
+  local original=d.entries[p.transferId]
+  if original and bodyBinding(original)~=bodyBinding(p.exportBody) then p.heldReason="original_intake_body_conflict";saveTransfer627(p);return nil end
+  local queued=V.Queue(clone(p.exportBody),key)
+  if queued and (queued.id~=p.transferId or bodyBinding(queued)~=expected) then p.heldReason="original_intake_body_conflict";saveTransfer627(p);return nil end
+  if not queued then p.heldReason="intake_queue_unavailable";saveTransfer627(p) end
+  return queued
+end
 local function settleMailCollection()
   local p=state.collecting;if not p then return end
-  local h=mailHeader(p.index)
-  if not h or h.sender~=p.header.sender or h.subject~=p.header.subject or h.money~=0 or h.hasItems then return end
-  if p.header.money>0 and (call(GetMoney) or -1)-p.beforeMoney~=p.header.money then return end
-  for id,count in pairs(p.expected) do if type(bagCount(id))~="number" or bagCount(id)-(p.beforeItems[id] or 0)<count then return end end
-  local row=V.Queue({id=p.transferId,type="donation",source="mail",character=p.header.sender,guidSource="unavailable",observedAt=time(),
+  if not validTransfer627(p,"mail") then p.heldReason="invalid_saved_mail_context";saveTransfer627(p);return end
+  if p.treasuryExpected and p.exclusiveClaimed~=true then p.heldReason="mail_claim_unproved";saveTransfer627(p);return end
+  if not p.restored then
+    local h=mailHeader(p.index);local body=text(call(GetInboxText,p.index),8192)
+    if h and h.sender==p.header.sender and h.subject==p.header.subject and body==p.body and h.money==0 and not h.hasItems then p.inboxConfirmed=true end
+    local money=call(GetMoney)
+    if type(money)=="number" and money-p.beforeMoney==p.header.money then p.moneyConfirmed=true end
+    local confirmed=true;for id,count in pairs(p.expected) do local n=bagCount(id);if type(n)~="number" or type(p.beforeItems[id])~="number" or n-p.beforeItems[id]<count then confirmed=false end end
+    if confirmed then p.itemsConfirmed=true end
+    if p.inboxConfirmed and p.moneyConfirmed and p.itemsConfirmed and not p.completedAt then p.completedAt=time() end
+    saveTransfer627(p)
+  end
+  if p.inboxConfirmed~=true or p.moneyConfirmed~=true or p.itemsConfirmed~=true then p.heldReason=p.restored and "restored_mail_native_proof_incomplete" or "mail_native_proof_pending";saveTransfer627(p);return end
+  local row=queueTransfer627(p,{type="donation",source="mail",character=p.header.sender,guidSource="unavailable",
     donation={copper=p.header.money,items=p.header.items,note=p.body or p.header.subject},
     evidence={kind="mail-loot-inbox-empty-and-wallet-bag-delta",confirmedLocal=true,automaticCredit=false}},"mail-loot|"..p.key)
   if row then p.mail.donationId=row.id;p.mail.collected=true;local d=db();if d then d.mailCollection242=nil end;state.collecting=nil end
@@ -514,7 +587,7 @@ function V.ScanMailbox()
         local validCode=H.strictCode(token) and type(cfg.secret)=="string" and H.checkCode(cfg.secret,h.sender,H.strictCode(token))
         local originalProof=captured and captured.mailProof242
         local exactProof=originalProof and originalProof.fingerprint==fingerprint
-        if readableComplete and unique and exactProof and validCode and h.cod==0 and (h.money>0 or h.hasItems) and not mail.collected and not state.collecting then
+        if readableComplete and unique and exactProof and validCode and h.cod==0 and (h.money>0 or h.hasItems) and not mail.collected and not state.collecting and not state.mailRestoreHeld627 and transferRoom627() then
           local beforeItems,expected={},{};local safe=true
           for _,item in ipairs(h.items) do
             if type(item.itemId)~="number" or type(item.count)~="number" or type(bagCount(item.itemId))~="number" then safe=false;break end
@@ -524,14 +597,20 @@ function V.ScanMailbox()
           if safe and type(money)=="number" then
           local treasury=OlympusVerifyTreasury;local status=treasury and call(treasury.Status)
           local treasuryExpected=h.money>0 and status and status.enabled
-          local transferId=treasuryExpected and call(treasury.ClaimMailIntake242,i) or nil
+          local transferId=treasuryExpected and call(treasury.MailTransferId627,i) or transferId627("mail")
           if not treasuryExpected or transferId then
-          state.collecting={index=i,header=h,key=mail.observation and mail.observation.id or fingerprint,mail=mail,body=body,beforeMoney=money,beforeItems=beforeItems,expected=expected,transferId=transferId}
-            d.mailCollection242=clone(state.collecting)
+          local pending=transferBase627("mail",transferId)
+          pending.index=i;pending.header=h;pending.key=mail.observation and mail.observation.id or fingerprint;pending.mail=mail;pending.mailFingerprint=fingerprint
+          pending.body=body;pending.beforeMoney=money;pending.beforeItems=beforeItems;pending.expected=expected;pending.treasuryExpected=treasuryExpected
+          state.collecting=pending;saveTransfer627(pending)
+          if validTransfer627(pending,"mail") and (not treasuryExpected or call(treasury.ClaimMailIntake242,i)==transferId) then
+            pending.exclusiveClaimed=treasuryExpected and true or false;saveTransfer627(pending)
             -- Actual loot is confirmed by later mailbox/wallet/bag events; a
             -- successful API return alone never records a donation.
             if h.money>0 then call(TakeInboxMoney,i) end
             if h.hasItems then call(AutoLootMailItem,i) end
+          else pending.heldReason="mail_context_or_claim_unproved";saveTransfer627(pending)
+          end
           end
           end
         end
@@ -559,23 +638,59 @@ local function tradeItems()
 end
 local function finishTrade()
   local t=state.trade
-  if not t or t.ambiguous or not t.complete or not t.accepted or not t.partner or type(t.incoming)~="number" or type(t.outgoing)~="number" then return end
-  local balance=call(GetMoney)
-  if type(balance)~="number" or balance-t.beforeMoney~=t.incoming-t.outgoing then return end
+  if state.tradeCapacityBlocked627 then return end
+  if not t or t.ambiguous or t.complete~=true or t.accepted~=true or not t.partner or type(t.incoming)~="number" or type(t.outgoing)~="number" then return end
+  if not validTransfer627(t,"trade") then t.heldReason="invalid_saved_trade_context";saveTransfer627(t);return end
+  if t.treasuryExpected and t.exclusiveClaimed~=true then t.heldReason="trade_claim_unproved";saveTransfer627(t);return end
   local expected={};for _,item in ipairs(t.items) do
     if not item.itemId or type(item.count)~="number" then return end
     expected[item.itemId]=(expected[item.itemId] or 0)+item.count
   end
-  for id,count in pairs(expected) do
-    local now=bagCount(id);if type(now)~="number" or not t.beforeItems or type(t.beforeItems[id])~="number" or now-t.beforeItems[id]<count then return end
+  if not t.restored then
+    local balance=call(GetMoney)
+    if type(balance)=="number" and balance-t.beforeMoney==t.incoming-t.outgoing then t.moneyConfirmed=true end
+    local confirmed=true
+    for id,count in pairs(expected) do
+      local now=bagCount(id);if type(now)~="number" or not t.beforeItems or type(t.beforeItems[id])~="number" or now-t.beforeItems[id]<count then confirmed=false end
+    end
+    if confirmed then t.itemsConfirmed=true end
+    saveTransfer627(t)
   end
+  if t.moneyConfirmed~=true or t.itemsConfirmed~=true then t.heldReason=t.restored and "restored_trade_native_proof_incomplete" or "trade_native_proof_pending";saveTransfer627(t);return end
   if t.incoming>0 or #t.items>0 then
     if t.incoming>0 and t.treasuryExpected and not t.transferId then return end
-    V.Queue({id=t.incoming>0 and t.transferId or nil,type="donation",source="trade",character=t.partner,guid=t.guid,observedAt=time(),
+    local row=queueTransfer627(t,{type="donation",source="trade",character=t.partner,guid=t.guid,
       donation={copper=t.incoming,outgoingCopper=t.outgoing,items=t.items,note=t.note or ""},
-      evidence={kind="native-trade-complete-and-wallet-delta",confirmedLocal=true,automaticCredit=false}},"trade|"..(t.incoming>0 and t.transferId or t.id))
+      evidence={kind="native-trade-complete-and-wallet-delta",confirmedLocal=true,automaticCredit=false}},"trade|"..t.transferId)
+    if not row then return end
   end
-  state.trade=nil
+  local d=db();if d then d.tradeCollection242=nil end;state.trade=nil
+end
+local function restorePending627()
+  if state.restoredPending627 then return end
+  state.restoredPending627=true;local d=db();if not d then return end
+  for _,kind in ipairs({"trade","mail"}) do
+    local field=kind=="trade" and "tradeCollection242" or "mailCollection242";local saved=d[field]
+    if saved then
+      if validTransfer627(saved,kind) then
+        local p=clone(saved);p.restored=true
+        if kind=="trade" then state.trade=p
+        else
+          local fingerprint=p.mailFingerprint
+          if not fingerprint and d.mailActive then fingerprint=d.mailActive[H.sha256hex(p.header.sender.."|"..p.header.subject.."|"..p.body)] end
+          local original=fingerprint and d.mail and d.mail[fingerprint]
+          if p.mail.verifyId and (not original or original.verifyId~=p.mail.verifyId) then
+            state.mailRestoreHeld627=true;holdTransfer627(saved,"saved_mail_instance_binding_unproved")
+          else p.mail=original or p.mail;state.collecting=p end
+        end
+      else
+        d.restoreHeldKinds627=d.restoreHeldKinds627 or {}
+        if not d.restoreHeldKinds627[kind] then d.restoreHeldKinds627[kind]=holdTransfer627(saved,"legacy_or_invalid_saved_"..kind.."_context") and true or false end
+        if kind=="mail" then state.mailRestoreHeld627=true elseif d.restoreHeldKinds627[kind] then d.tradeCollection242=nil end
+      end
+    end
+  end
+  finishTrade();settleMailCollection()
 end
 local function mirrorBridge()
   local d=db();if not d then return end
@@ -610,7 +725,8 @@ end
 function V.Flush(reason)
   receipts();mirrorBridge();finishTrade();settleMailCollection()
   local d=db();if d then d.lastFlush={at=time(),reason=reason,pendingPersisted=true};d.lastCharacter=ownName();d.lastGuid=guid(call(UnitGUID,"player")) end
-  if d and state.collecting then d.mailCollection242=clone(state.collecting) end
+  if d and state.collecting then saveTransfer627(state.collecting) end
+  if d and state.trade then saveTransfer627(state.trade) end
   -- A claimed rich transfer owns the original Treasury ID even if its item
   -- proof is still pending. Never export a second body or replace it later.
   local treasury=OlympusVerifyDB and OlympusVerifyDB.treasury
@@ -649,7 +765,11 @@ end
 function V.Status()
   local d=db();local pending=0;for _,r in pairs(d and d.entries or {}) do if r.status=="pending" then pending=pending+1 end end
   local unsupported=0;for _,reason in pairs(d and d.deliveryFailures242 or {}) do if reason=="unsupported_callback" then unsupported=unsupported+1 end end
-  return {pending=pending,unsupportedCallbacks=unsupported,mailGuidAvailable=false,serverDurableDeletionOnly=true}
+  local held=state.mailRestoreHeld627 and 1 or 0
+  if d then held=held+heldCount627(d) end
+  if state.trade and state.trade.heldReason then held=held+1 end
+  if state.collecting and state.collecting.heldReason then held=held+1 end
+  return {pending=pending,heldTransfers=held,transferCapacityHeld=state.transferCapacityHeld627==true,unsupportedCallbacks=unsupported,mailGuidAvailable=false,serverDurableDeletionOnly=true}
 end
 function V.VisibleEntries()
   local d=db();local out={};local me=norm(ownName());local watcher=V.IsAuthorizedWatcher()
@@ -659,14 +779,17 @@ end
 function V.PrintOwnStatus()
   local rows=V.VisibleEntries();say("Your verification and role requests: "..#rows..". Open Olympus with /oly -> Verify / QR Code tab.")
   local d=db()
+  if state.transferCapacityHeld627 then say("Transfer intake is held at its retained-context capacity. Existing originals and claims are preserved for review.") end
   for i=math.max(1,#rows-19),#rows do local r=rows[i];local unsupported=d and d.deliveryFailures242 and d.deliveryFailures242[r.id]=="unsupported_callback";say((r.type or "request")..": "..(unsupported and "unsupported_callback" or r.status or "pending")..(r.serverReceipt and r.serverReceipt.discordRole and " / "..r.serverReceipt.discordRole or "")) end
 end
 function V.QueueSelf(code)
   code=H.strictCode(code or "")
   local me,id=ownName(),guid(call(UnitGUID,"player"));local guildName,rankName,rankIndex=call(GetGuildInfo,"player")
   if not code or not me or not id then say("Use /olv verify CODE with your own code and a readable native player identity.");return false end
+  local observation=V.NewVerificationObservation("self-command",me,id)
+  if not observation then return false end
   local row=V.Queue({type="verify",source="self-addon242",character=me,guid=id,guild=guildName,rankName=rankName,rankIndex=rankIndex,
-    code=code,requestedBy=me,observedAt=time(),guidSource="UnitGUID-player",bridgeUntrusted=true},"self|"..id.."|"..code)
+    code=code,requestedBy=me,observationId=observation.id,observedAt=observation.observedAt,guidSource="UnitGUID-player",bridgeUntrusted=true},"self|"..id.."|"..code.."|observation|"..observation.id)
   if row and row.status=="pending" then sendRow(row,cfg.bridgeRecipient or cfg.treasuryRecipient or "Fern Melder");say("Your request is saved and silently queued to the Watcher. Open Olympus with /oly -> Verify / QR Code tab.")
   elseif row then say("Your request delivery is "..tostring(row.status)..". Delivery alone does not confirm current verification or a Discord role. Open Olympus with /oly -> Verify / QR Code tab.") end
   return row~=nil
@@ -683,13 +806,13 @@ local function nativeDiscord(info)
   V.Queue({type="guild",source="native-discord-event242",character=name,guid=id,nativeDiscord=proof,observedAt=at},"native-discord|"..user.."|"..id.."|"..math.floor(at/300))
 end
 local function boot()
-  db();receipts();mirrorBridge();officerButton()
+  db();restorePending627();receipts();mirrorBridge();officerButton()
   if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then pcall(C_ChatInfo.RegisterAddonMessagePrefix,"OLYMPUS") end
   if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then pcall(C_ChatInfo.RegisterAddonMessagePrefix,"OLV242") end
   if OlympusVerifySlash234 and OlympusVerifySlash234.Register then
     OlympusVerifySlash234.Register("OLYMPUSVERIFYSELF242",{"/olvverify"},function(message) V.QueueSelf(message) end)
     OlympusVerifySlash234.Register("OLYMPUSDONATIONNOTE242",{"/olvdonationnote"},function(message)
-      state.donationNote=text(message,512) or "";if state.trade then state.trade.note=state.donationNote end;say("Note saved for the current/next completed trade; a note is not payment proof.")
+      state.donationNote=text(message,512) or "";if state.trade and not state.trade.complete then state.trade.note=state.donationNote;saveTransfer627(state.trade) end;say("Note saved for the current/next completed trade; a note is not payment proof.")
     end)
   end
   OlympusVerifyBridge242={QueueSelf=V.QueueSelf,VisibleEntries=V.VisibleEntries,IsAuthorizedWatcher=V.IsAuthorizedWatcher}
@@ -726,7 +849,7 @@ local function boot()
   if type(hooksecurefunc)=="function" and not state.mailHooks then
     state.mailHooks=true
     local function taking(index)
-      if state.collecting or not state.mailOpen then return end
+      if state.collecting or state.mailRestoreHeld627 or not state.mailOpen or not transferRoom627() then return end
       local h=state.mailCache and state.mailCache[index]
       if not h or h.cod~=0 or h.money==0 and not h.hasItems or type(state.mailBalance)~="number" then return end
       local beforeItems,expected={},{}
@@ -737,10 +860,12 @@ local function boot()
       local body=text(call(GetInboxText,index),8192) or h.subject
       local treasury=OlympusVerifyTreasury;local status=treasury and call(treasury.Status)
       local treasuryExpected=h.money>0 and status and status.enabled
-      local transferId=treasuryExpected and call(treasury.ClaimMailIntake242,index) or nil
+      local transferId=treasuryExpected and call(treasury.MailTransferId627,index) or transferId627("mail")
       if treasuryExpected and not transferId then return end
-      state.collecting={index=index,header=h,key=transferId or mailSignature(h,body).."|"..time().."|"..index,mail={},body=body,beforeMoney=state.mailBalance,beforeItems=beforeItems,expected=expected,transferId=transferId}
-      local d=db();if d then d.mailCollection242=clone(state.collecting) end
+      local pending=transferBase627("mail",transferId)
+      pending.index=index;pending.header=h;pending.key=transferId;pending.mail={};pending.body=body;pending.beforeMoney=state.mailBalance;pending.beforeItems=beforeItems;pending.expected=expected;pending.treasuryExpected=treasuryExpected
+      state.collecting=pending;saveTransfer627(pending)
+      if treasuryExpected then pending.exclusiveClaimed=call(treasury.ClaimMailIntake242,index)==transferId;if not pending.exclusiveClaimed then pending.heldReason="mail_claim_unproved" end;saveTransfer627(pending) end
     end
     for _,name in ipairs({"TakeInboxMoney","TakeInboxItem","AutoLootMailItem"}) do if type(_G[name])=="function" then pcall(hooksecurefunc,name,taking) end end
   end
@@ -756,21 +881,39 @@ f:SetScript("OnEvent",function(_,event,...)
   elseif event=="PLAYER_LOGOUT" then V.Flush("logout")
   elseif event=="BAG_UPDATE_DELAYED" or event=="PLAYER_MONEY" then settleMailCollection();finishTrade()
   elseif event=="TRADE_SHOW" then
+    if not transferRoom627() then state.tradeCapacityBlocked627=true;return end
     local partner=text(call(GetUnitName,"npc",true),128) or text(call(UnitName,"npc"),128)
     local money=call(GetMoney)
-    if state.trade then state.tradeUncertainUntil=time()+30 end
+    if state.trade then
+      finishTrade()
+      if state.trade then
+        if not state.trade.complete then state.tradeUncertainUntil=time()+30 end
+        if not holdTransfer627(clone(state.trade),"superseded_by_new_native_trade") then state.tradeCapacityBlocked627=true;return end
+        local d=db();if d then d.tradeCollection242=nil end;state.trade=nil
+      end
+    end
     local treasury=OlympusVerifyTreasury;local status=treasury and call(treasury.Status)
-    local transferId=treasury and call(treasury.ClaimTradeIntake242)
-    if partner and type(money)=="number" then state.trade={id=H.sha256hex((guid(call(UnitGUID,"player")) or "")..time()..tostring(call(GetTime))):sub(1,32),partner=partner,guid=guid(call(UnitGUID,"npc")),beforeMoney=money,items=tradeItems(),incoming=call(GetTargetTradeMoney),outgoing=call(GetPlayerTradeMoney),ambiguous=time()<(state.tradeUncertainUntil or 0),note=state.donationNote,transferId=transferId,treasuryExpected=status and status.enabled} end
-  elseif event=="TRADE_MONEY_CHANGED" or event=="TRADE_TARGET_ITEM_CHANGED" or event=="TRADE_PLAYER_ITEM_CHANGED" then if state.trade then state.trade.items=tradeItems();state.trade.incoming=call(GetTargetTradeMoney);state.trade.outgoing=call(GetPlayerTradeMoney);state.trade.accepted=false end
-  elseif event=="TRADE_ACCEPT_UPDATE" then local ours,theirs=...;if state.trade then
+    local treasuryExpected=status and status.enabled
+    local transferId=treasuryExpected and call(treasury.TradeTransferId627) or transferId627("trade")
+    if partner and type(money)=="number" and transferId then
+      local pending=transferBase627("trade",transferId)
+      pending.partner=partner;pending.guid=guid(call(UnitGUID,"npc"));pending.beforeMoney=money;pending.items=tradeItems();pending.incoming=call(GetTargetTradeMoney);pending.outgoing=call(GetPlayerTradeMoney)
+      pending.ambiguous=time()<(state.tradeUncertainUntil or 0);pending.note=state.donationNote;pending.treasuryExpected=treasuryExpected
+      state.trade=pending;saveTransfer627(pending)
+      if treasuryExpected then pending.exclusiveClaimed=call(treasury.ClaimTradeIntake242)==transferId;if not pending.exclusiveClaimed then pending.heldReason="trade_claim_unproved" end;saveTransfer627(pending) end
+    end
+  elseif event=="TRADE_MONEY_CHANGED" or event=="TRADE_TARGET_ITEM_CHANGED" or event=="TRADE_PLAYER_ITEM_CHANGED" then if state.trade and not state.tradeCapacityBlocked627 then state.trade.items=tradeItems();state.trade.incoming=call(GetTargetTradeMoney);state.trade.outgoing=call(GetPlayerTradeMoney);state.trade.accepted=false;state.trade.moneyConfirmed=nil;state.trade.itemsConfirmed=nil;saveTransfer627(state.trade) end
+  elseif event=="TRADE_ACCEPT_UPDATE" then local ours,theirs=...;if state.trade and not state.tradeCapacityBlocked627 then
     state.trade.items=tradeItems();state.trade.incoming=call(GetTargetTradeMoney);state.trade.outgoing=call(GetPlayerTradeMoney)
     state.trade.accepted=(ours==1 or ours==true) and (theirs==1 or theirs==true)
     state.trade.beforeItems={};for _,item in ipairs(state.trade.items) do if item.itemId then state.trade.beforeItems[item.itemId]=bagCount(item.itemId) end end
+    saveTransfer627(state.trade)
   end
-  elseif event=="TRADE_REQUEST_CANCEL" then state.trade=nil
+  elseif event=="TRADE_REQUEST_CANCEL" then
+    if state.tradeCapacityBlocked627 then return end
+    if state.trade then if not holdTransfer627(clone(state.trade),"native_trade_cancelled") then state.tradeCapacityBlocked627=true;return end;local d=db();if d then d.tradeCollection242=nil end end;state.trade=nil
   elseif event=="TRADE_CLOSED" then finishTrade()
-  elseif event=="UI_INFO_MESSAGE" then local a,b=...;if state.trade and (b or a)==(ERR_TRADE_COMPLETE or "Trade complete.") then state.trade.complete=true;finishTrade() end
+  elseif event=="UI_INFO_MESSAGE" then local a,b=...;if state.trade and not state.tradeCapacityBlocked627 and (b or a)==(ERR_TRADE_COMPLETE or "Trade complete.") then state.trade.complete=true;state.trade.completedAt=state.trade.completedAt or time();saveTransfer627(state.trade);finishTrade() end
   elseif event=="CHAT_MSG_WHISPER" then
     local msg,sender=text(select(1,...),4096),text(select(2,...),128)
     if msg and sender and not verificationText(msg) then

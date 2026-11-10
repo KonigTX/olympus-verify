@@ -10,7 +10,7 @@ const result = pack.prepare(get), manifest = JSON.parse(result.manifest);
 check('two builds are byte-identical', () => { const second = pack.prepare(get); assert.deepEqual(second, result); });
 check('tracked ZIP and manifest equal the current source build', () => { assert.deepEqual(get(pack.ZIP), result.zip); assert.deepEqual(get(pack.MANIFEST), result.manifest); pack.build(root); });
 check('version, complete archive digest and generator are bound', () => {
-  assert.equal(manifest.schema, 'olympus-verify-public-download-v1'); assert.equal(manifest.version, '0.6.26');
+  assert.equal(manifest.schema, 'olympus-verify-public-download-v1'); assert.equal(manifest.version, '0.6.27');
   assert.equal(manifest.archive.path, '/' + pack.ZIP.slice('worker/public/'.length));
   assert.equal(manifest.archive.bytes, result.zip.length); assert.equal(manifest.archive.sha256, hash(result.zip));
   assert.equal(manifest.generator.sha256, hash(get('scripts/build-verify-addon.cjs')));

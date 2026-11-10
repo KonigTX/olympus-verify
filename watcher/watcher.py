@@ -106,7 +106,7 @@ LINE_TS_RE = re.compile(r"^(?P<mo>\d{1,2})/(?P<d>\d{1,2})\s+(?P<h>\d{1,2}):(?P<m
 CLIENT_IN = "Active Player Created"
 CLIENT_OUT = ("Client Object Manager Destroyed", "Client Destroy")
 
-WATCHER_VERSION = "0.6.25"
+WATCHER_VERSION = "0.6.26"
 STRICT_DISPLAY_PROTOCOL = "launch-roster-display-v1"
 STRICT_DISPLAY_PATH = "/queue/unverified?keyVersion=" + STRICT_DISPLAY_PROTOCOL
 STRICT_DISPLAY_MAX_BYTES = 512 * 1024
@@ -545,6 +545,9 @@ class Watcher:
         self._verification_roster_originals: dict[int, dict[str, Any]] = {}
         self._verification_originals: dict[int, dict[str, Any]] = {}
         self._verification_seen_claims: dict[str, dict[str, Any]] = {}
+        # Current-process originals only. Persisted/reloaded queue rows never
+        # acquire this independent scheduling or non-head ACK custody.
+        self._independent_originals: dict[int, dict[str, Any]] = {}
         self._verification_waiting = None
         self._verification_sv_stamp = None
         self._unverified: dict[str, Any] | None = None
@@ -693,11 +696,44 @@ class Watcher:
         self._verification_waiting = None
         log("verification roster ACK: complete native source accepted; pending fresh proofs may now be relayed")
 
+    def _outbox_original_index(self, item: dict[str, Any]) -> int | None:
+        matches = [i for i, original in enumerate(self.state.d["outbox"]) if original is item]
+        return matches[0] if len(matches) == 1 else None
+
+    def _independent_original_current(self, item: dict[str, Any], *, receipt: bool = False) -> bool:
+        original = self._independent_originals.get(id(item))
+        if original is None or original.get("original") is not item or not self._retained_original(item):
+            return False
+        expected = original.get("receipt") if receipt else original.get("snapshot")
+        try:
+            return isinstance(expected, str) and expected == json.dumps(item, sort_keys=True, allow_nan=False)
+        except (TypeError, ValueError, OverflowError):
+            return False
+
+    def _independent_original_ready(self, item: dict[str, Any]) -> bool:
+        if (not self.membership_only or self._outbox_original_index(item) is None
+                or not self._independent_original_current(item)):
+            return False
+        original = self._independent_originals[id(item)]
+        if original["attempted"] is not False or item.get("acknowledged") is True or item.get("refusal_status") is not None:
+            return False
+        if item.get("path") == "/ingest/roster":
+            source = self._verification_roster_originals.get(id(item))
+            return source is not None and source.get("original") is item and item.get("body") == source.get("body")
+        if item.get("path") in ("/ingest/verify", officer_invites233.PATH):
+            source = self._verification_originals.get(id(item))
+            return (source is not None and source["attempted"] is False
+                    and self._verification_original_current(item, source) and self._verification_claims_owned(item, source))
+        return False
+
     def _settle_original(self, item: dict[str, Any]) -> Delivery:
         box = self.state.d["outbox"]
-        if not box or box[0] is not item:
+        index = self._outbox_original_index(item)
+        independent = self._independent_originals.get(id(item))
+        if (index is None or item.get("acknowledged") is not True
+                or (index > 0 or independent is not None) and not self._independent_original_current(item, receipt=True)):
             self._custody_halted = True
-            self._warn_custody("original queue order changed; no delivery was adopted")
+            self._warn_custody("original queue identity or receipt custody changed; no delivery was adopted")
             return Delivery.HELD
         seen_before = None
         if item.get("server_expired") is True:
@@ -707,11 +743,11 @@ class Watcher:
                 return Delivery.HELD
             seen_before = list(self.state.d["seen"])
             self.state.d["seen"] = [claim for claim in seen_before if claim not in original["claims"]]
-        box.pop(0)
+        box.pop(index)
         try:
             self.state.save()
         except OSError as error:
-            box.insert(0, item)
+            box.insert(index, item)
             if seen_before is not None:
                 self.state.d["seen"] = seen_before
             self._custody_halted = True
@@ -724,6 +760,7 @@ class Watcher:
         return Delivery.DELIVERED
 
     def _forget_verification_original(self, item: dict[str, Any]) -> None:
+        self._independent_originals.pop(id(item), None)
         original = self._verification_originals.pop(id(item), None)
         if original is not None:
             for claim in original["claims"]:
@@ -772,10 +809,20 @@ class Watcher:
         if self._custody_halted or not self._retained_original(item):
             self._warn_custody("legacy, changed or different-owner original requires attended recovery")
             return Delivery.HELD
+        if settle is None and self._outbox_original_index(item) is None:
+            self._warn_custody("original is missing or duplicated in durable custody; no request was made")
+            return Delivery.HELD
         if item.get("acknowledged") is True:
             return (settle or self._settle_original)(item)  # a persisted receipt never causes another HTTP request
         if item.get("refusal_status") is not None:
             self._warn_custody("explicitly refused original retained for attended review")
+            return Delivery.HELD
+        independent = self._independent_originals.get(id(item))
+        if independent is not None and not self._independent_original_current(item):
+            self._warn_custody("fresh independent original changed; no request was made")
+            return Delivery.HELD
+        if independent is not None and self.worker.paused():
+            self._warn_custody("worker transport paused; fresh original retained without a request attempt")
             return Delivery.HELD
         expired = False
         if self.membership_only and item.get("path") in ("/ingest/verify", officer_invites233.PATH):
@@ -801,6 +848,8 @@ class Watcher:
             original["attempted"] = True  # before transport; unknown outcomes cannot acquire a second attempt
             retries = 1
         self.worker.last_refusal = None
+        if independent is not None:
+            independent["attempted"] = True
         try:
             # A transport stub or caller cannot mutate the original body held in state.
             body = json.loads(json.dumps(item["body"], allow_nan=False))
@@ -809,6 +858,9 @@ class Watcher:
             self._warn_custody("transport outcome unknown; exact original remains held")
             return Delivery.HELD
         if ok and isinstance(res, dict):
+            if independent is not None and not self._independent_original_current(item):
+                self._warn_custody("fresh original changed during transport; response was not adopted")
+                return Delivery.HELD
             expiry_receipt = self._server_expiry_receipt(item["path"], item.get("body", {}), res)
             if expired and not expiry_receipt:
                 self._warn_custody("expired original lacks an exact server no-effect expiry receipt; original retained")
@@ -827,6 +879,8 @@ class Watcher:
             source = self._verification_roster_originals.get(id(item))
             if source is not None and source["original"] is item:
                 source["receipt"] = json.loads(json.dumps(res))
+            if independent is not None:
+                independent["receipt"] = json.dumps(item, sort_keys=True, allow_nan=False)
             result = (settle or self._settle_original)(item)
             if result is Delivery.DELIVERED:
                 self.note_launch_roster_receipt(item, res)
@@ -872,8 +926,18 @@ class Watcher:
             self._state_write_failed("reservation", error)
             self._warn_custody("custody persistence failed; dispatch stopped and source remains unconsumed")
             return Delivery.NO_CUSTODY
+        if self.membership_only:
+            roster = self._verification_roster_originals.get(id(item))
+            verification = self._verification_originals.get(id(item))
+            if ((path == "/ingest/roster" and roster is not None and roster.get("original") is item
+                 and item.get("body") == roster.get("body"))
+                    or (path in ("/ingest/verify", officer_invites233.PATH) and verification is not None
+                        and self._verification_original_current(item, verification) and self._verification_claims_owned(item, verification))):
+                self._independent_originals[id(item)] = {"original": item, "snapshot": json.dumps(item, sort_keys=True, allow_nan=False),
+                                                        "attempted": False, "receipt": None}
         if box[0] is not item:
-            return Delivery.HELD  # no newer work overtakes an older original
+            if not self._independent_original_ready(item):
+                return Delivery.HELD  # legacy/old originals retain FIFO; none is relabelled or removed
         return self._dispatch_original(item, retries=3)
 
     def _post_claimed(self, path: str, body: Any, label: str, keys: list[str]) -> Delivery:
@@ -903,7 +967,7 @@ class Watcher:
             return False
         if lane == "outbox":
             box = self.state.d["outbox"]
-            if not box or box[0] is not original:
+            if self._outbox_original_index(original) is None:
                 return False
             result = self._settle_original(original)
         elif lane == "queue-written":
@@ -926,7 +990,7 @@ class Watcher:
         return True
 
     def flush_outbox(self) -> None:
-        """Retry buffered posts oldest first, stopping at the first failure so ordering is preserved."""
+        """Keep legacy FIFO; fresh owned Native originals have independent first-attempt custody."""
         box = self.state.d["outbox"]
         if not box:
             return
@@ -941,6 +1005,16 @@ class Watcher:
             if result is not Delivery.DELIVERED:
                 break
             sent += 1
+        # A spent/unknown original does not authorize its own retry or block an
+        # unrelated freshly captured original. Never adopt a reloaded row here.
+        for item in list(box)[:max(0, self.max_outbox)]:
+            if self._custody_halted:
+                break
+            if box and item is box[0]:
+                continue  # the head already had its ordinary turn in this flush
+            if self._independent_original_ready(item):
+                if self._dispatch_original(item, retries=1) is Delivery.DELIVERED:
+                    sent += 1
         if sent:
             log(f"outbox: delivered {sent} buffered post(s), {len(box)} left")
 
