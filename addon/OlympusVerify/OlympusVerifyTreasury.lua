@@ -54,7 +54,11 @@ local function prune(d)
   for _, field in ipairs({ "receipts", "observations" }) do
     local kept, removed = {}, 0
     for _, row in ipairs(d[field]) do
-      if type(row) == "table" and type(row.ts) == "number" and row.ts > cutoff then table.insert(kept, row)
+      local intake=OlympusVerifyDB and OlympusVerifyDB.intake242
+      local ack=type(row)=="table" and intake and intake.acknowledgements and intake.acknowledgements[row.id]
+      -- .242 pending receipts have no age expiry. Only a signed durable server
+      -- receipt permits pruning this redundant local gold record after 30 days.
+      if type(row) == "table" and type(row.ts) == "number" and (row.ts > cutoff or field=="receipts" and not (ack and ack.status=="done")) then table.insert(kept, row)
       else removed = removed + 1 end
     end
     d[field] = kept
@@ -97,12 +101,8 @@ local function record(kind, sender, incoming, outgoing, evidence)
   local me, guid = identity(); local d = db()
   sender, incoming, outgoing = name(sender), integer(incoming), integer(outgoing)
   if not me or not d or not sender or not incoming or incoming <= 0 or not outgoing then return false end
-  if #d.receipts >= T.maxReceipts then
-    d.overflows = (d.overflows or 0) + 1
-    observe("ledger_full_sync_and_review", sender, incoming)
-    printLine("local receipt ledger is full; sync and review it. No old receipt was overwritten.")
-    return false
-  end
+  -- Pending transactions are never evicted or rejected for a local batch cap.
+  -- Watcher upload batches are independently bounded and acknowledged.
   d.nextId = (tonumber(d.nextId) or 0) + 1
   local at = time()
   local seed = table.concat({ guid or me, tostring(at), tostring(d.nextId), tostring(OlympusVerifyDB.boots or 0), tostring(call(GetTime) or 0) }, "|")
@@ -342,7 +342,7 @@ local function TreasurySlash()
   printLine(string.format("%d confirmed local receipts; %d observations without credit; collector %s (%s).",
     status.confirmedLocal, status.unconfirmed, status.recipient, status.enabled and "this character" or "not active on this character"))
   printLine("Read-only tracking; no automatic tithe credit. SavedVariables reaches disk at /reload/logout; chat-log delivery may be delayed.")
-  printLine("Local named receipts expire after 30 days from the original event. Export/review them before expiry; delivery does not renew retention.")
+  printLine("Pending receipts persist until server acknowledgement; confirmed redundant local copies may be pruned after 30 days.")
 end
 local slashRegistry = OlympusVerifySlash234
 if type(slashRegistry) == "table" and type(slashRegistry.Register) == "function" then

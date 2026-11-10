@@ -263,6 +263,10 @@ async function postVerifyInner(env: Env, body: VerifyIn,context:WatcherCapture,r
   const nameKey = normalizeCharacter(name);
   if (!nameKey || !body.code) return json({ error: "character and code required" }, 400);
 
+  // .242: preserve captured expired observations and return an explicit no-effect outcome.
+  if(body.ts!==undefined && (!Number.isSafeInteger(body.ts)||body.ts<=now()-600||body.ts>now()+5))
+    return json({result:'source_expired',pendingConsumed:false,roleGranted:false,inviteQueued:false});
+
   // Two kinds of code, told apart by length (codes.ts). A character code names its character up front; a request code
   // ("ticket") names nobody, and the character is the whisper's sender -- which the game server vouches for.
   const code = normalizeCodeInput(body.code);
@@ -928,7 +932,7 @@ export async function getQueue(env: Env, officer = "", presenceOnly = false): Pr
     return json({ error: 'verification_configuration_held' }, 503);
   // Honor the host's read-only intent even when this implementation selects legacy
   // mode. It must not claim retained invitations before the host rejects a reply.
-  if (presenceOnly === true || launch.mode === 'members-only') return json({ presenceOnly: true, entries: [], setGuildNote: false });
+  if (presenceOnly === true || launch.mode === 'members-only') return json({ presenceOnly: true, entries: [], setGuildNote: false,verificationResults:await (await import('./role-reconcile242')).verificationResults242(env) });
   const who = officer.trim().slice(0, 64);
   const ttl = Math.max(1, intVar(env.QUEUE_CLAIM_TTL_MINUTES, 15)) * 60;
   const limit = Math.max(1, intVar(env.QUEUE_CLAIM_LIMIT, 25));
@@ -1007,6 +1011,7 @@ export async function getQueue(env: Env, officer = "", presenceOnly = false): Pr
 
   return json({
     generatedAt: t,
+    verificationResults:await (await import('./role-reconcile242')).verificationResults242(env),
     officer: who,
     claimTtlSeconds: ttl,
     setGuildNote: env.SET_GUILD_NOTE === "true",

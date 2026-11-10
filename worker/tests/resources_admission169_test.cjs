@@ -120,6 +120,10 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .242 reverses only the exact owner-directed live-first release note.
+  const release242 = "export const RELEASE_NOTES: readonly ReleaseNote[] = [\n  {\n    build: \".242\", date: \"2026-11-10\", lines: [\n      \"Verified character ranks refresh through continuing batches after a roster sync.\",\n      \"OlympusVerify 0.6.22 adds persistent verification intake, mail handling and donation observations with Watcher 0.6.20.\",\n      \"Use Verify my character on the site, or ask High Council to use /olympus check for access diagnostics.\",\n      \"Character nicknames use <Guild Name>; the previous nickname can still be restored.\",\n    ],\n  },\n";
+  check('Guild News exact authorized .242 prepend occurs once', originalNews.split(release242).length === 2);
+  originalNews = originalNews.replace(release242, "export const RELEASE_NOTES: readonly ReleaseNote[] = [\n");
   // .241 reverses only the exact recent-rank-priority member release note.
   const release241 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

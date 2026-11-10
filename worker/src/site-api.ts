@@ -58,6 +58,7 @@ import {
 import { releaseReserved } from "./site-queue";
 import { handleAttendedBetaWindow } from "./site-beta-window";
 import { handleAdmin } from "./site-admin";
+import { handleSiteVerification242 } from "./verification242";
 import {membershipDecisionOrigin,authenticateMembershipDecision,assertMembershipDecisionOrigin,MembershipDecisionHeld} from "./privacy-rejection-decision";
 import { handleCommunity } from "./community-routes";
 import { exportMyData } from "./site-export";
@@ -148,6 +149,10 @@ export async function handleApi(request: Request, env: Env, path: string, waitUn
   if(JSON.stringify(userRead)!==JSON.stringify(originalSession)||user.account_incarnation!==originalSession.n)return apiJson({error:'signed_out'},401);
   env=privacyBoundSiteEnv(env,originalSession);
   const admin = isSiteAdmin(env, user.discord_id);
+  if (path === "/api/me/verification") {
+    if (m !== "GET" && request.headers.get("X-Olympus") !== PAGE_VERSION) return apiJson({error:"page_outdated",message:"Reload this page before verifying."},409);
+    return handleSiteVerification242(request, env, {id:user.discord_id}, (_label, work) => waitUntil(work));
+  }
   if (path.startsWith("/api/admin/")) {
     if (!admin) return apiJson({ error: "forbidden" }, 403);
     try{if(decisionOrigin)assertMembershipDecisionOrigin(decisionOrigin,env);return await handleAdmin(request, env, path, user, waitUntil,decisionOrigin??undefined,roleDispatch);}catch(e){if(e instanceof MembershipDecisionHeld)return apiJson({error:e.code},409);throw e;}

@@ -125,6 +125,7 @@ jobs:
       - name: Watcher unit tests and the Discord relay cases
         run: |
           python3 tests/test_watcher.py
+          python3 -m unittest discover -s . -p test_intake242.py
           python3 tests/test_discord_relay.py
           python3 tests/test_custody196.py
           python3 tests/test_attended_custody196.py

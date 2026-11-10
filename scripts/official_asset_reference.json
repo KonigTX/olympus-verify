@@ -14,8 +14,8 @@
     {
       "path": "worker/public/static/app.js",
       "mode": "100644",
-      "bytes": 789480,
-      "sha256": "a1dcfda35c846ad5453f7006c60aac9d809ce6fdbf12e1e96a8ad1f96539f743"
+      "bytes": 794731,
+      "sha256": "33df9ab6838065915bca395cb8f47f2505c9581e74e29a03f4a4685902bcb09b"
     },
     {
       "path": "worker/public/static/olympus-icon.png",
@@ -3831,8 +3831,8 @@
     {
       "path": "worker/public/static/app.js",
       "mode": "100644",
-      "bytes": 789480,
-      "sha256": "a1dcfda35c846ad5453f7006c60aac9d809ce6fdbf12e1e96a8ad1f96539f743"
+      "bytes": 794731,
+      "sha256": "33df9ab6838065915bca395cb8f47f2505c9581e74e29a03f4a4685902bcb09b"
     },
     {
       "path": "worker/public/static/rank-planner/app.js",
@@ -4267,16 +4267,16 @@
       "sha256": "0594a381074357b905b0336854d372403003b20121ad28179728b90a1101f8f1"
     },
     {
-      "path": "worker/public/static/olympus-verify/olympus-verify-0.6.21.zip",
+      "path": "worker/public/static/olympus-verify/olympus-verify-0.6.22.zip",
       "mode": "100644",
-      "bytes": 517415,
-      "sha256": "179b0c428cc4ecf5619df3f2f78ae4d5ea1e16d3f788dfd854957d602cbf0bcc"
+      "bytes": 555153,
+      "sha256": "e9bb1db5dffa5a030e50207f007764ed7dae30c44f9001aa8452ae12008ea2a1"
     },
     {
       "path": "worker/public/static/olympus-verify/version.json",
       "mode": "100644",
-      "bytes": 3714,
-      "sha256": "b89a6116bce023bc79bf389d9e18a5aee7326a9a4e129e488e4682f5284c6fd3"
+      "bytes": 3888,
+      "sha256": "3a3df6cabb8b8a9eb385d0e372a603721f7dfa72954daf49070a2bc9c6765ba8"
     }
   ],
   "login_art_exception": {

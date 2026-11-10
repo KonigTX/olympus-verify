@@ -44,6 +44,7 @@ SUITES = {
     "performance235": (TESTS, Path("test_performance235.lua")),
     "slash_registration234": (TESTS, Path("test_slash_registration234.lua")),
     "officer_invites233": (TESTS, Path("test_officer_invites233.lua")),
+    "live242": (TESTS, Path("test_live242.lua")),
 }
 
 

@@ -7872,3 +7872,12 @@ The addon remains OlympusVerify 0.6.21 and the Watcher remains 0.6.19. No addon,
 **Rollout and rollback:** qualify and sign the exact .241 commit/tree, pass PR and main CI, take a fresh export with a successful local restore verification, then use the protected exact-commit deploy with unchanged bindings. Confirm public 90, both natural cron purposes and the attended rank/nickname checks before closing the release. If necessary, use the same protected process to return to prior main 637e7ce4ab72bf9a74be23acb3633aab3646145a (.240, including its known catch-up delay). No database restore or Watcher restart is part of that rollback.
 
 **Validation:** focused TypeScript and 301 assertions passed for the scheduler/static guard iteration. The final release-note/health-pin updates have their own focused leaves; a fresh full 334 run, exact-head hosted CI/review and live acceptance remain required and are recorded outside this historical Source log.
+
+
+## Worker .242 — owner-directed live-first verification and intake
+
+The owner explicitly replaces pre-deployment suite/peer/CI gates for this rollout with TypeScript/bundle compilation, Lua syntax and a fresh443/442-object restored D1 backup. Deploy exact committed source and install OlympusVerify0.6.22/Watcher0.6.20 first; run regressions and collect hosted CI after serving. See live-first242.md and append-only launch242 evidence. Existing runtime privacy, issuer, unknown-effect and rank ownership guards remain. No schema change or production restore.
+
+Features include authenticated own web code/role refresh, bounded signed role continuation, High Council check/Fix, angle-bracket nicknames, durable signed addon intake/receipts, mail/whisper/trade capture, native Discord observation, remote WHO-backed officer invites and safe hardware Sync. Branch membership verification remains pending by explicit owner answer. Native Discord observations corroborate existinglinks; they do not create a new link from display text. Finish exact17 legacy definitions only on fresh official zero-holder counts, preserving unrelated roles and unresolved272.
+
+Rollback uses the archived .241 exact commit and preserved bindings; database replacement remains separately gated on writer quiescence. Post-deploy results must distinguish serving identity, package/install hashes, synthetic regression, hosted CI and live client acceptance.

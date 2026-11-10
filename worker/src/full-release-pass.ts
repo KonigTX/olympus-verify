@@ -28,7 +28,7 @@ import type { LaneCapture } from './full-release-roles';
 import * as R from './role-settlements';
 import type { LaneObservation,LaneQueueResult,LaneRemovalGroup,LaneRemovalOutcome,LaneSpentOutcome,Settlement } from './role-settlements';
 
-export type FreshTrigger='watcher'|'ingest'|'scheduled';
+export type FreshTrigger='watcher'|'ingest'|'scheduled'|'continuation';
 const ID=/^\d{17,20}$/;
 const quoted=(values:readonly string[])=>values.map(v=>`'${v}'`).join(',');
 
@@ -67,7 +67,7 @@ export function freshAdmission(count:StatementCount,limit:number):Admission{
  * live physical counter without the historical logical x5 conversion. An
  * unsupported counter is zero capacity, never an uncounted fallback. */
 export function nativeAdmission232(count:StatementCount,limit:number):Admission{
- const qualified=count.protocol===true&&count.factor===1&&Number.isSafeInteger(count.used)&&count.used>=0&&Number.isSafeInteger(limit)&&limit>=0&&limit<=700;
+ const qualified=count.protocol===true&&count.factor===1&&Number.isSafeInteger(count.used)&&count.used>=0&&Number.isSafeInteger(limit)&&limit>=0&&limit<=900;
  return Object.freeze({count:Object.freeze({get used(){return count.used;},factor:1}),limit:qualified?limit:0});
 }
 /** settleLaneBan: privacy, ban and custody reads, the spent count and reader, and one removal of 11 fresh + 3 staff roles. */
@@ -126,7 +126,7 @@ type WalkRow={discord_id:string|null;privacy_generation:string|null;privacy_stat
 type Visit='done'|'budget'|'statements';
 type FreshState={r:string;d:string;g:string;s:string;p:string;k:0|1;h:number|null};
 export type FreshPassCounts={visits:number;removed:number;settled:number;confirmed:number;unknown:number;held:number;failed:number;linkMissing:number;requests:number;statements:number};
-export type FreshPassResult=Readonly<{state:'skipped'|'held'|'done'|'failed';reason:string;counts:Readonly<FreshPassCounts>}>;
+export type FreshPassResult=Readonly<{state:'skipped'|'held'|'done'|'failed';reason:string;counts:Readonly<FreshPassCounts>;continuation?:boolean}>;
 export const NATIVE_SUBJECT232_STATEMENTS=180;
 export const NATIVE_OPEN232_STATEMENTS=13; // four protocol reads (2 each) plus one lease write (5).
 export const NATIVE_CLOSE232_STATEMENTS=15; // state audit, refused-state fallback audit, owned lease release: 5 each.
@@ -511,11 +511,12 @@ export async function runFreshPass(env:Env,io:Readonly<{calls:CallBudget;adm?:Ad
  * admission and shared request budget. It never feeds new rows to old ten-rank
  * consumers, nor treats an old unknown as a completed transition. */
 async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admission;reserve?:number}>,trigger:FreshTrigger,cap:LaneCapture):Promise<FreshPassResult>{
- const counts=emptyCounts(),t=now(),done=(state:FreshPassResult['state'],reason:string):FreshPassResult=>Object.freeze({state,reason,counts:Object.freeze({...counts})}),selected=cap.native232;
+ let workRemaining=false;
+ const counts=emptyCounts(),t=now(),done=(state:FreshPassResult['state'],reason:string):FreshPassResult=>Object.freeze({state,reason,counts:Object.freeze({...counts}),continuation:workRemaining}),selected=cap.native232;
  if(!selected||selected.mode!=='enabled'||!selected.policy||!cap.current())return done('held','native232_configuration_held');
- if(!io?.calls||trigger!=='watcher'&&trigger!=='ingest'&&trigger!=='scheduled')return done('held','invalid_operation');
+ if(!io?.calls||trigger!=='watcher'&&trigger!=='ingest'&&trigger!=='scheduled'&&trigger!=='continuation')return done('held','invalid_operation');
  if(trigger==='scheduled'){const canonical=captureCanonicalRankConfig233(env);if(canonical.mode!=='enabled'||!canonical.current())return done('held','canonical238_schedule_configuration_held');}
- if((trigger==='watcher'||trigger==='scheduled')&&t-lastFreshLocal<L.FRESH_INTERVAL_SECONDS)return done('skipped','throttled');
+ if((trigger==='watcher'||trigger==='scheduled')&&t-lastFreshLocal<30)return done('skipped','throttled');
  const adm=io.adm??null,local={used:0},startUsed=adm?adm.count.used:0,limit=FRESH_SWEEP_STATEMENTS-Math.max(0,Math.min(FRESH_SWEEP_STATEMENTS,io.reserve??0));
  // The Native issuer and up to base + two rank visits include original-result
  // reads, every final admission and one owned compensation. Measured fixtures
@@ -525,18 +526,20 @@ async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admis
  try{
   if(!admit(NATIVE_OPEN232_STATEMENTS))return done('held','statement_budget');
   const recent=await env.DB.prepare(L.FRESH_INTERVAL_SELECT).first<{ts:number;action:string;snapshot_id:number|null}>(),snapshot=(await env.DB.prepare(L.NEWEST_SNAPSHOT_SELECT).first<{id:number|null}>())?.id??null;
-  if(recent&&(trigger==='watcher'||trigger==='scheduled'||recent.snapshot_id===snapshot))return done('skipped','interval');
+  if(recent&&trigger==='watcher'&&t-recent.ts<30)return done('skipped','interval');
   if(!cap.current())return done('held','lane_configuration_changed');lastFreshLocal=t;
   lease=L.freshLeaseValue(t+L.FRESH_LEASE_SECONDS,randomGeneration());if(!await env.DB.prepare(L.FRESH_LEASE_ACQUIRE).bind(lease).first()){lease=null;return done('skipped','lease_held');}
   const st=parseState((await env.DB.prepare(L.FRESH_STATE_SELECT).first<{details:string|null}>())?.details),M=await import('./routine-membership-authority232'),V=await import('./shared-membership-cutover230');
   const canonical=captureCanonicalRankConfig233(env);
   const window=(await env.DB.prepare(canonical.present?L.CANONICAL233_WALK_SELECT:L.NATIVE232_WALK_SELECT).bind(cap.guild,st.g,L.FRESH_WALK_WINDOW,canonical.present?0:selected.policy.privileged?1:0).all<{subject:string;top_rank:number|null;urgent:number}>()).results;
   const refs:PrivacyReference[]=[];let visited=0,stop='';
+  // Each subject is admitted against physical SQL and HTTP room, rather than a fixed two-account quota.
+  const subjectLimit=Math.max(1,Math.min(10,Math.floor((adm?room(adm,NATIVE_CLOSE232_STATEMENTS):limit-NATIVE_CLOSE232_STATEMENTS)/subjectBound),Math.floor(laneRoom(io.calls)/8)));
   for(const row of window){
-   if(visited>=L.FRESH_GRANT_SUBJECTS_PER_PASS)break;
+   if(visited>=subjectLimit){workRemaining=true;break;}
    if(!ID.test(row.subject)){st.g=row.subject;continue;}
    if(!cap.current()){stop='lane_configuration_changed';break;}
-   if(laneRoom(io.calls)<8){stop='role_request_budget';break;}if(!admit(subjectBound)){stop='statement_budget';break;}
+   if(laneRoom(io.calls)<8){stop='role_request_budget';workRemaining=true;break;}if(!admit(subjectBound)){stop='statement_budget';workRemaining=true;break;}
    const start=io.calls.attempts;visited++;counts.visits++;
    const privacy=await readPrivacySubject(env,row.subject),reference={subject:row.subject,capture:privacy};
    const authority=await M.captureRoutineMembership232(env,row.subject);
@@ -567,7 +570,7 @@ async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admis
   const stored=await env.DB.prepare(STATE_AUDIT).bind(now(),L.FRESH_AUDIT.state,trigger,JSON.stringify(refs.length?{...details,_privacySubjectIds:refs.map(r=>r.subject)}:details),JSON.stringify(refs.map(r=>({id:r.subject,g:r.capture?.subjectGeneration??null})))).run();
   if(!Number(stored?.meta?.changes??0))await audit(env,'system',L.FRESH_AUDIT.tick,trigger,{n:snapshot,profile:'olympus-prime-live-20261105-v1',stop:stop||null});
   counts.statements=adm?adm.count.used-startUsed:local.used;return done('done',stop||'native232_pass_complete');
- }catch{return done('failed','native232_pass_failed');}
+ }catch(error){try{await audit(env,'system',L.FRESH_AUDIT.failed,trigger,{reason:'native232_pass_failed',error:redact(error)});}catch{}return done('failed','native232_pass_failed');}
  finally{if(lease)try{await env.DB.prepare(L.FRESH_LEASE_RELEASE).bind(lease).run();}catch{/* Original lease expires; no fallback parallel producer. */}}
 }
 

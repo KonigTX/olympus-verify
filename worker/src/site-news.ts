@@ -78,6 +78,14 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".242", date: "2026-11-10", lines: [
+      "Verified character ranks refresh through continuing batches after a roster sync.",
+      "OlympusVerify 0.6.22 adds persistent verification intake, mail handling and donation observations with Watcher 0.6.20.",
+      "Use Verify my character on the site, or ask High Council to use /olympus check for access diagnostics.",
+      "Character nicknames use <Guild Name>; the previous nickname can still be restored.",
+    ],
+  },
+  {
     build: ".241", date: "2026-11-09", lines: [
       "Recent in-game rank changes get priority while older rank updates catch up.",
       "Existing verification and account-safety checks still apply.",

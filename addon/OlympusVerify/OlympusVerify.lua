@@ -37,7 +37,7 @@ local SECRET = cfg.secret
 -- 0.6.12: the example's placeholder is public, so a Config.lua copied without replacing it must not accept codes made from it.
 if type(SECRET) ~= "string" or SECRET == "" or string.find(SECRET, "^REPLACE_WITH_") then SECRET = nil end
 local secretWarned = false  -- 0.6.12: say once per session, not on every whisper, that codes cannot be checked
-local SOURCE_VERSION = "0.6.21" -- Keep this source fallback and OlympusVerify.toc aligned.
+local SOURCE_VERSION = "0.6.22" -- Keep this source fallback and OlympusVerify.toc aligned.
 local VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version"))
   or (GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version")) or SOURCE_VERSION
 local SET_NOTES = cfg.setNotes == true  -- SetNote is forbidden for addons on the Forever beta; leave false there
@@ -65,13 +65,13 @@ local REPLY_WINDOW = 8                  -- seconds after an invite during which 
 local MAX_INVITE_ATTEMPTS = 5           -- "not found" (the applicant is offline) and "guild is full" are retried on later presses
 local pendingReply                      -- { event = <invite event>, entry = <queue entry>, until = time }
 local REPLY_OK = cfg.replyValid or "Olympus: code confirmed for %s. Your guild invite is queued; watch for it from an officer. Discord access follows once you are on the roster."
-local REPLY_BAD = cfg.replyInvalid or "Olympus: that code is not valid or has expired. Press Get my code in #join-guild on the Olympus Discord for a fresh one."
+local REPLY_BAD = cfg.replyInvalid or "Olympus: that code is invalid or expired. Get a fresh Discord code, or open Olympus with /oly -> Verify / QR Code tab."
 local REPLY_MEMBER = cfg.replyMember or "Olympus: code confirmed for %s. You are already on the guild roster, so no invite is needed; your Discord access follows on the next sync."
 local REPLY_RATE = 30            -- seconds between replies to the same sender
 local MAX_ATTEMPTS = 10          -- per sender per session
 -- A request code (7 symbols, 27 Sep) links whichever character whispers it first -- here, in the watcher and in the
 -- Worker alike -- and is refused from anyone else for as long as it could still be valid.
-local REPLY_USED = cfg.replyUsed or "Olympus: that code has already been used by another character. Press Get my code in #join-guild on the Olympus Discord for your own."
+local REPLY_USED = cfg.replyUsed or "Olympus: that code was used by another character. Get your own Discord code, or open Olympus with /oly -> Verify / QR Code tab."
 local TICKET_HOLD = 48 * 3600
 local READ_MAIL_BODIES = cfg.readMail ~= false
 local REPLY_JOINED = cfg.replyJoined or "Olympus: you are on the guild roster. Your Discord access follows within a minute."
@@ -339,12 +339,16 @@ local function HandleCode(source, sender, text, guid)
     if not secretWarned then secretWarned = true; Print("Config.lua is missing or still has the example secret — codes cannot be checked. Put the shared secret in Config.lua and /reload.") end
     return
   end
-  local token = VerifyToken(text, true)
+  local token = VerifyToken(text, source ~= "mail")
   if not token then return end
   local base = BaseName(sender)
   local key = L.normalizeCharacter(base)
   attempts[key] = (attempts[key] or 0) + 1
-  if attempts[key] > MAX_ATTEMPTS then return end
+  if attempts[key] > MAX_ATTEMPTS then
+    -- Local reply/crypto throttling must not erase the durable server intake.
+    if OlympusVerifyLive242 then OlympusVerifyLive242.CaptureVerification(source,sender,L.strictCode(token) or token,guid,nil,false) end
+    return
+  end
   -- A 6-symbol code is bound to this character; a 7-symbol request code (27 Sep) is bound to the Discord request, and
   -- the sender -- vouched for by the server -- is the character it links. Both are checked offline with the secret.
   local code = L.strictCode(token)
@@ -377,6 +381,7 @@ local function HandleCode(source, sender, text, guid)
   local eventMember = member
   if cfg.membershipOnly == true then eventMember = nativeMembership and nativeMembership.member end
   Event({ type = source, name = base, target = sender, code = code, ok = ok, inGuild = eventMember, kind = kind, guid = guid, nativeMembership = nativeMembership })
+  if OlympusVerifyLive242 then OlympusVerifyLive242.CaptureVerification(source, sender, code, guid, nativeMembership, ok) end
   if source=="whisper" and nativeMembership and nativeMembership.member==false and OlympusOfficerInvites233 then
     OlympusOfficerInvites233.ObserveWhisper(sender,guid,code,nativeMembership)
   end
@@ -395,6 +400,7 @@ local function HandleCode(source, sender, text, guid)
           elseif nativeMembership and nativeMembership.member == false then
             reply = "Olympus: you are not on this officer's current guild roster. No role or invite was granted. A Knight invite needs an officer's explicit fresh unguilded WHO/unit check. Sister guilds use QR verification."
           end
+          if OlympusVerifyLive242 then reply = OlympusVerifyLive242.VerificationReply(sender, guid, reply) end
           SendChatMessage(reply, "WHISPER", nil, sender)
         end
         if guid then Presence.Safely("noting the whisperer's character", Presence.NoteIdentity, base, guid) end
@@ -445,6 +451,7 @@ end
 local mailBodyChecked = {}   -- per session: MAIL_INBOX_UPDATE fires repeatedly, and GetInboxText marks mail read
 local function ScanMailbox()
   if not mailboxOpen then return end
+  if OlympusVerifyLive242 then return OlympusVerifyLive242.ScanMailbox() end
   local n = GetInboxNumItems and GetInboxNumItems() or 0
   for i = 1, n do
     local _, _, sender, subject = GetInboxHeaderInfo(i)
@@ -3249,6 +3256,7 @@ OlympusVerifyAPI = {
   -- Export the roster and reload: the reload writes SavedVariables (roster, events) for the watcher to send, and loads
   -- the newest OlympusQueue.lua (Discord approvals) -- the two things WoW only exchanges at a reload. From a click only.
   Sync = function()
+    if OlympusVerifyLive242 then OlympusVerifyLive242.Flush("hardware-sync") end
     ExportRoster(true)
     if OlympusVerifyAutoSync then OlympusVerifyAutoSync.RecordSync() end
     if cfg.membershipOnly == true and OlympusVerifyDB.verificationExchange then
@@ -3270,6 +3278,19 @@ OlympusVerifyAPI = {
   RecordOfficerInvite233 = function(body)
     if not OlympusOfficerInvites233 or not OlympusOfficerInvites233.IsOriginalProof(body) then return false end
     Event({type="officer_invite_proof",body=body,ok=true});return true
+  end,
+  CaptureMailCode242 = function(sender, code) return HandleCode("mail", sender, "!verify " .. code) end,
+  NativeBridgeMembership242 = function(sender, senderGuid, code)
+    if not SECRET or not Presence.IsGuid(senderGuid) or type(sender)~="string" or type(code)~="string" or not L.checkCode(SECRET,sender,code) then return nil end
+    local found,count=nil,0
+    local n=GetNumGuildMembers and GetNumGuildMembers()
+    if type(n)~="number" or n<1 or n>1000 then return nil end
+    for i=1,n do
+      local name,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,memberGuid=GetGuildRosterInfo(i)
+      if type(name)=="string" and L.normalizeCharacter(name)==L.normalizeCharacter(sender) then count=count+1;found=memberGuid end
+    end
+    if count~=1 or found~=senderGuid then return nil end
+    return Presence.NativeMembershipProof(sender,senderGuid,code)
   end,
   OfficerWhoBusy233 = function() return Presence.pending~=nil or #Presence.Live()>0 end,
   Status = function()
@@ -3690,6 +3711,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
   elseif event == "PLAYER_REGEN_ENABLED" then
     if Unverified.disarmPending then Unverified.DisarmMacro() end
   elseif event == "PLAYER_LOGOUT" then
+    if OlympusVerifyLive242 then OlympusVerifyLive242.Flush("logout") end
     ExportRoster(true)
     local db = OlympusVerifyDB
     if db then db.lastCharacter = Presence.MyName() or db.lastCharacter end
@@ -3834,6 +3856,10 @@ end
 if type(OlympusVerifySlash234) == "table" and type(OlympusVerifySlash234.Register) == "function" then
 OlympusVerifySlash234.Register("OLYMPUSVERIFY", {"/olv"}, function(msg)
   local cmd = string.lower(string.match(msg or "", "^%s*(%S*)") or "")
+  if OlympusVerifyLive242 and (cmd=="status" or cmd=="queue") and not OlympusVerifyLive242.IsAuthorizedWatcher() then
+    return OlympusVerifyLive242.PrintOwnStatus()
+  end
+  if cmd=="verify" and OlympusVerifyLive242 then return OlympusVerifyLive242.QueueSelf(string.match(msg or "", "^%s*%S+%s+(%S+)") or "") end
   local db = OlympusVerifyDB
   if cmd == "diagnostics" then
     Diag.Launch((msg or ""):match("^%s*%S+%s+(.-)%s*$") == "scope")
@@ -3860,7 +3886,7 @@ OlympusVerifySlash234.Register("OLYMPUSVERIFY", {"/olv"}, function(msg)
   elseif cmd == "clear" then
     if OlympusVerifyAPI.ClearQueue() ~= false then Print("queue cleared.") end
   elseif cmd == "sync" then
-    if OlympusVerify_Sync then OlympusVerify_Sync() else OlympusVerifyAPI.Sync() end
+    OlympusVerifyAPI.Sync() -- the typed command is itself the hardware event
   elseif cmd == "flushlog" then
     if not LoggingChat then Print("LoggingChat is not available on this client.") return end
     local was = FLUSH_LOG; FLUSH_LOG = true

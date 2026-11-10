@@ -42,20 +42,20 @@ export const visitorLine = (env: Env) => `Olympus 2 and the later Olympus guilds
 /** 14 Oct 2026 (item 7): the caller resolves the active identity; a held identity means no guide. `freshRoles` (Revision 4,
  * A6): the caller's captured lane grants fresh roles now (configured and past epochStart); otherwise the .160 wording. */
 export function guideMessage(env: Env, profile: RulesetProfile, freshRoles = false, legacyInviteQueue = true) {
-  const officers = env.OFFICER_CHARACTERS || "an officer";
+  const officers = env.OFFICER_CHARACTERS || "High Council";
   const review = env.ADMISSION_MODE === "review";
   const role = !!env.ROLE_GUILD_MEMBER;
   const nickname = env.SET_NICKNAME === "true";
   const canonical=captureCanonicalRankConfig233(env).mode==='enabled';
   const invite = !legacyInviteQueue ? "" : review
-    ? " If you are applying, an officer reviews the confirmed request before your invite enters the queue; an officer sends the invite from the game client when the guild has room."
-    : " If you are applying, your invite enters the queue; an officer sends it from the game client when the guild has room.";
+    ? " If you are applying, High Council reviews the confirmed request before your invite enters the queue; High Council sends the invite from the game client when the guild has room."
+    : " If you are applying, your invite enters the queue; High Council sends it from the game client when the guild has room.";
   const access = canonical
     ? " Your single highest applicable Olympus rank opens the member channels after the current verification and access checks pass; a second stacked Member role is not required."
     : freshRoles
     ? " Your guild roles open the member channels once your verified character appears on a current guild roster export and the access checks pass."
     : role
-    ? " Your **Olympus Guild Member** role opens the member channels once your verified character appears on the officer-exported guild roster and the access checks pass."
+    ? " Your **Olympus Guild Member** role opens the member channels once your verified character appears on the High Council-exported guild roster and the access checks pass."
     : "";
   const nick = canonical ? " Use the nickname buttons below to choose your verified character and guild name, or restore your saved previous server nickname." : nickname ? " When enabled by guild staff, your Discord nickname updates to your verified character name." : "";
   return {
@@ -68,18 +68,18 @@ export function guideMessage(env: Env, profile: RulesetProfile, freshRoles = fal
           "",
           legacyInviteQueue
             ? `For a character in, or applying to, ${FLAGSHIP_GUILD_NAME}. The website is optional for this verification flow.`
-            : `Joining ${FLAGSHIP_GUILD_NAME}? Ask an ${FLAGSHIP_GUILD_NAME} officer for an in-game invite. The website invite queue is paused. Once your character is in ${FLAGSHIP_GUILD_NAME}, follow the steps below to link Discord. The website is optional for this verification flow.`,
+            : `Joining ${FLAGSHIP_GUILD_NAME}? Ask ${FLAGSHIP_GUILD_NAME} High Council for an in-game invite. The website invite queue is paused. Once your character is in ${FLAGSHIP_GUILD_NAME}, follow the steps below to link Discord. The website is optional for this verification flow.`,
           "",
-          "**1. Get a code** — press **Get my code**. The bot shows the line to use in game. If the current officer relay needs a character name first, enter it exactly as it appears in game.",
-          `**2. Send it from your character** — log in as the character you want linked, paste the shown line into the in-game chat box and press Enter. It whispers the code to an available officer (${officers}); the character that sends it is the one linked. Follow the bot's current instructions if no officer is online; mailing the code to an officer works too.`,
+          "**1. Get a code** — press **Get my code**. The bot shows the line to use in game. If the current High Council relay needs a character name first, enter it exactly as it appears in game.",
+          `**2. Send it from your character** — log in as the character you want linked, paste the shown line into the in-game chat box and press Enter. It whispers the code to an available High Council relay (${officers}); the character that sends it is the one linked. Follow the bot's current instructions if no High Council relay is online; mailing the code to High Council works too.`,
           "",
-          `The officer's checked addon confirms the code from that character.${invite}${access}${nick}`,
-          `Already in ${FLAGSHIP_GUILD_NAME}? Use the same steps. **My status** shows your verification progress. Follow the current instructions, or ask an officer if access is on hold.`,
+          `The High Council relay addon confirms the code from that character.${invite}${access}${nick} In game, use **/oly → Verify / QR Code** for the current server response. Use **/olympus check** here to diagnose access.`,
+          `Already linked? **Get my code** refreshes your current trusted roster rank without another whisper. **My status** shows progress. For a different character, use **Verify another character**. Follow the current instructions, or ask High Council if access is on hold.`,
           "",
           visitorLine(env), // the overflow guilds (Olympus 2 and later) are not verified here; see visitorLine
           "Keep your verification code private. Never post passwords, authenticator codes, payment details or personal documents. The bot never sends you a DM.",
         ].join("\n"),
-        footer: { text: `Olympus Verify · My status for progress · Ask an ${FLAGSHIP_GUILD_NAME} officer for account help` },
+        footer: { text: `Olympus Verify · My status for progress · Ask ${FLAGSHIP_GUILD_NAME} High Council for account help` },
       },
     ],
     components: [
@@ -89,6 +89,7 @@ export function guideMessage(env: Env, profile: RulesetProfile, freshRoles = fal
           { type: 2, style: 1, label: "Get my code", custom_id: GUIDE_VERIFY },
           { type: 2, style: 2, label: "My status", custom_id: GUIDE_STATUS },
           ...nicknameButtons233(),
+          {type:2,style:2,label:"Verify another character",custom_id:"guide:another"},
         ],
       },
     ],
@@ -111,7 +112,7 @@ export const verifyModal = () => ({
             custom_id: GUIDE_FIELD,
             label: "Character name, exactly as in game",
             style: 1, // short
-            min_length: 2,
+            min_length: 3,
             max_length: 32,
             required: true,
             placeholder: "e.g. Fern Melder",

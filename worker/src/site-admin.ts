@@ -45,6 +45,7 @@ import { bnetLoginState, setBnetSwitch } from "./bnet-switch";
 import { loadLeadershipAdmin, NAME_WITHHELD, saveLeadership } from "./site-leadership";
 import { closeRenameHold, listRenames, markForcedRename } from "./rename-review";
 import { handleNewsAdmin } from "./site-news";
+import { treasuryLedger242 } from './intake242';
 import { handleTreasuryCosmeticAdmin } from "./treasury-cosmetic";
 import { discordDirectoryAttendedVisibility } from "./community-discord-directory";
 import { handleRulesetPublication } from './ruleset-publication';
@@ -78,6 +79,7 @@ export async function handleAdmin(request: Request, env: Env, path: string, admi
   const actor = admin.discord_id;
 
   if (parts[0] === 'ruleset-publication') return handleRulesetPublication(request,env,parts.slice(1),body);
+  if (parts[0] === 'treasury' && parts[1] === 'ledger' && m === 'GET') return treasuryLedger242(request,env);
   if (parts[0] === 'treasury') return handleTreasuryCosmeticAdmin(request,env,parts.slice(1),admin,body);
   if (parts[0] === 'discord-directory' && parts.length === 2) return discordDirectoryAttendedVisibility(request, env, await communityContext(env, request), parts[1]!, body);
 
@@ -1283,6 +1285,7 @@ const AUDIT_RULES: Record<string, AuditRule> = Object.create(null);
 function auditRules(actions: string, subject: AuditRule["subject"], fields: AuditRule["fields"] = {}, actor: AuditRule["actor"] = "id-or-system"): void {
   for (const action of actions.split(" ")) AUDIT_RULES[action] = { actor, subject, fields };
 }
+auditRules("treasury.receipt242", "none", { copper: "count", items: "count" }, "id-or-system");
 auditRules("site.login site.login_not_member site.left_server site.application_withdrawn site.copy_exported", "id");
 auditRules("site.application_submitted site.application_updated site.settings site.leadership site.beta_closed", "none");
 auditRules("site.ruleset_switch", "none", { mode: ["beta", "full_release"], targets: "count", approver: "boolean" }); // item 7 (14 Oct 2026): the switch, never the identity

@@ -41,19 +41,16 @@ local function Identity()
 end
 local function Preview() return OlympusVerifyUI and OlympusVerifyUI.preview or OlympusVerifyPreview and OlympusVerifyPreview.State and OlympusVerifyPreview.State() end
 local function UnitIdentity(fullName,guid)
-  -- Never manufacture a unit from a WHO name. It must currently exist as a native unit token.
-  local tokens={"target","mouseover","party1","party2","party3","party4"}
-  for i=1,40 do tokens[#tokens+1]="raid"..i end
-  for _,token in ipairs(tokens) do
-    if Read(UnitExists,token)==true and Read(UnitIsPlayer,token)==true then
-      local before=Guid(Read(UnitGUID,token))
-      local name=Text(Read(GetUnitName,token,true))
-      if before==guid and name==fullName and Guid(Read(UnitGUID,token))==guid then
-        local knownGuild=Text(Read(GetGuildInfo,token))
-        if knownGuild or Read(UnitIsInMyGuild,token)==true then return nil end
-        return token
-      end
-    end
+  -- .242: the server whisper supplies the exact sender GUID even remotely.
+  -- This is IDENTITY only: the separately correlated WHO must explicitly say
+  -- fullGuildName=="". Absence from our guild roster is never unguilded proof.
+  local w=state.whispers[guid]
+  if w and w.fullName==fullName and time()>=w.whisperAt and time()-w.whisperAt<600 then return "whisper" end
+  local s=OlympusVerifyDB and OlympusVerifyDB.officerInvites233
+  for _,row in pairs(s and s.proofs or {}) do
+    local b=row.body;local p=b and b.nativeInvite
+    if b and p and b.guid==guid and p.fullName==fullName and p.version==242 and p.source=="native-who-whisper-v242"
+      and time()>=p.whisperAt and time()-p.whisperAt<600 then return "whisper" end
   end
 end
 local function ScopeCurrent(record)
@@ -95,9 +92,9 @@ local function ValidStored(row)
   local identity,now=Identity(),time()
   if not identity or row.guild~=identity.guild or row.realm~=identity.realm or row.officerGuid~=identity.guid
     or b.source~="whisper" or not Text(b.character) or not Guid(b.guid) or not Text(b.code,7) or H.strictCode(b.code)~=b.code or not H.checkCode(cfg.secret,b.character,b.code)
-    or p.version~=233 or not Text(p.proofId,32) or #p.proofId~=32 or not p.proofId:match("^%x+$")
+    or p.version~=242 or not Text(p.proofId,32) or #p.proofId~=32 or not p.proofId:match("^%x+$")
     or not Text(p.fullName) or p.fullName~=p.unitFullName or p.unitGuid~=b.guid or H.normalizeCharacter(p.fullName)~=H.normalizeCharacter(b.character)
-    or p.guildState~="unguilded" or p.source~="native-who-unit-v233" or p.scopeHash~=identity.scopeHash
+    or p.guildState~="unguilded" or p.source~="native-who-whisper-v242" or p.scopeHash~=identity.scopeHash
     or not Int(p.whisperAt,1,now+5) or not Int(p.requestedAt,p.whisperAt,now+5) or not Int(p.observedAt,p.requestedAt,p.requestedAt+15)
     or now>=p.observedAt+60 or p.observedAt>now+5 or p.observedAt-p.whisperAt>=600
     or not Text(p.before,64) or #p.before~=64 or not p.before:match("^%x+$") or not Text(p.after,64) or #p.after~=64 or not p.after:match("^%x+$") or p.before==p.after
@@ -114,7 +111,7 @@ function O.ObserveWhisper(fullName,guid,code,native)
   local count=0;for _ in pairs(state.whispers) do count=count+1 end
   if count>=100 and not state.whispers[guid] then state.reason="local whisper capacity held";return false end
   state.whispers[guid]={fullName=fullName,guid=guid,code=code,whisperAt=native.observedAt,scopeHash=identity.scopeHash,guild=identity.guild,realm=identity.realm,officerGuid=identity.guid}
-  state.reason="select the genuine whisperer as target, then click Next officer action in Knight invites"
+  state.reason="click Next officer action to check the remote whisperer's explicit guild state with WHO"
   return true
 end
 local function Invalidate(reason,foreign)
@@ -160,7 +157,7 @@ function O.HardwareCheck(guid)
     Say("A WHO control is already pending/unknown; no second request.");return false
   end
   if state.lastWho and time()-state.lastWho<6 then Say("WHO is rate limited: wait at least six seconds before another hardware request.");return false end
-  if not UnitIdentity(w.fullName,w.guid) then Say("The original whisperer's exact GUID/full name is not a current native unit. Unknown stays held.");return false end
+  if not UnitIdentity(w.fullName,w.guid) then Say("The original remote whisper GUID/full name is unavailable or stale. Unknown stays held.");return false end
   if w.fullName:find('["\\]') then Say("Unsupported native name for an exact WHO query; held.");return false end
   local before=Snapshot();if not before then Say("WHO fields are unreadable; no request or invite.");return false end
   if before.rows[w.fullName] and before.rows[w.fullName].fullGuildName=="" then Say("An identical positive WHO row is already cached. It cannot prove a new server response; held.");return false end
@@ -177,7 +174,7 @@ function O.HardwareCheck(guid)
     else Invalidate("WHO send outcome unknown; no positive proof or automatic retry",true) end
     Say(state.reason);return false
   end
-  request.sent=true;Say("One WHO requested. Only a changed, first exact guild-empty response plus the same native unit can become proof.");return true
+  request.sent=true;Say("One WHO requested for the original remote whisperer. Only a changed exact guild-empty response can become proof.");return true
 end
 local function OnWho()
   local request=state.pending
@@ -188,9 +185,9 @@ local function OnWho()
     or state.revision~=request.revision or not s or (s.whoRevision or 0)~=request.storedRevision
     or state.unknownOutstanding or s.unknownWhoOutstanding or not HooksCurrent() or not ScopeCurrent(w) or not UnitIdentity(w.fullName,w.guid) then state.reason="WHO correlation/unit changed; proof held";return end
   local after=Snapshot();local hit=after and after.rows[w.fullName]
-  if not after or after.digest==request.before or not hit or hit.fullGuildName~="" or not UnitIdentity(w.fullName,w.guid) or not ScopeCurrent(w) then state.reason="WHO has no new explicit unguilded fact for this original unit; held";return end
-  local p={version=233,proofId=request.proofId,fullName=w.fullName,unitGuid=w.guid,unitFullName=w.fullName,whisperAt=w.whisperAt,
-    requestedAt=request.requestedAt,observedAt=time(),scopeHash=w.scopeHash,guildState="unguilded",source="native-who-unit-v233",before=request.before,after=after.digest}
+  if not after or after.digest==request.before or not hit or hit.fullGuildName~="" or not UnitIdentity(w.fullName,w.guid) or not ScopeCurrent(w) then state.reason="WHO has no new explicit unguilded fact for this original remote whisperer; held";return end
+  local p={version=242,proofId=request.proofId,fullName=w.fullName,unitGuid=w.guid,unitFullName=w.fullName,whisperAt=w.whisperAt,
+    requestedAt=request.requestedAt,observedAt=time(),scopeHash=w.scopeHash,guildState="unguilded",source="native-who-whisper-v242",before=request.before,after=after.digest}
   local body={character=w.fullName,code=w.code,guid=w.guid,source="whisper",nativeInvite=p};p.mac=MAC(body)
   local row={body=body,revision=s.whoRevision or 0,guild=w.guild,realm=w.realm,officerGuid=w.officerGuid};s.proofs[p.proofId]=row;state.proofs[p.proofId]=row
   if type(API.RecordOfficerInvite233)=="function" then API.RecordOfficerInvite233(body) end
@@ -212,7 +209,7 @@ function O.HardwareInvite(row)
   if q and type(q.invites)=="table" then for _,approved in ipairs(q.invites) do if approved==row then selected=true;break end end end
   if not q or not selected or q.actionHeld or not q.freshness[row.guid] or time()>=q.freshness[row.guid].expiresAt or time()>=q.freshness[row.guid].scanExpiresAt
     or row.guid~=b.guid or row.fullName~=p.fullName or row.scopeHash~=p.scopeHash or row.observedAt~=p.observedAt or row.expiresAt>p.observedAt+60 or time()>=row.expiresAt
-    or row.reason~="knight-unguilded" or row.source~="native-who-unit-v233" or not Int(row.queueId,1,2147483647) then Say("Dated Worker approval is stale or mismatched; no invite.");return false end
+    or row.reason~="knight-unguilded" or row.source~="native-who-whisper-v242" or not Int(row.queueId,1,2147483647) then Say("Dated Worker approval is stale or mismatched; no invite.");return false end
   if s.attempts[tostring(row.queueId)] then Say("This queue ID already has a native attempt/unknown outcome. No retry or refresh reset.");return false end
   local snapshot=Snapshot();local hit=snapshot and snapshot.rows[p.fullName]
   local unit=UnitIdentity(p.fullName,b.guid);local final=Identity()

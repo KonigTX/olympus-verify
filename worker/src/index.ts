@@ -1,3 +1,6 @@
+import {isAccessCheck242,handleAccessCheck242} from './access-check242';
+import {handleRoleContinuation242,kickRoleWork242} from './role-reconcile242';
+import {postIntake242} from './intake242';
 import { isGuildCommand219, guildCommandReadOnly219, handleGuildCommand219 } from './guild-commands219';
 /**
  * olympus-verify Worker — routes
@@ -275,6 +278,10 @@ export default {
         if (siteHost(env) !== hostOf(env.PUBLIC_BASE_URL)) return new Response("not found", { status: 404 });
       }
       const res = await route(request, env, path, schemaReady, ctx, namesOrigin,roleDispatch);
+      if(request.method==='POST'&&res.ok&&['/ingest/verify','/ingest/roster','/ingest/intake242'].includes(path)){
+       deferOriginalServing(ctx,'roles242_requests',()=>kickRoleWork242(env,'requests'));
+       if(path==='/ingest/roster')deferOriginalServing(ctx,'roles242_sweep',()=>kickRoleWork242(env,'sweep'));
+      }
       // The watcher polls /queue every 30 seconds while an officer is online, which is exactly when promotions happen.
       // The Guild Member sweep rides on those polls (throttled to one per five minutes inside), after the response.
       if (request.method === "GET" && path === "/queue" && res.ok && !url.searchParams.getAll('presenceOnly').includes('1')) {
@@ -354,7 +361,10 @@ async function runSourceCanonicalRankScheduledBody(env:Env,ctx:ExecutionContext,
   if(!latest||!Number.isSafeInteger(latest.at)||latest.at<1||!Number.isSafeInteger(latest.exported_at)||latest.exported_at<1||latest.exported_at>latest.at||latest.at-latest.exported_at>=600||latest.complete!==1||latest.trusted!==1)return;
   const pass=await import('./full-release-pass');check();
   const calls=callBudget(counted);calls.limit=Math.min(calls.limit,CANONICAL_RANK_SCHEDULE_HTTP);
-  await pass.runFreshPass(counted,{calls,adm:pass.nativeAdmission232(count,CANONICAL_RANK_CHILD_STATEMENTS)},'scheduled',lane);check();
+  const result=await pass.runFreshPass(counted,{calls,adm:pass.nativeAdmission232(count,CANONICAL_RANK_CHILD_STATEMENTS)},'scheduled',lane);check();
+  // A signed new request owns its own statement/subrequest budget.
+  await kickRoleWork242(env,'requests');
+  if(result.continuation)await kickRoleWork242(env,'sweep');check();
  });
 }
 
@@ -537,6 +547,7 @@ const MAX_WATCHER_POST_BYTES = 1024 * 1024;
 async function route(request: Request, env: Env, path: string, schemaReady = true, ctx?: ExecutionContext,namesOrigin?:HandlerServingOrigin,originalDispatch?:BetaRoleDispatch): Promise<Response> {
   const roleDispatch=originalDispatch??captureBetaRoleDispatch(env);
   const query = new URL(request.url).searchParams;
+  if(path==='/internal/roles242/continue')return handleRoleContinuation242(request,env,ctx?(label,work)=>deferOriginalServing(ctx,label,work):undefined);
   if (request.method === "POST" && path === "/interactions") {
     // Build .47: the body is capped before anything decodes it, the signature's timestamp must be recent, the payload
     // must name this application, and an id already seen in the last hour is refused (seen_interactions): a captured
@@ -572,6 +583,7 @@ async function route(request: Request, env: Env, path: string, schemaReady = tru
         try{const r=await createInteractionRequest(env,request,body);return reply(`Whisper !olympus ${r.code} to an online qualified High Councillor. This code expires in ten minutes. You need no AddOn or website account.`);}
         catch(e){return reply(e instanceof QrHeld?`Councillor verification is held: ${e.code}.`:'Councillor verification is currently held.');}
       }
+      if(isAccessCheck242(i))return handleAccessCheck242(env,i,Number(request.headers.get('X-Signature-Timestamp')),ctx?(label,work)=>deferOriginalServing(ctx,label,work):undefined);
       if(isGuildCommand219(i))return handleGuildCommand219(env,i,Number(request.headers.get("X-Signature-Timestamp")),ctx?work=>deferOriginalServing(ctx,"interaction_guild219",work):undefined);
       return await handleInteraction(env, i, ctx ? (label, work) => deferOriginalServing(ctx, label, work) : undefined,roleDispatch);
     };
@@ -638,11 +650,12 @@ async function route(request: Request, env: Env, path: string, schemaReady = tru
         });
       }
       const presenceOnly=request.method==='GET'&&path==='/queue'&&query.getAll('presenceOnly').includes('1');
-      const launch=captureLaunchVerification(env),ingest=request.method==='POST'&&['/ingest/verify','/ingest/roster','/ingest/events'].includes(path)&&launch.mode==='members-only'&&!!launch.scope&&launch.current();
+      const launch=captureLaunchVerification(env),ingest=request.method==='POST'&&['/ingest/verify','/ingest/roster','/ingest/events','/ingest/intake242'].includes(path)&&launch.mode==='members-only'&&!!launch.scope&&launch.current();
       if(versions.length!==1||versions[0]!=='launch-membership-v1'||body!==null&&typeof body==='object'&&'keyVersion'in body||!presenceOnly&&!ingest)
         return json({ error: "unsupported_protocol", message: "This Worker serves the unversioned protocol only; a keyVersion is not supported." }, 400);
       if(ingest)env=launchVerificationEnv(env,launch);
     }
+    if(request.method==='POST'&&path==='/ingest/intake242')return postIntake242(env,body);
     if (request.method === "POST" && path === "/ingest/verify") return await postVerify(env, body,roleDispatch);
     if (request.method === "POST" && path === "/ingest/roster") return await postRoster(env, body, ctx ? (label, work) => deferOriginalServing(ctx, label, work) : undefined,roleDispatch);
     if (request.method === "POST" && path === "/ingest/events") return await postEvents(env, body,roleDispatch);
@@ -720,7 +733,7 @@ async function freshRegistrationRefused(env: Env, trigger: string): Promise<void
 }
 
 /** Bumped with every change that needs a redeploy, so GET /health shows which build is live. */
-const BUILD = "2026-11-09.241 Recent rank changes before catchup";
+const BUILD = "2026-11-10.242 Continuous verification and rank sync";
 
 /**
  * Presence of each secret (never the value) and a D1 round trip — enough to tell a missing `wrangler secret put` from a
