@@ -223,6 +223,37 @@ function projectApprovedManifest(value){
  const projected=JSON.stringify({...data,triggers:data.triggers.filter(t=>!SEAL_TRIGGER_NAMES.includes(t.name))});
  projectedManifests.set(value,projected);return projected;
 }
+// .265 historical comparison only. The complete current read proof has one
+// approved index hint; no raw trace, Native execution or historical pin changes.
+const READ_PROOF265=Object.freeze({currentBytes:4690,currentSHA256:'1eb1ac8a411546ce206a0e7922bb1dd1bcb1784e25ab7354251cc44501dcba57',historicalBytes:4660,historicalSHA256:'13727700584b154fcaa3b39b4bf5555b5fc4d97ceb0a464628d509d49ca0eeda',
+ currentWindow:"FROM audit INDEXED BY audit_actor_action WHERE action='site.settings'",historicalWindow:"FROM audit WHERE action='site.settings'"});
+let readProofControls265Done=false;
+function comparisonReadProof265(input,requiredCount=null){
+ if(!Array.isArray(input)||requiredCount!==null&&(!Number.isSafeInteger(requiredCount)||requiredCount<1))throw Error('identity265_read_proof_trace');
+ let count=0,first=null;const output=input.map(frame=>{
+  if(!frame||frame.k!=='sql'||frame.tag!=='legacy'||typeof frame.sql!=='string'||Buffer.byteLength(frame.sql)!==READ_PROOF265.currentBytes||sha(frame.sql)!==READ_PROOF265.currentSHA256)return frame;
+  if(Object.keys(frame).join(',')!=='k,tag,sql,params'||!Array.isArray(frame.params)||Object.keys(frame.params).join(',')!=='0,1,2,3'||frame.params.length!==4||frame.params[0]!==''||frame.params[1]!==''||typeof frame.params[2]!=='string'||sha(frame.params[2])!==COMPOSED_MANIFEST_SHA||frame.params[3]!=='a'.repeat(32))throw Error('identity265_read_proof_tuple');
+  if(frame.sql.split(READ_PROOF265.currentWindow).length!==2)throw Error('identity265_read_proof_window');
+  const historical=frame.sql.replace(READ_PROOF265.currentWindow,READ_PROOF265.historicalWindow);
+  if(Buffer.byteLength(historical)!==READ_PROOF265.historicalBytes||sha(historical)!==READ_PROOF265.historicalSHA256)throw Error('identity265_read_proof_inverse');
+  count++;first??=frame;return {...frame,sql:historical};
+ });
+ if(count<1||requiredCount!==null&&count!==requiredCount)throw Error('identity265_read_proof_count');
+ return {trace:output,count,first};
+}
+function comparisonReadProofControls265(frame){
+ const immutable=Object.freeze({...frame,params:Object.freeze(frame.params.slice())}),single=Object.freeze([immutable]),originalSQL=immutable.sql;
+ const copied=comparisonReadProof265(single,1);
+ check('.265 exact actual read-proof copy preserves raw tuple, keys and binds',single[0]===immutable&&immutable.sql===originalSQL&&sha(immutable.sql)===READ_PROOF265.currentSHA256&&copied.trace.length===1&&Object.keys(copied.trace[0]).join(',')===Object.keys(immutable).join(',')&&copied.trace[0].params===immutable.params&&sha(copied.trace[0].sql)===READ_PROOF265.historicalSHA256);
+ const badBinds=[['first bind',['x',...immutable.params.slice(1)]],['second bind',['','x',...immutable.params.slice(2)]],['manifest',[...immutable.params.slice(0,2),immutable.params[2]+' ',immutable.params[3]]],['epoch',[...immutable.params.slice(0,3),'b'.repeat(32)]],['bind order',[immutable.params[2],immutable.params[1],immutable.params[0],immutable.params[3]]],['extra bind',[...immutable.params,1]]];
+ const probes=[['missing',[]],['duplicate',[immutable,immutable]],['SQL prefix',[{...immutable,sql:' '+immutable.sql}]],['SQL suffix',[{...immutable,sql:immutable.sql+' '}]],['SQL line endings',[{...immutable,sql:immutable.sql.replaceAll('\n','\r\n')}]],['changed index',[{...immutable,sql:immutable.sql.replace('audit_actor_action WHERE','audit_ts WHERE')}]],['wrong context',[{...immutable,tag:'lane'}]],['wrong kind',[{...immutable,k:'http'}]],['extra key',[{...immutable,extra:true}]],['key order',[{tag:immutable.tag,k:immutable.k,sql:immutable.sql,params:immutable.params}]],...badBinds.map(([name,params])=>[name,[{...immutable,params}]])];
+ for(const[name,input]of probes){let refused=false;try{comparisonReadProof265(input,1);}catch{refused=true;}check('.265 exact read-proof comparison refuses '+name,refused);}
+ const other=Object.freeze({k:'sql',tag:'legacy',sql:'SELECT 1 AS untouched265',params:Object.freeze([1])}),batch=Object.freeze({k:'batch',tag:'legacy',n:2}),http=Object.freeze({k:'http',tag:'legacy',method:'GET',path:'/synthetic265',body:null,reason:null}),lane=Object.freeze({...immutable,tag:'lane'});
+ const mixed=Object.freeze([batch,immutable,other,http,lane]),mixedCopy=comparisonReadProof265(mixed,1);
+ check('.265 comparison retains every other statement/bind/batch/HTTP/context frame by identity and order',mixedCopy.trace.length===mixed.length&&mixed.every((value,index)=>index===1?mixedCopy.trace[index]!==value&&mixedCopy.trace[index].params===value.params:mixedCopy.trace[index]===value));
+ const doubled=comparisonReadProof265([immutable,immutable]);
+ check('.265 duplicate proof is never collapsed or hidden from historical trace/count oracle',doubled.trace.length===2&&doubled.count===2&&sha(doubled.trace)!==sha(copied.trace)&&doubled.trace.every(value=>value.params===immutable.params));
+}
 // A paired original guide raw dump proved identical30events/SQL/binds/batches/HTTPmetadata/response/twelve
 // except this first line. Raw r.trace remains untouched; only historical comparison is projected.
 const PUBLIC_GUIDE_FIRST_LINE = "Olympus guild direction: **World of Warcraft: Forever · PVE - Alliance · public guild direction · Realmless (ruleset-based)**.";
@@ -258,6 +289,12 @@ const digestOf = (r, masked = false) => {
     const required={guide:r.comparisonScenario==='guide'?1:0,cache:r.comparisonScenario==='button'?1:0};
     const comparison247={trace:source247.comparisonTrace(r.trace,masked,required),response:source247.comparisonResponse(r.response,masked,r.comparisonScenario==='button')};
     r={...r,trace:source230.copyTrace(comparison247.trace,masked,required),response:source230.copyResponse(comparison247.response,masked,r.comparisonScenario==='button')};
+    const current=r.trace,comparison265=comparisonReadProof265(current);
+    if(!readProofControls265Done){comparisonReadProofControls265(comparison265.first);readProofControls265Done=true;}
+    const retained=current.every((frame,index)=>comparison265.trace[index]===frame||frame.k==='sql'&&frame.tag==='legacy'&&frame.params===comparison265.trace[index].params&&sha(frame.sql)===READ_PROOF265.currentSHA256&&sha(comparison265.trace[index].sql)===READ_PROOF265.historicalSHA256);
+    if(!retained||comparison265.trace.length!==current.length)throw Error('identity265_other_trace_drift');
+    console.log('IDENTITY265_READ_PROOF_COMPARISON_WITNESS',JSON.stringify({scenario:r.comparisonScenario,frames:comparison265.count,currentBytes:READ_PROOF265.currentBytes,currentSHA256:READ_PROOF265.currentSHA256,historicalBytes:READ_PROOF265.historicalBytes,historicalSHA256:READ_PROOF265.historicalSHA256,manifestSHA256:sha(comparison265.first.params[2]),canonicalBindCount:comparison265.first.params.length,rawSQLRetained:sha(comparison265.first.sql)===READ_PROOF265.currentSHA256,allOtherFramesRetained:retained,traceLengthUnchanged:true}));
+    r={...r,trace:comparison265.trace};
   }
   const legacy = JSON.stringify(legacyOf(r)), response = JSON.stringify(r.response);
   return { trace: sha(masked ? mask(legacy) : legacy), response: sha(masked ? mask(response) : response), twelve: sha(r.twelve), statements: legacyOf(r).filter((e) => e.k === 'sql').length, requests: legacyOf(r).filter((e) => e.k === 'http').length };
