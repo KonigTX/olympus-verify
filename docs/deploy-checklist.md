@@ -7955,3 +7955,13 @@ The finite fixed-snapshot scheduler materializes its repeated facts projection s
 ### Build .254 — finite production query boundaries
 
 Production D1 still rejected the .253 facts-only boundary. The finite selector now materializes an explicit allowlist of its reused CTEs, preserving the exact original selectors, filters, ordering and limits. Source and effect authority are unchanged. The .253 post-serving actual D1 failures and its local52/82 component passes are retained separately. Worker-only; addon/Watcher stay0.6.25. Actual D1 query and guarded live-role readbacks remain decisive after deployment.
+
+
+## Worker .254 — 2026-11-10.254 Production role query boundaries
+
+Exact-source runtime receipts are under launch254-2026-11-10. The production selector still fails7500; this build is not final accepted. Original failure and component evidence are preserved. Follow the next correction rather than treating a healthy callback as role convergence.
+
+
+## Worker .255 — 2026-11-10.255 Reduced-reference role batches
+
+Production D1 rejects the original finite selector across .252, .253 and .254. The exact7500 errors, clean local component tests and failed .254 doc projection are preserved; no final acceptance is asserted for those builds. A reduced-reference equivalent must pass real production D1, current guarded Native effects, exact-head CI and review before final merge. Addon and Watcher remain0.6.25. No branch verification or owner-held member interaction tests are claimed.

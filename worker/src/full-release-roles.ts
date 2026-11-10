@@ -141,23 +141,59 @@ export const CANONICAL233_WALK_SELECT=`WITH candidates AS (
 
 // .249: a continuation visits each candidate once in its fixed-snapshot sweep.
 // Keep the original selectors intact for ordinary priority/source consumers.
-function finiteSweep249(sql:string):string{
- const boundary='FROM candidates)';
- if(sql.split(boundary).length!==2)throw Error('native249_selector_boundary');
- // .254: facts alone did not bound production D1's repeated CTE expansion.
- // Materialize only these fixed projections; all predicates/order stay intact,
- // and the three existing MATERIALIZED history/row/sample CTEs stay exact.
- const names=['candidates','facts','latest_native241','native_ordered241','native_events241','native_event_ids241','native_tokens241','targets','work','restriction_order','native_delta_order241','ranked'];
- let finite=sql,changed=0;
- for(const name of names){const marker=name+' AS (',occurrences=sql.split(marker).length-1;
-  if(occurrences>1)throw Error('native254_materialization_boundary');
-  if(occurrences===1){finite=finite.replace(marker,name+' AS MATERIALIZED (');changed++;}
+type SweepSQLToken255={kind:'word'|'literal'|'punct';text:string;start:number;end:number};
+/** .255: production D1 counts repeated CTE/view expansion cumulatively. Expand
+ * only these trusted readonly constants into equivalent derived tables. All
+ * bodies share one statement snapshot; no token supplies effect authority. */
+function inlineFiniteSweep255(sql:string,canonical:boolean):string{
+ const fail=():never=>{throw Error('native255_sql_shape');};
+ const expected=canonical?['candidates','facts','latest_native241','native_history241','native_roster_rows241','native_samples241','native_ordered241','native_events241','native_event_ids241','native_tokens241','targets','work','restriction_order','native_delta_order241','ranked']:['candidates','facts','work'];
+ const tokenize=(text:string):SweepSQLToken255[]=>{
+  const out:SweepSQLToken255[]=[];let i=0;
+  while(i<text.length){if(/\s/.test(text[i]!)){i++;continue;}const start=i,c=text[i]!;
+   if(c==="'"||c==='"'){const quote=c;i++;let closed=false;
+    while(i<text.length){if(text[i]===quote){i++;if(text[i]===quote){i++;continue;}closed=true;break;}i++;}
+    if(!closed)fail();out.push({kind:'literal',text:text.slice(start,i),start,end:i});continue;
+   }
+   if(/[A-Za-z_]/.test(c)){i++;while(i<text.length&&/[A-Za-z0-9_]/.test(text[i]!))i++;out.push({kind:'word',text:text.slice(start,i),start,end:i});continue;}
+   i++;out.push({kind:'punct',text:c,start,end:i});
+  }return out;
+ };
+ if(sql.length>20000)fail();const input=tokenize(sql);if(input[0]?.text!=='WITH')fail();
+ const bodies=new Map<string,string>();let i=1,main='';
+ for(;;){const name=input[i++]?.text;if(!name||!expected.includes(name)||bodies.has(name)||input[i++]?.text!=='AS')fail();
+  if(input[i]?.text==='MATERIALIZED')i++;
+  if(input[i]?.text!=='(')fail();const start=input[i++]!.end;let depth=1,end=-1;
+  while(i<input.length&&depth){const t=input[i++]!;if(t.kind==='punct'){if(t.text==='(')depth++;else if(t.text===')')depth--;}if(!depth)end=t.start;}
+  if(end<0||depth)fail();bodies.set(name,sql.slice(start,end));
+  if(input[i]?.text!==','){if(!input[i])fail();main=sql.slice(input[i]!.start);break;}i++;
  }
- if(changed!==(sql===CANONICAL233_WALK_SELECT?12:sql===NATIVE232_WALK_SELECT?3:-1))throw Error('native254_materialization_inventory');
- return finite.replace(boundary,`FROM candidates WHERE typeof(subject)='text' AND length(subject) BETWEEN 17 AND 20 AND subject NOT GLOB '*[^0-9]*'
+ if(JSON.stringify([...bodies.keys()])!==JSON.stringify(expected))fail();
+ const reserved=new Set(['WHERE','GROUP','ORDER','LIMIT','OFFSET','UNION','INTERSECT','EXCEPT','LEFT','RIGHT','FULL','INNER','OUTER','CROSS','JOIN','ON','USING','WINDOW','HAVING','INDEXED','NOT']);
+ const memo=new Map<string,string>(),active=new Set<string>();
+ const resolve=(name:string):string=>{const prior=memo.get(name);if(prior!==undefined)return prior;if(active.has(name))return fail();active.add(name);const body=bodies.get(name);if(body===undefined)return fail();const value=replace(body);active.delete(name);memo.set(name,value);return value;};
+ const replace=(text:string):string=>{
+  const tokens=tokenize(text),edits:[number,number,string][]=[];
+  for(let n=0;n+1<tokens.length;n++){const t=tokens[n]!,next=tokens[n+1]!;
+   if(t.kind!=='word'||!['FROM','JOIN'].includes(t.text.toUpperCase())||next.kind!=='word'||!bodies.has(next.text))continue;
+   const following=tokens[n+2],hasAlias=following?.kind==='word'&&(following.text.toUpperCase()==='AS'||!reserved.has(following.text.toUpperCase()));
+   edits.push([next.start,next.end,'('+resolve(next.text)+')'+(hasAlias?'':' AS '+next.text)]);
+  }
+  for(let n=edits.length-1;n>=0;n--){const [start,end,value]=edits[n]!;text=text.slice(0,start)+value+text.slice(end);if(text.length>=100000)fail();}
+  return text;
+ };
+ const result=replace(main),tokens=tokenize(result);
+ for(let n=0;n<tokens.length;n++){const t=tokens[n]!;if(t.kind==='word'&&t.text.toUpperCase()==='WITH')fail();if(['FROM','JOIN'].includes(t.text.toUpperCase())&&tokens[n+1]?.kind==='word'&&bodies.has(tokens[n+1]!.text))fail();}
+ const bytes=new TextEncoder().encode(result).length,binds=[...result.matchAll(/\?([0-9]+)/g)].map(m=>Number(m[1]));
+ if(bytes!==(canonical?34827:2833)||bytes>=100000||Math.max(...binds)!==5)fail();return result;
+}
+function finiteSweep249(sql:string):string{
+ const canonical=sql===CANONICAL233_WALK_SELECT,boundary='FROM candidates)';
+ if(!canonical&&sql!==NATIVE232_WALK_SELECT||sql.split(boundary).length!==2)throw Error('native249_selector_boundary');
+ return inlineFiniteSweep255(sql.replace(boundary,`FROM candidates WHERE typeof(subject)='text' AND length(subject) BETWEEN 17 AND 20 AND subject NOT GLOB '*[^0-9]*'
  AND NOT EXISTS(SELECT 1 FROM privacy_subjects privacy249 WHERE privacy249.subject_id=candidates.subject AND privacy249.state<>'active')
  AND NOT EXISTS(SELECT 1 FROM audit checked WHERE checked.actor='system' AND checked.action='role.native232_attempt' AND checked.subject=candidates.subject
- AND json_extract(CASE WHEN json_valid(checked.details) THEN checked.details ELSE '{}' END,'$.walk')=?5))`);
+ AND json_extract(CASE WHEN json_valid(checked.details) THEN checked.details ELSE '{}' END,'$.walk')=?5))`),canonical);
 }
 export const NATIVE232_SWEEP249_SELECT=finiteSweep249(NATIVE232_WALK_SELECT);
 export const CANONICAL233_SWEEP249_SELECT=finiteSweep249(CANONICAL233_WALK_SELECT);
