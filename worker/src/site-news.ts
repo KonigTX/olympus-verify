@@ -78,6 +78,11 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".256", date: "2026-11-10", lines: [
+      "Guild rank changes are reconciled after each roster sync.",
+    ],
+  },
+  {
     build: ".255", date: "2026-11-10", lines: [
       "Guild rank changes are processed across the full roster after syncing.",
     ],

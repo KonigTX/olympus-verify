@@ -171,7 +171,9 @@ function inlineFiniteSweep255(sql:string,canonical:boolean):string{
  if(JSON.stringify([...bodies.keys()])!==JSON.stringify(expected))fail();
  const reserved=new Set(['WHERE','GROUP','ORDER','LIMIT','OFFSET','UNION','INTERSECT','EXCEPT','LEFT','RIGHT','FULL','INNER','OUTER','CROSS','JOIN','ON','USING','WINDOW','HAVING','INDEXED','NOT']);
  const memo=new Map<string,string>(),active=new Set<string>();
- const resolve=(name:string):string=>{const prior=memo.get(name);if(prior!==undefined)return prior;if(active.has(name))return fail();active.add(name);const body=bodies.get(name);if(body===undefined)return fail();const value=replace(body);active.delete(name);memo.set(name,value);return value;};
+ // .256: OFFSET0 prevents flattening each derived projection into its parent.
+ // LIMIT-1 retains every original row; it is not a shared-result/cache claim.
+ const resolve=(name:string):string=>{const prior=memo.get(name);if(prior!==undefined)return prior;if(active.has(name))return fail();active.add(name);const body=bodies.get(name);if(body===undefined)return fail();const value='SELECT * FROM ('+replace(body)+') AS __olv256_'+name+' LIMIT -1 OFFSET 0';active.delete(name);memo.set(name,value);return value;};
  const replace=(text:string):string=>{
   const tokens=tokenize(text),edits:[number,number,string][]=[];
   for(let n=0;n+1<tokens.length;n++){const t=tokens[n]!,next=tokens[n+1]!;
@@ -185,7 +187,7 @@ function inlineFiniteSweep255(sql:string,canonical:boolean):string{
  const result=replace(main),tokens=tokenize(result);
  for(let n=0;n<tokens.length;n++){const t=tokens[n]!;if(t.kind==='word'&&t.text.toUpperCase()==='WITH')fail();if(['FROM','JOIN'].includes(t.text.toUpperCase())&&tokens[n+1]?.kind==='word'&&bodies.has(tokens[n+1]!.text))fail();}
  const bytes=new TextEncoder().encode(result).length,binds=[...result.matchAll(/\?([0-9]+)/g)].map(m=>Number(m[1]));
- if(bytes!==(canonical?34827:2833)||bytes>=100000||Math.max(...binds)!==5)fail();return result;
+ if(bytes!==(canonical?38081:2993)||bytes>=100000||Math.max(...binds)!==5)fail();return result;
 }
 function finiteSweep249(sql:string):string{
  const canonical=sql===CANONICAL233_WALK_SELECT,boundary='FROM candidates)';

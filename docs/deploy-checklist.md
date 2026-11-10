@@ -7965,3 +7965,8 @@ Exact-source runtime receipts are under launch254-2026-11-10. The production sel
 ## Worker .255 — 2026-11-10.255 Reduced-reference role batches
 
 Production D1 rejects the original finite selector across .252, .253 and .254. The exact7500 errors, clean local component tests and failed .254 doc projection are preserved; no final acceptance is asserted for those builds. A reduced-reference equivalent must pass real production D1, current guarded Native effects, exact-head CI and review before final merge. Addon and Watcher remain0.6.25. No branch verification or owner-held member interaction tests are claimed.
+
+
+## Worker .256 - 2026-11-10.256 Efficient production role batches
+
+The .255 actual production D1 selector compiled and ran, but read65033887 rows in26888ms. The CTE-free helper now retains derived-table optimization barriers with LIMIT -1 OFFSET0 while preserving all body values, filters, aliases, priority/order and bind positions. Original failed attempts and the .255 performance result are retained. Addon/Watcher remain0.6.25. Actual production D1 duration/reads and current guarded Native effects are required after deployment; this source entry alone asserts neither. The static beta oracle timestamp is restored exactly to253402300799999 after the prior metadata replacement error.

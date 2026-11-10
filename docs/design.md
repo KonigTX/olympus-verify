@@ -2442,3 +2442,8 @@ Production D1 still rejected the .253 facts-only boundary. The finite selector n
 ### Build .255 — reduce CTE reference expansion
 
 The production D1 7500 failure persisted through facts-only and full MATERIALIZED hints. Finite selector derivation now targets equivalent CTE-free derived tables while retaining the original query bodies, selection filters, ordering, binding positions and current Native/effect guards. The canonical expansion is about35KB, below the100KB statement limit; it adds no query or schema change. Production D1 acceptance and live guarded role results must be observed separately from local SQLite/Workerd and automated review. See the independent provider report https://github.com/cloudflare/workers-sdk/issues/16786 for a consistent upstream symptom; it does not prove the exact provider engine cause here. Addon/Watcher remain0.6.25.
+
+
+### Build .256 - derived-table optimization boundaries
+
+The .255 actual production D1 selector compiled and ran, but read65033887 rows in26888ms. The CTE-free helper now retains derived-table optimization barriers with LIMIT -1 OFFSET0 while preserving all body values, filters, aliases, priority/order and bind positions. Original failed attempts and the .255 performance result are retained. Addon/Watcher remain0.6.25. Actual production D1 duration/reads and current guarded Native effects are required after deployment; this source entry alone asserts neither. The static beta oracle timestamp is restored exactly to253402300799999 after the prior metadata replacement error.
