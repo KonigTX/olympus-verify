@@ -10,6 +10,9 @@ function load(name,imports={},extra={}){
 }
 (async()=>{
  let checks=0;const check=(name,fn)=>{fn();checks++;console.log('PASS '+name);};
+ const liveConfig260=fs.readFileSync(path.join(root,'../wrangler.toml')),cutoverConfig260=fs.readFileSync(path.join(root,'../wrangler.cutover.toml')),marker260=fs.readFileSync(path.join(root,'../wrangler.cutover.applied'),'utf8');
+ check('260 public self-fetch config explicitly routes through the public Worker front door',()=>{assert.deepEqual(liveConfig260,cutoverConfig260);for(const bytes of [liveConfig260,cutoverConfig260]){const text=bytes.toString('utf8'),flags=[...text.matchAll(/^compatibility_flags\s*=\s*(\[[^\r\n]*\])\s*$/gm)];assert.equal(flags.length,1);assert.deepEqual(JSON.parse(flags[0][1]),['nodejs_compat','global_fetch_strictly_public']);assert.match(text,/^workers_dev\s*=\s*true\s*$/m);}});
+ check('260 effective cutover marker binds the exact unchanged live/profile pair relationship',()=>{const records=[...marker260.matchAll(/^(?:activation_)?profile_sha256 = "([a-f0-9]{64})"$/gm)];assert(records.length>0);assert.equal(records.at(-1)[1],require('node:crypto').createHash('sha256').update(cutoverConfig260).digest('hex'));assert.match(marker260,/^applied_at = "2026-10-01T20:36:18Z"$/m);});
  const launch={'./launch-verification227':{captureLaunchVerification:e=>({mode:e.legacy?'legacy':'members-only',scope:e.legacy?null:{realm:e.realm},current:()=>e.current!==false})}};
  const I=load('interactions',launch);
  check('Forever single name refuses',()=>assert.equal(I.normalizeVerificationName242({realm:'CAMWOW'},'Taylor'),null));

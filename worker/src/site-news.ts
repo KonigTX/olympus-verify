@@ -78,6 +78,11 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".260", date: "2026-11-10", lines: [
+      "Guild rank updates now continue through the public Worker route across queued batches.",
+    ],
+  },
+  {
     build: ".259", date: "2026-11-10", lines: [
       "Guild rank handoff diagnostics now remain visible across deferred callbacks.",
     ],

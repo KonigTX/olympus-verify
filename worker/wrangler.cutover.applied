@@ -80,3 +80,7 @@ activated_at = "2026-11-06T12:44:58Z"
 # Not an activation, Native qualification or provider deployment receipt.
 activation_profile_sha256 = "c7c560a8d68f68fb6be6db84975f9415e872ba2fabc7feedd374da69906d03e0"
 activated_at = "2026-11-08T05:55:07Z"
+# .260 SOURCE PREPARATION: route signed continuations through the public Worker front door.
+# Not produced by --activate; no provider deployment, activation or new Native authority is asserted.
+activation_profile_sha256 = "7028e6a2c71ecb5aba716553a3a1408dba71d51905274d84a9a7c7409a3fe6cc"
+activated_at = "2026-11-10T19:28:25Z"
