@@ -27,9 +27,10 @@ import { openRenameHold, reapplyText } from "./rename-review";
 import { captureLaneConfig, FRESH_AUDIT, laneClock, LEGACY_BAN_ALLOWANCE, type LaneCapture } from "./full-release-roles";
 import { appendLinkBlock } from "./link"; // .186: the Olympus Link code, last in the two code replies; off, the very same string
 import { isNicknameInteraction233,handleNicknameInteraction233 } from './member-nickname233';
-async function requestRoleReconciliation242(...args:Parameters<typeof import('./role-reconcile242').requestRoleReconciliation242>){return (await import('./role-reconcile242')).requestRoleReconciliation242(...args);}
-async function kickRoleWork242(...args:Parameters<typeof import('./role-reconcile242').kickRoleWork242>){return (await import('./role-reconcile242')).kickRoleWork242(...args);}
+async function requestRoleReconciliation242(...args:Parameters<typeof import('./role-reconcile242').requestRoleReconciliation242>){if(currentNativeVerification242(args[0]))return (await import('./role-reconcile242')).requestRoleReconciliation242(...args);}
+async function kickRoleWork242(...args:Parameters<typeof import('./role-reconcile242').kickRoleWork242>){if(currentNativeVerification242(args[0]))return (await import('./role-reconcile242')).kickRoleWork242(...args);}
 import {captureLaunchVerification} from './launch-verification227';
+function currentNativeVerification242(env:Env):boolean{const capture=captureLaunchVerification(env);return capture.mode==='members-only'&&capture.scope!==null&&capture.current();}
 
 /** Revision 4: registers deferred work past the reply (index.ts deferOriginalServing). Absent in tests and direct callers. */
 type Defer = (label: string, work: () => Promise<unknown>) => void;
@@ -66,12 +67,15 @@ const PENDING_TTL = 24 * 3600; // one code per character per day, plus the bound
 // A request code is accepted on its issue day and the next (codes.ts), so a nonce is not handed out again for 48 hours.
 const NONCE_REUSE_AFTER = 48 * 3600;
 // Forever uses two-part names; allow one space and apostrophes, and accented letters (EU realms) via Unicode classes.
-const NAME_RE = /^\p{L}[\p{L}' ]{1,31}$/u;
+const NAME_RE = /^\p{L}[\p{L}' ]{1,30}$/u;
+const NATIVE_NAME_RE242 = /^\p{L}[\p{L}' ]{1,31}$/u;
 export function normalizeVerificationName242(env:Env,input:string):string|null{
- if(typeof input!=='string'||/[\u0000-\u001f\u007f]/.test(input))return null;
- const raw=input.trim().replace(/\s+/g,' '),scope=captureLaunchVerification(env).scope;
- const forever=/forever|camwow/i.test(scope?.realm??'');
- return NAME_RE.test(raw)&&(!forever||raw.split(' ').length>=2)?raw:null;
+ if(typeof input!=='string')return null;
+ const capture=captureLaunchVerification(env);
+ if(capture.mode==='legacy'&&capture.current()){const raw=input.trim();return NAME_RE.test(raw)?raw:null;}
+ if(capture.mode!=='members-only'||!capture.scope||!capture.current()||/[\u0000-\u001f\u007f]/.test(input))return null;
+ const raw=input.trim().replace(/\s+/g,' '),forever=/forever|camwow/i.test(capture.scope.realm);
+ return NATIVE_NAME_RE242.test(raw)&&(!forever||raw.split(' ').length>=2)?raw:null;
 }
 const BAN_REASON_MAX = 400; // .210: the reason appears in the reply and the staff card, both inside Discord's 2,000 characters
 export const USER_MENU_LOOKUP = "Olympus linked characters"; // user context-menu command (right-click a member → Apps)
@@ -95,7 +99,7 @@ export async function handleInteraction(env: Env, i: Interaction, defer?: Defer,
         // character is whichever one whispers it (27 Sep). The option is optional once scripts/register.mjs has run.
         const character = (option<string>(i, "character") ?? "").trim();
         const response=await (character ? issueCode(env,i,character,lane,roleDispatch) : issueTicket(env,i,lane));
-        defer?.('interaction_roles242',()=>kickRoleWork242(env,'requests'));return response;
+        if(currentNativeVerification242(env))defer?.('interaction_roles242',()=>kickRoleWork242(env,'requests'));return response;
       }
       case "verify-status":
       case "olympus-status":
@@ -118,7 +122,7 @@ export async function handleInteraction(env: Env, i: Interaction, defer?: Defer,
   if (i.type === 3) return handleComponent(env,i,lane,roleDispatch,defer);
   if (i.type === 5) {
     // modal submit — the "Verify a character" button in the pinned guide
-    if (i.data?.custom_id === GUIDE_MODAL) {const response=await issueCode(env,i,modalField(i,GUIDE_FIELD)??'',lane,roleDispatch);defer?.('interaction_roles242',()=>kickRoleWork242(env,'requests'));return response;}
+    if (i.data?.custom_id === GUIDE_MODAL) {const response=await issueCode(env,i,modalField(i,GUIDE_FIELD)??'',lane,roleDispatch);if(currentNativeVerification242(env))defer?.('interaction_roles242',()=>kickRoleWork242(env,'requests'));return response;}
     return reply("Unknown form.");
   }
   return reply("Unsupported interaction.");
@@ -132,7 +136,7 @@ async function issueCode(env: Env, i: Interaction, input: string, lane?: LaneCap
 /** Shared authenticated Discord/web service. The caller supplies a real authenticated account, never a fabricated interaction. */
 export async function requestCharacterCode242(env:Env,user:{id:string;username?:string;global_name?:string|null},input:string,lane?:LaneCapture,roleDispatch:BetaRoleDispatch=captureBetaRoleDispatch(env),roles?:string[]):Promise<Response>{
   const raw=normalizeVerificationName242(env,input);
-  if(!raw)return reply("Enter your full in-game name as **First Last**, with a space between the two names.");
+  if(!raw)return reply(currentNativeVerification242(env)?"Enter your full in-game name as **First Last**, with a space between the two names.":"Give the character name exactly as it appears in game (letters only; two-part names with one space).");
 
   // Battle.net is not required. The bnet login only ever requested scope=openid, so it proved "this Discord
   // account holds BattleTag X" and nothing about who controls the character — the in-game whisper is the actual
@@ -148,11 +152,16 @@ export async function requestCharacterCode242(env:Env,user:{id:string;username?:
       `**${raw}** is already linked to another Discord account. If that character is yours, ask High Council in #help-desk — the bot never re-links a name on its own.`,
     );
   }
-  if (existing && existing.discord_id === user.id && ['member','verified','queued'].includes(existing.status) && existing.verified_at) {
+  if (currentNativeVerification242(env) && existing && existing.discord_id === user.id && ['member','verified','queued'].includes(existing.status) && existing.verified_at) {
     // Ownership is already recorded; the latest roster can update rank immediately.
     // The queue carries no identity authority: the original Native issuer rechecks it.
     await requestRoleReconciliation242(env,user.id,'existing_verified_request');
     return reply(`**${existing.name}** is already linked to your account. Your current guild role is queued for an immediate guarded refresh. No new code is needed. In game, use **/oly → Verify / QR Code** for your current status.`);
+  }
+  if (captureLaunchVerification(env).mode==='legacy' && existing && existing.discord_id === user.id && existing.status === "member") {
+    const note = restoreNote(await restoreMemberRole(env, user.id, roles, "verify",roleDispatch));
+    if (freshGrantText(lane)) return reply(`**${existing.name}** is already linked to your account. For the guild roles, press **Get my code** in the guide and whisper the code from your highest-ranked character in the guild.${note ? `\n${note}` : ""}`);
+    return reply(`**${existing.name}** is already verified and in the guild.${note ? `\n${note}` : ""}`);
   }
 
   // One open request per character name at a time (first come, first served, 24 h).
@@ -194,7 +203,7 @@ export async function requestCharacterCode242(env:Env,user:{id:string;username?:
   }
   // SEN-01: the code of the day this request opened (ingest.ts accepts only that day's and the next), not today's.
   const code = await codeFor(env.VERIFY_SECRET, raw, dayBucket(new Date(opened * 1000)));
-  return reply(await appendLinkBlock(env, {id:user.id,username:user.username??user.id},
+  return reply(await appendLinkBlock(env, user,
     [
       `Your code for **${raw}**: \`${code}\`  (valid until <t:${expiresAt}:f>)`,
       ``,
@@ -242,7 +251,7 @@ async function issueTicket(env: Env, i: Interaction, lane?: LaneCapture,newChara
   const user = userOf(i);
   const member = await getMember(env, user.id);
   if (member?.banned) return reply("This account cannot verify. Contact High Council if you think that is a mistake.");
-  if(!newCharacter){
+  if(currentNativeVerification242(env)&&!newCharacter){
     const linked=await env.DB.prepare("SELECT name FROM characters WHERE discord_id=?1 AND status IN('member','verified','queued') AND verified_at IS NOT NULL AND guid IS NOT NULL ORDER BY verified_at DESC LIMIT 1").bind(user.id).first<{name:string}>();
     if(linked){await requestRoleReconciliation242(env,user.id,'existing_verified_button');return reply(`**${linked.name}** is already linked. Your current roster rank is queued for a guarded refresh; no new whisper is needed. Use **/oly → Verify / QR Code** in game, or **My status** here. To link a different character, press **Verify another character**.`);}
   }
@@ -250,7 +259,7 @@ async function issueTicket(env: Env, i: Interaction, lane?: LaneCapture,newChara
   // Until an officer's addon and watcher that understand request codes have checked in (relays.ts), a request code
   // would be refused in game ("not valid") and dropped by the watcher, so the button asks for the character instead,
   // exactly as it did before 27 Sep. This is what makes the rollout order not matter.
-  if (!(await ticketsReady(env))) return json(verifyModal());
+  if (!(await ticketsReady(env))) return json(verifyModal(env));
 
   let row: PendingRow | null = await openTicketFor(env, user.id);
   for (let tries = 0; tries < 20 && !row; tries++) {
@@ -274,7 +283,7 @@ async function issueTicket(env: Env, i: Interaction, lane?: LaneCapture,newChara
   if (!row) return reply("Could not issue a code just now \u2014 please try again in a minute.");
   // The mac is over the issue day; the addon accepts that day and the next, which covers the whole 24-hour lifetime.
   const code = await ticketFor(env.VERIFY_SECRET, row.nonce!, dayBucket(new Date(row.created_at * 1000)));
-  return reply(await appendLinkBlock(env, {id:user.id,username:user.username??user.id},
+  return reply(await appendLinkBlock(env, user,
     [
       `Your code: \`${code}\`  (valid until <t:${row.expires_at}:f>)`,
       ``,
@@ -888,8 +897,8 @@ async function handleComponent(env: Env, i: Interaction, lane?: LaneCapture,role
   const id = i.data?.custom_id ?? "";
   // One click, no typing: a request code whose character is decided by who whispers it (27 Sep). The modal that asked
   // for the name is still answered below, for anyone who had it open across the deploy.
-  if(id===GUIDE_VERIFY){const response=await issueTicket(env,i,lane);defer?.('interaction_roles242',()=>kickRoleWork242(env,'requests'));return response;}
-  if(id==='guide:another')return issueTicket(env,i,lane,true);
+  if(id===GUIDE_VERIFY){const response=await issueTicket(env,i,lane);if(currentNativeVerification242(env))defer?.('interaction_roles242',()=>kickRoleWork242(env,'requests'));return response;}
+  if(id==='guide:another'&&currentNativeVerification242(env))return issueTicket(env,i,lane,true);
   if (id === GUIDE_STATUS) return cmdStatus(env, i,roleDispatch);
   const [ns, action, arg] = id.split(":");
 

@@ -6,6 +6,8 @@ const fs=require('node:fs'),path=require('node:path'),Module=require('node:modul
 const original=fs.readFileSync(path.join(__dirname,'privacy_serving_integration_test.cjs'),'utf8'),marker='(async()=>{';
 if(original.split(marker).length!==2)throw Error('serving integration fixture changed');
 const cases=String.raw`
+// Both flag baselines include the same current data-only registry before any index route is loaded.
+load('treasury-data242');
 const beta=load('beta-reset-policy'),cursor=load('beta-reset-scan'),retention=load('privacy-retention'),jobs=load('privacy-serving-jobs');
 const {RecoveryFloorHeld}=load('privacy-recovery-held'),assert=require('node:assert/strict'),hash=v=>require('node:crypto').createHash('sha256').update(v).digest('hex');
 const MARKER='attempt_unresolved',KNOWN='ambiguous_personal_reference',INVALID='erasure_attempt_discipline_invalid';

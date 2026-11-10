@@ -1,6 +1,6 @@
 # Watcher .242 intake
 
-Watcher 0.6.21 reads only saved addon data, retaining original pending IDs and bodies across reloads and outages. It reads OlympusVerify.lua, Olympus.lua, OlympusRecord.lua and OlympusRecordDB.lua, merges entries by their stable source ID and refuses conflicting originals. Batches contain at most 25 entries. It never executes a remote role ID or action.
+Watcher 0.6.22 reads only saved addon data, retaining original pending IDs and bodies across reloads and outages. It reads OlympusVerify.lua, Olympus.lua, OlympusRecord.lua and OlympusRecordDB.lua, merges entries by their stable source ID and refuses conflicting originals. Batches contain at most 25 entries. It never executes a remote role ID or action.
 
 POST `/ingest/intake242` requires the existing Watcher bearer token and launch-membership protocol. A server `done` or `rejected` receipt is persisted before it is signed into `OlympusQueue.intakeReceipts242`. Missing/unknown verification outcomes retain the original and prevent an automatic second attempt; the explicit original pre-effect `membership_source_pending` response alone permits another attempt. Age is decided by the server, without refreshing captured proof timestamps.
 
@@ -13,3 +13,5 @@ Queue verification cache records expire within 300 seconds and are advisory only
 Postdeployment regression source: `watcher/test_intake242.py`. It has not been run before deployment. Run it after the live-first deployment using the installed runtime and repository test conventions.
 
 Legacy captured proofs retain their original bytes until an explicit server no-effect expiry receipt. Exact private seen-claim ownership and uniqueness are required before dispatch and claim release. Expiry settlement removes only its own claim in the same atomic local save; an uncertain save restores the original queue and claims and permits local ACK persistence only, never another request.
+
+Presence-only queue polls remain zero-D1. The .622 Watcher requests the bounded verification cache separately through the same launch-version fence; the members-only cache path cannot claim invitation rows.

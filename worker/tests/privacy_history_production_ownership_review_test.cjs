@@ -27,7 +27,7 @@ async function review(){
  const plan=registry.communityExportPlan(f.env,A),names=Array.from(registry.communityDataNames()),native=await f.env.DB.batch(plan.statements);
  const inventory={before,productionFamilies:names,productionStatementCount:plan.statements.length,queries:load('privacy-write-admission').originalPrivacyAdmissionGroupProjection(f.env.DB,plan.statements).logical.map((s,i)=>({index:i,tables:Array.from(new Set(Array.from(s.sql.matchAll(/\b(?:FROM|JOIN)\s+([A-Za-z_]+)/gi),x=>x[1]))),returned:native[i].results.length}))};
  console.log('ACTUAL_PRODUCTION_EXPORT_CENSUS '+JSON.stringify(inventory));
- eq('actual index imports original13 plus exact2 metadata and1 private nickname family',names.length,16);eq('actual index imports original36 plus exact3 metadata and1 nickname statement',plan.statements.length,40);
+ eq('actual index imports original13 plus exact2 metadata,1 private nickname and1 treasury family',names.length,17);eq('actual index imports original36 plus exact3 metadata,1 nickname and1 treasury statement',plan.statements.length,41);
  ok('production census includes purpose and news families',names.includes('privacy_access')&&names.includes('news'));
  async function own(collection){const connection=await connect(f),frm=await form(f,connection);provider=null;const response=await copy.exportPrivacyAccess(frm.request({collection}),f.env);eq('genuine own '+collection+' download admitted',response.status,200);return response.json();}
  const history=await own('contributionDecisions'),aggregate=await own('copy');

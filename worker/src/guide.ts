@@ -4,6 +4,7 @@ import { rulesetLabel, type RulesetProfile } from "./ruleset-profile";
 import { FLAGSHIP_GUILD_NAME } from "./guild-affiliation229";
 import { nicknameButtons233 } from './member-nickname233';
 import {captureCanonicalRankConfig233} from './canonical-ranks233';
+import {captureLaunchVerification} from './launch-verification227';
 
 export const GUIDE_VERIFY = "guide:verify"; // button → a request code, nothing to type (27 Sep; it opened a name modal before)
 export const GUIDE_STATUS = "guide:status"; // button → same answer as /verify-status
@@ -89,7 +90,7 @@ export function guideMessage(env: Env, profile: RulesetProfile, freshRoles = fal
           { type: 2, style: 1, label: "Get my code", custom_id: GUIDE_VERIFY },
           { type: 2, style: 2, label: "My status", custom_id: GUIDE_STATUS },
           ...nicknameButtons233(),
-          {type:2,style:2,label:"Verify another character",custom_id:"guide:another"},
+          ...(!legacyInviteQueue?[{type:2,style:2,label:"Verify another character",custom_id:"guide:another"}]:[]),
         ],
       },
     ],
@@ -98,7 +99,10 @@ export function guideMessage(env: Env, profile: RulesetProfile, freshRoles = fal
 }
 
 /** Interaction response type 9: a modal with one text input for the character name. */
-export const verifyModal = () => ({
+export const verifyModal = (env?:Env) => {
+  const capture=env?captureLaunchVerification(env):null;
+  const native=capture?.mode==='members-only'&&capture.scope!==null&&capture.current();
+  return {
   type: 9,
   data: {
     custom_id: GUIDE_MODAL,
@@ -112,7 +116,7 @@ export const verifyModal = () => ({
             custom_id: GUIDE_FIELD,
             label: "Character name, exactly as in game",
             style: 1, // short
-            min_length: 3,
+            min_length: native?3:2,
             max_length: 32,
             required: true,
             placeholder: "e.g. Fern Melder",
@@ -121,4 +125,5 @@ export const verifyModal = () => ({
       },
     ],
   },
-});
+  };
+};

@@ -106,7 +106,7 @@ LINE_TS_RE = re.compile(r"^(?P<mo>\d{1,2})/(?P<d>\d{1,2})\s+(?P<h>\d{1,2}):(?P<m
 CLIENT_IN = "Active Player Created"
 CLIENT_OUT = ("Client Object Manager Destroyed", "Client Destroy")
 
-WATCHER_VERSION = "0.6.21"
+WATCHER_VERSION = "0.6.22"
 STRICT_DISPLAY_PROTOCOL = "launch-roster-display-v1"
 STRICT_DISPLAY_PATH = "/queue/unverified?keyVersion=" + STRICT_DISPLAY_PROTOCOL
 STRICT_DISPLAY_MAX_BYTES = 512 * 1024
@@ -1821,7 +1821,9 @@ class Watcher:
                 return
             self.pull_strict_display()
             receipts = intake242.receipts(self)
-            cached = intake242.verification_results(self, response)
+            # Presence stays zero-D1. This exact cache intent remains fenced by launch-membership-v1; members-only never claims invite rows.
+            cache_okay, cache_response = self.worker.call("GET", "/queue?cacheOnly242=1", retries=1)
+            cached = intake242.verification_results(self, cache_response) if cache_okay else []
             if receipts or cached:
                 body = self.render_queue([], False, intake_receipts=receipts, verification_results=cached)
                 self.queue_file.parent.mkdir(parents=True, exist_ok=True)

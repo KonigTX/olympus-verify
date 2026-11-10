@@ -641,7 +641,7 @@ async function route(request: Request, env: Env, path: string, schemaReady = tru
       } catch { return json({ error: "bad_json", message: "The request body is not valid JSON." }, 400); }
       if (body === null || typeof body !== "object" || Array.isArray(body)) return json({ error: "bad_body", message: "The request body must be a JSON object." }, 400);
     }
-    if (query.has("keyVersion") || (body !== null && typeof body === "object" && "keyVersion" in body)) {
+    if (query.has("cacheOnly242") || query.has("keyVersion") || (body !== null && typeof body === "object" && "keyVersion" in body)) {
       const versions=query.getAll('keyVersion');
       if(request.method==='GET'&&path==='/queue/launch-operations'&&versions.length===1&&versions[0]==='officer-operations-v233')return handleLaunchOperations229(request,env,true);
       if(request.method==='POST'&&path==='/ingest/officer-invite'&&versions.length===1&&versions[0]==='officer-operations-v233'&&query.size===1&&body!==null&&!('keyVersion'in body))return postOfficerInvite233(env,body);
@@ -654,7 +654,9 @@ async function route(request: Request, env: Env, path: string, schemaReady = tru
       }
       const presenceOnly=request.method==='GET'&&path==='/queue'&&query.getAll('presenceOnly').includes('1');
       const launch=captureLaunchVerification(env),ingest=request.method==='POST'&&['/ingest/verify','/ingest/roster','/ingest/events','/ingest/intake242'].includes(path)&&launch.mode==='members-only'&&!!launch.scope&&launch.current();
-      if(versions.length!==1||versions[0]!=='launch-membership-v1'||body!==null&&typeof body==='object'&&'keyVersion'in body||!presenceOnly&&!ingest)
+      const cacheOnly242=request.method==='GET'&&path==='/queue'&&query.size===2&&query.getAll('cacheOnly242').length===1&&query.get('cacheOnly242')==='1';
+      if(cacheOnly242&&versions.length===1&&versions[0]==='launch-membership-v1'&&launch.mode==='members-only'&&!!launch.scope&&launch.current())return getQueue(env,'',false,true);
+      if(query.has('cacheOnly242')||versions.length!==1||versions[0]!=='launch-membership-v1'||body!==null&&typeof body==='object'&&'keyVersion'in body||!presenceOnly&&!ingest)
         return json({ error: "unsupported_protocol", message: "This Worker serves the unversioned protocol only; a keyVersion is not supported." }, 400);
       if(ingest)env=launchVerificationEnv(env,launch);
     }
@@ -736,7 +738,7 @@ async function freshRegistrationRefused(env: Env, trigger: string): Promise<void
 }
 
 /** Bumped with every change that needs a redeploy, so GET /health shows which build is live. */
-const BUILD = "2026-11-10.246 Supported rank continuation requests";
+const BUILD = "2026-11-10.247 Donation privacy and relay cache boundaries";
 
 /**
  * Presence of each secret (never the value) and a D1 round trip — enough to tell a missing `wrangler secret put` from a

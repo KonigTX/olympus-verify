@@ -12,7 +12,7 @@ const loaded=new Map(),read=fs.readFileSync;fs.readFileSync=function(file,...res
 globalThis.__combined196={loaded,read,fixtureSHA256:crypto.createHash('sha256').update(bytes).digest('hex'),sha:value=>crypto.createHash('sha256').update(value).digest('hex'),result:process.env.COMBINED196_RESULT_FILE};
 async function combined196(){
  const witness=globalThis.__combined196,registry=load('community-context'),names=registry.communityDataNames(),results=[],failures=[];
- let assertions=0;
+ let assertions=0,treasuryComposedSql=null;
  const expect=(name,value,detail)=>{assertions++;console.log((value?'PASS ':'FAIL ')+name);if(!value){failures.push({name,detail});console.log(JSON.stringify(detail));}};
  expect('actual index registers both new own-data families',names.includes('discord_directory_visibility')&&names.includes('news_webhook'),names);
  for(const selected of [['news_webhook','news_webhook'],['missing196']]){let refused=false;try{load('community-data-registry').communityScopedEraseStatements({},ID,selected);}catch{refused=true;}expect('missing or duplicate scoped eraser names fail closed',refused,selected);}
@@ -74,6 +74,9 @@ async function combined196(){
   expect(kind+(known?' combined source erasure completes':' conservative boundary preserves original account custody'),known?job?.state==='complete':job?.state!=='complete'&&!!f.raw('SELECT 1 FROM site_users WHERE discord_id=?',ID),{job:job?.state,hold:job?.hold_reason,holds});
   if(kind==='combined_unknown')expect(kind+' original uncertain role effect remains unknown',f.raw('SELECT state FROM role_settlements WHERE id=?','9'.repeat(32))?.state==='unknown');
   if(known){
+   const trace=f.measurements.flatMap(row=>row.statementTrace),auditAt=trace.findIndex(row=>row.sql?.startsWith('DELETE FROM audit WHERE CASE WHEN (action=\'treasury.receipt242\'')),charactersAt=trace.findIndex(row=>row.sql?.startsWith('DELETE FROM characters WHERE'));
+   expect(kind+' original terminal combines one receipt/audit deletion before removing character ownership',auditAt>=0&&charactersAt>auditAt&&!trace.some(row=>row.sql?.startsWith("DELETE FROM audit WHERE action='treasury.receipt242'")),{auditAt,charactersAt});
+   if(auditAt>=0)treasuryComposedSql??=trace[auditAt].sql;
    const hidden=f.raw("SELECT value FROM site_settings WHERE key='discordDirectoryHidden'")?.value??'{}';expect(kind+' actual terminal eraser removes own suppression',!Object.hasOwn(JSON.parse(hidden),ID),hidden);
    if(kind!=='webhook_only')expect(kind+' another account suppression is preserved',Object.hasOwn(JSON.parse(hidden),OTHER));
    expect(kind+' actual terminal eraser removes own webhook actor/birth/G',f.rows("SELECT value FROM site_settings WHERE key GLOB 'newsWebhook:*'").every(row=>!row.value.includes(ID)&&JSON.parse(row.value).actor===null&&JSON.parse(row.value).birth===null&&JSON.parse(row.value).generation===null));
@@ -87,9 +90,40 @@ async function combined196(){
   const maximum=Math.max(0,...f.measurements.map(r=>r.statements));expect(kind+' measured full original job remains within196 physical',(!known||f.measurements.some(r=>r.outcome.completed===1))&&maximum>0&&maximum<=196,{maximum,measurements:f.measurements});
   results.push({kind,copyStatus:copy.status,copyPhysical,jobState:job?.state,holdReason:job?.hold_reason,measurements:f.measurements,schemaUnchanged:JSON.stringify(f.rows("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name"))===sourceSchema,roleUnknown:kind==='combined_unknown'?f.raw('SELECT state FROM role_settlements WHERE id=?','9'.repeat(32)):null});f.close();
  }
+ // .247 baseline: the two exact source-authored DELETE bodies before composition.
+ // Compare their transaction to the SQL observed above at actual Native emission.
+ const originalTreasuryOwn="action='treasury.receipt242' AND (json_extract(details,'$.guid') IN(SELECT guid FROM characters WHERE discord_id=?1) OR json_extract(details,'$.characterKey') IN(SELECT name_key FROM characters WHERE discord_id=?1))";
+ const originalAuditDelete=String.raw`DELETE FROM audit WHERE actor=?1 OR subject=?1 OR instr(COALESCE(details,''),?1)>0
+ OR EXISTS(SELECT 1 FROM characters c WHERE c.discord_id=?1 AND audit.ts>=c.bound_at AND
+ (audit.subject=c.name COLLATE NOCASE OR audit.subject=c.name_key COLLATE NOCASE) AND
+ ((audit.actor='watcher' AND audit.action IN('note.set','note.failed','invite.failed','invite.fired','invite.joined','verify.roster_not_current','verify.guid_pinned','roster.remove_failed','roster.removed_unlinked'))
+ OR (audit.actor='system' AND audit.action IN('invite.declined','invite.expired','role.remove_held','role.remove_failed','nick.failed'))))`;
+ const originalTreasuryDelete='DELETE FROM audit WHERE '+originalTreasuryOwn;
+ const exactComposed='DELETE FROM audit WHERE CASE WHEN ('+originalTreasuryOwn+') THEN 1 ELSE ('+originalAuditDelete.slice('DELETE FROM audit WHERE '.length)+') END';
+ expect('treasury composition preserves the entire original receipt and audit predicates exactly',treasuryComposedSql===exactComposed,{observed:treasuryComposedSql,expected:exactComposed});
+ const receipt=(id,details,action='treasury.receipt242',actor='watcher',subject='intake242:fixture-'+id,ts=100)=>[id,ts,actor,action,subject,typeof details==='string'?details:JSON.stringify(details)];
+ const rows=[receipt(1,{guid:'Player-1234-00000001'}),receipt(2,{characterKey:'native target'}),receipt(3,{guid:'Player-1234-00000001'},undefined,undefined,undefined,1),receipt(4,{guid:'Player-1234-00000002',characterKey:'other target'}),receipt(5,{guid:'Player-1234-99999999',characterKey:'unlinked target'}),receipt(6,{character:'Native Target'}),receipt(7,{guid:'Player-1234-00000001'},'unrelated.action'),receipt(8,{guid:'Player-1234-000000010',characterKey:'native target extra'}),receipt(9,{characterKey:'NATIVE TARGET'}),receipt(10,{guid:null,characterKey:null}),receipt(11,{},'unrelated.action',ID),receipt(12,{},'unrelated.action','watcher',ID),receipt(13,{},'note.set','watcher','Native Target'),receipt(14,{},'note.set','watcher','Native Target',1),receipt(15,{},'unrelated.action','watcher','Native Target'),receipt(16,'malformed non-receipt','unrelated.action')];
+ const compareAudit=(statements,seed,owner=ID)=>{
+  const db=new DatabaseSync(':memory:');try{
+   db.exec('CREATE TABLE characters(name_key TEXT,name TEXT,discord_id TEXT,guid TEXT,bound_at INTEGER);CREATE TABLE audit(id INTEGER PRIMARY KEY,ts INTEGER,actor TEXT,action TEXT,subject TEXT,details TEXT)');
+   if(owner!==null)db.prepare('INSERT INTO characters VALUES(?,?,?,?,?)').run('native target','Native Target',owner,'Player-1234-00000001',100);
+   db.prepare('INSERT INTO characters VALUES(?,?,?,?,?)').run('other target','Other Target',OTHER,'Player-1234-00000002',100);
+   const insert=db.prepare('INSERT INTO audit VALUES(?,?,?,?,?,?)');for(const row of seed)insert.run(...row);
+   const before=JSON.stringify(db.prepare('SELECT * FROM audit ORDER BY id').all());let refused=false;
+   db.exec('BEGIN');try{for(const sql of statements)db.prepare(sql).run(ID);db.exec('COMMIT');}catch{db.exec('ROLLBACK');refused=true;}
+   return {refused,rows:JSON.stringify(db.prepare('SELECT * FROM audit ORDER BY id').all()),ids:db.prepare('SELECT id FROM audit ORDER BY id').all().map(row=>row.id),rolledBack:JSON.stringify(db.prepare('SELECT * FROM audit ORDER BY id').all())===before};
+  }finally{db.close();}
+ };
+ const treasuryComposition=[];
+ if(treasuryComposedSql)for(const [name,seed,owner,refused]of [['owned-guid-key-and-all-negative-cases',rows,ID,false],['ownership-moved-to-another-account',rows,OTHER,false],['no-current-character-link',rows,null,false],['malformed-receipt',rows.concat([receipt(17,'malformed receipt')]),ID,true],['malformed-receipt-even-with-own-audit-actor',rows.concat([receipt(17,'malformed own receipt',undefined,ID)]),ID,true],['malformed-nonreceipt-with-own-audit-actor',rows.concat([receipt(17,'malformed own nonreceipt','unrelated.action',ID)]),ID,false]]){
+  const baseline=compareAudit([originalTreasuryDelete,originalAuditDelete],seed,owner),composed=compareAudit([treasuryComposedSql],seed,owner);
+  expect(name+' one observed terminal DELETE equals the original two-DELETE transaction',JSON.stringify(composed)===JSON.stringify(baseline)&&composed.refused===refused&&(!refused||composed.rolledBack),{baseline,composed});
+  if(name==='owned-guid-key-and-all-negative-cases')expect('only exact receipt GUID/key and original audit ownership are erased',JSON.stringify(composed.ids)===JSON.stringify([4,5,6,7,8,9,10,14,15,16]),composed.ids);
+  treasuryComposition.push({name,refused:composed.refused,remainingIds:composed.ids,rolledBack:composed.rolledBack});
+ }
  const unchanged=[...witness.loaded].every(([file,original])=>Reflect.apply(witness.read,fs,[file]).equals(original));expect('all actual loaded production inputs unchanged through combined run',unchanged);
  const inputPins=[...witness.loaded].map(([file,value])=>({path:file,bytes:value.length,sha256:witness.sha(value)}));
- const evidence={schema:'master196-combined-original-native-erasure-and-export-v1',fixtureSetup:'privacy_native_erasure_mode_test.cjs unchanged prefix',fixtureSetupSHA256:witness.fixtureSHA256,assertions,passed:assertions-failures.length,failures,results,registry:names,sourceInputs:inputPins,sourceUnchanged:unchanged,realProvider:false,actualWorkerdCallback:false,whole700Measured:false,declaredErasureEnvelope:jobEnvelope,declaredWholeTarget:scheduledBudget.SCHEDULED_STATEMENT_TARGET};
+ const evidence={schema:'master196-combined-original-native-erasure-and-export-v1',fixtureSetup:'privacy_native_erasure_mode_test.cjs unchanged prefix',fixtureSetupSHA256:witness.fixtureSHA256,assertions,passed:assertions-failures.length,failures,results,treasuryComposition,registry:names,sourceInputs:inputPins,sourceUnchanged:unchanged,realProvider:false,actualWorkerdCallback:false,whole700Measured:false,declaredErasureEnvelope:jobEnvelope,declaredWholeTarget:scheduledBudget.SCHEDULED_STATEMENT_TARGET};
  if(witness.result)fs.writeFileSync(witness.result,JSON.stringify(evidence,null,2)+'\n',{flag:'wx'});
  console.log('COMBINED196_NATIVE_RESULT '+JSON.stringify({...evidence,sourceInputs:inputPins.length}));if(failures.length)process.exitCode=1;
 }

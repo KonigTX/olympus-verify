@@ -924,7 +924,7 @@ export async function postRoster(env: Env, body: { exportedAt: number; members: 
  *
  * With no officer given (an older watcher, or a one-officer setup) the behaviour is exactly as before.
  */
-export async function getQueue(env: Env, officer = "", presenceOnly = false): Promise<Response> {
+export async function getQueue(env: Env, officer = "", presenceOnly = false, cacheOnly242 = false): Promise<Response> {
   // .227: verification-only collectors still report presence on this endpoint,
   // but neither a new nor an older host may claim retained invitation rows.
   const launch = captureLaunchVerification(env);
@@ -932,7 +932,12 @@ export async function getQueue(env: Env, officer = "", presenceOnly = false): Pr
     return json({ error: 'verification_configuration_held' }, 503);
   // Honor the host's read-only intent even when this implementation selects legacy
   // mode. It must not claim retained invitations before the host rejects a reply.
-  if (presenceOnly === true || launch.mode === 'members-only') return json({ presenceOnly: true, entries: [], setGuildNote: false,verificationResults:await (await import('./role-reconcile242')).verificationResults242(env) });
+  if (presenceOnly === true || launch.mode === 'members-only' && !cacheOnly242) return json({ presenceOnly: true, entries: [], setGuildNote: false });
+  // Explicit, version-fenced members-only cache reads never enter invitation or relay dispatch.
+  if (cacheOnly242) {
+    if (launch.mode !== 'members-only') return json({ error: 'unsupported_protocol' }, 400);
+    return json({ presenceOnly: true, entries: [], setGuildNote: false, verificationResults: await (await import('./role-reconcile242')).verificationResults242(env) });
+  }
   const who = officer.trim().slice(0, 64);
   const ttl = Math.max(1, intVar(env.QUEUE_CLAIM_TTL_MINUTES, 15)) * 60;
   const limit = Math.max(1, intVar(env.QUEUE_CLAIM_LIMIT, 25));

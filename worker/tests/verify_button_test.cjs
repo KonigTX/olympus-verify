@@ -53,7 +53,7 @@ const check = (name, cond) => { n++; if (cond) ok++; console.log((cond ? "PASS "
   console.log("\n== the button: a code and the whole line to paste, nothing typed ==");
   const first = await content(await handleInteraction(env, button(A)));
   check(".230 the actual request-code reply names OLYMPUS PRIME rather than the ambiguous main guild", first.includes("**OLYMPUS PRIME**") && !first.includes("main Olympus guild"));
-  check(".230 the actual request-code reply offers progress and current instructions without an automatic role promise", first.includes("**My status**") && first.includes("current instructions") && first.includes("ask an officer") && !first.includes("follows automatically") && !first.includes("roles follow automatically"));
+  check(".230 the actual request-code reply offers progress and current instructions without an automatic role promise", first.includes("**My status**") && first.includes("current instructions") && first.includes("ask High Council") && !first.includes("follows automatically") && !first.includes("roles follow automatically"));
   const code = (first.match(/Your code: `([A-Z2-9]{7})`/) || [])[1];
   check("the button answers with a 7-symbol request code", !!code);
   check("  and the exact line to paste in game", first.includes("```\n/w Fern Melder !verify " + code + "\n```"));
@@ -88,7 +88,7 @@ const check = (name, cond) => { n++; if (cond) ok++; console.log((cond ? "PASS "
   check("/verify with nothing typed behaves like the button", bare.includes(code2));
   const named = await content(await handleInteraction(env, slash(A, "Thrall")));
   check("/verify Thrall gives a 6-symbol code bound to Thrall", /Your code for \*\*Thrall\*\*: `[A-Z2-9]{6}`/.test(named) && named.includes("logged in as **Thrall**"));
-  check(".230 the actual named-character reply uses the same flagship and truthful access instructions", named.includes("**OLYMPUS PRIME**") && named.includes("current instructions") && named.includes("ask an officer") && !named.includes("follows automatically") && !named.includes("main Olympus guild"));
+  check(".230 the actual named-character reply uses the same flagship and truthful access instructions", named.includes("**OLYMPUS PRIME**") && named.includes("current instructions") && named.includes("ask High Council") && !named.includes("follows automatically") && !named.includes("main Olympus guild"));
 
   console.log("\n== a verification ban closes the account's open codes ==");
   const OFFICER = "1549581384035893328";
@@ -153,9 +153,9 @@ const check = (name, cond) => { n++; if (cond) ok++; console.log((cond ? "PASS "
   check("another account holds a fresh name", !!shownCode(await verify(SQUAT, "Star Gale")));
   at(D + 15 * 3600);
   const refusalText = await verify(VICTIM, "Star Gale");
-  check("the refusal gives no expiry time and offers a request code or an officer, not the character code", refusalText.includes("already in progress from another account") && !refusalText.includes("<t:") && !/whisper the code/.test(refusalText) && refusalText.includes("**Get my code**") && refusalText.includes("request code") && refusalText.includes("ask an officer"));
+  check("the refusal gives no expiry time and offers a request code or an officer, not the character code", refusalText.includes("already in progress from another account") && !refusalText.includes("<t:") && !/whisper the code/.test(refusalText) && refusalText.includes("**Get my code**") && refusalText.includes("request code") && refusalText.includes("ask High Council"));
   const offText = await content(await handleInteraction({ ...env, REQUEST_CODES: "off" }, slash(VICTIM, "Star Gale")));
-  check("  with request codes off it does not send the account to Get my code, which would ask for the name again", offText.includes("already in progress from another account") && !offText.includes("<t:") && !offText.includes("Get my code") && offText.includes("ask an officer") && offText.includes("24 hours"));
+  check("  with request codes off it does not send the account to Get my code, which would ask for the name again", offText.includes("already in progress from another account") && !offText.includes("<t:") && !offText.includes("Get my code") && offText.includes("ask High Council") && offText.includes("24 hours"));
 
   // 4. The real owner can still link the character through a request code (ticket) while the name is held.
   await recordRelay(env, { officer: "fern melder", character: "Fern Melder", online: true, version: "0.6.0", addon: "0.6.0" });
@@ -417,12 +417,17 @@ const check = (name, cond) => { n++; if (cond) ok++; console.log((cond ? "PASS "
   const { guideMessage } = load("./guide");
   const guideText = (e) => JSON.stringify(guideMessage(e, load("./ruleset-profile").currentRulesetProfile()));
   const off = guideText({ ...env, SET_NICKNAME: "false" });
-  check(".230 the guide names the canonical flagship and offers truthful progress while access can be held", off.includes("OLYMPUS PRIME") && !off.includes("main Olympus guild") && off.includes("current instructions") && off.includes("ask an officer") && !off.includes("can restore a missing role"));
-  check("with automatic nicknames off, the guide describes the role and roster without promising an automatic nickname", /Olympus Guild Member\*\* role opens the member channels once your verified character appears on the officer-exported guild roster and the access checks pass/.test(off) && !/nickname/i.test(JSON.parse(off).embeds[0].description));
-  check(".233 the guide separately offers both explicit own-account nickname actions", JSON.stringify(JSON.parse(off).components[0].components.slice(2).map(b=>b.custom_id))===JSON.stringify(['nickname233:use','nickname233:reset']));
+  check(".230 the guide names the canonical flagship and offers truthful progress while access can be held", off.includes("OLYMPUS PRIME") && !off.includes("main Olympus guild") && off.includes("current instructions") && off.includes("ask High Council") && !off.includes("can restore a missing role"));
+  check("with automatic nicknames off, the guide describes the role and roster without promising an automatic nickname", /Olympus Guild Member\*\* role opens the member channels once your verified character appears on the High Council-exported guild roster and the access checks pass/.test(off) && !/nickname/i.test(JSON.parse(off).embeds[0].description));
+  check(".233 the legacy guide retains exactly four buttons including both explicit own-account nickname actions", JSON.stringify(JSON.parse(off).components[0].components.map(b=>b.custom_id))===JSON.stringify(['guide:verify','guide:status','nickname233:use','nickname233:reset']));
+  const nativeGuideEnv242={...env,VERIFY_MEMBERSHIP_ONLY:'true',VERIFY_NATIVE_SCOPE:JSON.stringify({version:1,guild:'OLYMPUS PRIME',realm:'Forever Open 2'})};
+  const nativeGuide242=guideMessage(nativeGuideEnv242,load('./ruleset-profile').currentRulesetProfile(),false,false);
+  check('.242 the members-only guide has exactly five ordered buttons including the alternate-character action',JSON.stringify(nativeGuide242.components[0].components.map(b=>b.custom_id))===JSON.stringify(['guide:verify','guide:status','nickname233:use','nickname233:reset','guide:another']));
+  const minimum242=value=>value.data.components[0].components[0].min_length;
+  check('.247 legacy modal preserves minimum two; current Native modal requires three',minimum242(load('./guide').verifyModal())===2&&minimum242(load('./guide').verifyModal(env))===2&&minimum242(load('./guide').verifyModal(nativeGuideEnv242))===3);
   check("  with nicknames on, the nickname is described as staff-enabled", /When enabled by guild staff, your Discord nickname updates/.test(guideText({ ...env, SET_NICKNAME: "true" })));
   check("  with no role, no role sentence and the canonical verification title", !/Guild Member/.test(guideText({ ...env, ROLE_GUILD_MEMBER: "" })) && /"title":"Verify OLYMPUS PRIME"/.test(guideText({ ...env, ROLE_GUILD_MEMBER: "" })));
-  check("  under review mode an officer reviews before the invite queues; under auto it queues", /officer reviews the confirmed request before your invite enters the queue/.test(guideText({ ...env, ADMISSION_MODE: "review" })) && /your invite enters the queue; an officer sends it/.test(off));
+  check("  under review mode High Council reviews before the invite queues; under auto it queues", /High Council reviews the confirmed request before your invite enters the queue/.test(guideText({ ...env, ADMISSION_MODE: "review" })) && /your invite enters the queue; High Council sends it/.test(off));
   check("  the website is called optional, Battle.net is not promised (.114: its sign-in is switched off), codes private, no DM, and no #help-desk anywhere", /The website is optional for this verification flow/.test(off) && !/Battle\.net/.test(off) && /never sends you a DM/.test(off) && !/help-desk/.test(off) && !/olympus-2-x/.test(off));
   check("  the overflow guilds are sent to the configured visitors channel", /<#555000000000000009>/.test(guideText({ ...env, CHANNEL_VISITOR_CHAT: "555000000000000009" })) && /the visitors channel/.test(off));
 
@@ -475,7 +480,7 @@ const check = (name, cond) => { n++; if (cond) ok++; console.log((cond ? "PASS "
   check(".216 an already retiring target is held before the request closes", heldError216(retiringError216) && db.prepare("SELECT consumed_at FROM pending WHERE id=?").get(retiring216.id).consumed_at === null && !db.prepare("SELECT 1 FROM audit WHERE action='admin.release' AND subject='Closure Epsilon'").get());
   const denied216 = await seedRelease216("888888888888888806", "Closure Zeta");
   const noOfficer216 = officerCommand("unbind", [{ name: "character", type: 3, value: "Closure Zeta" }]); noOfficer216.member.roles = [];
-  check(".216 the target fence gives no release permission to a non-officer", await content(await handleInteraction(env, noOfficer216)) === "Officers only." && db.prepare("SELECT consumed_at FROM pending WHERE id=?").get(denied216.id).consumed_at === null);
+  check(".216 the target fence gives no release permission to a non-officer", await content(await handleInteraction(env, noOfficer216)) === "High Council only." && db.prepare("SELECT consumed_at FROM pending WHERE id=?").get(denied216.id).consumed_at === null);
 
   console.log(`\n${ok}/${n} passed`);
   process.exit(ok === n ? 0 : 1);

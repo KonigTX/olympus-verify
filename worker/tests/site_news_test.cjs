@@ -749,8 +749,27 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   const build = /const BUILD = "(\d{4}-\d{2}-\d{2})\.(\d+)/.exec(fs.readFileSync(path.join(root, "src", "index.ts"), "utf8"));
   const notes = news.RELEASE_NOTES;
   const num = (b) => Number(b.slice(1));
+  // Owner242 approved this literal nickname notation, not arbitrary markup.
+  const nicknameAngleLine242 = "Character nicknames use <Guild Name>; the previous nickname can still be restored.";
+  const nicknameAngleSource242 = "      " + JSON.stringify(nicknameAngleLine242) + ",";
+  const releaseLine246 = (note, line, source = src) => {
+    if (typeof line !== "string" || !line.length || line.length > 200) return false;
+    if (!/[<>]/.test(line)) return true;
+    return note.build === ".242" && note.date === "2026-11-10" && line === nicknameAngleLine242
+      && line.split("<Guild Name>").length === 2 && !/[<>]/.test(line.replace("<Guild Name>", ""))
+      && source.split(nicknameAngleSource242).length === 2 && source.split(/\r?\n/).filter(value => value === nicknameAngleSource242).length === 1
+      && Buffer.byteLength(nicknameAngleSource242, "utf8") === 91
+      && crypto.createHash("sha256").update(nicknameAngleSource242).digest("hex") === "c273ffcb855d9b70991717cfa7173a0a4631d22abaf90a4871592176c65e006b";
+  };
   check("the newest release note is not newer than index.ts BUILD", build && notes.length > 0 && /^\.\d+$/.test(notes[0].build) && num(notes[0].build) <= Number(build[2]), build && build[2], notes[0] && notes[0].build);
-  check("  builds unique and descending; dates YYYY-MM-DD; lines 1..200 characters, plain text", notes.every((x, i) => i === 0 || num(x.build) < num(notes[i - 1].build)) && new Set(notes.map((x) => x.build)).size === notes.length && notes.every((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.date) && x.lines.length > 0 && x.lines.every((l) => typeof l === "string" && l.length > 0 && l.length <= 200 && !/[<>]/.test(l))));
+  check("  builds unique and descending; dates YYYY-MM-DD; lines 1..200 characters, plain text with one exact owner242 nickname token", notes.every((x, i) => i === 0 || num(x.build) < num(notes[i - 1].build)) && new Set(notes.map((x) => x.build)).size === notes.length && notes.every((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.date) && x.lines.length > 0 && x.lines.every((line) => releaseLine246(x, line))));
+  const nicknameNote242 = notes.find(note => note.build === ".242");
+  check(".242 nickname angle notation has one exact source-bound occurrence", !!nicknameNote242 && nicknameNote242.lines.filter(line => line === nicknameAngleLine242).length === 1 && releaseLine246(nicknameNote242, nicknameAngleLine242));
+  for (const value of ["<script>alert(1)</script>", "<img src=x onerror=alert(1)>", "<Other Guild>", nicknameAngleLine242 + "<b>extra</b>", nicknameAngleLine242.replace("<Guild Name>", "<Guild  Name>")]) {
+    check(".242 nickname exception refuses arbitrary or edited markup " + value.slice(0, 36), !releaseLine246(nicknameNote242, value));
+  }
+  check(".242 nickname notation cannot move to another release or date", !releaseLine246({build:".243",date:"2026-11-10"}, nicknameAngleLine242) && !releaseLine246({build:".242",date:"2026-11-11"}, nicknameAngleLine242));
+  check(".242 edited or duplicated source cannot borrow the nickname exception", !releaseLine246(nicknameNote242, nicknameAngleLine242, src.replace(nicknameAngleSource242, nicknameAngleSource242 + "!")) && !releaseLine246(nicknameNote242, nicknameAngleLine242, src + "\n" + nicknameAngleSource242));
   const forbidden = ["LEADERSHIP_KEY", "/static/", "<svg", "data" + ":", "notify(", "rest("];
   check("site-news.ts names no leadership row key, no static path, no inline svg, no data URI, no notice poster, no Discord REST", forbidden.every((w) => !src.includes(w)), forbidden.filter((w) => src.includes(w)));
   check("  every console call in site-news.ts goes through errorRef", (src.match(/console\.(error|warn|log)\([^\n]*/g) || []).every((l) => /errorRef\(/.test(l)));
@@ -1727,6 +1746,25 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
     "historicalParagraph": "const BUILD = \"2026-11-10.245 Reconciliation uses remaining request budget\";"
   }
 ]);
+  const RETAINED_CONTEXTS247 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.246 Supported rank continuation requests\";",
+    "singleLine": true,
+    "paragraphSha256": "6493600d761216a3a51e6ec4a67a8d8c1545b13404c9249d8c74033ea33f7456",
+    "paragraphBytes": 68,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 246,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "bddd9b3f2b5a6e38c74261b19b63a572e420a662c95f08380179ff2e50142534",
+    "predecessorRelease": 245,
+    "currentBuild": true,
+    "editorialRelease": 246,
+    "editorialPredecessorSHA256": "bddd9b3f2b5a6e38c74261b19b63a572e420a662c95f08380179ff2e50142534",
+    "historicalParagraph": "const BUILD = \"2026-11-10.246 Supported rank continuation requests\";"
+  }
+]);
   const CURRENT_CONTEXTS = Object.freeze([
   {
     "file": "docs/launch-runbook.md",
@@ -2063,19 +2101,19 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   },
   {
     "file": "worker/src/index.ts",
-    "startMarker": "const BUILD = \"2026-11-10.246 Supported rank continuation requests\";",
+    "startMarker": "const BUILD = \"2026-11-10.247 Donation privacy and relay cache boundaries\";",
     "singleLine": true,
-    "paragraphSha256": "6493600d761216a3a51e6ec4a67a8d8c1545b13404c9249d8c74033ea33f7456",
-    "paragraphBytes": 68,
+    "paragraphSha256": "20af2213957b2d0761e50e5ad94c969d6c655349651fa087dec7ee1da16b74e7",
+    "paragraphBytes": 75,
     "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
     "count": 0,
-    "ownerRelease": 246,
+    "ownerRelease": 247,
     "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
-    "predecessorSHA256": "bddd9b3f2b5a6e38c74261b19b63a572e420a662c95f08380179ff2e50142534",
-    "predecessorRelease": 245,
+    "predecessorSHA256": "6493600d761216a3a51e6ec4a67a8d8c1545b13404c9249d8c74033ea33f7456",
+    "predecessorRelease": 246,
     "currentBuild": true,
-    "editorialRelease": 246,
-    "editorialPredecessorSHA256": "bddd9b3f2b5a6e38c74261b19b63a572e420a662c95f08380179ff2e50142534"
+    "editorialRelease": 247,
+    "editorialPredecessorSHA256": "6493600d761216a3a51e6ec4a67a8d8c1545b13404c9249d8c74033ea33f7456"
   },
   {
     "file": "worker/public/static/app.js",
@@ -2177,6 +2215,303 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
     "count": 1,
     "ownerRelease": 224,
     "purpose": "Exact owner-only .224 Cabinet release note; no global vocabulary allowance"
+  },
+  {
+    "file": "worker/src/site-news.ts",
+    "startMarker": "      \"Use Verify my character on the site, or ask High Council to use /olympus check for access diagnostics.\",",
+    "singleLine": true,
+    "paragraphSha256": "c17fe87931b5b5adbc23e24301112836d3f3c4a6be480985e16691735c1a6319",
+    "paragraphBytes": 111,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/public/static/app.js",
+    "startMarker": "          h(\"li\", { text: \"Use My status or /verify-status in the bot to check progress. High Council can use /olympus check to inspect a blocker and refresh the verified rank. Keep the code private.\" })),",
+    "singleLine": true,
+    "paragraphSha256": "49d773cf448aa1ca7cfee2175822af2144c2a2302d5b5a85050f35f3f17332c3",
+    "paragraphBytes": 205,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/public/static/app.js",
+    "startMarker": "        if (live()) add(result, h(\"p\", {class:\"err\",text:explain(error,\"Verification could not be refreshed. Try again or ask High Council to use /olympus check.\")}));",
+    "singleLine": true,
+    "paragraphSha256": "40059ff0f4fdbd9bcfb7eba1c072564db9747b26799fb7146d237d3b5a42cd58",
+    "paragraphBytes": 167,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "  const officers = env.OFFICER_CHARACTERS || \"High Council\";",
+    "singleLine": true,
+    "paragraphSha256": "d52efbca5ac6b48ed4cedb05b51a51f25e4aa60ec336d61f5aca7a975a80b6d2",
+    "paragraphBytes": 60,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "    ? \" If you are applying, High Council reviews the confirmed request before your invite enters the queue; High Council sends the invite from the game client when the guild has room.\"",
+    "singleLine": true,
+    "paragraphSha256": "54591a94c460156fdc9c2d9733ecfe08e9c21e194d1a06c1acb8205ba9289c9d",
+    "paragraphBytes": 185,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 2,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "    : \" If you are applying, your invite enters the queue; High Council sends it from the game client when the guild has room.\";",
+    "singleLine": true,
+    "paragraphSha256": "99914bdb7be08b4b9439ff139fd9074bbbf2d233baf5d98a4bf6cbfaca2a85e2",
+    "paragraphBytes": 128,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "    ? \" Your **Olympus Guild Member** role opens the member channels once your verified character appears on the High Council-exported guild roster and the access checks pass.\"",
+    "singleLine": true,
+    "paragraphSha256": "2594f24339e9d340a892968bc9ac2c986277b2621106e6f34408e0b72beb7d07",
+    "paragraphBytes": 176,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "            : `Joining ${FLAGSHIP_GUILD_NAME}? Ask ${FLAGSHIP_GUILD_NAME} High Council for an in-game invite. The website invite queue is paused. Once your character is in ${FLAGSHIP_GUILD_NAME}, follow the steps below to link Discord. The website is optional for this verification flow.`,",
+    "singleLine": true,
+    "paragraphSha256": "d3aca03bd2efd2110019c99e610a25ccb73e7f9e27c2c5d0fa9e0b177e9a4ab8",
+    "paragraphBytes": 289,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "          \"**1. Get a code** \u2014 press **Get my code**. The bot shows the line to use in game. If the current High Council relay needs a character name first, enter it exactly as it appears in game.\",",
+    "singleLine": true,
+    "paragraphSha256": "296223fa41757e107c1e47dd5d2967f69c545b636bdcca4d7ff2a9da8e74120f",
+    "paragraphBytes": 200,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "          `**2. Send it from your character** \u2014 log in as the character you want linked, paste the shown line into the in-game chat box and press Enter. It whispers the code to an available High Council relay (${officers}); the character that sends it is the one linked. Follow the bot's current instructions if no High Council relay is online; mailing the code to High Council works too.`,",
+    "singleLine": true,
+    "paragraphSha256": "802f5cc4ea3eae33a72e5563f79ad7382a73c2b10dcf28aee99094bb8291c153",
+    "paragraphBytes": 392,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 3,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "          `The High Council relay addon confirms the code from that character.${invite}${access}${nick} In game, use **/oly \u2192 Verify / QR Code** for the current server response. Use **/olympus check** here to diagnose access.`,",
+    "singleLine": true,
+    "paragraphSha256": "2bfcff7232487c4ef64b2ae88692ed0912502dcdda5d3fa3b727d4010945de5c",
+    "paragraphBytes": 229,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "          `Already linked? **Get my code** refreshes your current trusted roster rank without another whisper. **My status** shows progress. For a different character, use **Verify another character**. Follow the current instructions, or ask High Council if access is on hold.`,",
+    "singleLine": true,
+    "paragraphSha256": "961a3fe996141b3e2bc1043988e4c80acc54395d9765a3cef7cbd767f6c28452",
+    "paragraphBytes": 278,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/guide.ts",
+    "startMarker": "        footer: { text: `Olympus Verify \u00b7 My status for progress \u00b7 Ask ${FLAGSHIP_GUILD_NAME} High Council for account help` },",
+    "singleLine": true,
+    "paragraphSha256": "56bd4faf99043b554981536f6f543cbedb4bdc1f630eb5853123e3950f3c762e",
+    "paragraphBytes": 129,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "        if (!host || !/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,}$/i.test(host)) return reply(\"The account-controls website is not configured. Ask High Council for the current privacy page.\");",
+    "singleLine": true,
+    "paragraphSha256": "3061bb93561d3e61351a9e4f7d9c9d27a462538d4169972f9c53125b2afbe46f",
+    "paragraphBytes": 198,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "          : `Open the [privacy account connection](${base}/privacy/access) to review account-removal options. For a linked game character, ask authorized High Council to use the guarded unbind workflow. Remove an optional Discord connection in Discord Settings \u2192 Connections. This command unlinks or erases nothing.`);",
+    "singleLine": true,
+    "paragraphSha256": "acbc910e3c8198c04254d4bbfb9d1b87042751119bb374c7d6d4a149b471c645",
+    "paragraphBytes": 320,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "  // Battle.net is not required. The bnet login only ever requested scope=openid, so it proved \"this Discord",
+    "singleLine": false,
+    "paragraphSha256": "6ab52ae8ce2f112f2063b45f223d11bcb798f944a36dcef1d25701cf6ff0d2c9",
+    "paragraphBytes": 497,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "      `**${raw}** is already linked to another Discord account. If that character is yours, ask High Council in #help-desk \u2014 the bot never re-links a name on its own.`,",
+    "singleLine": true,
+    "paragraphSha256": "8f4f90f5eebf6c29ab44e905acceb60b9b770732f6dc6dc6bf822680190c6612",
+    "paragraphBytes": 170,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "  // One open request per character name at a time (first come, first served, 24 h).",
+    "singleLine": false,
+    "paragraphSha256": "690531552bec018167b55e44ef0d214ee1c5f17d3ffcb88b7e311ba85d49dc14",
+    "paragraphBytes": 3798,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 2,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "    ? \"press **Get my code** in the guide and whisper the request code it gives you from the character, or ask High Council\"",
+    "singleLine": true,
+    "paragraphSha256": "50f0d1f4fdb3aed8a38ba3cdb03c7f66131030bef3470d6bf8cbf784d599ea85",
+    "paragraphBytes": 124,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "    : \"ask High Council, or try again later: a request lasts at most 24 hours\";",
+    "singleLine": true,
+    "paragraphSha256": "ec1547b057c8fb83e45d568ce6caf582642c06af1e5c5e8a8573246c2b0d65cb",
+    "paragraphBytes": 79,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "/**\n * The guide's Verify button, and /verify with no character: a request code (a \"ticket\", see codes.ts). Nothing to type",
+    "singleLine": false,
+    "paragraphSha256": "cc981c334c71ac4b3c89242d750969a1bc13ee38e2dab7002dfb3ea0fbe58e3c",
+    "paragraphBytes": 1703,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "  let row: PendingRow | null = await openTicketFor(env, user.id);",
+    "singleLine": false,
+    "paragraphSha256": "0302c04cd7c6d0ff72ee15013bcbbfd5a08255d8ec4a8c7a24febd0a8932af1b",
+    "paragraphBytes": 2429,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 2,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "/** Right-click a member \u2192 Apps \u2192 \"Olympus linked characters\". Same answer as /olympus-admin lookup user:. */",
+    "singleLine": false,
+    "paragraphSha256": "32bcf2666d32dcf7fa68dd75c05c4a3ee32760bb6672f6c64c69b2105c7b2c0a",
+    "paragraphBytes": 605,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "    (out.held ? `\\nLeft for High Council (${out.held}): characters that appear to have swapped names \\u2014 see the server log.` : \"\") +",
+    "singleLine": true,
+    "paragraphSha256": "ba3fdf1896ae3407daa5bbe08100929cfe2f1b221aab3e3a9cf2091135e14f1e",
+    "paragraphBytes": 136,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "async function cmdAdmin(env: Env, i: Interaction, lane?: LaneCapture, defer?: Defer,roleDispatch:BetaRoleDispatch=captureBetaRoleDispatch(env)): Promise<Response> {",
+    "singleLine": false,
+    "paragraphSha256": "0f6d7b496fcc80b86b0f172bdc189e04b6356f7a9c2ed3366880ef99a29ce125",
+    "paragraphBytes": 8990,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "      if (!hasAnyRole(i, officerRoles(env))) return reply(\"High Council only.\");",
+    "singleLine": true,
+    "paragraphSha256": "12bbb1eeac224707776510737c3061eb1a1cf8d15f45e8e23ac25362c386d015",
+    "paragraphBytes": 80,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
+  },
+  {
+    "file": "worker/src/interactions.ts",
+    "startMarker": "  if (ns !== \"review\") return reply(\"Unknown component.\");",
+    "singleLine": false,
+    "paragraphSha256": "f2cf9f21f9b4452664a0c2ecb3f01702ce98ef67d8a26e358c733294751cdc1d",
+    "paragraphBytes": 416,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 1,
+    "ownerRelease": 242,
+    "purpose": "Owner242 exact High Council verification/access copy; unique source bytes only, no general vocabulary allowance."
   }
 ]);
   const RETIRED_CONTEXTS221 = Object.freeze([
@@ -2305,7 +2640,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   const originalIconContext = qualifiedIcon.paragraphs[0] || "";
   const retainedApp228 = RETAINED_CONTEXTS228.filter(spec => spec.file === iconFile);
   const currentApp228 = CURRENT_CONTEXTS.filter(spec => spec.file === iconFile && spec.ownerRelease === 228);
-  const appContextCount228 = 30, appCredit228 = 31;
+  const appContextCount228 = 32, appCredit228 = 33;
   check('.228 retains three prior app contexts and the .227 BUILD as exact non-crediting history', RETAINED_CONTEXTS228.length === 4 && retainedApp228.length === 3
     && RETAINED_CONTEXTS228.every(spec => sha(spec.historicalParagraph) === spec.paragraphSha256 && Buffer.byteLength(spec.historicalParagraph,'utf8') === spec.paragraphBytes
       && !CURRENT_CONTEXTS.some(active => active.paragraphSha256 === spec.paragraphSha256 || active.startMarker === spec.startMarker)));
@@ -2327,7 +2662,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
       && currentContextQualification(iconFile,iconText+'\n'+paragraph).errors.length>0
       && Object.keys(currentContextQualification('README.md',paragraph).credits).length===0);
   }
-  check("current app contexts qualify exactly thirty pinned lineage and Evergreen contexts", qualifiedIcon.errors.length === 0 && qualifiedIcon.paragraphs.length === appContextCount228 && qualifiedIcon.credits[currentDigest] === appCredit228 && Object.keys(qualifiedIcon.credits).length === 1);
+  check("current app contexts qualify thirty prior contexts plus two exact owner242 copy contexts", qualifiedIcon.errors.length === 0 && qualifiedIcon.paragraphs.length === appContextCount228 && qualifiedIcon.credits[currentDigest] === appCredit228 && Object.keys(qualifiedIcon.credits).length === 1);
   const extraIconText = `${iconText}\n\n${approvedGram}`;
   const extraIconQualification = currentContextQualification(iconFile, extraIconText);
   check("an extra occurrence outside the exact approved app contexts remains restricted", !!approvedGram && extraIconQualification.errors.length === 0 && extraIconQualification.credits[currentDigest] === appCredit228 && vocabularyOverages(iconFile, extraIconText).some((s) => s.includes(`${currentDigest.slice(0, 12)} x1`)));
@@ -2412,7 +2747,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
 
   // .218's exact release label contains no guarded rank term, so it grants zero credit.
   // Keep the byte, duplicate, planted-term and wrong-file refusals without raising ALLOWED or changing GUARD.
-  const buildSpecs217 = CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===241 && spec.currentBuild===true && spec.file==='worker/src/index.ts'), buildFile217='worker/src/index.ts';
+  const buildSpecs217 = CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===247 && spec.currentBuild===true && spec.file==='worker/src/index.ts'), buildFile217='worker/src/index.ts';
   const buildText217=guarded.find(([file])=>file===buildFile217)[1], buildQualification217=currentContextQualification(buildFile217,buildText217);
   const buildLine217=buildSpecs217.length===1 ? buildQualification217.paragraphs.find(value=>value.startsWith(buildSpecs217[0].startMarker))||'' : '';
   check('.218 pins exactly one current release label with zero guarded vocabulary credit',buildSpecs217.length===1 && buildSpecs217[0].file===buildFile217 && buildSpecs217[0].singleLine===true && buildSpecs217[0].digest===currentDigest && buildSpecs217[0].count===0 && buildQualification217.errors.length===0 && buildQualification217.credits[currentDigest]===0 && Object.keys(guardedCounts(buildLine217)).length===0 && Buffer.byteLength(buildLine217,'utf8')===buildSpecs217[0].paragraphBytes && sha(buildLine217)===buildSpecs217[0].paragraphSha256 && GUARD.size===28 && Object.keys(ALLOWED[buildFile217]).length===1 && ALLOWED[buildFile217][currentDigest]===undefined);
@@ -2502,7 +2837,9 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   const current244=RETAINED_CONTEXTS245[0];
   check('.245 current BUILD preserves .244 as exact non-crediting history', sha(current244.historicalParagraph)===current244.paragraphSha256 && Buffer.byteLength(current244.historicalParagraph)===current244.paragraphBytes && RETAINED_CONTEXTS246.length===1 && RETAINED_CONTEXTS246[0].ownerRelease===245 && RETAINED_CONTEXTS246[0].predecessorRelease===244 && RETAINED_CONTEXTS246[0].predecessorSHA256===current244.paragraphSha256 && RETAINED_CONTEXTS246[0].count===0 && current244.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current244.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current244.historicalParagraph).errors.length>0);
   const current245=RETAINED_CONTEXTS246[0];
-  check('.246 current BUILD preserves .245 as exact non-crediting history', sha(current245.historicalParagraph)===current245.paragraphSha256 && Buffer.byteLength(current245.historicalParagraph)===current245.paragraphBytes && buildSpecs217.length===1 && buildSpecs217[0].ownerRelease===246 && buildSpecs217[0].predecessorRelease===245 && buildSpecs217[0].predecessorSHA256===current245.paragraphSha256 && buildSpecs217[0].count===0 && current245.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current245.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current245.historicalParagraph).errors.length>0);
+  check('.246 current BUILD preserves .245 as exact non-crediting history', sha(current245.historicalParagraph)===current245.paragraphSha256 && Buffer.byteLength(current245.historicalParagraph)===current245.paragraphBytes && RETAINED_CONTEXTS247.length===1 && RETAINED_CONTEXTS247[0].ownerRelease===246 && RETAINED_CONTEXTS247[0].predecessorRelease===245 && RETAINED_CONTEXTS247[0].predecessorSHA256===current245.paragraphSha256 && RETAINED_CONTEXTS247[0].count===0 && current245.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current245.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current245.historicalParagraph).errors.length>0);
+  const current246=RETAINED_CONTEXTS247[0];
+  check('.247 current BUILD preserves .246 as exact non-crediting history', sha(current246.historicalParagraph)===current246.paragraphSha256 && Buffer.byteLength(current246.historicalParagraph)===current246.paragraphBytes && buildSpecs217.length===1 && buildSpecs217[0].ownerRelease===247 && buildSpecs217[0].predecessorRelease===246 && buildSpecs217[0].predecessorSHA256===current246.paragraphSha256 && buildSpecs217[0].count===0 && current246.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current246.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current246.historicalParagraph).errors.length>0);
   // Explicit Master218 scope; original GUARD and ALLOWED remain byte-identical.
   const ownerContexts218=CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===218);
   const retiredLineage218=[...RETAINED_CONTEXTS222.filter(spec=>spec.retirement222),...retainedApp228].filter(spec=>spec.ownerRelease===218||spec.predecessorRelease===218);
@@ -2525,8 +2862,29 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
     const historicalPresent218=text.split(/\r?\n/).some(line=>{const start=line.indexOf(spec.startMarker);return start>=0&&line.slice(start)===spec.historicalParagraph;}),baseline218=currentContextQualification(spec.file,text),appended218=text+'\n'+spec.historicalParagraph,appendedQualification218=currentContextQualification(spec.file,appended218),appendedHits218=guardedCounts(appended218),appendedUncredited218=(appendedHits218[spec.digest]||0)-(appendedQualification218.credits[spec.digest]||0);
     check('.218 retired bytes remain uncredited '+spec.paragraphSha256.slice(0,12),!historicalPresent218&&!appendedQualification218.paragraphs.some(paragraph=>sha(paragraph)===spec.paragraphSha256)&&(appendedQualification218.credits[spec.digest]||0)<=(baseline218.credits[spec.digest]||0)&&(spec.count===0?currentContextQualification(spec.file,buildText217.replace(buildLine217,spec.startMarker)).errors.length>0:appendedUncredited218>((ALLOWED[spec.file]||{})[spec.digest]||0)&&overOriginalVocabularyAllowance(spec.file,appendedHits218,appendedQualification218).some(value=>value===spec.file+': digest '+spec.digest.slice(0,12)+' x'+appendedUncredited218)));
   }
+  const ownerCopy242 = CURRENT_CONTEXTS.filter(spec => spec.ownerRelease === 242 && spec.purpose.startsWith("Owner242 exact High Council"));
+  check(".242 copy grants only32 exact hits in four fixed files; the current BUILD still grants zero", ownerCopy242.length === 27
+    && ownerCopy242.reduce((sum,spec) => sum + spec.count, 0) === 32
+    && JSON.stringify([...new Set(ownerCopy242.map(spec => spec.file))].sort()) === JSON.stringify(["worker/src/site-news.ts","worker/public/static/app.js","worker/src/guide.ts","worker/src/interactions.ts"].sort())
+    && buildSpecs217.length === 1 && buildSpecs217[0].ownerRelease === 246 && buildSpecs217[0].count === 0 && GUARD.size === 28);
+  for (const spec of ownerCopy242) {
+    const text = guarded.find(([file]) => file === spec.file)[1], qualified = currentContextQualification(spec.file,text);
+    const paragraph = qualified.paragraphs.find(value => value.startsWith(spec.startMarker)) || "", changed = paragraph.slice(0,-1) + "!";
+    check(".242 exact source copy is file/byte/count bound " + spec.paragraphSha256.slice(0,12), qualified.errors.length === 0
+      && Buffer.byteLength(paragraph,"utf8") === spec.paragraphBytes && sha(paragraph) === spec.paragraphSha256
+      && (guardedCounts(paragraph)[currentDigest] || 0) === spec.count && spec.digest === currentDigest);
+    check(".242 edited or duplicated copy cannot borrow credit " + spec.paragraphSha256.slice(0,12), !!paragraph
+      && currentContextQualification(spec.file,text.replace(paragraph,changed)).errors.length > 0
+      && vocabularyOverages(spec.file,text.replace(paragraph,changed)).length > 0
+      && currentContextQualification(spec.file,text + "\n\n" + paragraph).errors.length > 0
+      && vocabularyOverages(spec.file,text + "\n\n" + paragraph).length > 0);
+    check(".242 extra outside or wrong-file copy remains restricted " + spec.paragraphSha256.slice(0,12), !!approvedGram
+      && vocabularyOverages(spec.file,text + "\n" + approvedGram).some(value => value === spec.file + ': digest ' + currentDigest.slice(0,12) + ' x1')
+      && Object.keys(currentContextQualification("README.md",paragraph).credits).length === 0
+      && vocabularyOverages("README.md",paragraph).some(value => value.includes(currentDigest.slice(0,12))));
+  }
   const currentBuildTuple218=/^const BUILD = "(\d{4}-\d{2}-\d{2})\.(\d+) [^"]+";$/.exec(buildLine217),currentNews218=news.RELEASE_NOTES[0];
-  check('.246 exact BUILD version/date equals the newest actual release-note metadata',!!currentBuildTuple218&&currentBuildTuple218[1]==='2026-11-10'&&currentBuildTuple218[2]==='246'&&currentNews218.build==='.'+currentBuildTuple218[2]&&currentNews218.date===currentBuildTuple218[1]);
+  check('.247 exact BUILD version/date equals the newest actual release-note metadata',!!currentBuildTuple218&&currentBuildTuple218[1]==='2026-11-10'&&currentBuildTuple218[2]==='247'&&currentNews218.build==='.'+currentBuildTuple218[2]&&currentNews218.date===currentBuildTuple218[1]);
   const retiredBuildSpec217=RETIRED_CONTEXTS218.find(spec=>spec.ownerRelease===217&&spec.file===buildFile217);
   check('.218 the retired217 label cannot replace or accompany the unique current label',!!retiredBuildSpec217&&currentContextQualification(buildFile217,buildText217.replace(buildLine217,retiredBuildSpec217.startMarker)).errors.length>0&&currentContextQualification(buildFile217,buildText217+'\n'+retiredBuildSpec217.startMarker).errors.length>0&&Object.keys(currentContextQualification('README.md',retiredBuildSpec217.startMarker).credits).length===0);
 

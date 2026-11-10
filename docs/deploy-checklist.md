@@ -7901,3 +7901,8 @@ Removes the initial fixed worst-case visit-count divisor. The existing live per-
 
 Uses the edge runtime's manual redirect mode for signed self-continuation POSTs. Every non-success response, including all redirects, remains refused. HMAC, nonce, TTL, original Native role checks and per-invocation budget fences are unchanged. The owner-directed rollout still compiles and restores a fresh443/442 D1 backup before deployment, then reruns the affected scheduling regression after serving. No addon or Watcher runtime change.
 
+
+## Worker .247 — donation privacy, lightweight status and registration
+
+The current registry is exactly17 families/41 logical reads; account-copy payload and physical98-statement coverage remain bounded as before. Account cleanup combines the existing treasury predicate with the existing terminal audit delete before character removal, preserving standalone registry behavior, transactional failure semantics and exact196/700 erasure/schedule bounds. Presence/default relay polling keeps zero D1 reads; Watcher0.6.22 fetches signed verification cache through a separately explicit two-key intent. Donation ledger gets its proper page title and canonical registration uses the same exact hub/check definition. Native verification enhancements require a current members-only scope; legacy paths preserve their original name limits and avoid new role work. The owner-directed order remains compile/bundle and fresh443/442 restored backup, deploy/install, then affected tests and hostedCI. Addon remains0.6.22 with unchanged archive bytes.
+

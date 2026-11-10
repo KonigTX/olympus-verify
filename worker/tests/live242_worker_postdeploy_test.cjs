@@ -10,7 +10,7 @@ function load(name,imports={},extra={}){
 }
 (async()=>{
  let checks=0;const check=(name,fn)=>{fn();checks++;console.log('PASS '+name);};
- const launch={'./launch-verification227':{captureLaunchVerification:e=>({scope:{realm:e.realm}})}};
+ const launch={'./launch-verification227':{captureLaunchVerification:e=>({mode:e.legacy?'legacy':'members-only',scope:e.legacy?null:{realm:e.realm},current:()=>e.current!==false})}};
  const I=load('interactions',launch);
  check('Forever single name refuses',()=>assert.equal(I.normalizeVerificationName242({realm:'CAMWOW'},'Taylor'),null));
  check('Forever full name accepts',()=>assert.equal(I.normalizeVerificationName242({realm:'Forever Open 2'},'Fern Melder'),'Fern Melder'));
@@ -19,6 +19,10 @@ function load(name,imports={},extra={}){
  check('control character refuses',()=>assert.equal(I.normalizeVerificationName242({realm:'CAMWOW'},'Fern\nMelder'),null));
  check('mention or markup refuses',()=>assert.equal(I.normalizeVerificationName242({realm:'CAMWOW'},'<@123> Name'),null));
  check('oversize name refuses',()=>assert.equal(I.normalizeVerificationName242({realm:'CAMWOW'},'A'.repeat(31)+' Last'),null));
+ check('legacy normalization preserves internal spaces and trim',()=>assert.equal(I.normalizeVerificationName242({legacy:true},' Fern   Melder '),'Fern   Melder'));
+ check('legacy original maximum31 accepts31 and refuses32',()=>{assert.equal(I.normalizeVerificationName242({legacy:true},'A'.repeat(31)),'A'.repeat(31));assert.equal(I.normalizeVerificationName242({legacy:true},'A'.repeat(32)),null);});
+ check('current Native maximum32 remains supported',()=>assert.equal(I.normalizeVerificationName242({realm:'CAMWOW'},'A'.repeat(27)+' Last'),'A'.repeat(27)+' Last'));
+ check('stale Native capture cannot admit a name',()=>assert.equal(I.normalizeVerificationName242({realm:'CAMWOW',current:false},'Fern Melder'),null));
  const ND=load('member-nickname-data233',{'./community-data-registry':{registerCommunityData:()=>{}}});
  const N=load('member-nickname233',{'./member-nickname-data233':ND});
  check('angle guild suffix',()=>assert.equal(N.formatNickname233('Fern Melder'),'Fern Melder <OLYMPUS PRIME>'));

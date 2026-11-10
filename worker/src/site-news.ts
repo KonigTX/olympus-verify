@@ -78,6 +78,11 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".247", date: "2026-11-10", lines: [
+      "Donation observations are included in account-copy accounting and cleanup. Sync status keeps its lightweight request path.",
+    ],
+  },
+  {
     build: ".246", date: "2026-11-10", lines: [
       "Rank-update continuations now use the supported request mode and refuse redirects.",
     ],

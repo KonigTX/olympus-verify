@@ -36,9 +36,9 @@ async function review(){
 
  eq('independent34 static retained array cases',nativeCases.cases.length,34);
  eq('independent37 exact history coverage',nativeCases.collections.length,37);
- eq('actual production registers original13 plus exact2 metadata and1 private nickname family',Array.from(registry.communityDataNames()).length,16);
+ eq('actual production registers original13 plus exact2 metadata,1 private nickname and1 treasury family',Array.from(registry.communityDataNames()).length,17);
  const census=fixture(),plan=registry.communityExportPlan(census.env,A);
- eq('actual production registers original36 plus exact3 metadata and1 nickname SQL statement',plan.statements.length,40);census.db.close();
+ eq('actual production registers original36 plus exact3 metadata,1 nickname and1 treasury SQL statement',plan.statements.length,41);census.db.close();
  async function prepared(f,id=A){const c=await connect(f,id),frm=await form(f,c);provider=null;return frm;}
  async function download(f,collection,cursor=null){
   const frm=await prepared(f),footprint=['site_users','members','privacy_subjects','role_settlements'].map(t=>count(f,t));

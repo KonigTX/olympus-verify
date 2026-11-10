@@ -8,15 +8,19 @@ const ADDED=Object.freeze(['discord_directory_visibility','news_webhook']);
 // .233 reuses the settings table for one separately registered private family.
 // Keep the original13/.196 two-family plan exact rather than absorbing it there.
 const NICKNAME233=Object.freeze(['member_nickname']);
+// .242 reuses the audit ledger; retain its one-read family separately from the historical projections.
+const TREASURY242=Object.freeze(['treasury242']);
 function exactRegistry(registry,env,id,assert){
- const names=registry.communityDataNames();assert.deepEqual(Array.from(names).sort(),[...OLD,...ADDED,...NICKNAME233].sort(),'all original13, exact .196 two families and one private .233 nickname family');
- assert.equal(new Set(names).size,16,'no duplicate family accepted');
+ const names=registry.communityDataNames();assert.deepEqual(Array.from(names).sort(),[...OLD,...ADDED,...NICKNAME233,...TREASURY242].sort(),'all original13, exact .196 two families, one private .233 nickname family and one .242 treasury family');
+ assert.equal(new Set(names).size,17,'no duplicate family accepted');
  const all=registry.communityExportPlan(env,id),selected=registry.communityScopedExportPlan(env,id,ADDED);
  const nickname=registry.communityScopedExportPlan(env,id,NICKNAME233);
+ const treasury=registry.communityScopedExportPlan(env,id,TREASURY242);
  assert.equal(nickname.statements.length,1,'exact .233 nickname family adds one separately selected read');
- assert.equal(all.statements.length-selected.statements.length-nickname.statements.length,36,'all original thirteen exporters retain36 logical reads');
+ assert.equal(treasury.statements.length,1,'exact .242 treasury family adds one separately selected read');
+ assert.equal(all.statements.length-selected.statements.length-nickname.statements.length-treasury.statements.length,36,'all original thirteen exporters retain36 logical reads');
  assert.equal(selected.statements.length,3,'directory singleton1 and webhook count+bounded rows2');
- assert.equal(all.statements.length,40,'actual exact expanded registry plan40');
+ assert.equal(all.statements.length,41,'actual exact expanded registry plan41');
  for(const bad of [[],[ADDED[0],ADDED[0]],['unknown196']]){
   assert.throws(()=>registry.communityScopedExportPlan(env,id,bad));assert.throws(()=>registry.communityScopedEraseStatements(env,id,bad));
  }
@@ -44,6 +48,7 @@ async function identifyProof196(){
     ok(kind+' real exporter refuses malformed own metadata, no partial successful copy',held||response.status!==200);
    }else{
     eq(kind+' original identify-only export admitted',response.status,200);const body=await response.json(),section=body.community.news_webhook;
+    ok(kind+' curated identify copy retains the explicit private-payment exclusion',!Object.hasOwn(body.community,'treasury242')&&body.coverage.excluded.includes('private payment details'));
     eq(kind+' never-signed-in remains accountless',[body.account,count(f,'site_users'),count(f,'members'),count(f,'role_settlements')],[null,0,0,0]);
     eq(kind+' own attended marker is copied without website-incarnation prerequisite',body.community.discord_directory_visibility,{listedByDefault:true,optedOut:kind!=='empty',scope:'whole_directory_row',extraProfileDetails:'separate_opt_in'});
     eq(kind+' exact retained webhook count and truthful cap',[section.count,section.returnedCount,section.deliveries.length,section.limit,section.complete,section.truncated],[n,Math.min(n,1000),Math.min(n,1000),1000,n<=1000,n>1000]);
