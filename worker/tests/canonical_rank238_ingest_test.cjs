@@ -154,6 +154,62 @@ const body238=String.raw`
  }
  check('262 deep failure/resume and rejected checkpoints never retry or alter original unknown/G/GUID',put()===0&&del()===0&&JSON.stringify(rows().find(r=>r.id===originalUnknown262.id))===unknownBytes262&&identity238()===identity262);db.close();
 
+ // .263: lose only the RETURNING payload after the actual Native transaction
+ // commits. The original entry port, admission/control replies and issuer stay real.
+ const originalD1263=d1;
+ for(const mode263 of ['lost-acquire','foreign-lease','release-error','release-unconfirmed']){
+  const fault263={armed:false,read:null,candidate:null,commits:[],releases:[],releaseFailures:0,logs:[]};
+  d1=raw=>entry.originalNativePort(raw,{
+   beforeRead(sql,params){fault263.read={sql,params};},
+   readStatement(statement,params){
+    const actual=statement.all(...params),read=fault263.read;
+    if(fault263.armed&&read?.sql===L238.FRESH_LEASE_ACQUIRE&&mode263!=='foreign-lease'){
+     if(actual.length!==1||actual[0].key!==L238.FRESH_LEASE_KEY)throw Error('263_real_acquisition_payload_required');
+     fault263.candidate=read.params[0];return [];
+    }
+    return actual;
+   },
+   beforeRun(sql,params){
+    if(!fault263.armed||sql!==L238.FRESH_LEASE_RELEASE)return;
+    fault263.releases.push({candidate:params[0],changes:null});
+    if(mode263==='release-error'){fault263.releaseFailures++;throw Object.assign(Error('D1_synthetic_private_release_message263'),{status:503});}
+   },
+   afterBatch(plan,out){
+    if(fault263.armed)for(let i=0;i<plan.length;i++){
+     if(plan[i].sql===L238.FRESH_LEASE_ACQUIRE)fault263.commits.push({candidate:plan[i].params[0],value:raw.prepare('SELECT value FROM site_settings WHERE key=?').get(L238.FRESH_LEASE_KEY)?.value});
+     if(plan[i].sql===L238.FRESH_LEASE_RELEASE){fault263.releases.at(-1).changes=out[i].meta.changes;if(mode263==='release-unconfirmed')out[i]={...out[i],meta:{...out[i].meta,changes:undefined}};}
+    }
+    batchHook?.(plan,out);
+   }
+  });
+  try{
+   code=await setup233(6);reply=await invoke(code);if(!reply.body.roleGranted)throw Error('263_genuine_original_ACK_required');
+   T++;await stage241(7);http=[];
+   const originalACK263=JSON.stringify(rows()),identity263=identity238(),control263=JSON.stringify(db.prepare('SELECT epoch,mode,active,nonce,purpose FROM privacy_write_admission').get());
+   let physical263=0;const root263=async()=>{const count={used:0},bounded=E238.countStatements(env,count),calls=load('./roles').callBudget(bounded);try{return await F238.runFreshPass(bounded,{calls,adm:F238.nativeAdmission232(count,850)},'ingest',L238.captureLaneConfig(bounded));}finally{physical263=count.used;}};
+   const foreign263=L238.freshLeaseValue(T+L238.FRESH_LEASE_SECONDS,'b'.repeat(32));
+   if(mode263==='foreign-lease')await env.DB.prepare(L238.FRESH_LEASE_ACQUIRE).bind(foreign263).first();
+   const visitsBefore263=db.prepare("SELECT COUNT(*) n FROM audit WHERE action='role.native232_attempt'").get().n;
+   const oldLog263=console.log,oldError263=console.error;let result263;
+   fault263.armed=true;
+   console.log=(...args)=>fault263.logs.push({level:'log',args});console.error=(...args)=>fault263.logs.push({level:'error',args});
+   try{result263=await root263();}finally{console.log=oldLog263;console.error=oldError263;fault263.armed=false;}
+   const lease263=db.prepare('SELECT value FROM site_settings WHERE key=?').get(L238.FRESH_LEASE_KEY)?.value,release263=fault263.releases[0];
+   check('263 '+mode263+' unacknowledged acquisition never visits, grants, or adopts original authority',result263.state==='skipped'&&result263.reason==='lease_held'&&result263.counts.visits===0&&put()===0&&del()===0&&db.prepare("SELECT COUNT(*) n FROM audit WHERE action='role.native232_attempt'").get().n===visitsBefore263&&JSON.stringify(rows())===originalACK263&&identity238()===identity263);
+   check('263 '+mode263+' uses one exact candidate cleanup with unchanged admission controls and850 budget',fault263.commits.length===1&&fault263.releases.length===1&&release263.candidate===fault263.commits[0].candidate&&JSON.stringify(db.prepare('SELECT epoch,mode,active,nonce,purpose FROM privacy_write_admission').get())===control263&&physical263>0&&physical263<=850);
+   if(mode263==='foreign-lease')check('263 foreign owner survives a legitimate zero-change exact-CAS release',lease263===foreign263&&fault263.commits[0].value===foreign263&&release263.changes===0&&fault263.logs.length===0);
+   else{
+    check('263 '+mode263+' actually commits the original candidate before hiding its reply',fault263.candidate===fault263.commits[0].candidate&&fault263.commits[0].value===fault263.candidate&&JSON.parse(fault263.candidate).leaseUntil===T+300);
+    if(mode263==='lost-acquire'){
+     check('263 committed acquisition with lost ACK is cleared with only a fixed positive label',lease263==='{"leaseUntil":0}'&&release263.changes===1&&JSON.stringify(fault263.logs)===JSON.stringify([{level:'log',args:['native232_lease_unconfirmed_acquisition_cleaned']}]));
+     http=[];const recovered263=await root263();
+     check('263 later acknowledged original root can perform the owed rank transition once',recovered263.state==='done'&&recovered263.counts.visits===1&&put()===1&&del()===1&&present.includes(C.CANONICAL_RANKS233[8].roleId)&&!present.includes(C.CANONICAL_RANKS233[7].roleId)&&identity238()===identity263);
+    }else if(mode263==='release-error')check('263 release failure retains the300s fallback and logs bounded status without its message',lease263===fault263.candidate&&fault263.releaseFailures===1&&JSON.stringify(fault263.logs)===JSON.stringify([{level:'error',args:['native232_lease_release_held','upstream(503)']}]));
+    else check('263 unknown release metadata is held rather than reported as positive cleanup',lease263==='{"leaseUntil":0}'&&release263.changes===1&&JSON.stringify(fault263.logs)===JSON.stringify([{level:'error',args:['native232_lease_release_held','error']}]));
+   }
+  }finally{fault263.armed=false;d1=originalD1263;if(db?.isOpen)db.close();}
+ }
+
  globalThis.fetch=originalFetch257;
  console.log(ok+'/'+n+' canonical238 original Native ingest checks passed');process.exitCode=ok===n?0:1;
 `;

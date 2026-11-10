@@ -70,6 +70,26 @@ async function run(qualified,label,scenario,source){
   }}));await mf.ready;
   const first=await mf.dispatchFetch('http://fixture.invalid/veteran',{method:'POST'}),firstBody=await first.json();check(label+'/'+scenario+' original first account obtains real own grant ACK',first.status===200&&firstBody.error===null&&firstBody.result.body.roleGranted===true);
   const prep=await mf.dispatchFetch('http://fixture.invalid/prepare',{method:'POST'});wx(label+'-'+scenario+'-prepare.json',await prep.text());assert.equal(prep.status,200,'second_original_setup');
+  if(scenario.startsWith('lease263-')){
+   const mode=scenario.slice('lease263-'.length),before=http.length;callbackPhase=true;
+   const response=await mf.dispatchFetch('http://fixture.invalid/lease-ack263?mode='+mode,{method:'POST'}),body=await response.text();
+   wx(label+'-'+scenario+'-response.txt',body);assert.equal(response.status,200,'263_original_lease_fixture: '+body.slice(0,400));const r=JSON.parse(body);
+   wx(label+'-'+scenario+'-lease263.json',r);
+   const acquire=r.events.find(e=>e.kind==='acquire-committed-original-reply'),release=r.events.find(e=>e.kind==='release-original-reply'||e.kind==='release-transport-error'),effects=http.slice(before).filter(x=>x.method==='PUT'||x.method==='DELETE');
+   const originalWireStatements=r.wires.reduce((sum,w)=>sum+packets(w.requestBody).length,0);
+   check(label+'/'+mode+'263 real Workerd unacknowledged acquisition admits no Native visit or authority',r.actualLocalWorkerdD1===true&&r.actualOriginalNativeTransport===true&&r.clockOverride===false&&r.issuerOverride===false&&r.result.state==='skipped'&&r.result.reason==='lease_held'&&r.result.counts.visits===0&&r.result.counts.requests===0&&r.newVisits===0&&r.originalACKsUnchanged===true&&r.controlUnchanged===true);
+   check(label+'/'+mode+'263 one exact candidate cleanup retains original850 physical statement bound',r.events.length===2&&acquire&&release&&release.candidate===acquire.candidate&&r.statements>0&&r.statements===originalWireStatements&&r.statements<=850);
+   if(mode==='foreign-lease')check(label+'263 foreign original owner survives legitimate zero-change cleanup',acquire.success===true&&acquire.changes===0&&acquire.keys.length===0&&release.success===true&&release.changes===0&&r.lease===r.foreign&&r.logs.length===0&&effects.length===0);
+   else{
+    check(label+'/'+mode+'263 original D1 actually committed its acquisition before only its payload reply was hidden',acquire.success===true&&acquire.changes===1&&acquire.keys.length===1&&acquire.keys[0]==='fullReleaseRolesPass'&&Number.isSafeInteger(JSON.parse(acquire.candidate).leaseUntil));
+    if(mode==='lost-acquire'){
+     check(label+'263 committed acquisition with lost ACK is cleared and logged without candidate or identity',release.success===true&&release.changes===1&&r.lease==='{"leaseUntil":0}'&&JSON.stringify(r.logs)===JSON.stringify([{level:'log',args:['native232_lease_unconfirmed_acquisition_cleaned']}]));
+     check(label+'263 later genuine acknowledged root alone performs both owed rank transitions',r.recovered?.state==='done'&&r.recovered.counts.visits===2&&r.recoveredStatements<=850&&effects.length===4&&[A,B].every(id=>present.get(id).includes(ranks[8][1])&&!present.get(id).includes(ranks[7][1])&&present.get(id).includes(HIGH)));
+    }else if(mode==='release-error')check(label+'263 release transport failure retains candidate fallback and emits only bounded error category',release.status===503&&r.lease===acquire.candidate&&effects.length===0&&JSON.stringify(r.logs)===JSON.stringify([{level:'error',args:['native232_lease_release_held','d1']}]));
+    else check(label+'263 unconfirmed release metadata never reports positive cleanup',release.success===true&&release.changes===1&&r.lease==='{"leaseUntil":0}'&&effects.length===0&&JSON.stringify(r.logs)===JSON.stringify([{level:'error',args:['native232_lease_release_held','error']}]));
+   }
+   results.push({label,scenario,qualified,lease263:r,roleHTTP:http.length-before,effects:effects.length,actualOriginalNativeD1:true,originalNativeIssuer:true,sourceCallbackOverride:false,clockOverride:false,providerCalls:0});return;
+  }
   const before=http.length;callbackPhase=true;const worker=await mf.getWorker();assert.equal(typeof worker.scheduled,'function','genuine_runtime_scheduled_service');const original=await worker.scheduled({cron:'* * * * *'});wx(label+'-'+scenario+'-scheduled.json',original);
   if(original.outcome!=='ok'||original.noRetry!==true){
    wx(label+'-'+scenario+'-callback-refusal-boundary.json',{syntheticFixtureOnly:true,original,selfWakes,outboundRefusals});
@@ -115,6 +135,7 @@ async function run(qualified,label,scenario,source){
  await run(!shippingQualified,'one-literal-variant','positive',opposite);
  const qualifiedSource=shippingQualified?actual:opposite,label=shippingQualified?'actual-source':'one-literal-variant';
  for(const scenario of ['collision','inactive','native-off','wrong-layout','interval','stale','unknown','lost-put','slow-subject'])await run(true,label,scenario,qualifiedSource);
+ for(const mode of ['lost-acquire','foreign-lease','release-error','release-unconfirmed'])await run(true,label,'lease263-'+mode,qualifiedSource);
  for(const p of allPins.values())assert.equal(H(fs.readFileSync(p.path)),p.sha256,'all_source_inputs_preserved');check('all original source and fixture bytes remain exact',true);complete=true;
  }finally{
  const report={schema:'canonical-rank238-genuine-scheduled-local-v1',complete,checks,shippingQualified,operationalSourceQualification:false,actualShippingLiteralGenuineScheduledComponentQualified:complete&&shippingQualified,unpublishedVariantDoesNotQualifyShippingFalse:!shippingQualified,layoutScope:['recorded-live-pre-seal-20261017'],otherLayoutsQualified:false,results,compiled,sourcePins:[...allPins.values()],providerCalls:0,clockOverride:false,handlerOverride:false,continuationBoundary:{schedulingOnly:true,childExecuted:false,roleACK:false,exactSignedSelfPOSTValidated:true},out};
