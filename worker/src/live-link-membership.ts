@@ -31,7 +31,6 @@ const LIVE_LINK_DEADLINE = 300;
 const SNOWFLAKE = /^[1-9][0-9]{16,19}$/;
 const GUID = /^Player-([1-9][0-9]{0,5})-[0-9A-F]{8}$/;
 const SERVER = /^[1-9][0-9]{0,5}$/;
-const HEX32 = /^[0-9a-f]{32}$/;
 const REQUEST_TAG = /^[0-9A-HJKMNP-TV-Z]{10}$/;
 const HEX64 = /^[0-9a-f]{64}$/;
 
@@ -101,14 +100,14 @@ export const liveLinkMembershipOn = (env: Env): boolean => captureLiveLinkMember
 // The state row
 
 export type LiveLinkState = 'consumed' | 'settled' | 'held';
-export type LiveLinkRecord = Readonly<{ v: 1; op: string; state: LiveLinkState; reason: string; createdAt: number; updatedAt: number; expiresAt: number }>;
-const RECORD_KEYS = 'createdAt,expiresAt,op,reason,state,updatedAt,v';
+export type LiveLinkRecord = Readonly<{ v: 1; state: LiveLinkState; reason: string; createdAt: number; updatedAt: number; expiresAt: number }>;
+const RECORD_KEYS = 'createdAt,expiresAt,reason,state,updatedAt,v';
 /** The marker outlives its code's refusal window (expiry plus the submit grace) by one day, then is deleted. */
 export const LIVE_LINK_MARKER_TTL = 86400;
 
 /**
  * The one-use marker's key: a hash of the request tag (the code's own random identifier), never the account. The value holds
- * no account, name, character, GUID, code or signature: only a digest of the tag, a state, times and an expiry. It keeps no
+ * no account, name, character, GUID, code or signature, and nothing derived from the tag or from the settlement fingerprint: only a state, times and an expiry. It keeps no
  * subject identifier, it is deleted once its code can no longer be submitted, and so the Native erasure job (whose statement
  * budget is exactly full) has nothing of the subject to erase here. The account is recorded only in rows that are already
  * account data: the character binding and role_settlements.
@@ -121,7 +120,7 @@ export function parseLiveLinkRecord(raw: unknown): LiveLinkRecord | null {
   if (typeof raw !== 'string' || raw.length > 1024) return null;
   let r: Record<string, unknown>;
   try { r = JSON.parse(raw); } catch { return null; }
-  if (!r || typeof r !== 'object' || Array.isArray(r) || Object.keys(r).sort().join(',') !== RECORD_KEYS || r.v !== 1 || typeof r.op !== 'string' || !HEX32.test(r.op)
+  if (!r || typeof r !== 'object' || Array.isArray(r) || Object.keys(r).sort().join(',') !== RECORD_KEYS || r.v !== 1
     || !['consumed', 'settled', 'held'].includes(r.state as string) || typeof r.reason !== 'string' || r.reason.length > 64
     || !Number.isSafeInteger(r.createdAt) || (r.createdAt as number) < 1 || !Number.isSafeInteger(r.updatedAt) || (r.updatedAt as number) < (r.createdAt as number)
     || !Number.isSafeInteger(r.expiresAt) || (r.expiresAt as number) <= (r.createdAt as number)) return null;
@@ -176,19 +175,19 @@ export function liveLinkPredicate(env: Env, cap: OriginalLiveLinkConsumption, st
   if (!Number.isSafeInteger(start) || start < 1 || start > 75) held();
   const saved = originals.get(cap)!, at = (n: number) => '?' + (start + n), f = saved.facts;
   return Object.freeze({
-    sql: `EXISTS(SELECT 1 FROM site_settings s WHERE s.key=${at(0)} AND json_valid(s.value) AND json_extract(s.value,'$.op')=${at(1)} AND json_extract(s.value,'$.state')='consumed' AND json_extract(s.value,'$.createdAt')=${at(2)})
-    AND ${privacyGenerationFenceSql(start + 3, start + 4)}
-    AND EXISTS(SELECT 1 FROM characters c WHERE c.discord_id=${at(3)} AND c.name_key=${at(5)} AND c.guid=${at(6)} AND c.status IN('verified','member'))
-    AND (SELECT COUNT(*) FROM characters WHERE guid=${at(6)} AND status IN('verified','queued','member','left_pending'))=1
-    AND ${at(7)}>CAST(strftime('%s','now') AS INTEGER)`,
-    values: Object.freeze([f.stateKey, f.op, f.createdAt, f.subject, f.subjectGeneration, f.source.nameKey, f.source.guid, f.deadline]),
-    next: start + 8,
+    sql: `EXISTS(SELECT 1 FROM site_settings s WHERE s.key=${at(0)} AND json_valid(s.value) AND json_extract(s.value,'$.state')='consumed' AND json_extract(s.value,'$.createdAt')=${at(1)})
+    AND ${privacyGenerationFenceSql(start + 2, start + 3)}
+    AND EXISTS(SELECT 1 FROM characters c WHERE c.discord_id=${at(2)} AND c.name_key=${at(4)} AND c.guid=${at(5)} AND c.status IN('verified','member'))
+    AND (SELECT COUNT(*) FROM characters WHERE guid=${at(5)} AND status IN('verified','queued','member','left_pending'))=1
+    AND ${at(6)}>CAST(strftime('%s','now') AS INTEGER)`,
+    values: Object.freeze([f.stateKey, f.createdAt, f.subject, f.subjectGeneration, f.source.nameKey, f.source.guid, f.deadline]),
+    next: start + 7,
   });
 }
 
 const hex = (bytes: ArrayBuffer) => Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, '0')).join('');
 const sha256Hex = async (text: string) => hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)));
-/** First 32 hex of SHA-256('live-link|v1|op|' + R): one per code, never the code itself and never the account. */
+/** First 32 hex of SHA-256('live-link|v1|op|' + R): one per code. It feeds only the settlement fingerprint and is never stored in the marker. */
 export const liveLinkOp = async (R: string) => (await sha256Hex(`live-link|v1|op|${R}`)).slice(0, 32);
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -311,7 +310,7 @@ export async function routeLiveLinkMembership(request: Request, env: Env, cors: 
       const raw = await env.DB.prepare('SELECT value FROM site_settings WHERE key=?1').bind(stateKey).first<{ value: string }>();
       if (raw) {
         const prior = parseLiveLinkRecord(raw.value);
-        if (!prior || prior.op !== op) return refuse('member-pending', R);
+        if (!prior) return refuse('member-pending', R);
         return prior.state === 'settled' ? already() : refuse('member-pending', R); // consumed or held: this same link is not retried
       }
       // Another code for an account that already has (or is being given) the role: role_settlements is the account's record.
@@ -338,7 +337,7 @@ export async function routeLiveLinkMembership(request: Request, env: Env, cors: 
     const generation = capture?.subjectGeneration ?? null;
     const fingerprint = await sha256Hex(`live-link-request|v1|${op}|${subject}|${guid}`);
     const expiresAt = Math.max(t, codeRow.exp) + LIVE_LINK_SUBMIT_GRACE + LIVE_LINK_MARKER_TTL;
-    const value = JSON.stringify({ v: 1, op, state: 'consumed', reason: 'consumed', createdAt: t, updatedAt: t, expiresAt });
+    const value = JSON.stringify({ v: 1, state: 'consumed', reason: 'consumed', createdAt: t, updatedAt: t, expiresAt });
     const refused = (n: string) => `json_extract('${n}','$')`;
     let done: D1Result[];
     try {
@@ -353,9 +352,9 @@ export async function routeLiveLinkMembership(request: Request, env: Env, cors: 
         env.DB.prepare(`INSERT INTO site_settings(key,value,updated_at,updated_by) VALUES(?1,?2,?3,NULL)
           RETURNING key,CAST(strftime('%s','now') AS INTEGER) AS admitted_at`).bind(stateKey, value, t),
         env.DB.prepare(`INSERT INTO characters (name_key, name, discord_id, status, bound_at, verified_at, source, guid)
-          SELECT ?1, ?2, ?3, 'verified', ?4, ?4, 'link', ?5 WHERE EXISTS (SELECT 1 FROM site_settings WHERE key=?6 AND json_extract(value,'$.op')=?7 AND json_extract(value,'$.state')='consumed')
+          SELECT ?1, ?2, ?3, 'verified', ?4, ?4, 'link', ?5 WHERE EXISTS (SELECT 1 FROM site_settings WHERE key=?6 AND json_extract(value,'$.createdAt')=?7 AND json_extract(value,'$.state')='consumed')
           ON CONFLICT(name_key) DO UPDATE SET name = ?2, discord_id = ?3, status = 'verified', bound_at = ?4, verified_at = ?4, left_at = NULL, source = 'link', guid = ?5
-          WHERE NOT (characters.discord_id = ?3 AND characters.status = 'member')`).bind(nameKey, character, subject, t, guid, stateKey, op),
+          WHERE NOT (characters.discord_id = ?3 AND characters.status = 'member')`).bind(nameKey, character, subject, t, guid, stateKey, t),
       ]);
     } catch {
       // A concurrent submit or a changed standing refused the batch: nothing was written. Read back what is there now.
@@ -389,8 +388,8 @@ export async function routeLiveLinkMembership(request: Request, env: Env, cors: 
     const next = settled ? 'settled' : settlement === null || settlement.state === 'held' ? 'held' : 'consumed';
     try {
       await env.DB.prepare(`UPDATE site_settings SET value=json_set(value,'$.state',?2,'$.reason',?3,'$.updatedAt',MAX(?4,json_extract(value,'$.createdAt'))),updated_at=?4
-        WHERE key=?1 AND json_valid(value) AND json_extract(value,'$.op')=?5 AND json_extract(value,'$.state')='consumed'`)
-        .bind(stateKey, next, reason, Math.floor(Date.now() / 1000), op).run();
+        WHERE key=?1 AND json_valid(value) AND json_extract(value,'$.createdAt')=?5 AND json_extract(value,'$.state')='consumed'`)
+        .bind(stateKey, next, reason, Math.floor(Date.now() / 1000), t).run();
     } catch (e) { console.error('olympus-link live membership record', errorRef(e)); }
     if (settled) return send({ ok: true, status: 'linked', reason: 'member', message: MESSAGES.member, R, character, guild, faction, characters: [character] });
     return refuse('member-pending', R);

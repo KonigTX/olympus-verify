@@ -473,16 +473,17 @@ GUID wins otherwise). Answers after consumption: `member` (settled), `member-alr
 account that is already settled), `member-pending` (settling, or held).
 
 **One use.** The state is one `site_settings` marker per code, key `livelink:` plus SHA-256(`live-link|v1|key|`+R), where R is
-the request tag. Value `{v,op,state,reason,createdAt,updatedAt,expiresAt}`; `op` is the first 32 hex of
-SHA-256(`live-link|v1|op|`+R). It holds no account, name, character, GUID, code or signature, and it is keyed by the code,
-not the person. `expiresAt` is the code's expiry plus the one-day submit grace plus one more day; the next consume deletes
+the request tag. Value `{v,state,reason,createdAt,updatedAt,expiresAt}`. It holds no account, name, character, GUID, code or signature and
+no digest at all, and it is keyed by the code, not the person. Nothing in it can be recomputed from an account's subject,
+GUID, name or code, or from the settlement fingerprint (see Privacy). `expiresAt` is the code's expiry plus the one-day submit grace plus one more day; the next consume deletes
 expired markers (50 at a time, best effort). A repeat of the same link reads the stored outcome back with zero writes
 (`member-already` once settled, `member-pending` while `consumed` or `held`). Another code for an account is judged by the
 account's own `role_settlements` rows: `settled` gives `member-already`, `pending`, `dispatching` or `unknown` gives
 `member-pending`, and a `held` row lets a new code from `/verify` try again. The consuming batch (the marker, the
 `members` row, the `characters` binding with `source='link'` and the GUID, never over this account's own `member` row) is
 one admitted privacy write; its `RETURNING` mints the original consumption that the writer spends once. The writer's
-idempotency key is `request_digest` = SHA-256 of (op, account, GUID), guarded in the INSERT. Known narrow race: two
+idempotency key is `request_digest` = SHA-256 of (a digest of R, account, GUID), guarded in the INSERT. That digest of R is
+not stored in the marker. Known narrow race: two
 different codes of one account submitted in the same instant can each queue a settlement; both are the same idempotent
 role PUT.
 
@@ -498,9 +499,18 @@ record are account data and follow the account's own copy and erasure. The setti
 (`settingsFrom`), so the `livelink:` key range never reaches a setting; `LIVE_LINK_SETTINGS_FILTER` exists for a reader that
 scans the table, but none needed it (their SQL is exact-pinned by `owner_requests_test`).
 
+The link between an account and the code it used lives only in the settlement row, which is already account data, scoped to
+the account and erased with it. The marker carries no digest that could be matched to that row's fingerprint, so the bot
+database alone cannot tie a marker to an account. The one remaining difference is timing: the marker's `createdAt` is the
+second the link was consumed, which is also close to the settlement row's time. This run does not change when `LINK_DB`
+is erased: as in section 5, an account erasure still does not reach `LINK_DB` until Phase 1b.
+
 **Open question for Fern (R-1).** Is a code-keyed, expiring marker acceptable as non-personal? The request tag also appears
 in `LINK_DB.codes` beside the Discord id, so someone holding both databases could join them for the marker's lifetime (at most
-about two days past the code's expiry). If you rule it personal, the fix is a registered family with its own erase statement
+about two days past the code's expiry). That is the only join to the request tag that remains. Inside the bot database the
+marker's `createdAt` is within a few seconds of the settlement row's time, which narrows a match only for an account that
+linked at that moment; no other field of the marker matches the settlement row. This run does not change `LINK_DB` erasure
+timing (Phase 1b). If you rule it personal, the fix is a registered family with its own erase statement
 (room in the 196-statement budget) and a new sealed layer for `privacy-serving-erase.ts`. Nothing else here changes.
 
 **Open question for Fern (OQ-4).** Under `CANONICAL_RANKS233` this path grants exactly `ROLE_GUILD_MEMBER` (the `member`

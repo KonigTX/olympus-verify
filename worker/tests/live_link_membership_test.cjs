@@ -119,7 +119,7 @@ const body230=String.raw`
  const ch=db.prepare('SELECT * FROM characters').all();
  check('grant: the character is bound to the account with source link and its GUID',ch.length===1&&ch[0].name_key==='guid player'&&ch[0].discord_id===A&&ch[0].source==='link'&&ch[0].guid===GUIDA&&ch[0].status==='verified');
  const mk=markers();
- check('grant: one marker, settled, keyed by the code not the account, holding no name, GUID, code or account id',mk.length===1&&!mk[0].key.includes(A)&&JSON.parse(mk[0].value).state==='settled'&&Object.keys(JSON.parse(mk[0].value)).sort().join(',')==='createdAt,expiresAt,op,reason,state,updatedAt,v'&&![A,'guid player',GUIDA,codeA.token,good.R].some(x=>mk[0].value.includes(x)),mk);
+ check('grant: one marker, settled, keyed by the code not the account, holding no name, GUID, code or account id',mk.length===1&&!mk[0].key.includes(A)&&JSON.parse(mk[0].value).state==='settled'&&Object.keys(JSON.parse(mk[0].value)).sort().join(',')==='createdAt,expiresAt,reason,state,updatedAt,v'&&![A,'guid player',GUIDA,codeA.token,good.R].some(x=>mk[0].value.includes(x)),mk);
  check('grant: no addRole, no Link role, no code consumed or audit row in LINK_DB',ROLE_ADDS.length===0&&!http.some(x=>/1700000000000000001/.test(x.path))&&linkDb.sqlite.prepare('SELECT used FROM codes').get().used===null&&linkDb.sqlite.prepare('SELECT COUNT(*) n FROM inbox_uploads').get().n===0&&linkDb.sqlite.prepare('SELECT COUNT(*) n FROM members').get().n===0);
  check('grant: no secret or identifier reached the log',!LOGS.some(x=>x.includes(good.R)||x.includes(codeA.token)||x.includes(A)));
  const afterGrant=snap();
@@ -230,11 +230,23 @@ const body230=String.raw`
   const registry=load('./community-data-registry');
   const code=await issue(A,'guid.player'),made=await link(code);await post(made.text);
   const m=markers();
-  check('privacy: one marker, keyed by a hash of the request tag and holding only op, state, reason, times and an expiry',m.length===1&&/^livelink:[0-9a-f]{64}$/.test(m[0].key)&&Object.keys(JSON.parse(m[0].value)).sort().join(',')==='createdAt,expiresAt,op,reason,state,updatedAt,v');
+  check('privacy: one marker, keyed by a hash of the request tag and holding only state, reason, times and an expiry',m.length===1&&/^livelink:[0-9a-f]{64}$/.test(m[0].key)&&Object.keys(JSON.parse(m[0].value)).sort().join(',')==='createdAt,expiresAt,reason,state,updatedAt,v');
   const mv=JSON.parse(m[0].value),codeExp=linkDb.sqlite.prepare('SELECT exp FROM codes').get().exp;
   check('privacy: the marker expires one day after the code stops being submittable',mv.expiresAt===Math.max(mv.createdAt,codeExp)+86400+86400,mv);
   check('privacy: the marker is the same for either account (keyed by the code, never by who submitted it)',m[0].key==='livelink:'+h('live-link|v1|key|'+made.R));
   check('privacy: no account id, character, GUID, code or token is in the marker key or value',![A,'guid player','Guid Player',GUIDA,made.R,code.token].some(x=>(m[0].key+m[0].value).includes(x)));
+  {
+   // Nothing in the marker may be recomputed or joined from an account's own data: not from the subject, GUID, name or code, and
+   // not from the digest the settlement row carries (the request fingerprint SHA-256(...|op|subject|guid)).
+   const row=settlements()[0],op=h('live-link|v1|op|'+made.R).slice(0,32);
+   const fingerprints=[h('live-link-request|v1|'+op+'|'+A+'|'+GUIDA),row.request_digest,row.id,op,made.R];
+   const known=[A,'guid player','Guid Player',GUIDA,code.token,made.R,...fingerprints,h(A),h(GUIDA),h('guid player'),h(code.token),h(made.R)];
+   const hexRuns=(m[0].value.match(/[0-9a-f]{16,}/g)||[]);
+   check('privacy: the marker value holds no hex digest at all, and nothing computable from the subject, GUID, name, code or settlement fingerprint',
+     hexRuns.length===0&&known.every(x=>x&&!m[0].value.includes(String(x))&&!m[0].value.includes(String(x).slice(0,32))),m[0].value);
+   check('privacy: the settlement fingerprint is not in the marker key either, so the bot database alone cannot join the marker to the account',
+     fingerprints.every(x=>x&&!m[0].key.includes(String(x).slice(0,32)))&&row.request_digest===h('live-link-request|v1|'+op+'|'+A+'|'+GUIDA));
+  }
   check('privacy: it adds no family to the community registry, so the erasure job statement budget and the closed namespace list are unchanged',!registry.communityDataNames().includes('live_link_membership')&&registry.communityDataNames().length===16);
   const settings=load('./site-data').settingsFrom(env,(await env.DB.prepare('SELECT key, value FROM site_settings').all()).results);
   check('privacy: the settings readers look keys up by name, so the marker never reaches a setting',settings!==null&&typeof settings==='object'&&!JSON.stringify(settings).includes('livelink')&&markers().length===1);
@@ -249,7 +261,7 @@ const body230=String.raw`
   const code=await issue(A,'guid.player'),made=await link(code);await post(made.text);
   // expiry: a stale marker is deleted by the next consume; a live one is kept; none of it holds an account
   const stale='livelink:'+'0'.repeat(64),fresh='livelink:'+'f'.repeat(64);
-  const mkv=(e)=>JSON.stringify({v:1,op:'a'.repeat(32),state:'settled',reason:'x',createdAt:1000,updatedAt:1000,expiresAt:e});
+  const mkv=(e)=>JSON.stringify({v:1,state:'settled',reason:'x',createdAt:1000,updatedAt:1000,expiresAt:e});
   await w('INSERT INTO site_settings(key,value,updated_at)VALUES(?,?,1)',stale,mkv(2000));await w('INSERT INTO site_settings(key,value,updated_at)VALUES(?,?,1)',fresh,mkv(4102444800));
   const codeB=await issue(B,'other.player'),madeB=await link(codeB,{requester:'Other Player-ClassicBetaPvP',guid:'Player-4613-005A70D9'});await post(madeB.text,'signin-token-b-0002');
   const keys=markers().map(x=>x.key);
