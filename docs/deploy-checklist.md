@@ -7927,3 +7927,12 @@ Rollback uses a preserved exact deployed commit through the protected deploy ent
 ## Worker .250 — legacy verification forwarding
 
 Watcher0.6.24 suppresses a duplicate SavedVariables event in favor of durable intake only in membership-only mode. Legacy SavedVariables keeps its existing /ingest/verify forwarding, because its local observations do not contain Native membership proof. Original seen/batch, claim, expiry and unknown-effect guards remain. The addon/public archive stays0.6.23. Compile and fresh restored443/442 backup precede this owner-directed live-first deployment; run the new forwarding tests and affected release metadata checks afterward. Preserve original249 test failures/timeouts and exact serving/qualification-head distinctions.
+
+
+## Worker .251 — mail delivery, transfer identity and receipt lifetime
+
+OlympusVerify0.6.24 supports bounded external request IDs through a separate hashed chunk-routing ID while retaining each canonical request ID. Verification commands and chat filters share the anchored command boundary. Mail observation IDs belong to a specific content instance; a complete readable absence is required before identical content can start another instance. Duplicate current mail stays held, original claims remain intact and mail deletion requires the matching original signed receipt. Gold transfer observers share the Treasury native-context ID before either exports; equal real transfers retain distinct durable sequence IDs. No fuzzy name/time/amount matching or post-export body enrichment occurs. Watcher remains0.6.24.
+
+Server donation visibility and bounded cleanup use the recorded original observation deadline. Unreadable deadlines stay hidden and use arrival+30days only as a deletion fallback. An exactly expired receipt is refused before re-insertion. The ownership/erasure predicate and196/700 accounting remain unchanged; no schema or extra SQL statement is added.
+
+Keep the owner's live-first order: compile/bundle/Lua syntax and fresh restored443/442 backup, exact protected deployment and public-file install, then the authored affected tests, hosted CI and completed exact-head review. Source-only fixes to stale privacy projections, beta historical reconstruction, named-character wording and an existing census helper hash preserve historical anchors and negative checks. Preserve prior failed/time-limited attempts and the original unknown272 effect. Current native acceptance remains separate from synthetic tests and requires the signed-in client.

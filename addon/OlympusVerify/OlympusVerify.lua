@@ -37,7 +37,7 @@ local SECRET = cfg.secret
 -- 0.6.12: the example's placeholder is public, so a Config.lua copied without replacing it must not accept codes made from it.
 if type(SECRET) ~= "string" or SECRET == "" or string.find(SECRET, "^REPLACE_WITH_") then SECRET = nil end
 local secretWarned = false  -- 0.6.12: say once per session, not on every whisper, that codes cannot be checked
-local SOURCE_VERSION = "0.6.23" -- Keep this source fallback and OlympusVerify.toc aligned.
+local SOURCE_VERSION = "0.6.24" -- Keep this source fallback and OlympusVerify.toc aligned.
 local VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version"))
   or (GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version")) or SOURCE_VERSION
 local SET_NOTES = cfg.setNotes == true  -- SetNote is forbidden for addons on the Forever beta; leave false there
@@ -334,14 +334,14 @@ local function VerifyToken(text, anchored)
 end
 
 -- guid: the sender's character ID, from the whisper event itself (arg 12), when the client lets the addon read it
-local function HandleCode(source, sender, text, guid, lineId)
+local function HandleCode(source, sender, text, guid, lineId, mailObservation)
   if not SECRET then
     if not secretWarned then secretWarned = true; Print("Config.lua is missing or still has the example secret — codes cannot be checked. Put the shared secret in Config.lua and /reload.") end
     return
   end
   local token = VerifyToken(text, source ~= "mail")
   if not token then return end
-  local observation=source=="whisper" and OlympusVerifyLive242 and OlympusVerifyLive242.NewVerificationObservation(source,sender,guid,lineId) or nil
+  local observation=source=="whisper" and OlympusVerifyLive242 and OlympusVerifyLive242.NewVerificationObservation(source,sender,guid,lineId) or source=="mail" and mailObservation or nil
   local base = BaseName(sender)
   local key = L.normalizeCharacter(base)
   attempts[key] = (attempts[key] or 0) + 1
@@ -3281,7 +3281,7 @@ OlympusVerifyAPI = {
     if not OlympusOfficerInvites233 or not OlympusOfficerInvites233.IsOriginalProof(body) then return false end
     Event({type="officer_invite_proof",body=body,ok=true});return true
   end,
-  CaptureMailCode242 = function(sender, code) return HandleCode("mail", sender, "!verify " .. code) end,
+  CaptureMailCode242 = function(sender, code, observation) return HandleCode("mail", sender, "!verify " .. code, nil, nil, observation) end,
   NativeBridgeMembership242 = function(sender, senderGuid, code)
     if not SECRET or not Presence.IsGuid(senderGuid) or type(sender)~="string" or type(code)~="string" or not L.checkCode(SECRET,sender,code) then return nil end
     local found,count=nil,0

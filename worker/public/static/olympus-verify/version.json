@@ -1,16 +1,16 @@
 {
   "schema": "olympus-verify-public-download-v1",
   "addon": "OlympusVerify",
-  "version": "0.6.23",
+  "version": "0.6.24",
   "generator": {
     "path": "scripts/build-verify-addon.cjs",
     "bytes": 5950,
-    "sha256": "ce2b5930a774068ad7ba3c523af4d80d4bf81a65659650efbba6b99aacd60ebc"
+    "sha256": "5331a3d3b3ce8dbe8edf9dba53d69ffb1c4e91fd62242f13a07beef7cd29d3d0"
   },
   "archive": {
-    "path": "/static/olympus-verify/olympus-verify-0.6.23.zip",
-    "bytes": 557693,
-    "sha256": "e4b38bc590ce707c0b02808f7a21d4c1c5c8fcb3ce7210d1d5feb6a170f1f28f"
+    "path": "/static/olympus-verify/olympus-verify-0.6.24.zip",
+    "bytes": 561610,
+    "sha256": "47c9e7bffaac029b111745978d6d5fe8b886451633e79a89d8d2f11059895316"
   },
   "files": [
     {
@@ -35,13 +35,13 @@
     },
     {
       "path": "OlympusVerify/OlympusVerify.lua",
-      "bytes": 226217,
-      "sha256": "ba4fdf682614c0651c44e793c5839a5dc241c19280942644d2444ad717523c79"
+      "bytes": 226308,
+      "sha256": "e0a82461d0a78fd64ef5b4dd283fd2158105307fbabfe1b53888675e07725174"
     },
     {
       "path": "OlympusVerify/OlympusVerify.toc",
       "bytes": 821,
-      "sha256": "9fefc65780b903ac52f1737cdf502a678e53d7cf8902a700cd7b8a01e23cbe95"
+      "sha256": "df4a83d05dadf5ffd5c7106fea3830f6e96d6d3ad68b9149b565abc4b25554a7"
     },
     {
       "path": "OlympusVerify/OlympusVerifyAutoSync.lua",
@@ -70,8 +70,8 @@
     },
     {
       "path": "OlympusVerify/OlympusVerifyLive242.lua",
-      "bytes": 37257,
-      "sha256": "508c41dc96fb919a1257f501273d25b4dd1561ed4dd08a3c55b62cf07da81216"
+      "bytes": 40093,
+      "sha256": "5908d8beda1c06e63bb30c8f3d2158aaf622e5442500e0b243f3c7092df39d17"
     },
     {
       "path": "OlympusVerify/OlympusVerifyOfficerInvites233.lua",
@@ -95,8 +95,8 @@
     },
     {
       "path": "OlympusVerify/OlympusVerifyTreasury.lua",
-      "bytes": 18673,
-      "sha256": "53e99a94e84bc5a68f629a2a09ed6580a1545a92d2ad8fea315e179960ad3df1"
+      "bytes": 19663,
+      "sha256": "733a1b76f8c2476a20a4942069c20b4b33c7cb4a890c6b32e957eb0324f36d67"
     },
     {
       "path": "OlympusVerify/OlympusVerifyUI.lua",

@@ -175,13 +175,13 @@ function verify(snapshot) {
     && ref.official_paths.length === 494 && ref.fixed_art_source_pins.length === 7
     && variantPins.every(expected => { const rows = ref.assets.filter(row => row.path === expected.path); return rows.length === 1
       && ['path', 'mode', 'bytes', 'sha256'].every(key => rows[0][key] === expected[key]); }), 'closed two-variant 512-asset 576-public-path binding');
-  const verifyRoot = 'worker/public/static/olympus-verify/', verifyNames = ['olympus-verify-0.6.23.zip','version.json'];
+  const verifyRoot = 'worker/public/static/olympus-verify/', verifyNames = ['olympus-verify-0.6.24.zip','version.json'];
   check(ref.required_public_resources.filter(row => row.path.startsWith(verifyRoot)).length === 2 && verifyNames.every(name =>
     ref.required_public_resources.filter(row => row.path === verifyRoot + name).length === 1
     && !ref.runtime_paths.includes(verifyRoot + name) && !ref.official_paths.includes(verifyRoot + name) && !ref.native_paths.includes(verifyRoot + name)), 'two exact non-art Verify package resources');
   const verifyManifest = json(get(verifyRoot + 'version.json'));
-  check(verifyManifest.schema === 'olympus-verify-public-download-v1' && verifyManifest.version === '0.6.23'
-    && verifyManifest.archive.path === '/static/olympus-verify/olympus-verify-0.6.23.zip'
+  check(verifyManifest.schema === 'olympus-verify-public-download-v1' && verifyManifest.version === '0.6.24'
+    && verifyManifest.archive.path === '/static/olympus-verify/olympus-verify-0.6.24.zip'
     && verifyManifest.archive.bytes === get(verifyRoot + verifyNames[0]).length
     && verifyManifest.archive.sha256 === sha(get(verifyRoot + verifyNames[0]))
     && verifyManifest.generator.path === 'scripts/build-verify-addon.cjs'

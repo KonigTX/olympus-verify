@@ -2413,3 +2413,10 @@ Native verification observations also need an identity distinct from character/c
 ## 10 November2026 — legacy transport admission (.250)
 
 A durable intake entry is a replacement transport only when that mode can supply its required membership proof. The current membership-only flow deduplicates the exact native observation. Legacy SavedVariables events retain their original verification endpoint and existing claim ownership/idempotency checks instead of being suppressed by an intake row that cannot satisfy Native admission. No new identity proof or replay authority is introduced.
+
+
+## 10 November2026 — mail instances and native transfer correlation (.251)
+
+Content is not a durable mail identity: two different messages may carry one valid code, and identical text may arrive after an earlier message is removed. Native mail has no stable UUID, so the addon retains an original per-instance observation and requires a complete readable absence before reusing content as a new instance. Ambiguous simultaneous duplicates stay held. A separate chunk-routing hash transports bounded third-party IDs without changing their canonical identity.
+
+The existing Treasury observer and rich donation observer must share one native transfer identity. The original Treasury sequence allocates that identity in the actual trade/mail collection context; rich-intake ownership is recorded separately before export, preserving original receipt/MAC/ACK bytes. It supplies correlation only, never proof of an unconfirmed transfer. Original receipt deadlines likewise remain independent of delayed ingestion time.

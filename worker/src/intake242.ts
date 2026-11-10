@@ -11,6 +11,8 @@ import {errorRef} from './log';
 import {captureLaunchVerification,captureNativeMembershipProof,verifyNativeMembershipProof} from './launch-verification227';
 class IntakeRejected extends Error {}
 const ACTION='treasury.receipt242',ID=/^[A-Za-z0-9:._-]{1,128}$/;
+// .251: a valid receipt's original observation fixes its lifetime, regardless of relay arrival.
+const RECEIPT_DEADLINE="CASE WHEN json_valid(details) THEN CASE WHEN json_type(details,'$.retainUntil')='integer' THEN json_extract(details,'$.retainUntil') END END";
 const clean=(v:unknown,max:number)=>typeof v==='string'?v.replace(/[\x00-\x1f\x7f]/g,' ').trim().slice(0,max):'';
 const hash=async(v:unknown)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(v)))),b=>b.toString(16).padStart(2,'0')).join('');
 const hex=(b:ArrayBuffer)=>Array.from(new Uint8Array(b),n=>n.toString(16).padStart(2,'0')).join('');
@@ -48,7 +50,7 @@ async function donation(env:Env,e:Record<string,unknown>,id:string,character:str
  const items=Array.isArray(raw.items)?raw.items:raw.items&&typeof raw.items==='object'?Object.values(raw.items):[];
  if(items.length>100)throw new IntakeRejected('too_many_items');
  const observedAt=Number(e.requestedAt??e.ts),at=now();
- if(!Number.isSafeInteger(observedAt)||observedAt<=0||observedAt>at+5||observedAt<at-30*86400)throw new IntakeRejected('receipt_outside_retention');
+ if(!Number.isSafeInteger(observedAt)||observedAt<=0||observedAt>at+5||observedAt<=at-30*86400)throw new IntakeRejected('receipt_outside_retention');
  const value={version:242,sourceId:id,source:clean(e.source,40),character,characterKey:normalizeCharacter(character),guid:clean(e.guid,40),copper,items:items.map(x=>{
   if(typeof x==='string')return {name:clean(x,200),count:1};
   if(!x||typeof x!=='object')throw new IntakeRejected('invalid_item');const r=x as Record<string,unknown>,count=Number(r.count??r.quantity??1);
@@ -70,7 +72,8 @@ export async function postIntake242(env:Env,body:{entries?:unknown}):Promise<Res
  if(!rows||rows.length>25)return json({error:'entries_limit_25'},400);
  const acknowledgements:Record<string,unknown>[]=[],deferred:Record<string,unknown>[]=[];
  // Bounded retention of this evidence family only; no unrelated audit history touched.
- await env.DB.prepare("DELETE FROM audit WHERE id IN(SELECT id FROM audit WHERE action='treasury.receipt242' AND ts<=CAST(strftime('%s','now') AS INTEGER)-2592000 ORDER BY id LIMIT 100)").run();
+ // Unreadable historical deadlines stay hidden; arrival+30 days remains their deletion-only fallback bound.
+ await env.DB.prepare(`DELETE FROM audit WHERE id IN(SELECT id FROM audit WHERE action='treasury.receipt242' AND COALESCE((${RECEIPT_DEADLINE}),ts+2592000)<=CAST(strftime('%s','now') AS INTEGER) ORDER BY id LIMIT 100)`).run();
  for(const value of rows){
   if(!value||typeof value!=='object'||Array.isArray(value))continue;
   const e=value as Record<string,unknown>,id=String(e.id??''),character=clean(e.character??e.name,100);
@@ -117,7 +120,7 @@ export async function postIntake242(env:Env,body:{entries?:unknown}):Promise<Res
 export async function treasuryLedger242(request:Request,env:Env):Promise<Response>{
  const ctx=await communityContext(env,request),url=new URL(request.url),before=Math.max(0,Number(url.searchParams.get('cursor'))||0),q=likeArg((url.searchParams.get('q')??'').slice(0,100));
  if(!ctx.capabilities.communityStaff)return apiJson({error:'forbidden'},403);
- const results=await admittedRead(env,ctx,'applicantWrite',[env.DB.prepare("SELECT id,ts,details FROM audit WHERE action=?1 AND (?2=0 OR id<?2) AND ts>CAST(strftime('%s','now') AS INTEGER)-2592000 AND details LIKE ?3 ESCAPE '\\' ORDER BY id DESC LIMIT 101").bind(ACTION,before,q)]);
+ const results=await admittedRead(env,ctx,'applicantWrite',[env.DB.prepare(`SELECT id,ts,details FROM audit WHERE action=?1 AND (?2=0 OR id<?2) AND (${RECEIPT_DEADLINE})>CAST(strftime('%s','now') AS INTEGER) AND details LIKE ?3 ESCAPE '\\' ORDER BY id DESC LIMIT 101`).bind(ACTION,before,q)]);
  if(results===FENCE_REFUSED)return apiJson({error:'forbidden'},403);
  const rows=results[0]!.results as {id:number;ts:number;details:string}[];
  return apiJson({classification:'unclassified_receipts',rows:rows.slice(0,100).map(r=>{const d=JSON.parse(r.details);return {id:r.id,source:d.source||'addon242',donor:d.character,donorGuid:d.guid,copper:d.copper,items:d.items.map((x:{itemId?:string;name:string;count:number})=>({id:x.itemId??'',name:x.name,count:x.count})),note:d.note,at:d.observedAt,status:d.classification,evidence:d.evidence};}),nextCursor:rows.length>100?String(rows[99]!.id):null});

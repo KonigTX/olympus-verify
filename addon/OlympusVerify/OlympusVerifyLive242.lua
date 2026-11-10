@@ -47,7 +47,7 @@ function V.Queue(row, key)
   if row.id and d.entries[row.id] then return d.entries[row.id] end
   d.nextId=(tonumber(d.nextId) or 0)+1
   row.id=row.id or H.sha256hex(table.concat({guid(call(UnitGUID,"player")) or ownName() or "unknown",tostring(time()),tostring(d.nextId)},"|")):sub(1,32)
-  row.requestedAt=row.requestedAt or time();row.requestedBy=row.requestedBy or ownName();row.status="pending";row.clientVersion="0.6.23"
+  row.requestedAt=row.requestedAt or time();row.requestedBy=row.requestedBy or ownName();row.status="pending";row.clientVersion="0.6.24"
   row.guild=row.guild or call(GetGuildInfo,"player");row.realm=row.realm or call(GetRealmName)
   d.entries[row.id]=row;if key then d.dedup[key]=row.id end
   if type(OlympusDB)=="table" then
@@ -98,12 +98,18 @@ local function unpackWire(data)
   end
   local ok,row=pcall(read,0);return ok and pos==#data+1 and type(row)=="table" and row or nil
 end
+local function transportId(id)
+  if not text(id,64) or #id==0 then return nil end
+  if #id==32 and id:match("^%x+$") then return id end
+  -- Chunk routing is not the canonical request ID or identity authority.
+  return H.sha256hex("OLV242-wire|"..id):sub(1,32)
+end
 local function sendRow(row, recipient)
   if not text(recipient,128) or not C_ChatInfo or type(C_ChatInfo.SendAddonMessage)~="function" then return end
-  if not text(row.id,32) or #row.id~=32 or not row.id:match("^%x+$") then return end
+  local wireId=transportId(row.id);if not wireId then return end
   local raw=pack(row,0);if not raw or #raw>8192 then return end
   local count=math.ceil(#raw/170)
-  for i=1,count do state.outbound[#state.outbound+1]={target=recipient,message=row.id..":"..i..":"..count..":"..raw:sub((i-1)*170+1,i*170)} end
+  for i=1,count do state.outbound[#state.outbound+1]={target=recipient,message=wireId..":"..i..":"..count..":"..raw:sub((i-1)*170+1,i*170)} end
 end
 local function receiveWire(message, sender, distribution)
   if not V.IsAuthorizedWatcher() or distribution~="WHISPER" or not text(sender,128) or not text(message,255) then return end
@@ -119,7 +125,7 @@ local function receiveWire(message, sender, distribution)
   entry.parts[part]=payload
   for i=1,count do if not entry.parts[i] then return end end
   state.incoming[key]=nil
-  local row=unpackWire(table.concat(entry.parts));if not row or row.id~=id or not text(row.character,128) or row.status~="pending"
+  local row=unpackWire(table.concat(entry.parts));if not row or transportId(row.id)~=id or not text(row.character,128) or row.status~="pending"
     or (row.type~="verify" and row.type~="role" and row.type~="guild" and row.type~="donation") then return end
   -- Remote clients cannot assert officer membership proofs or Native Discord
   -- observations. Keep their original Authority token as untrusted input.
@@ -198,7 +204,7 @@ function V.VerificationReply(sender, senderGuid, fallback)
   if newest then return ("Olympus: already verified. Discord role: "..(text(newest.discordRole,70) or "confirmed; refresh Discord")..". Open Olympus with /oly -> Verify / QR Code tab."):sub(1,255) end
   return "Olympus: code saved; server verification is queued for Sync. Open Olympus with /oly -> Verify / QR Code tab. No server role is confirmed yet."
 end
-local function verificationText(s) return text(s,4096) and s:lower():find("!verify%s+[%w]+") end
+local function verificationText(s) return text(s,4096) and s:lower():find("^%s*!verify%s+%w+") end
 local function filter(_, event, message, sender)
   if event=="CHAT_MSG_WHISPER" and verificationText(message) then return true end
   if event=="CHAT_MSG_WHISPER_INFORM" and text(message) and message:sub(1,8)=="Olympus:" and state.replies[norm(sender)] then return true end
@@ -237,7 +243,7 @@ local function settleMailCollection()
   if not h or h.sender~=p.header.sender or h.subject~=p.header.subject or h.money~=0 or h.hasItems then return end
   if p.header.money>0 and (call(GetMoney) or -1)-p.beforeMoney~=p.header.money then return end
   for id,count in pairs(p.expected) do if type(bagCount(id))~="number" or bagCount(id)-(p.beforeItems[id] or 0)<count then return end end
-  local row=V.Queue({type="donation",source="mail",character=p.header.sender,guidSource="unavailable",observedAt=time(),
+  local row=V.Queue({id=p.transferId,type="donation",source="mail",character=p.header.sender,guidSource="unavailable",observedAt=time(),
     donation={copper=p.header.money,items=p.header.items,note=p.body or p.header.subject},
     evidence={kind="mail-loot-inbox-empty-and-wallet-bag-delta",confirmedLocal=true,automaticCredit=false}},"mail-loot|"..p.key)
   if row then p.mail.donationId=row.id;p.mail.collected=true;local d=db();if d then d.mailCollection242=nil end;state.collecting=nil end
@@ -246,18 +252,29 @@ function V.ScanMailbox()
   if not state.mailOpen or state.mailBusy then return end
   state.mailBusy=true;receipts();settleMailCollection()
   local d=db();if not d then state.mailBusy=false;return end
-  d.mail=d.mail or {}
+  d.mail=d.mail or {};d.mailActive=d.mailActive or {};d.mailHistory=d.mailHistory or {}
   local n,total=call(GetInboxNumItems)
   if type(n)~="number" or type(total)~="number" or n<0 or n>1000 then state.mailBusy=false;return end
   local complete=n==total
   state.mailCache={};state.mailBalance=call(GetMoney)
-  local identities={}
+  local identities={};local readableComplete=complete
   for i=1,n do
     local h=mailHeader(i)
-    if h then
-      local body=text(call(GetInboxText,i),8192) or ""
+    local body=text(call(GetInboxText,i),8192)
+    if h and body then
       local key=H.sha256hex(h.sender.."|"..h.subject.."|"..body)
       identities[key]=(identities[key] or 0)+1
+    else readableComplete=false end
+  end
+  -- Native mail has no UUID. Only a complete readable absence can end an
+  -- instance; reordering, closing the mailbox or duplicate content cannot.
+  if readableComplete then
+    for contentKey,fingerprint in pairs(d.mailActive) do
+      if not identities[contentKey] then
+        local previous=d.mail[fingerprint]
+        if previous then previous.absentQualifiedAt=time() end
+        d.mailActive[contentKey]=nil
+      end
     end
   end
   -- Reverse order tolerates deleting exactly one checked empty mail in a scan.
@@ -265,22 +282,31 @@ function V.ScanMailbox()
     local h=mailHeader(i)
     if h then
       state.mailCache[i]=h
-      local body=text(call(GetInboxText,i),8192) or ""
-      local unique=identities[H.sha256hex(h.sender.."|"..h.subject.."|"..body)]==1
+      local body=text(call(GetInboxText,i),8192)
+      local contentKey=body and H.sha256hex(h.sender.."|"..h.subject.."|"..body)
+      local unique=contentKey and identities[contentKey]==1
+      body=body or ""
       local content=h.subject.."\n"..body;local token=content:match("![Vv][Ee][Rr][Ii][Ff][Yy]%s+([%w]+)")
       if not token then for candidate in content:gmatch("[%w]+") do if H.strictCode(candidate) and type(cfg.secret)=="string" and H.checkCode(cfg.secret,h.sender,candidate) then token=candidate;break end end end
       if token then
         local fingerprint=H.sha256hex(h.sender.."|"..h.subject.."|"..body.."|"..token)
-        local mail=d.mail[fingerprint] or {};d.mail[fingerprint]=mail
+        local mail=d.mail[fingerprint]
+        if mail and mail.absentQualifiedAt and unique then
+          d.mailHistory[mail.observation and mail.observation.id or mail.verifyId or fingerprint]=mail
+          mail=nil
+        end
+        mail=mail or {};d.mail[fingerprint]=mail
+        if contentKey then d.mailActive[contentKey]=fingerprint end
         if h.money>0 or h.hasItems then mail.hadValue=true end
-        if not mail.verifyId then
-          API.CaptureMailCode242(h.sender,token)
-          local verify=V.CaptureVerification("mail",h.sender,H.strictCode(token) or token,nil,nil,false)
+        if not mail.verifyId and unique then
+          mail.observation=mail.observation or V.NewVerificationObservation("mail",h.sender,nil)
+          API.CaptureMailCode242(h.sender,token,mail.observation)
+          local verify=V.CaptureVerification("mail",h.sender,H.strictCode(token) or token,nil,nil,false,mail.observation)
           mail.verifyId=verify and verify.id;mail.firstSeen=time()
         end
         local captured=d.entries[mail.verifyId]
         if captured and not captured.mailProof242 and V.IsAuthorizedWatcher() then
-          local at=time();local guildName=call(GetGuildInfo,"player");local realm=call(GetRealmName);local collector=guid(call(UnitGUID,"player"))
+          local at=mail.observation and mail.observation.observedAt or captured.observedAt;local guildName=call(GetGuildInfo,"player");local realm=call(GetRealmName);local collector=guid(call(UnitGUID,"player"))
           if guildName and realm and collector then
             local proof={version=242,sender=h.sender,code=captured.code,observedAt=at,guild=guildName,realm=realm,collectorGuid=collector,fingerprint=fingerprint}
             proof.mac=H.hmacSha256hex(cfg.secret,table.concat({"mail-origin","242",norm(h.sender),captured.code,tostring(at),guildName,realm,collector,fingerprint},"|")):sub(1,32)
@@ -289,7 +315,9 @@ function V.ScanMailbox()
           end
         end
         local validCode=H.strictCode(token) and type(cfg.secret)=="string" and H.checkCode(cfg.secret,h.sender,H.strictCode(token))
-        if complete and unique and validCode and h.cod==0 and (h.money>0 or h.hasItems) and not mail.collected and not state.collecting then
+        local originalProof=captured and captured.mailProof242
+        local exactProof=originalProof and originalProof.fingerprint==fingerprint
+        if readableComplete and unique and exactProof and validCode and h.cod==0 and (h.money>0 or h.hasItems) and not mail.collected and not state.collecting then
           local beforeItems,expected={},{};local safe=true
           for _,item in ipairs(h.items) do
             if type(item.itemId)~="number" or type(item.count)~="number" or type(bagCount(item.itemId))~="number" then safe=false;break end
@@ -297,16 +325,21 @@ function V.ScanMailbox()
           end
           local money=call(GetMoney)
           if safe and type(money)=="number" then
-          state.collecting={index=i,header=h,key=fingerprint,mail=mail,body=body,beforeMoney=money,beforeItems=beforeItems,expected=expected}
+          local treasury=OlympusVerifyTreasury;local status=treasury and call(treasury.Status)
+          local treasuryExpected=h.money>0 and status and status.enabled
+          local transferId=treasuryExpected and call(treasury.ClaimMailIntake242,i) or nil
+          if not treasuryExpected or transferId then
+          state.collecting={index=i,header=h,key=mail.observation and mail.observation.id or fingerprint,mail=mail,body=body,beforeMoney=money,beforeItems=beforeItems,expected=expected,transferId=transferId}
             d.mailCollection242=clone(state.collecting)
             -- Actual loot is confirmed by later mailbox/wallet/bag events; a
             -- successful API return alone never records a donation.
             if h.money>0 then call(TakeInboxMoney,i) end
             if h.hasItems then call(AutoLootMailItem,i) end
           end
+          end
         end
         local verify=d.entries[mail.verifyId];local donation=mail.donationId and d.entries[mail.donationId]
-        if complete and unique and h.cod==0 and h.money==0 and not h.hasItems and verify and verify.status=="done"
+        if readableComplete and unique and exactProof and not mail.deleteRequestedAt and h.cod==0 and h.money==0 and not h.hasItems and verify and verify.status=="done"
           and (not mail.hadValue or mail.collected and donation and donation.status=="done") and type(DeleteInboxItem)=="function" then
           -- The current header/body must still match immediately before delete.
           local again=mailHeader(i)
@@ -340,9 +373,10 @@ local function finishTrade()
     local now=bagCount(id);if type(now)~="number" or not t.beforeItems or type(t.beforeItems[id])~="number" or now-t.beforeItems[id]<count then return end
   end
   if t.incoming>0 or #t.items>0 then
-    V.Queue({type="donation",source="trade",character=t.partner,guid=t.guid,observedAt=time(),
+    if t.incoming>0 and t.treasuryExpected and not t.transferId then return end
+    V.Queue({id=t.incoming>0 and t.transferId or nil,type="donation",source="trade",character=t.partner,guid=t.guid,observedAt=time(),
       donation={copper=t.incoming,outgoingCopper=t.outgoing,items=t.items,note=t.note or ""},
-      evidence={kind="native-trade-complete-and-wallet-delta",confirmedLocal=true,automaticCredit=false}},"trade|"..t.id)
+      evidence={kind="native-trade-complete-and-wallet-delta",confirmedLocal=true,automaticCredit=false}},"trade|"..(t.incoming>0 and t.transferId or t.id))
   end
   state.trade=nil
 end
@@ -380,10 +414,11 @@ function V.Flush(reason)
   receipts();mirrorBridge();finishTrade();settleMailCollection()
   local d=db();if d then d.lastFlush={at=time(),reason=reason,pendingPersisted=true};d.lastCharacter=ownName();d.lastGuid=guid(call(UnitGUID,"player")) end
   if d and state.collecting then d.mailCollection242=clone(state.collecting) end
-  -- Existing gold receipts keep their original ID/evidence. The .242 durable
-  -- intake is an additional delivery route, not a second tithe credit.
-  for _,r in ipairs(OlympusVerifyDB and OlympusVerifyDB.treasury and OlympusVerifyDB.treasury.receipts or {}) do
-    if type(r)=="table" and r.status=="confirmed_local" then
+  -- A claimed rich transfer owns the original Treasury ID even if its item
+  -- proof is still pending. Never export a second body or replace it later.
+  local treasury=OlympusVerifyDB and OlympusVerifyDB.treasury
+  for _,r in ipairs(treasury and treasury.receipts or {}) do
+    if type(r)=="table" and r.status=="confirmed_local" and not (treasury.liveIntakeOwners242 and treasury.liveIntakeOwners242[r.id]) then
       V.Queue({id=r.id,type="donation",character=r.sender,guid=r.senderGuid,source="treasury-receipt242",requestedAt=r.ts,
         donation={copper=r.incomingCopper,outgoingCopper=r.outgoingCopper,items={},note=""},
         evidence={kind=r.evidence,confirmedLocal=true,automaticCredit=false,legacyReceiptId=r.id}},"treasury|"..r.id)
@@ -498,7 +533,11 @@ local function boot()
         beforeItems[item.itemId]=count;expected[item.itemId]=(expected[item.itemId] or 0)+item.count
       end
       local body=text(call(GetInboxText,index),8192) or h.subject
-      state.collecting={index=index,header=h,key=mailSignature(h,body).."|"..time().."|"..index,mail={},body=body,beforeMoney=state.mailBalance,beforeItems=beforeItems,expected=expected}
+      local treasury=OlympusVerifyTreasury;local status=treasury and call(treasury.Status)
+      local treasuryExpected=h.money>0 and status and status.enabled
+      local transferId=treasuryExpected and call(treasury.ClaimMailIntake242,index) or nil
+      if treasuryExpected and not transferId then return end
+      state.collecting={index=index,header=h,key=transferId or mailSignature(h,body).."|"..time().."|"..index,mail={},body=body,beforeMoney=state.mailBalance,beforeItems=beforeItems,expected=expected,transferId=transferId}
       local d=db();if d then d.mailCollection242=clone(state.collecting) end
     end
     for _,name in ipairs({"TakeInboxMoney","TakeInboxItem","AutoLootMailItem"}) do if type(_G[name])=="function" then pcall(hooksecurefunc,name,taking) end end
@@ -518,7 +557,9 @@ f:SetScript("OnEvent",function(_,event,...)
     local partner=text(call(GetUnitName,"npc",true),128) or text(call(UnitName,"npc"),128)
     local money=call(GetMoney)
     if state.trade then state.tradeUncertainUntil=time()+30 end
-    if partner and type(money)=="number" then state.trade={id=H.sha256hex((guid(call(UnitGUID,"player")) or "")..time()..tostring(call(GetTime))):sub(1,32),partner=partner,guid=guid(call(UnitGUID,"npc")),beforeMoney=money,items=tradeItems(),incoming=call(GetTargetTradeMoney),outgoing=call(GetPlayerTradeMoney),ambiguous=time()<(state.tradeUncertainUntil or 0),note=state.donationNote} end
+    local treasury=OlympusVerifyTreasury;local status=treasury and call(treasury.Status)
+    local transferId=treasury and call(treasury.ClaimTradeIntake242)
+    if partner and type(money)=="number" then state.trade={id=H.sha256hex((guid(call(UnitGUID,"player")) or "")..time()..tostring(call(GetTime))):sub(1,32),partner=partner,guid=guid(call(UnitGUID,"npc")),beforeMoney=money,items=tradeItems(),incoming=call(GetTargetTradeMoney),outgoing=call(GetPlayerTradeMoney),ambiguous=time()<(state.tradeUncertainUntil or 0),note=state.donationNote,transferId=transferId,treasuryExpected=status and status.enabled} end
   elseif event=="TRADE_MONEY_CHANGED" or event=="TRADE_TARGET_ITEM_CHANGED" or event=="TRADE_PLAYER_ITEM_CHANGED" then if state.trade then state.trade.items=tradeItems();state.trade.incoming=call(GetTargetTradeMoney);state.trade.outgoing=call(GetPlayerTradeMoney);state.trade.accepted=false end
   elseif event=="TRADE_ACCEPT_UPDATE" then local ours,theirs=...;if state.trade then
     state.trade.items=tradeItems();state.trade.incoming=call(GetTargetTradeMoney);state.trade.outgoing=call(GetPlayerTradeMoney)

@@ -78,6 +78,11 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".251", date: "2026-11-10", lines: [
+      "Verification mail keeps separate delivery records. Donation records expire from their original observation date.",
+    ],
+  },
+  {
     build: ".250", date: "2026-11-10", lines: [
       "Legacy Watcher installations retain their existing verification forwarding. Membership-only verification keeps its original native-evidence checks.",
     ],

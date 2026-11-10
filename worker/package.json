@@ -76,7 +76,7 @@
     "test:rank-scope237": "node tests/routine_rank237_test.cjs && node tests/nickname_rank237_workerd_test.cjs",
     "test:rank-scheduling238": "node tests/canonical_rank238_priority_test.cjs && node tests/canonical_rank238_ingest_test.cjs && node tests/canonical_rank238_schedule_workerd_test.cjs",
     "test:migration239": "node tests/canonical_migration239_native_test.cjs && node tests/canonical_migration239_workerd_test.cjs",
-    "test:live242": "node tests/live242_worker_postdeploy_test.cjs"
+    "test:live242": "node tests/live242_worker_postdeploy_test.cjs && node tests/treasury_receipt_retention251_test.cjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261023.1",
