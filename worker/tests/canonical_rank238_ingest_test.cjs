@@ -177,7 +177,7 @@ const body238=String.raw`
    afterBatch(plan,out){
     if(fault263.armed)for(let i=0;i<plan.length;i++){
      if(plan[i].sql===L238.FRESH_LEASE_ACQUIRE)fault263.commits.push({candidate:plan[i].params[0],value:raw.prepare('SELECT value FROM site_settings WHERE key=?').get(L238.FRESH_LEASE_KEY)?.value});
-     if(plan[i].sql===L238.FRESH_LEASE_RELEASE){fault263.releases.at(-1).changes=out[i].meta.changes;if(mode263==='release-unconfirmed')out[i]={...out[i],meta:{...out[i].meta,changes:undefined}};}
+     if(plan[i].sql===L238.FRESH_LEASE_RELEASE){fault263.releases.at(-1).changes=out[i].meta.changes;if(mode263==='release-unconfirmed')out[i]={...out[i],meta:{...out[i].meta,changes:2}};}
     }
     batchHook?.(plan,out);
    }
@@ -204,11 +204,89 @@ const body238=String.raw`
      check('263 committed acquisition with lost ACK is cleared with only a fixed positive label',lease263==='{"leaseUntil":0}'&&release263.changes===1&&JSON.stringify(fault263.logs)===JSON.stringify([{level:'log',args:['native232_lease_unconfirmed_acquisition_cleaned']}]));
      http=[];const recovered263=await root263();
      check('263 later acknowledged original root can perform the owed rank transition once',recovered263.state==='done'&&recovered263.counts.visits===1&&put()===1&&del()===1&&present.includes(C.CANONICAL_RANKS233[8].roleId)&&!present.includes(C.CANONICAL_RANKS233[7].roleId)&&identity238()===identity263);
-    }else if(mode263==='release-error')check('263 release failure retains the300s fallback and logs bounded status without its message',lease263===fault263.candidate&&fault263.releaseFailures===1&&JSON.stringify(fault263.logs)===JSON.stringify([{level:'error',args:['native232_lease_release_held','upstream(503)']}]));
-    else check('263 unknown release metadata is held rather than reported as positive cleanup',lease263==='{"leaseUntil":0}'&&release263.changes===1&&JSON.stringify(fault263.logs)===JSON.stringify([{level:'error',args:['native232_lease_release_held','error']}]));
+    }else if(mode263==='release-error')check('263 release failure retains the300s fallback and logs bounded status without its message',lease263===fault263.candidate&&fault263.releaseFailures===1&&JSON.stringify(fault263.logs)===JSON.stringify([{level:'error',args:['native232_lease_release_held','upstream(503)','other_d1']}]));
+    else check('263 unknown release metadata is held rather than reported as positive cleanup',lease263==='{"leaseUntil":0}'&&release263.changes===1&&JSON.stringify(fault263.logs)===JSON.stringify([{level:'error',args:['native232_lease_release_held','error','other_d1']}]));
    }
   }finally{fault263.armed=false;d1=originalD1263;if(db?.isOpen)db.close();}
  }
+
+ // .264 cleanup faults execute the original acquisition once. Only its reply
+ // is hidden; a transient error is injected before the first release payload.
+ const cleanupCases264=[
+  {name:'overload',message:'D1_ERROR: D1 DB is overloaded. Too many requests queued.',reason:'overloaded',retry:true},
+  {name:'queued timeout',message:'D1_ERROR: D1 DB is overloaded. Requests queued for too long.',reason:'queue_timeout',retry:true},
+  {name:'busy',message:'D1_ERROR: database is locked: SQLITE_BUSY',reason:'overloaded',retry:true},
+  {name:'query limit',message:'D1_ERROR: Too many API requests by single Worker invocation',reason:'query_limit'},
+  {name:'CPU or memory',message:"D1_ERROR: D1 DB's isolate exceeded its memory limit and was reset.",reason:'cpu_or_memory'},
+  {name:'SQL compilation',message:'D1_ERROR: no such table: synthetic264',reason:'sql_compile'},
+  {name:'admission guard',message:'privacy_write_admission_held:synthetic264',reason:'admission_guard'},
+  {name:'unknown D1',message:'D1_synthetic_private_cleanup264',reason:'other_d1'},
+  {name:'no physical room',message:'D1_ERROR: D1 DB is overloaded. Too many requests queued.',reason:'overloaded',limit:28},
+  {name:'no admission counter',message:'D1_ERROR: D1 DB is overloaded. Too many requests queued.',reason:'overloaded',noAdm:true},
+  {name:'original unknown preserved',message:'D1_ERROR: D1 DB is overloaded. Too many requests queued.',reason:'overloaded',retry:true,originalUnknown:true}
+ ];
+ for(const spec264 of cleanupCases264){
+  const fault264={armed:false,read:null,candidate:null,commit:null,releases:[],logs:[],count:null,bounded:null,failures:0};
+  d1=raw=>entry.originalNativePort(raw,{
+   beforeRead(sql,params){fault264.read={sql,params};},
+   readStatement(statement,params){const actual=statement.all(...params);if(fault264.armed&&fault264.read.sql===L238.FRESH_LEASE_ACQUIRE){if(actual.length!==1||actual[0].key!==L238.FRESH_LEASE_KEY)throw Error('264_actual_acquisition_required');fault264.candidate=fault264.read.params[0];return [];}return actual;},
+   async beforeRun(sql,params){
+    if(!fault264.armed||sql!==L238.FRESH_LEASE_RELEASE)return;
+    fault264.releases.push({candidate:params[0],changes:null});
+    if(fault264.failures++===0){
+     // Real admitted read work consumes the remaining room, never a fake count.
+     if(spec264.limit===28)await fault264.bounded.DB.batch(Array.from({length:12},()=>fault264.bounded.DB.prepare('SELECT 1 AS real_budget_read264')));
+     throw Error(spec264.message);
+    }
+   },
+   afterBatch(plan,out){if(fault264.armed)for(let i=0;i<plan.length;i++){if(plan[i].sql===L238.FRESH_LEASE_ACQUIRE)fault264.commit=raw.prepare('SELECT value FROM site_settings WHERE key=?').get(L238.FRESH_LEASE_KEY)?.value;if(plan[i].sql===L238.FRESH_LEASE_RELEASE)fault264.releases.at(-1).changes=out[i].meta.changes;}batchHook?.(plan,out);}
+  });
+  try{
+   code=await setup233(6);reply=await invoke(code);if(!reply.body.roleGranted)throw Error('264_original_owned_ACK_required');
+   let unknown264=null;
+   if(spec264.originalUnknown){options.putUnknown=true;T++;await(await stage241(7)).work();options.putUnknown=false;unknown264=rows().find(row=>row.state==='unknown'&&row.attempts===1);if(!unknown264)throw Error('264_actual_original_unknown_required');T++;await stage241(6);}
+   else{T++;await stage241(7);}
+   http=[];const custody264=JSON.stringify(rows()),identity264=identity238(),control264=JSON.stringify(db.prepare('SELECT epoch,mode,active,nonce,purpose FROM privacy_write_admission').get());
+   const count={used:0},bounded=E238.countStatements(env,count),calls=load('./roles').callBudget(bounded);fault264.count=count;fault264.bounded=bounded;
+   const oldLog264=console.log,oldError264=console.error;let result264;fault264.armed=true;
+   console.log=(...args)=>fault264.logs.push({level:'log',args});console.error=(...args)=>fault264.logs.push({level:'error',args});
+   try{result264=await F238.runFreshPass(bounded,{calls,...(spec264.noAdm?{}:{adm:F238.nativeAdmission232(count,spec264.limit??850)})},'ingest',L238.captureLaneConfig(bounded));}
+   finally{fault264.armed=false;console.log=oldLog264;console.error=oldError264;}
+   const lease264=db.prepare('SELECT value FROM site_settings WHERE key=?').get(L238.FRESH_LEASE_KEY)?.value,expectedCategory264=spec264.reason==='admission_guard'?'error':'d1';
+   console.log('CLEANUP264_SYNTHETIC_WITNESS',JSON.stringify({name:spec264.name,result:result264,physical:count.used,committedAcquisition:fault264.commit===fault264.candidate,releaseAttempts:fault264.releases.length,releaseChanges:fault264.releases.map(row=>row.changes),logs:fault264.logs}));
+   check('264 '+spec264.name+' has real committed acquisition, no visit/effect, and unchanged original custody',result264.state==='skipped'&&result264.reason==='lease_held'&&result264.counts.visits===0&&put()===0&&del()===0&&fault264.commit===fault264.candidate&&typeof fault264.candidate==='string'&&JSON.stringify(rows())===custody264&&identity238()===identity264&&JSON.stringify(db.prepare('SELECT epoch,mode,active,nonce,purpose FROM privacy_write_admission').get())===control264);
+   check('264 '+spec264.name+' uses exact original candidate within unchanged physical budget',fault264.releases.length===(spec264.retry?2:1)&&fault264.releases.every(row=>row.candidate===fault264.candidate)&&count.used<=(spec264.limit??850));
+   const expectedLogs264=[{level:'error',args:['native232_lease_release_held',expectedCategory264,spec264.reason]}];
+   if(spec264.retry)expectedLogs264.push({level:'log',args:['native232_lease_cleanup_retry',spec264.reason]},{level:'log',args:['native232_lease_unconfirmed_acquisition_cleaned']},{level:'log',args:['native232_lease_cleanup_retry_returned','cleared']});
+   check('264 '+spec264.name+' logs only exact bounded labels/reason and preserves unknown fallback',JSON.stringify(fault264.logs)===JSON.stringify(expectedLogs264)&&lease264===(spec264.retry?'{"leaseUntil":0}':fault264.candidate)&&(!spec264.retry||fault264.releases[1].changes===1));
+   if(spec264.limit===28)check('264 actual13-statement read group leaves one slot and refuses extra five-statement cleanup',count.used===27&&fault264.releases.length===1);
+   if(unknown264){http=[];await root262();check('264 successful lease-only retry never retries or rewrites the original spent unknown role',put()===0&&del()===0&&JSON.stringify(rows().find(row=>row.id===unknown264.id))===JSON.stringify(unknown264));}
+  }finally{fault264.armed=false;d1=originalD1263;if(db?.isOpen)db.close();}
+ }
+
+ // .264: two independently authenticated roots over the ORIGINAL Native DB.
+ // Eleven unproven backlog identities never become authority; they make the
+ // first root durably pending so omission of recursive defer is observable.
+ let nativePort264;const previousD1264=d1;
+ d1=raw=>(nativePort264=entry.originalNativePort(raw,{afterBatch:(plan,out)=>batchHook?.(plan,out)}));
+ try{
+  code=await setup233(6);reply=await invoke(code);if(!reply.body.roleGranted)throw Error('264_original_consumed_ACK_required');
+  await backlog238(11);T++;await stage241(6);http=[];
+  const original264=identity238(),ackBytes264=JSON.stringify(rows()),snapshot264=db.prepare('SELECT MAX(id) n FROM roster_snapshots').get().n,jobs264=[],roots264=[],oldFetch264=globalThis.fetch;
+  let selfFetch264=0;globalThis.fetch=async()=>{selfFetch264++;throw Error('264_independent_root_must_not_self_fetch');};
+  const signedRoot264=body=>{const text=JSON.stringify(body),signature=require('node:crypto').createHmac('sha256',env.VERIFY_SECRET).update('role-continuation242\n'+text).digest('hex');return new Request('https://verify.example/internal/roles242/continue',{method:'POST',headers:{'X-Olympus-Role-Continuation':signature},body:text});};
+  try{
+   for(let i=0;i<2;i++){
+    const before=nativePort264.nativeTrace.length,body={at:T,independent:true,kind:'sweep',nonce:require('node:crypto').randomUUID()},response=await W249.handleRoleContinuation242(signedRoot264(body),env,(label,work)=>jobs264.push({label,work}));
+    check('264 independent root'+i+' validates HMAC/nonce before one unstarted original job',response.status===202&&jobs264.length===1&&jobs264[0].label==='roles242_work');
+    const job=jobs264.shift();await job.work();const state=JSON.parse(db.prepare("SELECT details FROM audit WHERE actor='system' AND action='role.fresh_state' ORDER BY id DESC LIMIT 1").get().details);roots264.push(state);
+    check('264 independent root'+i+' returns without recursive child and retains855 physical including nonce',jobs264.length===0&&selfFetch264===0&&nativePort264.nativeTrace.length-before<=855&&state.n===snapshot264&&state.attempts<=40&&state.visits<=10);
+   }
+  }finally{globalThis.fetch=oldFetch264;}
+  const visited264=db.prepare("SELECT subject,COUNT(*) n FROM audit WHERE action='role.native232_attempt' AND json_extract(details,'$.walk')=? GROUP BY subject").all(roots264[0].walk);
+  check('264 independent root resumes only the exact pending current generation across separate signals',roots264[0].continuation===true&&roots264[0].visits===10&&roots264[1].walk===roots264[0].walk&&roots264[1].n===roots264[0].n&&roots264[1].continuation===false&&visited264.length===12&&visited264.every(row=>row.n===1));
+  check('264 independent scheduling creates no new trust or role effect and preserves original ACK/G/GUID',put()===0&&del()===0&&JSON.stringify(rows())===ackBytes264&&identity238()===original264);
+ }finally{d1=previousD1264;if(db?.isOpen)db.close();}
 
  globalThis.fetch=originalFetch257;
  console.log(ok+'/'+n+' canonical238 original Native ingest checks passed');process.exitCode=ok===n?0:1;

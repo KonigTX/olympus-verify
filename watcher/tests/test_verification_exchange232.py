@@ -2,7 +2,9 @@
 from pathlib import Path
 from datetime import datetime, timezone
 import copy
+import contextlib
 import hashlib
+import hmac
 import io
 import json
 import os
@@ -12,6 +14,7 @@ import time
 import unittest
 import urllib.error
 import urllib.response
+import uuid
 from unittest.mock import patch
 
 sys.path.insert(0, os.environ.get('WATCHER_TEST_SOURCE', str(Path(__file__).resolve().parents[1])))
@@ -939,6 +942,254 @@ class VerificationExchangeTests(unittest.TestCase):
         self.assertEqual(self.w.state.d['outbox'], [head])
         self.assertEqual(self.w.state.d['roster_sent'], watermark)
         self.assertEqual(len(self.calls), 1)
+
+
+class IndependentSweep264Tests(unittest.TestCase):
+    """Actual627 transport/caller; only HTTP, clock and synthetic local files are doubled.
+
+    An empty202 is a scheduling acknowledgement, never a Native/identity/role result.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.at = 1794348000
+        self.tick = 1000.0
+        wall = patch.object(watcher.time, 'time', side_effect=lambda: self.at)
+        mono = patch.object(watcher.time, 'monotonic', side_effect=lambda: self.tick)
+        wall.start();mono.start();self.addCleanup(wall.stop);self.addCleanup(mono.stop)
+        self.cfg = dict(wow_dir=str(self.root), account='SYNTHETIC', worker_url='https://test.invalid',
+                        watcher_token='local-synthetic-wake-token', verify_secret='local-independent-sweep-only',
+                        officer_character='Fern Melder', membership_only=True, state_file=str(self.root / 'state.json'))
+        self.w = watcher.Watcher(self.cfg)
+        self.health = dict(ok=True, build='2026-11-10.264 Independent bounded sweep wake',
+                           verification=dict(mode='members-only', nativeScopePinned=True, nativeMembershipProofVersion=1))
+        self.cache = dict(presenceOnly=True, entries=[], setGuildNote=False, verificationResults=[], independentRoleWake264=True)
+        self.requests = []
+        self.wake_responses = []
+        self.logs = io.StringIO()
+        output = contextlib.redirect_stdout(self.logs);output.__enter__();self.addCleanup(output.__exit__, None, None, None)
+        opened = patch.object(self.w.worker.opener, 'open', side_effect=self.transport)
+        opened.start();self.addCleanup(opened.stop)
+        self.w.pull_strict_display = lambda: None
+
+    def response(self, url, data=b'', status=202, headers=None):
+        class ObservedResponse:
+            def __init__(self):
+                self.status = status
+                self.headers = headers or {}
+                self.data = io.BytesIO(data)
+                self.read_sizes = []
+            def __enter__(self): return self
+            def __exit__(self, *args): self.data.close()
+            def geturl(self): return url
+            def read(self, size=-1):
+                self.read_sizes.append(size)
+                return self.data.read(size)
+        return ObservedResponse()
+
+    def transport(self, request, timeout):
+        self.requests.append((request, timeout))
+        parsed = urllib.parse.urlsplit(request.full_url)
+        self.assertEqual(parsed.scheme + '://' + parsed.netloc, 'https://test.invalid')
+        if request.get_method() == 'GET' and parsed.path == '/health':
+            return self.response(request.full_url, json.dumps(self.health).encode(), 200)
+        if request.get_method() == 'GET' and parsed.path == '/queue':
+            body = self.cache if urllib.parse.parse_qs(parsed.query).get('cacheOnly242') == ['1'] else dict(presenceOnly=True, entries=[], setGuildNote=False)
+            return self.response(request.full_url, json.dumps(body).encode(), 200)
+        if request.get_method() == 'POST' and parsed.path == '/internal/roles242/continue':
+            self.assertEqual(parsed.query, '')
+            result = self.response(request.full_url)
+            self.wake_responses.append(result)
+            return result
+        raise AssertionError('unplanned synthetic HTTP')
+
+    def startup(self):
+        self.w.require_launch_worker()
+        self.requests.clear()
+
+    def wakes(self):
+        return [(request, timeout) for request, timeout in self.requests if request.get_method() == 'POST']
+
+    def test_627_exact_fresh_hmac_wire_has_no_account_or_role_authority(self):
+        self.startup()
+        self.assertTrue(any(isinstance(handler, watcher.NoRedirect) for handler in self.w.worker.opener.handlers))
+        self.assertTrue(self.w.worker.wake_sweep264(self.w.secret))
+        self.assertEqual(len(self.wakes()), 1)
+        request, timeout = self.wakes()[0]
+        self.assertEqual(request.full_url, 'https://test.invalid/internal/roles242/continue')
+        self.assertEqual(timeout, 20)
+        headers = {key.lower(): value for key, value in request.header_items()}
+        self.assertEqual(headers['authorization'], 'Bearer ' + self.cfg['watcher_token'])
+        self.assertEqual(headers['content-type'], 'application/json')
+        self.assertEqual(headers['user-agent'], 'olympus-verify-watcher/0.6.27')
+        body = json.loads(request.data)
+        self.assertEqual(set(body), {'kind', 'at', 'nonce', 'independent'})
+        self.assertEqual(body['kind'], 'sweep');self.assertIs(body['independent'], True)
+        self.assertIs(type(body['at']), int);self.assertEqual(body['at'], self.at)
+        nonce = uuid.UUID(body['nonce']);self.assertEqual(nonce.version, 4);self.assertEqual(str(nonce), body['nonce'])
+        self.assertEqual(headers['x-olympus-role-continuation'], hmac.new(self.w.secret.encode(), b'role-continuation242\n' + request.data, hashlib.sha256).hexdigest())
+        self.assertEqual(request.data, json.dumps(body, separators=(',', ':')).encode())
+        self.assertEqual(self.wake_responses[0].read_sizes, [1])
+        self.assertEqual(self.w.state.d['outbox'], [])
+        self.assertIsNone(self.w._verification_roster)
+
+    def test_627_only_empty202_at_the_original_destination_is_schedule_ack(self):
+        for status, payload, destination, expected in [(202, b'', 'https://test.invalid/internal/roles242/continue', True),
+                (200, b'', 'https://test.invalid/internal/roles242/continue', False),
+                (204, b'', 'https://test.invalid/internal/roles242/continue', False),
+                (202, b'{}', 'https://test.invalid/internal/roles242/continue', False),
+                (202, b' ', 'https://test.invalid/internal/roles242/continue', False),
+                (202, b'x' * 4096, 'https://test.invalid/internal/roles242/continue', False),
+                (202, b'', 'https://foreign.invalid/internal/roles242/continue', False)]:
+            with self.subTest(status=status, payloadBytes=len(payload), foreign='foreign' in destination):
+                response = self.response(destination, payload, status)
+                with patch.object(self.w.worker.opener, 'open', return_value=response) as opened:
+                    self.assertIs(self.w.worker.wake_sweep264(self.w.secret), expected)
+                self.assertEqual(opened.call_count, 1)
+                self.assertTrue(all(size == 1 for size in response.read_sizes))
+
+    def test_627_auth_rate_and_redirect_refusals_share_the_existing_global_pause(self):
+        for status in (401, 403, 429, 302):
+            with self.subTest(status=status):
+                self.w.worker._pause_data().update(worker_retry_at=0, worker_retry_status=None)
+                error = urllib.error.HTTPError('https://test.invalid/internal/roles242/continue', status,
+                                              'synthetic private text', {'Retry-After': '120', 'Location': 'https://foreign.invalid/'}, io.BytesIO(b'synthetic private body'))
+                with patch.object(self.w.worker.opener, 'open', side_effect=error) as opened, patch.object(watcher.time, 'sleep') as slept:
+                    self.assertFalse(self.w.worker.wake_sweep264(self.w.secret))
+                    self.assertEqual(opened.call_count, 1);slept.assert_not_called()
+                    paused = self.w.worker.paused()
+                    self.assertEqual(paused['httpStatus'], status)
+                    self.assertGreaterEqual(paused['retryAfterSeconds'], 120 if status == 429 else 900)
+                    self.assertFalse(self.w.worker.call('GET', '/health', retries=1)[0])
+                    self.assertFalse(self.w.worker.wake_sweep264(self.w.secret))
+                    self.assertEqual(opened.call_count, 1)
+        self.assertNotIn('synthetic private', self.logs.getvalue())
+        self.assertNotIn(self.w.secret, self.logs.getvalue())
+        self.assertNotIn(self.cfg['watcher_token'], self.logs.getvalue())
+
+    def test_627_network_unknown_is_one_attempt_without_sleep_or_original_adoption(self):
+        before = copy.deepcopy(self.w.state.d)
+        with patch.object(self.w.worker.opener, 'open', side_effect=urllib.error.URLError('synthetic private unreachable')) as opened, patch.object(watcher.time, 'sleep') as slept:
+            self.assertFalse(self.w.worker.wake_sweep264(self.w.secret))
+        self.assertEqual(opened.call_count, 1);slept.assert_not_called()
+        self.assertEqual(self.w.state.d, before)
+        self.assertNotIn('synthetic private', self.logs.getvalue())
+
+    def test_627_foreign_or_legacy_transport_and_invalid_secret_never_dispatch(self):
+        for change in ('origin', 'token', 'legacy', 'secret'):
+            with self.subTest(change=change):
+                base, token, mode = self.w.worker.base, self.w.worker.token, self.w.worker.membership_only
+                if change == 'origin': self.w.worker.base = 'https://foreign.invalid'
+                elif change == 'token': self.w.worker.token = 'different-synthetic-token'
+                elif change == 'legacy': self.w.worker.membership_only = False
+                with patch.object(self.w.worker.opener, 'open', side_effect=AssertionError('no foreign request')) as opened:
+                    self.assertFalse(self.w.worker.wake_sweep264('' if change == 'secret' else self.w.secret))
+                    opened.assert_not_called()
+                self.w.worker.base, self.w.worker.token, self.w.worker.membership_only = base, token, mode
+
+    def test_627_actual_successful_cache_poll_uses_monotonic30s_and_new_nonces(self):
+        self.startup()
+        self.w.pull_queue()
+        self.assertEqual(len(self.wakes()), 1)
+        first = json.loads(self.wakes()[0][0].data)
+        self.at += 300;self.tick += 29.999
+        self.w.pull_queue()
+        self.assertEqual(len(self.wakes()), 1, 'A forward wall-clock jump cannot replace the monotonic interval')
+        self.at += 31;self.tick = 1030.0
+        self.w.pull_queue()
+        self.assertEqual(len(self.wakes()), 2)
+        second = json.loads(self.wakes()[1][0].data)
+        self.assertNotEqual(first['nonce'], second['nonce'])
+        self.assertIn('scheduling acknowledged; no role outcome observed', self.logs.getvalue())
+
+    def test_627_unknown_wake_consumes_cadence_without_replaying_its_nonce(self):
+        self.startup()
+        with patch.object(self.w.worker, 'wake_sweep264', return_value=False) as wake:
+            self.w._optional_role_wake264(self.cache)
+            self.tick += 29.9;self.w._optional_role_wake264(self.cache)
+            self.assertEqual(wake.call_count, 1)
+            self.tick = 1030.0;self.w._optional_role_wake264(self.cache)
+            self.assertEqual(wake.call_count, 2)
+        self.assertNotIn('scheduling acknowledged', self.logs.getvalue())
+
+    def test_627_rollback_without_each_reply_capability_keeps_cache_and_intake_usable(self):
+        self.startup()
+        self.cache.pop('independentRoleWake264')
+        self.w.pull_queue()
+        self.assertEqual(len(self.wakes()), 0)
+        self.assertEqual(len(self.requests), 2)
+        self.assertIsNone(self.w._last_role_wake264)
+        self.assertFalse(self.w._custody_halted)
+        self.health['build'] = '2026-11-10.263 Owned sweep lease cleanup'
+        self.w.require_launch_worker();self.requests.clear();self.cache['independentRoleWake264'] = True
+        self.w._optional_role_wake264(self.cache)
+        self.assertEqual(self.wakes(), [])
+
+    def test_627_failed_authenticated_presence_or_cache_read_never_wakes(self):
+        for failed_cache in (False, True):
+            with self.subTest(failed_cache=failed_cache):
+                self.startup();self.w._last_queue_pull = 0
+                original = self.transport
+                def failure(request, timeout):
+                    query = urllib.parse.parse_qs(urllib.parse.urlsplit(request.full_url).query)
+                    is_cache = query.get('cacheOnly242') == ['1']
+                    if request.get_method() == 'GET' and urllib.parse.urlsplit(request.full_url).path == '/queue' and is_cache is failed_cache:
+                        self.requests.append((request, timeout))
+                        raise urllib.error.HTTPError(request.full_url, 503, 'synthetic private refusal', {}, io.BytesIO(b'not logged'))
+                    return original(request, timeout)
+                with patch.object(self.w.worker.opener, 'open', side_effect=failure), patch.object(watcher.time, 'sleep'):
+                    self.w.pull_queue()
+                self.assertEqual(self.wakes(), [])
+                self.assertIsNone(self.w._last_role_wake264)
+                self.assertFalse(self.w._custody_halted)
+
+    def test_627_startup_scope_and_each_cache_literal_are_mandatory(self):
+        self.startup()
+        for cache in (None, {}, dict(self.cache, presenceOnly=False), dict(self.cache, independentRoleWake264=False),
+                      dict(self.cache, independentRoleWake264=1), dict(self.cache, independentRoleWake264='true')):
+            with self.subTest(cache=cache): self.w._optional_role_wake264(cache)
+        self.assertEqual(self.wakes(), [])
+        self.assertIsNone(self.w._last_role_wake264)
+        self.health['verification']['nativeScopePinned'] = False
+        with self.assertRaises(watcher.LaunchNotReady): self.w.require_launch_worker()
+        self.requests.clear();self.w._optional_role_wake264(self.cache)
+        self.assertEqual(self.wakes(), [])
+
+    def test_627_current_origin_token_officer_halt_and_pause_gates_are_preserved(self):
+        self.startup()
+        for change in ('origin', 'token', 'officer', 'halt', 'pause', 'mode'):
+            with self.subTest(change=change):
+                base, token, officer, mode = self.w.worker.base, self.w.worker.token, self.w.officer_id, self.w.membership_only
+                if change == 'origin': self.w.worker.base = 'https://foreign.invalid'
+                elif change == 'token': self.w.worker.token = 'changed-synthetic-token'
+                elif change == 'officer': self.w.officer_id = 'Another Collector'
+                elif change == 'halt': self.w._custody_halted = True
+                elif change == 'pause': self.w.worker._pause_data()['worker_retry_at'] = self.at + 60
+                elif change == 'mode': self.w.membership_only = False
+                self.w._optional_role_wake264(self.cache)
+                self.assertEqual(self.wakes(), [])
+                self.assertIsNone(self.w._last_role_wake264)
+                self.w.worker.base, self.w.worker.token, self.w.officer_id, self.w.membership_only = base, token, officer, mode
+                self.w._custody_halted = False;self.w.worker._pause_data()['worker_retry_at'] = 0
+
+    def test_627_schedule_ack_never_reads_or_settles_customer_outbox_or_role_receipts(self):
+        self.startup()
+        self.w.state.d['outbox'] = [{'path': '/ingest/verify', 'body': {'opaque': 'old unknown original'}, 'acknowledged': False}]
+        self.w.state.d['seen'] = ['retained-claim']
+        self.w.state.save()
+        before = copy.deepcopy(self.w.state.d);disk = self.w.state.path.read_bytes()
+        with patch.object(self.w, 'post', side_effect=AssertionError('no customer original')) as post, \
+                patch.object(self.w, '_dispatch_original', side_effect=AssertionError('no original replay')) as dispatch, \
+                patch.object(self.w.state, 'save', side_effect=AssertionError('no ACK/state adoption')) as save:
+            self.w.pull_queue()
+        self.assertEqual(len(self.wakes()), 1)
+        post.assert_not_called();dispatch.assert_not_called();save.assert_not_called()
+        self.assertEqual(self.w.state.d, before);self.assertEqual(self.w.state.path.read_bytes(), disk)
+        self.assertIsNone(self.w._verification_roster)
+        self.assertEqual(self.w._verification_originals, {})
+        self.assertEqual(self.w._independent_originals, {})
 
 
 if __name__ == '__main__':

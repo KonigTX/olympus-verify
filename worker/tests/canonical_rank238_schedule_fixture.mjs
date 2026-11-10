@@ -7,6 +7,7 @@ import {runNativeSubject232,runFreshPass,nativeAdmission232} from '../src/full-r
 import {captureLaneConfig,FRESH_LEASE_KEY,FRESH_LEASE_ACQUIRE,FRESH_LEASE_RELEASE,FRESH_LEASE_SECONDS,freshLeaseValue} from '../src/full-release-roles.ts';
 import {countStatements} from '../src/roster-effects.ts';
 import {callBudget} from '../src/roles.ts';
+import {handleRoleContinuation242} from '../src/role-reconcile242.ts';
 import {migrateCanonicalRank233} from '../src/role-settlements.ts';
 import {captureRuntimeVenue230,runtimeVenue230Facts} from '../src/shared-membership-cutover230.ts';
 import {betaResetReceiptRetentionStatements} from '../src/beta-reset-retention.ts';
@@ -22,15 +23,31 @@ export function fixture238(seed){const spent=new Set(),saved=new Map();let callb
  },
  async fetch(request,bindings){
  const route=new URL(request.url).pathname;
+ if(route==='/independent264'){
+  const s=saved.get('veteran');if(!s)return new Response(null,{status:409});
+  const jobs=[],count={used:0},bounded=countStatements(s.env,count);
+  const nonceBefore=(await s.db.prepare('SELECT COUNT(*) n FROM seen_interactions').first()).n;
+  const start=s.wires.length;
+  // The actual signed handler and actual Native body run in this independently
+  // dispatched Workerd HTTP invocation. No capability/issuer/clock is supplied.
+  const response=await handleRoleContinuation242(request,bounded,(label,work)=>jobs.push({label,work})),registered=jobs.map(job=>job.label);
+  if(response.status===202&&jobs.length===1)await jobs.shift().work();
+  const end=s.wires.length,wire=s.wires.slice(start,end);
+  const stateRow=await s.db.prepare("SELECT details FROM audit WHERE actor='system' AND action='role.fresh_state' ORDER BY id DESC LIMIT 1").first(),state=stateRow?JSON.parse(stateRow.details):null;
+  const visits=state?(await s.db.prepare("SELECT subject,COUNT(*) n FROM audit WHERE action='role.native232_attempt' AND json_extract(details,'$.walk')=?1 GROUP BY subject").bind(state.walk).all()).results:[];
+  const nonceAfter=(await s.db.prepare('SELECT COUNT(*) n FROM seen_interactions').first()).n;
+  return Response.json({status:response.status,registered,pendingJobs:jobs.length,state,visits,statements:count.used,wires:wire,nonceDelta:nonceAfter-nonceBefore,actualLocalWorkerdD1:true,actualSignedHandler:true,clockOverride:false,issuerOverride:false,providerCalls:0},{status:response.status});
+ }
  if(route==='/lease-ack263'){
   const s=saved.get('veteran'),mode=new URL(request.url).searchParams.get('mode');
-  if(request.method!=='POST'||!s||!['lost-acquire','foreign-lease','release-error','release-unconfirmed'].includes(mode))return new Response(null,{status:409});
+  if(request.method!=='POST'||!s||!['lost-acquire','foreign-lease','malformed-lease','release-error','release-unconfirmed','transient-overload'].includes(mode))return new Response(null,{status:409});
   const controlSQL='SELECT epoch,mode,active,nonce,purpose FROM privacy_write_admission';
   const originalACKs=(await s.db.prepare('SELECT * FROM role_settlements ORDER BY id').all()).results,control=await s.db.prepare(controlSQL).first();
   const beforeVisits=(await s.db.prepare("SELECT COUNT(*) n FROM audit WHERE action='role.native232_attempt'").first()).n;
-  const foreign=freshLeaseValue(Math.floor(Date.now()/1000)+FRESH_LEASE_SECONDS,'b'.repeat(32));
-  if(mode==='foreign-lease')await s.env.DB.prepare(FRESH_LEASE_ACQUIRE).bind(foreign).first();
-  const fault=s.leaseFault263;fault.mode=mode;fault.armed=true;fault.events=[];
+  let foreign=freshLeaseValue(Math.floor(Date.now()/1000)+FRESH_LEASE_SECONDS,'b'.repeat(32));
+  if(mode==='foreign-lease'||mode==='malformed-lease')await s.env.DB.prepare(FRESH_LEASE_ACQUIRE).bind(foreign).first();
+  if(mode==='malformed-lease'){foreign='not-json';await s.env.DB.prepare('UPDATE site_settings SET value=?1 WHERE key=?2').bind(foreign,FRESH_LEASE_KEY).run();}
+  const fault=s.leaseFault263;fault.mode=mode;fault.armed=true;fault.events=[];fault.releaseFailures=0;
   const logs=[],originalLog=console.log,originalError=console.error;
   console.log=(...args)=>logs.push({level:'log',args});console.error=(...args)=>logs.push({level:'error',args});
   const wireStart=s.wires.length,count={used:0},bounded=countStatements(s.env,count),calls=callBudget(bounded);let result;
@@ -39,7 +56,7 @@ export function fixture238(seed){const spent=new Set(),saved=new Map();let callb
   const wires=s.wires.slice(wireStart);
   const lease=(await s.db.prepare('SELECT value FROM site_settings WHERE key=?1').bind(FRESH_LEASE_KEY).first())?.value;
   const afterACKs=(await s.db.prepare('SELECT * FROM role_settlements ORDER BY id').all()).results,afterControl=await s.db.prepare(controlSQL).first(),afterVisits=(await s.db.prepare("SELECT COUNT(*) n FROM audit WHERE action='role.native232_attempt'").first()).n;
-  const observation={mode,result,statements:count.used,wires,events:fault.events,logs,lease,foreign:mode==='foreign-lease'?foreign:null,originalACKsUnchanged:JSON.stringify(originalACKs)===JSON.stringify(afterACKs),controlUnchanged:JSON.stringify(control)===JSON.stringify(afterControl),newVisits:afterVisits-beforeVisits,actualLocalWorkerdD1:true,actualOriginalNativeTransport:true,clockOverride:false,issuerOverride:false,providerCalls:0};
+  const observation={mode,result,statements:count.used,wires,events:fault.events,logs,lease,foreign:['foreign-lease','malformed-lease'].includes(mode)?foreign:null,originalACKsUnchanged:JSON.stringify(originalACKs)===JSON.stringify(afterACKs),controlUnchanged:JSON.stringify(control)===JSON.stringify(afterControl),newVisits:afterVisits-beforeVisits,actualLocalWorkerdD1:true,actualOriginalNativeTransport:true,clockOverride:false,issuerOverride:false,providerCalls:0};
   if(mode==='lost-acquire'){
    const recoveredCount={used:0},recoveredEnv=countStatements(s.env,recoveredCount);
    observation.recovered=await runFreshPass(recoveredEnv,{calls:callBudget(recoveredEnv),adm:nativeAdmission232(recoveredCount,850)},'ingest',captureLaneConfig(recoveredEnv));
@@ -87,6 +104,10 @@ export function fixture238(seed){const spent=new Set(),saved=new Map();let callb
   if(scenario==='stale')await env.DB.prepare("UPDATE roster_snapshots SET exported_at=CAST(strftime('%s','now')AS INTEGER)-601 WHERE id=2").run();
   if(scenario==='interval')await env.DB.prepare("INSERT INTO audit(ts,actor,action,subject,details)VALUES(CAST(strftime('%s','now')AS INTEGER),'system','role.fresh_state','ingest',?1)").bind(JSON.stringify({n:2,g:''})).run();
   if(scenario==='unknown')await env.DB.prepare("INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,attempts,subject_generation,created_at,expires_at,native_profile)VALUES(?1,?2,'canonical_routine233',?3,?4,1,'unknown','synthetic_unresolved',0,?5,1,2,?6)").bind('e'.repeat(32),s.subject,env.GUILD_ID,CANONICAL_RANKS233[8].roleId,'a'.repeat(32),CANONICAL_PROFILE233).run();
+  if(scenario==='independent264')for(let i=0;i<11;i++){
+   const id=(900000000000000000n+BigInt(i)).toString(),name='Synthetic '+i;
+   await env.DB.batch([env.DB.prepare('INSERT INTO members(discord_id)VALUES(?1)').bind(id),env.DB.prepare("INSERT INTO characters(name_key,name,discord_id,status,bound_at,verified_at,source,guid)VALUES(?1,?2,?3,'member',?4,?4,'whisper',?5)").bind(name.toLowerCase(),name,id,at-3600,'Player-4613-'+(0x10000000+i).toString(16).toUpperCase())]);
+  }
   s.originalACKs=(await db.prepare("SELECT * FROM role_settlements WHERE desired=1 AND attempts=1 AND state='settled' ORDER BY id").all()).results;
   s.beforeControl=await db.prepare("SELECT epoch,mode,active,nonce,purpose FROM privacy_write_admission").first();
   s.start=s.wires.length;return Response.json({prepared:true,scenario});
@@ -141,24 +162,34 @@ export function fixture238(seed){const spent=new Set(),saved=new Map();let callb
  Object.defineProperty(fetcher,'fetch',{configurable:true,writable:false,value:async function(input,init){
   const w={requestBody:init?.body,status:null,responseBody:null};wires.push(w);
   const requestBody=JSON.parse(init.body),statements=Array.isArray(requestBody)?requestBody:[requestBody],acquire=statements.findIndex(s=>s.sql===FRESH_LEASE_ACQUIRE),release=statements.findIndex(s=>s.sql===FRESH_LEASE_RELEASE);
-  if(leaseFault263.armed&&release>=0&&leaseFault263.mode==='release-error'){
+  if(leaseFault263.armed&&release>=0&&(leaseFault263.mode==='release-error'||leaseFault263.mode==='transient-overload'&&leaseFault263.releaseFailures===0)){
+   leaseFault263.releaseFailures++;
    leaseFault263.events.push({kind:'release-transport-error',candidate:statements[release].params[0],status:503});
-   w.status=503;w.responseBody=JSON.stringify({success:false,error:'D1_synthetic_private_release_message263'});w.syntheticTransportFailure=true;
+   w.status=503;w.responseBody=JSON.stringify({success:false,error:leaseFault263.mode==='transient-overload'?'D1_ERROR: D1 DB is overloaded. Too many requests queued.':'D1_synthetic_private_release_message263'});w.syntheticTransportFailure=true;
    return new Response(w.responseBody,{status:503,headers:{'Content-Type':'application/json'}});
   }
   const r=await Reflect.apply(send,fetcher,[input,init]);w.status=r.status;w.responseBody=await r.clone().text();
   if(!leaseFault263.armed||acquire<0&&release<0)return r;
   const responseBody=JSON.parse(w.responseBody),results=Array.isArray(responseBody)?responseBody:[responseBody];
   if(acquire>=0){
-   const actual=results[acquire];leaseFault263.events.push({kind:'acquire-committed-original-reply',candidate:statements[acquire].params[0],success:actual.success,changes:actual.meta?.changes,keys:actual.results.map(row=>row.key)});
-   if(leaseFault263.mode!=='foreign-lease'){
-    if(actual.success!==true||actual.results.length!==1||actual.results[0].key!==FRESH_LEASE_KEY||actual.meta?.changes!==1)throw Error('263_original_acquisition_commit_required');
-    actual.results=[];w.hiddenAcquisitionReply=true;
+   const actual=results[acquire],original=actual.results,array=Array.isArray(original);
+   // The original binding's wire format can be ROWS_AND_COLUMNS. Keep its
+   // columns and complete envelope; hide only the one business result's rows.
+   if(!array&&(!original||JSON.stringify(original.columns)!=='["key"]'||!Array.isArray(original.rows)))throw Error('264_original_acquisition_format_required');
+   const keys=array?original.map(row=>row.key):original.rows.map(row=>{if(!Array.isArray(row)||row.length!==1)throw Error('264_original_key_row_required');return row[0];});
+   const event={kind:'acquire-committed-original-reply',candidate:statements[acquire].params[0],success:actual.success,changes:actual.meta?.changes,format:array?'ARRAY_OF_OBJECTS':'ROWS_AND_COLUMNS',keys,hidden:false};leaseFault263.events.push(event);
+   if(!['foreign-lease','malformed-lease'].includes(leaseFault263.mode)){
+    if(actual.success!==true||keys.length!==1||keys[0]!==FRESH_LEASE_KEY||actual.meta?.changes!==1)throw Error('263_original_acquisition_commit_required');
+    const others=results.map((packet,i)=>i===acquire?null:JSON.stringify(packet));
+    if(array)actual.results=[];else actual.results={...original,rows:[]};w.hiddenAcquisitionReply=true;event.hidden=true;
+    event.otherPacketsUnchanged=results.every((packet,i)=>i===acquire||JSON.stringify(packet)===others[i]);event.deliveredRows=0;
    }
   }
   if(release>=0){
    const actual=results[release];leaseFault263.events.push({kind:'release-original-reply',candidate:statements[release].params[0],success:actual.success,changes:actual.meta?.changes});
-   if(leaseFault263.mode==='release-unconfirmed'){delete actual.meta.changes;w.hiddenReleaseMetadata=true;}
+   // Required numeric metadata must still pass the original driver schema.
+   // Two is an unconfirmed logical result, outside the runtime's exact0/1 set.
+   if(leaseFault263.mode==='release-unconfirmed'){actual.meta.changes=2;w.hiddenReleaseMetadata=true;}
   }
   if(w.hiddenAcquisitionReply||w.hiddenReleaseMetadata){w.deliveredResponseBody=JSON.stringify(responseBody);return new Response(w.deliveredResponseBody,{status:r.status,statusText:r.statusText,headers:r.headers});}
   return r;

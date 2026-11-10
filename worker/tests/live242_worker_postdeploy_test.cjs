@@ -57,6 +57,30 @@ function load(name,imports={},extra={}){
  check('259 deferred refusal emits only fixed label and bounded safe status',()=>assert.deepEqual(continuationErrors259,[['role242_continuation_held','upstream(503)']]));
  responseStatus242=202;
  check('258 failed scheduling response creates no local work or role visit',()=>{assert.equal(queued.length,1);assert.equal(visits.length,0);});
+ // Protocol-only .264 fixture: real HMAC/nonce SQL, with an explicit held Native
+ // body double. It qualifies neither Native identity nor any role effect.
+ const nonceDb264=new(require('node:sqlite').DatabaseSync)(':memory:');nonceDb264.exec('CREATE TABLE seen_interactions(id TEXT PRIMARY KEY,seen_at INTEGER)');
+ try{
+  const jobs264=[],passes264=[],outbound264=[],protocolEnv264={PUBLIC_BASE_URL:env.PUBLIC_BASE_URL,VERIFY_SECRET:env.VERIFY_SECRET,DB:{prepare(sql){const statement=nonceDb264.prepare(sql);let args=[];return{bind(...values){args=values;return this;},async run(){return{meta:{changes:Number(statement.run(...args).changes)}};}};}}};
+  const selected264=Object.freeze({configured:true}),protocol264=load('role-reconcile242',{
+   './db':{now:()=>Math.floor(Date.now()/1000)},'./roster-effects':{countStatements:(e,c)=>{c.protocol=true;c.factor=1;return e;}},'./roles':{callBudget:()=>({limit:40,attempts:0})},'./log':safeLog259,
+   './full-release-roles':{captureLaneConfig:()=>selected264},'./full-release-pass':{nativeAdmission232:(count,limit)=>({count,limit}),runFreshPass:async(e,io,trigger,cap)=>{passes264.push({e,io,trigger,cap});return{state:'done',continuation:true,nativeSweep:{id:'a'.repeat(32),n:1}};}},
+  },{Error,fetch:async(...args)=>{outbound264.push(args);throw Error('independent root must not self-fetch');}});
+  const signed264=(body,good=true)=>{const text=JSON.stringify(body),signature=require('node:crypto').createHmac('sha256',protocolEnv264.VERIFY_SECRET).update('role-continuation242\n'+text).digest('hex');return new Request('https://example.test/internal/roles242/continue',{method:'POST',headers:{'X-Olympus-Role-Continuation':good?signature:'0'.repeat(64)},body:text});};
+  const root264={at:Math.floor(Date.now()/1000),independent:true,kind:'sweep',nonce:require('node:crypto').randomUUID()};
+  const accepted264=await protocol264.handleRoleContinuation242(signed264(root264),protocolEnv264,(label,work)=>jobs264.push({label,work}));
+  check('264 independently originated signal requires genuine current HMAC and admits only scheduling',()=>{assert.equal(accepted264.status,202);assert.equal(jobs264.length,1);assert.equal(jobs264[0].label,'roles242_work');assert.equal(passes264.length,0);});
+  await jobs264[0].work();
+  check('264 independent pending root runs once with850/40 and no supplied generation or recursive child',()=>{assert.equal(passes264.length,1);assert.equal(passes264[0].e,protocolEnv264);assert.equal(passes264[0].io.adm.limit,850);assert.equal(passes264[0].io.calls.limit,40);assert.equal(passes264[0].io.sweep,undefined);assert.equal(passes264[0].trigger,'continuation');assert.equal(passes264[0].cap,selected264);assert.equal(jobs264.length,1);assert.equal(outbound264.length,0);});
+  assert.equal((await protocol264.handleRoleContinuation242(signed264(root264),protocolEnv264,()=>{})).status,409);checks++;
+  const beforeInvalid264=nonceDb264.prepare('SELECT COUNT(*) n FROM seen_interactions').get().n;
+  for(const patch of [{independent:false},{independent:'true'},{independent:1},{kind:'requests'},{sweep:{id:'a'.repeat(32),n:1}},{subject:'100000000000000001'},{at:root264.at-61},{nonce:'not-a-nonce'}]){
+   const body={...root264,...patch,nonce:patch.nonce??require('node:crypto').randomUUID()};const refused=await protocol264.handleRoleContinuation242(signed264(body),protocolEnv264,()=>{throw Error('264_invalid_body_scheduled');});
+   check('264 signed independent shape refuses '+Object.keys(patch).join(','),()=>assert.equal(refused.status,400));
+  }
+  const tampered264=await protocol264.handleRoleContinuation242(signed264({...root264,nonce:require('node:crypto').randomUUID()},false),protocolEnv264,()=>{throw Error('264_invalid_HMAC_scheduled');});
+  check('264 invalid signature and every invalid shape create no nonce or work',()=>{assert.equal(tampered264.status,401);assert.equal(nonceDb264.prepare('SELECT COUNT(*) n FROM seen_interactions').get().n,beforeInvalid264);assert.equal(jobs264.length,1);assert.equal(passes264.length,1);assert.equal(outbound264.length,0);});
+ }finally{nonceDb264.close();}
  const subjects=['100000000000000001','100000000000000002','100000000000000003','100000000000000004'];
  const batch=await R.reconcileRoleBatch242(env,subjects);
  check('batch stops at actual HTTP room',()=>assert.equal(batch.results.length,3));
