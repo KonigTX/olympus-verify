@@ -78,6 +78,11 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".259", date: "2026-11-10", lines: [
+      "Guild rank handoff diagnostics now remain visible across deferred callbacks.",
+    ],
+  },
+  {
     build: ".258", date: "2026-11-10", lines: [
       "Guild rank reconciliation now reports bounded handoff failures for reliable operator follow-up.",
     ],

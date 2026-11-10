@@ -28,15 +28,15 @@ function load(name,imports={},extra={}){
  check('angle guild suffix',()=>assert.equal(N.formatNickname233('Fern Melder'),'Fern Melder <OLYMPUS PRIME>'));
  check('long nickname remains bounded',()=>assert.ok(N.formatNickname233('A'.repeat(31)).length<=32));
  check('nickname controls refuse',()=>assert.throws(()=>N.formatNickname233('Fern\nMelder')));
- let outbound,claims=0,queued=[],visits=[],counter,responseStatus242=202;
+ let outbound,claims=0,queued=[],visits=[],counter,responseStatus242=202,loggedError259;const continuationErrors259=[],safeLog259=load('log',{},{Error});
  const env={PUBLIC_BASE_URL:'https://example.test',VERIFY_SECRET:'postdeploy-synthetic-secret',DB:{prepare(sql){return{bind(){return this;},async run(){claims++;return{meta:{changes:claims===1?1:0}};}};}}};
  const R=load('role-reconcile242',{
   './db':{now:()=>Math.floor(Date.now()/1000)},
   './roster-effects':{countStatements:(e,c)=>{counter=c;c.protocol=true;c.factor=1;return e;}},
   './roles':{callBudget:()=>({limit:40,attempts:0})},
   './full-release-pass':{runNativeSubject232:async(e,id,calls)=>{counter.used+=180;calls.attempts+=12;visits.push(id);return{state:id.endsWith('3')?'unknown':'held',reason:'synthetic_original_guard'};}},
-  './log':{errorRef:()=> 'synthetic'},
- },{fetch:async(url,init)=>{outbound={url:String(url),...init};return new Response(null,{status:responseStatus242});}});
+  './log':{errorRef:error=>{loggedError259=error;return safeLog259.errorRef(error);}},
+ },{Error,console:{...console,error:(...args)=>continuationErrors259.push(args)},fetch:async(url,init)=>{outbound={url:String(url),...init};return new Response(responseStatus242===503?'synthetic private upstream response body':null,{status:responseStatus242});}});
  await R.kickRoleWork242(env,'requests');
  check('continuation goes to one fixed origin path',()=>assert.equal(outbound.url,'https://example.test/internal/roles242/continue'));
  const request=()=>new Request(outbound.url,{method:'POST',headers:outbound.headers,body:outbound.body});
@@ -50,7 +50,8 @@ function load(name,imports={},extra={}){
  assert.equal((await R.handleRoleContinuation242(bad,env,()=>{})).status,401);checks++;
  assert.equal((await R.handleRoleContinuation242(new Request(outbound.url,{method:'POST',body:'x'.repeat(257)}),env,()=>{})).status,413);checks++;
  responseStatus242=503;
- await assert.rejects(()=>R.kickRoleWork242(env,'requests'),error=>error?.status===503&&error.message==='role242_continuation_held');checks++;console.log('PASS 258 refused continuation preserves only bounded HTTP503 status for existing logger');
+ await assert.rejects(()=>R.kickRoleWork242(env,'requests'),error=>error===loggedError259&&error?.status===503&&error.message==='role242_continuation_held');checks++;console.log('PASS 258 refused continuation preserves only bounded HTTP503 status for existing logger');
+ check('259 deferred refusal emits only fixed label and bounded safe status',()=>assert.deepEqual(continuationErrors259,[['role242_continuation_held','upstream(503)']]));
  responseStatus242=202;
  check('258 failed scheduling response creates no local work or role visit',()=>{assert.equal(queued.length,1);assert.equal(visits.length,0);});
  const subjects=['100000000000000001','100000000000000002','100000000000000003','100000000000000004'];

@@ -60,7 +60,7 @@ export async function kickRoleWork242(env:Env,kind:'requests'|'sweep',sweep?:Nat
  const text=JSON.stringify({kind,at:now(),nonce:crypto.randomUUID(),...(sweep?{sweep}:{})});
  const response=await fetch(new URL(PATH,base),{method:'POST',headers:{'Content-Type':'application/json','X-Olympus-Role-Continuation':await signature242(env,text)},body:text,redirect:'manual'});
  await response.body?.cancel();
- if(!response.ok)throw Object.assign(Error('role242_continuation_held'),{status:response.status});
+ if(!response.ok){const error=Object.assign(Error('role242_continuation_held'),{status:response.status});console.error('role242_continuation_held',errorRef(error));throw error;}
 }
 
 export async function runRoleWork242(env:Env,kind:'requests'|'sweep',defer?:RoleWorkDefer242,sweep?:NativeSweep249):Promise<void>{
