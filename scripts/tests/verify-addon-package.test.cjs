@@ -10,22 +10,22 @@ const result = pack.prepare(get), manifest = JSON.parse(result.manifest);
 check('two builds are byte-identical', () => { const second = pack.prepare(get); assert.deepEqual(second, result); });
 check('tracked ZIP and manifest equal the current source build', () => { assert.deepEqual(get(pack.ZIP), result.zip); assert.deepEqual(get(pack.MANIFEST), result.manifest); pack.build(root); });
 check('version, complete archive digest and generator are bound', () => {
-  assert.equal(manifest.schema, 'olympus-verify-public-download-v1'); assert.equal(manifest.version, '0.6.21');
+  assert.equal(manifest.schema, 'olympus-verify-public-download-v1'); assert.equal(manifest.version, '0.6.22');
   assert.equal(manifest.archive.path, '/' + pack.ZIP.slice('worker/public/'.length));
   assert.equal(manifest.archive.bytes, result.zip.length); assert.equal(manifest.archive.sha256, hash(result.zip));
   assert.equal(manifest.generator.sha256, hash(get('scripts/build-verify-addon.cjs')));
 });
 const expected = ['Bindings.xml','Config.example.lua','Libs/OlympusHmac.lua','Libs/OlympusQr.lua','OlympusVerify.lua','OlympusVerify.toc',
-  'OlympusVerifyAutoSync.lua','OlympusVerifyBrowser.lua','OlympusVerifyCensus.lua','OlympusVerifyGuild.lua','OlympusVerifyLaunch229.lua',
+  'OlympusVerifyAutoSync.lua','OlympusVerifyBrowser.lua','OlympusVerifyCensus.lua','OlympusVerifyGuild.lua','OlympusVerifyLaunch229.lua','OlympusVerifyLive242.lua',
   'OlympusVerifyOfficerInvites233.lua','OlympusVerifyPreview.lua','OlympusVerifyRanks.lua','OlympusVerifyRoster.lua','OlympusVerifyTreasury.lua','OlympusVerifyUI.lua'];
-check('archive allowlist is exactly the 17 reviewed public files', () => {
+check('archive allowlist is exactly the 18 frozen public files', () => {
   assert.deepEqual(pack.FILES, expected); assert.deepEqual(manifest.files.map(row => row.path), expected.map(file => 'OlympusVerify/' + file));
 });
 // Independently walk both ZIP record tables and use Node's native zlib CRC, rather than the generator's CRC routine.
 const zip = result.zip, end = zip.length - 22;
 check('ZIP has exactly one fixed end record with no comment/trailer', () => {
-  assert.equal(zip.readUInt32LE(end), 0x06054b50); assert.equal(zip.readUInt16LE(end + 8), 17);
-  assert.equal(zip.readUInt16LE(end + 10), 17); assert.equal(zip.readUInt16LE(end + 20), 0);
+  assert.equal(zip.readUInt32LE(end), 0x06054b50); assert.equal(zip.readUInt16LE(end + 8), 18);
+  assert.equal(zip.readUInt16LE(end + 10), 18); assert.equal(zip.readUInt16LE(end + 20), 0);
 });
 let central = zip.readUInt32LE(end + 16), local = 0;
 for (let i = 0; i < expected.length; i++) check('ZIP entry/source/manifest parity: ' + expected[i], () => {
@@ -52,7 +52,7 @@ check('packager never requests configuration, SavedVariables or exchange inputs'
   assert(!manifest.files.some(row => /(?:^|\/)(?:Config\.lua|OlympusQueue\.lua|OlympusLaunchQueue\.lua|OlympusVerifyLists\.lua|SavedVariables)$/.test(row.path)));
 });
 for (const file of Object.keys(pack.REPAIR_PINS)) check('changed reviewed repair is refused: ' + file, () => {
-  assert.throws(() => pack.prepare(name => name === pack.SOURCE + file ? Buffer.concat([get(name), Buffer.from('\n')]) : get(name)), /Reviewed repair byte mismatch/);
+  assert.throws(() => pack.prepare(name => name === pack.SOURCE + file ? Buffer.concat([get(name), Buffer.from('\n')]) : get(name)), /Frozen addon source byte mismatch/);
 });
 check('missing and oversized public source cannot become a partial package', () => {
   assert.throws(() => pack.prepare(name => name === pack.SOURCE + 'Bindings.xml' ? Buffer.alloc(0) : get(name)), /Bounded public addon/);
