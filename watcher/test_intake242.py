@@ -70,7 +70,34 @@ class DurableIntake242Tests(unittest.TestCase):
         message="intake242|a|done||first last||100|86500"
         self.assertEqual(receipt["mac"],hmac.new(b"test-key",message.encode(),hashlib.sha256).hexdigest()[:32])
         with patch.object(intake242.time,"time",return_value=86500):
-            self.assertEqual(intake242.receipts(w),[])
+            renewed=intake242.receipts(w)[0]
+        self.assertEqual((renewed["observedAt"],renewed["expiresAt"]),(100,172840))
+    def test_terminal_receipt_renews_transport_after_24h_and_48h_without_post_or_state_change(self):
+        for status in ("done","rejected"):
+            row=original();row.update(state=status,attempted=True,acknowledgedAt=100,receipt={"id":"a","status":status,"character":"First Last","guid":"","discordRole":""})
+            w=self.watcher({"a":row},[]);before=copy.deepcopy(w.state.d)
+            for age in (86401,172801):
+                at=100+age
+                with patch.object(intake242.time,"time",return_value=at):
+                    receipt=intake242.receipts(w)[0]
+                    stable=intake242.receipts(w)[0]
+                    intake242.drain(w,False)
+                self.assertEqual(receipt,stable)
+                self.assertEqual(receipt["observedAt"],100)
+                expected=100+(age//86340)*86340+86400
+                self.assertEqual(receipt["expiresAt"],expected)
+                self.assertTrue(at<expected<=at+86400)
+                message=f'intake242|a|{status}||first last||100|{expected}'
+                self.assertEqual(receipt["mac"],hmac.new(b"test-key",message.encode(),hashlib.sha256).hexdigest()[:32])
+                self.assertEqual(w.state.d,before)
+                self.assertEqual((w.state.saved,w.worker.calls),(0,[]))
+    def test_receipt_renewal_is_stable_within_original_ack_anchored_window(self):
+        row=original();row.update(state="done",acknowledgedAt=100,receipt={"id":"a","status":"done","character":"First Last","guid":"","discordRole":""})
+        w=self.watcher({"a":row},[])
+        with patch.object(intake242.time,"time",return_value=86501):first=intake242.receipts(w)
+        with patch.object(intake242.time,"time",return_value=90000):later=intake242.receipts(w)
+        self.assertEqual(first,later)
+        self.assertEqual(row["acknowledgedAt"],100)
     def test_dual_savedvariables_maps_share_id_and_conflicts_hold(self):
         with TemporaryDirectory() as directory:
             path=Path(directory)/"OlympusVerify.lua"

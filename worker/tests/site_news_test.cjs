@@ -1841,6 +1841,25 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
     "historicalParagraph": "const BUILD = \"2026-11-10.250 Legacy verification forwarding\";"
   }
 ]);
+  const RETAINED_CONTEXTS252 = Object.freeze([
+  {
+    "file": "worker/src/index.ts",
+    "startMarker": "const BUILD = \"2026-11-10.251 Mail bridge delivery and receipt retention\";",
+    "singleLine": true,
+    "paragraphSha256": "d64fd3745d4935a2c90f493cd8797d6881b51fd21b4108564fc7e7513febeee1",
+    "paragraphBytes": 74,
+    "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
+    "count": 0,
+    "ownerRelease": 251,
+    "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
+    "predecessorSHA256": "6cc6a8f997b7dbe4b01051e3adc9042dac945990474ff95f239f6bdaa1b38927",
+    "predecessorRelease": 250,
+    "currentBuild": true,
+    "editorialRelease": 251,
+    "editorialPredecessorSHA256": "6cc6a8f997b7dbe4b01051e3adc9042dac945990474ff95f239f6bdaa1b38927",
+    "historicalParagraph": "const BUILD = \"2026-11-10.251 Mail bridge delivery and receipt retention\";"
+  }
+]);
   const CURRENT_CONTEXTS = Object.freeze([
   {
     "file": "docs/launch-runbook.md",
@@ -2177,19 +2196,19 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   },
   {
     "file": "worker/src/index.ts",
-    "startMarker": "const BUILD = \"2026-11-10.251 Mail bridge delivery and receipt retention\";",
+    "startMarker": "const BUILD = \"2026-11-10.252 Offline receipts and fair role requests\";",
     "singleLine": true,
-    "paragraphSha256": "d64fd3745d4935a2c90f493cd8797d6881b51fd21b4108564fc7e7513febeee1",
-    "paragraphBytes": 74,
+    "paragraphSha256": "a4425841a2fbfcc04b6918298cf2c565abbcb553092904efa8bb6520cbf19086",
+    "paragraphBytes": 71,
     "digest": "ca540ba0d5b2ecba5a3fd0f48e5e9534a63e8dd3c811ad484907adfee816298b",
     "count": 0,
-    "ownerRelease": 251,
+    "ownerRelease": 252,
     "purpose": "Exact owner-directed live-first BUILD with zero guarded-vocabulary credit.",
-    "predecessorSHA256": "6cc6a8f997b7dbe4b01051e3adc9042dac945990474ff95f239f6bdaa1b38927",
-    "predecessorRelease": 250,
+    "predecessorSHA256": "d64fd3745d4935a2c90f493cd8797d6881b51fd21b4108564fc7e7513febeee1",
+    "predecessorRelease": 251,
     "currentBuild": true,
-    "editorialRelease": 251,
-    "editorialPredecessorSHA256": "6cc6a8f997b7dbe4b01051e3adc9042dac945990474ff95f239f6bdaa1b38927"
+    "editorialRelease": 252,
+    "editorialPredecessorSHA256": "d64fd3745d4935a2c90f493cd8797d6881b51fd21b4108564fc7e7513febeee1"
   },
   {
     "file": "worker/public/static/app.js",
@@ -2823,7 +2842,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
 
   // .218's exact release label contains no guarded rank term, so it grants zero credit.
   // Keep the byte, duplicate, planted-term and wrong-file refusals without raising ALLOWED or changing GUARD.
-  const buildSpecs217 = CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===251 && spec.currentBuild===true && spec.file==='worker/src/index.ts'), buildFile217='worker/src/index.ts';
+  const buildSpecs217 = CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===252 && spec.currentBuild===true && spec.file==='worker/src/index.ts'), buildFile217='worker/src/index.ts';
   const buildText217=guarded.find(([file])=>file===buildFile217)[1], buildQualification217=currentContextQualification(buildFile217,buildText217);
   const buildLine217=buildSpecs217.length===1 ? buildQualification217.paragraphs.find(value=>value.startsWith(buildSpecs217[0].startMarker))||'' : '';
   check('.218 pins exactly one current release label with zero guarded vocabulary credit',buildSpecs217.length===1 && buildSpecs217[0].file===buildFile217 && buildSpecs217[0].singleLine===true && buildSpecs217[0].digest===currentDigest && buildSpecs217[0].count===0 && buildQualification217.errors.length===0 && buildQualification217.credits[currentDigest]===0 && Object.keys(guardedCounts(buildLine217)).length===0 && Buffer.byteLength(buildLine217,'utf8')===buildSpecs217[0].paragraphBytes && sha(buildLine217)===buildSpecs217[0].paragraphSha256 && GUARD.size===28 && Object.keys(ALLOWED[buildFile217]).length===1 && ALLOWED[buildFile217][currentDigest]===undefined);
@@ -2923,7 +2942,9 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   const current249=RETAINED_CONTEXTS250[0];
   check('.250 current BUILD preserves .249 as exact non-crediting history', sha(current249.historicalParagraph)===current249.paragraphSha256 && Buffer.byteLength(current249.historicalParagraph)===current249.paragraphBytes && RETAINED_CONTEXTS251.length===1 && RETAINED_CONTEXTS251[0].ownerRelease===250 && RETAINED_CONTEXTS251[0].predecessorRelease===249 && RETAINED_CONTEXTS251[0].predecessorSHA256===current249.paragraphSha256 && RETAINED_CONTEXTS251[0].count===0 && current249.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current249.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current249.historicalParagraph).errors.length>0);
   const current250=RETAINED_CONTEXTS251[0];
-  check('.251 current BUILD preserves .250 as exact non-crediting history', sha(current250.historicalParagraph)===current250.paragraphSha256 && Buffer.byteLength(current250.historicalParagraph)===current250.paragraphBytes && buildSpecs217.length===1 && buildSpecs217[0].ownerRelease===251 && buildSpecs217[0].predecessorRelease===250 && buildSpecs217[0].predecessorSHA256===current250.paragraphSha256 && buildSpecs217[0].count===0 && current250.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current250.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current250.historicalParagraph).errors.length>0);
+  check('.251 current BUILD preserves .250 as exact non-crediting history', sha(current250.historicalParagraph)===current250.paragraphSha256 && Buffer.byteLength(current250.historicalParagraph)===current250.paragraphBytes && RETAINED_CONTEXTS252.length===1 && RETAINED_CONTEXTS252[0].ownerRelease===251 && RETAINED_CONTEXTS252[0].predecessorRelease===250 && RETAINED_CONTEXTS252[0].predecessorSHA256===current250.paragraphSha256 && RETAINED_CONTEXTS252[0].count===0 && current250.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current250.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current250.historicalParagraph).errors.length>0);
+  const current251=RETAINED_CONTEXTS252[0];
+  check('.252 current BUILD preserves .251 as exact non-crediting history', sha(current251.historicalParagraph)===current251.paragraphSha256 && Buffer.byteLength(current251.historicalParagraph)===current251.paragraphBytes && buildSpecs217.length===1 && buildSpecs217[0].ownerRelease===252 && buildSpecs217[0].predecessorRelease===251 && buildSpecs217[0].predecessorSHA256===current251.paragraphSha256 && buildSpecs217[0].count===0 && current251.count===0 && currentContextQualification(buildFile217,buildText217.replace(buildLine217,current251.historicalParagraph)).errors.length>0 && currentContextQualification(buildFile217,buildText217+'\n'+current251.historicalParagraph).errors.length>0);
   // Explicit Master218 scope; original GUARD and ALLOWED remain byte-identical.
   const ownerContexts218=CURRENT_CONTEXTS.filter(spec=>spec.ownerRelease===218);
   const retiredLineage218=[...RETAINED_CONTEXTS222.filter(spec=>spec.retirement222),...retainedApp228].filter(spec=>spec.ownerRelease===218||spec.predecessorRelease===218);
@@ -2950,7 +2971,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
   check(".242 copy grants only32 exact hits in four fixed files; the current BUILD still grants zero", ownerCopy242.length === 27
     && ownerCopy242.reduce((sum,spec) => sum + spec.count, 0) === 32
     && JSON.stringify([...new Set(ownerCopy242.map(spec => spec.file))].sort()) === JSON.stringify(["worker/src/site-news.ts","worker/public/static/app.js","worker/src/guide.ts","worker/src/interactions.ts"].sort())
-    && buildSpecs217.length === 1 && buildSpecs217[0].ownerRelease === 251 && buildSpecs217[0].count === 0 && GUARD.size === 28);
+    && buildSpecs217.length === 1 && buildSpecs217[0].ownerRelease === 252 && buildSpecs217[0].count === 0 && GUARD.size === 28);
   for (const spec of ownerCopy242) {
     const text = guarded.find(([file]) => file === spec.file)[1], qualified = currentContextQualification(spec.file,text);
     const paragraph = qualified.paragraphs.find(value => value.startsWith(spec.startMarker)) || "", changed = paragraph.slice(0,-1) + "!";
@@ -2968,7 +2989,7 @@ const app = async (id, { created, status = "submitted", reviewed = null }) =>
       && vocabularyOverages("README.md",paragraph).some(value => value.includes(currentDigest.slice(0,12))));
   }
   const currentBuildTuple218=/^const BUILD = "(\d{4}-\d{2}-\d{2})\.(\d+) [^"]+";$/.exec(buildLine217),currentNews218=news.RELEASE_NOTES[0];
-  check('.251 exact BUILD version/date equals the newest actual release-note metadata',!!currentBuildTuple218&&currentBuildTuple218[1]==='2026-11-10'&&currentBuildTuple218[2]==='251'&&currentNews218.build==='.'+currentBuildTuple218[2]&&currentNews218.date===currentBuildTuple218[1]);
+  check('.252 exact BUILD version/date equals the newest actual release-note metadata',!!currentBuildTuple218&&currentBuildTuple218[1]==='2026-11-10'&&currentBuildTuple218[2]==='252'&&currentNews218.build==='.'+currentBuildTuple218[2]&&currentNews218.date===currentBuildTuple218[1]);
   const retiredBuildSpec217=RETIRED_CONTEXTS218.find(spec=>spec.ownerRelease===217&&spec.file===buildFile217);
   check('.218 the retired217 label cannot replace or accompany the unique current label',!!retiredBuildSpec217&&currentContextQualification(buildFile217,buildText217.replace(buildLine217,retiredBuildSpec217.startMarker)).errors.length>0&&currentContextQualification(buildFile217,buildText217+'\n'+retiredBuildSpec217.startMarker).errors.length>0&&Object.keys(currentContextQualification('README.md',retiredBuildSpec217.startMarker).credits).length===0);
 

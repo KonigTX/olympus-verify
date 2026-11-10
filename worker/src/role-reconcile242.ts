@@ -31,6 +31,7 @@ async function requested242(env:Env):Promise<boolean>{
  const count={used:0},bounded=countStatements(env,count),calls=callBudget(bounded);
  const rows=await bounded.DB.prepare(`SELECT a.id,a.subject FROM audit a
  WHERE a.actor='system' AND a.action='${REQUEST}' AND a.id=(SELECT MAX(q.id) FROM audit q WHERE q.actor='system' AND q.action='${REQUEST}' AND q.subject=a.subject)
+ AND NOT EXISTS(SELECT 1 FROM privacy_subjects p WHERE p.subject_id=a.subject AND p.state<>'active')
  AND NOT EXISTS(SELECT 1 FROM audit f WHERE f.actor='system' AND f.action='${FINISHED}' AND f.subject=a.subject AND json_valid(f.details) AND json_extract(f.details,'$.requestId')=a.id)
  ORDER BY a.id LIMIT 11`).all<{id:number;subject:string}>();
  let visited=0;

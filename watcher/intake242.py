@@ -8,7 +8,7 @@ import re
 import codes
 import savedvars
 PATH = "/ingest/intake242"
-SOURCE_VERSION = "0.6.23"
+SOURCE_VERSION = "0.6.25"
 
 def collect(watcher):
     state = watcher.state.d.get("intake242", {})
@@ -116,10 +116,14 @@ def receipts(watcher):
         if receipt.get("guid") is None:
             receipt["guid"] = ""
         observed = int(original.get("acknowledgedAt") or 0)
-        if observed + 86400 <= at:
+        if observed <= 0 or observed > at + 5:
             continue
-        receipt.update(observedAt=observed, expiresAt=observed+86400)
-        message = "|".join(str(x) for x in ("intake242",receipt["id"],receipt["status"],receipt.get("guid") or "",codes.normalize_character(receipt["character"]),receipt.get("discordRole") or "",observed,observed+86400))
+        # Renew delivery validity only. A stored terminal ACK is not a new
+        # verification, POST or claim, and its original timestamp never moves.
+        window = max(0, (at - observed) // 86340)
+        expires = observed + window * 86340 + 86400
+        receipt.update(observedAt=observed, expiresAt=expires)
+        message = "|".join(str(x) for x in ("intake242",receipt["id"],receipt["status"],receipt.get("guid") or "",codes.normalize_character(receipt["character"]),receipt.get("discordRole") or "",observed,expires))
         receipt["mac"] = hmac.new(watcher.secret.encode(),message.encode(),hashlib.sha256).hexdigest()[:32]
         result.append(receipt)
     return result

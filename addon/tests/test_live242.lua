@@ -270,5 +270,50 @@ do
   for _,r in pairs(x.rows()) do if r.type=="donation" then count=count+1;row=r end end
   check("manual Take hook also shares its actual Treasury transfer context",#receipts==1 and count==1 and row.id==receipts[1].id and row.donation.copper==600)
 end
+-- .252 terminal ACK transport renewal retains original clocks; Native/cache
+-- proof freshness is intentionally not renewed by this delivery-only path.
+do
+  for _,age in ipairs({86401,172801}) do
+    local x=fixture();local observed=x.e.NOW-age
+    local row=x.v.Queue({type="donation",character="Offline Donor",donation={copper=500}},"offline")
+    local expires=observed+math.floor(age/86340)*86340+86400
+    local r={id=row.id,status="done",character=row.character,guid="",discordRole="",observedAt=observed,expiresAt=expires}
+    r.mac=x.e.OlympusHmac.hmacSha256hex(x.e.OlympusVerifyConfig.secret,table.concat({"intake242",r.id,r.status,"",x.e.OlympusHmac.normalizeCharacter(r.character),"",observed,expires},"|")):sub(1,32)
+    x.e.OlympusQueue={intakeReceipts242={r}};x.v.Flush("sync")
+    check("renewed terminal ACK accepted after "..age.." seconds with original timestamp",row.status=="done" and row.serverReceipt.observedAt==observed and row.serverReceipt.expiresAt==expires)
+    check("renewed delivery ACK never certifies current verification",not x.v.VerificationReply(row.character):find("already verified",1,true))
+  end
+  local x=fixture();local row=x.v.Queue({type="donation",character="Bad Window",donation={copper=500}},"bad-window")
+  local r=x.ack(row);r.observedAt=x.e.NOW-86401;r.expiresAt=r.observedAt+86341+86400
+  r.mac=x.e.OlympusHmac.hmacSha256hex(x.e.OlympusVerifyConfig.secret,table.concat({"intake242",r.id,r.status,"",x.e.OlympusHmac.normalizeCharacter(r.character),"",r.observedAt,r.expiresAt},"|")):sub(1,32)
+  x.v.Flush("sync");check("signed but non-anchored renewal step is refused",row.status=="pending")
+  r.expiresAt=r.observedAt+3*86340+86400
+  r.mac=x.e.OlympusHmac.hmacSha256hex(x.e.OlympusVerifyConfig.secret,table.concat({"intake242",r.id,r.status,"",x.e.OlympusHmac.normalizeCharacter(r.character),"",r.observedAt,r.expiresAt},"|")):sub(1,32)
+  x.v.Flush("sync");check("signed future transport window cannot extend bounded validity",row.status=="pending")
+end
+do
+  local x=fixture();local h=x.e.OlympusHmac;local code=h.codeFor(x.e.OlympusVerifyConfig.secret,"Ambiguous Sender",h.utcDay(x.e.NOW))
+  local function mail() return {sender="Ambiguous Sender",subject="Same",body="!verify "..code} end
+  x.inbox={mail()};x.event("MAIL_SHOW")
+  local old;for _,r in pairs(x.rows()) do if r.type=="verify" then old=r end end
+  x.inbox={mail(),mail()};x.event("MAIL_INBOX_UPDATE");x.ack(old)
+  x.inbox={mail()};x.event("MAIL_INBOX_UPDATE")
+  check("duplicate-content survivor cannot reuse the prior verification ACK",x.deletes==0 and x.rows()[old.id]==old)
+  x.event("MAIL_CLOSED");x.event("MAIL_SHOW")
+  check("mailbox close/reopen never clears persistent ambiguity",x.deletes==0)
+  local originalText=x.e.GetInboxText;local textReads=0
+  x.e.GetInboxText=function(i) textReads=textReads+1;if textReads==1 then return nil end;return originalText(i) end
+  local okay=pcall(x.v.ScanMailbox);x.e.GetInboxText=originalText
+  check("body becoming readable on second pass holds without error or absence reset",okay and textReads>=2 and x.deletes==0 and x.rows()[old.id]==old)
+  x.inbox={{sender="Unreadable Sender",subject="Loading",body=nil}};x.event("MAIL_INBOX_UPDATE")
+  x.inbox={mail()};x.event("MAIL_INBOX_UPDATE")
+  check("unreadable counted mail cannot prove ambiguous content absent",x.deletes==0)
+  x.inbox={};x.event("MAIL_INBOX_UPDATE");x.e.NOW=x.e.NOW+1
+  x.inbox={mail()};x.event("MAIL_INBOX_UPDATE")
+  local fresh;for _,r in pairs(x.rows()) do if r.type=="verify" and r.id~=old.id then fresh=r end end
+  check("only complete readable absence starts a new unambiguous instance",fresh and fresh.observationId~=old.observationId and fresh.status=="pending" and x.deletes==0)
+  x.ack(fresh);x.event("MAIL_INBOX_UPDATE")
+  check("new post-absence instance requires its own durable ACK to delete",x.deletes==1)
+end
 print(string.format("live242: %d passed, %d failed",passed,failed))
 if failed>0 then error("live242 post-deploy checks failed") end

@@ -78,6 +78,11 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".252", date: "2026-11-10", lines: [
+      "Verification delivery resumes after time away. Account updates keep moving when an older request is held.",
+    ],
+  },
+  {
     build: ".251", date: "2026-11-10", lines: [
       "Verification mail keeps separate delivery records. Donation records expire from their original observation date.",
     ],

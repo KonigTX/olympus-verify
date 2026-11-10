@@ -7936,3 +7936,12 @@ OlympusVerify0.6.24 supports bounded external request IDs through a separate has
 Server donation visibility and bounded cleanup use the recorded original observation deadline. Unreadable deadlines stay hidden and use arrival+30days only as a deletion fallback. An exactly expired receipt is refused before re-insertion. The ownership/erasure predicate and196/700 accounting remain unchanged; no schema or extra SQL statement is added.
 
 Keep the owner's live-first order: compile/bundle/Lua syntax and fresh restored443/442 backup, exact protected deployment and public-file install, then the authored affected tests, hosted CI and completed exact-head review. Source-only fixes to stale privacy projections, beta historical reconstruction, named-character wording and an existing census helper hash preserve historical anchors and negative checks. Preserve prior failed/time-limited attempts and the original unknown272 effect. Current native acceptance remains separate from synthetic tests and requires the signed-in client.
+
+
+## Worker .252 — offline ACK delivery and active request progress
+
+OlympusVerify and Watcher0.6.25 renew only bounded signed transport validity for an already stored terminal ACK. The original acknowledgement time, source observation, request body and server claim remain unchanged; this does not reissue a POST or renew Native verification evidence. Original24-hour receipts remain compatible. A mailbox content instance that ever becomes ambiguous stays held even when its count returns toone; only complete readable absence permits a new instance. Transient body reads cannot trap the mailbox scanner.
+
+The guarded role-request selector excludes non-active privacy subjects before its existing11-row window; the original per-account recheck, opaque issuer, unknown-effect handling and SQL/HTTP caps remain. No schema or statement-count change. The finite static beta fixture retargets only current input metadata and its exact BUILD window while preserving the accepted241 oracle and all negative controls.
+
+Apply the owner's live-first sequence: compile/bundle/Lua syntax and fresh restored443/442 backup, exact deployment/public-file install, then focused new tests and hosted CI/exact-head review. Preserve all226 prior charged attempts; no whole local suite restart. Current in-game and production receipt observations remain separately qualified. Branch verification stays owner-held and original unknown role custody is not replayed.

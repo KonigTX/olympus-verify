@@ -47,7 +47,7 @@ function V.Queue(row, key)
   if row.id and d.entries[row.id] then return d.entries[row.id] end
   d.nextId=(tonumber(d.nextId) or 0)+1
   row.id=row.id or H.sha256hex(table.concat({guid(call(UnitGUID,"player")) or ownName() or "unknown",tostring(time()),tostring(d.nextId)},"|")):sub(1,32)
-  row.requestedAt=row.requestedAt or time();row.requestedBy=row.requestedBy or ownName();row.status="pending";row.clientVersion="0.6.24"
+  row.requestedAt=row.requestedAt or time();row.requestedBy=row.requestedBy or ownName();row.status="pending";row.clientVersion="0.6.25"
   row.guild=row.guild or call(GetGuildInfo,"player");row.realm=row.realm or call(GetRealmName)
   d.entries[row.id]=row;if key then d.dedup[key]=row.id end
   if type(OlympusDB)=="table" then
@@ -170,13 +170,23 @@ function V.CaptureVerification(source, sender, code, senderGuid, membership, loc
     nativeMembership=membership,locallyValid=locallyValid==true,guidSource=senderGuid and "native-whisper-event" or "unavailable",
     observationId=observed and observed.id or nil,observedAt=observed and observed.observedAt or time()},key)
 end
+local function receiptTransportValid(r, at)
+  if type(r.observedAt)~="number" or type(r.expiresAt)~="number" or r.observedAt<=0
+    or r.observedAt~=math.floor(r.observedAt) or r.expiresAt~=math.floor(r.expiresAt)
+    or r.observedAt>at+5 or r.expiresAt<=at then return false end
+  local span=r.expiresAt-r.observedAt
+  if span>0 and span<=86400 then return true end -- original delivery ABI
+  local offset=span-86400
+  -- This renews only a terminal intake ACK, never current verification or a
+  -- Native source proof. The signed original ACK time remains unchanged.
+  return offset>0 and offset%86340==0 and r.expiresAt-86400<=at+5
+end
 local function receipts()
   local d=db();if not d then return end
   for _,r in ipairs(type(OlympusQueue)=="table" and OlympusQueue.intakeReceipts242 or {}) do
     if type(r)=="table" and text(r.id,64) and (r.status=="done" or r.status=="rejected") and text(r.character,128)
       and (r.guid==nil or r.guid=="" or guid(r.guid)) and (r.discordRole==nil or text(r.discordRole,128))
-      and type(r.observedAt)=="number" and type(r.expiresAt)=="number" and r.observedAt<=time()+5 and r.expiresAt>time()
-      and r.expiresAt-r.observedAt<=86400 and type(cfg.secret)=="string" then
+      and receiptTransportValid(r,time()) and type(cfg.secret)=="string" then
       local payload=table.concat({"intake242",r.id,r.status,r.guid or "",norm(r.character),r.discordRole or "",tostring(r.observedAt),tostring(r.expiresAt)},"|")
       if r.mac==H.hmacSha256hex(cfg.secret,payload):sub(1,32) then
         local row=d.entries[r.id]
@@ -291,12 +301,14 @@ function V.ScanMailbox()
       if token then
         local fingerprint=H.sha256hex(h.sender.."|"..h.subject.."|"..body.."|"..token)
         local mail=d.mail[fingerprint]
-        if mail and mail.absentQualifiedAt and unique then
+        if mail and mail.absentQualifiedAt and contentKey then
           d.mailHistory[mail.observation and mail.observation.id or mail.verifyId or fingerprint]=mail
           mail=nil
         end
         mail=mail or {};d.mail[fingerprint]=mail
         if contentKey then d.mailActive[contentKey]=fingerprint end
+        if contentKey and (identities[contentKey] or 0)>1 then mail.ambiguous=true end
+        unique=unique and not mail.ambiguous
         if h.money>0 or h.hasItems then mail.hadValue=true end
         if not mail.verifyId and unique then
           mail.observation=mail.observation or V.NewVerificationObservation("mail",h.sender,nil)

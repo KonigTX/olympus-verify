@@ -26,7 +26,7 @@ async function fetchAt(host, file, method = 'GET') { return index.fetch(new Requ
       assert.deepEqual(Buffer.from(await r.arrayBuffer()), bytes); assert.equal(r.headers.get('content-type'), i === 0 ? 'application/zip' : 'application/json; charset=utf-8');
       assert.equal(r.headers.get('set-cookie'), null); assert.equal(r.headers.get('location'), null);
       assert.equal(r.headers.get('cache-control'), 'no-store, no-transform'); assert.equal(r.headers.get('x-content-type-options'), 'nosniff');
-      assert.equal(r.headers.get('content-disposition'), i === 0 ? 'attachment; filename="olympus-verify-0.6.24.zip"' : null);
+      assert.equal(r.headers.get('content-disposition'), i === 0 ? 'attachment; filename="olympus-verify-0.6.25.zip"' : null);
     });
     await check('HEAD has no body: ' + file, async () => { const r = await fetchAt('site.example', file, 'HEAD'); assert.equal(r.status, 200); assert.equal(await r.text(), ''); });
     for (const host of ['bot.example','unknown.example']) await check('download denied on ' + host + ': ' + file, async () => {
