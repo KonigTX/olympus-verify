@@ -47,7 +47,7 @@ function V.Queue(row, key)
   if row.id and d.entries[row.id] then return d.entries[row.id] end
   d.nextId=(tonumber(d.nextId) or 0)+1
   row.id=row.id or H.sha256hex(table.concat({guid(call(UnitGUID,"player")) or ownName() or "unknown",tostring(time()),tostring(d.nextId)},"|")):sub(1,32)
-  row.requestedAt=row.requestedAt or time();row.requestedBy=row.requestedBy or ownName();row.status="pending";row.clientVersion="0.6.22"
+  row.requestedAt=row.requestedAt or time();row.requestedBy=row.requestedBy or ownName();row.status="pending";row.clientVersion="0.6.23"
   row.guild=row.guild or call(GetGuildInfo,"player");row.realm=row.realm or call(GetRealmName)
   d.entries[row.id]=row;if key then d.dedup[key]=row.id end
   if type(OlympusDB)=="table" then
@@ -133,22 +133,48 @@ local function receiveWire(message, sender, distribution)
   row.requestedBy=row.requestedBy or sender
   V.Queue(row,"remote|"..sender.."|"..id)
 end
-function V.CaptureVerification(source, sender, code, senderGuid, membership, locallyValid)
+-- A local observation ID distinguishes real native events; it is never a code,
+-- membership witness or permission to retry an earlier unknown server effect.
+function V.NewVerificationObservation(source, sender, senderGuid, lineId)
+  local d=db();if not d then return nil end
+  if not state.observationSession then
+    d.observationSessions=(tonumber(d.observationSessions) or 0)+1;state.observationSession=d.observationSessions
+  end
+  local line
+  local readable=true
+  if type(issecretvalue)=="function" then local ok,hidden=pcall(issecretvalue,lineId);readable=ok and not hidden end
+  if readable then
+    if type(lineId)=="number" and lineId==lineId and lineId>0 and lineId<1e15 and lineId==math.floor(lineId) then line=string.format("%.0f",lineId)
+    elseif text(lineId,64) and lineId:match("^%d+$") then line=lineId end
+  end
+  d.observationNext=(tonumber(d.observationNext) or 0)+1
+  local token=line and ("line|"..line) or ("sequence|"..d.observationNext)
+  local id=H.sha256hex(table.concat({"verify-observation249",guid(call(UnitGUID,"player")) or ownName() or "unknown",tostring(state.observationSession),source or "",norm(sender),senderGuid or "",token},"|")):sub(1,32)
+  d.observations=d.observations or {}
+  if not d.observations[id] then d.observations[id]={id=id,observedAt=time()} end
+  return clone(d.observations[id])
+end
+function V.CaptureVerification(source, sender, code, senderGuid, membership, locallyValid, observation)
+  if source=="whisper" and not observation then observation=V.NewVerificationObservation(source,sender,senderGuid) end
+  local observed=type(observation)=="table" and text(observation.id,32) and #observation.id==32 and observation.id:match("^%x+$")
+    and type(observation.observedAt)=="number" and observation.observedAt>0 and observation or nil
+  local key="verify|"..source.."|"..norm(sender).."|"..tostring(code).."|"..tostring(senderGuid)
+  if observed then key=key.."|observation|"..observed.id end
   return V.Queue({type="verify",character=sender,guid=guid(senderGuid),code=code,source=source,
     nativeMembership=membership,locallyValid=locallyValid==true,guidSource=senderGuid and "native-whisper-event" or "unavailable",
-    observedAt=time()}, "verify|"..source.."|"..norm(sender).."|"..tostring(code).."|"..tostring(senderGuid))
+    observationId=observed and observed.id or nil,observedAt=observed and observed.observedAt or time()},key)
 end
 local function receipts()
   local d=db();if not d then return end
   for _,r in ipairs(type(OlympusQueue)=="table" and OlympusQueue.intakeReceipts242 or {}) do
     if type(r)=="table" and text(r.id,64) and (r.status=="done" or r.status=="rejected") and text(r.character,128)
-      and (r.guid==nil or guid(r.guid)) and (r.discordRole==nil or text(r.discordRole,128))
+      and (r.guid==nil or r.guid=="" or guid(r.guid)) and (r.discordRole==nil or text(r.discordRole,128))
       and type(r.observedAt)=="number" and type(r.expiresAt)=="number" and r.observedAt<=time()+5 and r.expiresAt>time()
       and r.expiresAt-r.observedAt<=86400 and type(cfg.secret)=="string" then
       local payload=table.concat({"intake242",r.id,r.status,r.guid or "",norm(r.character),r.discordRole or "",tostring(r.observedAt),tostring(r.expiresAt)},"|")
       if r.mac==H.hmacSha256hex(cfg.secret,payload):sub(1,32) then
         local row=d.entries[r.id]
-        if row and norm(row.character)==norm(r.character) and (not row.guid or row.guid==r.guid) then
+        if row and norm(row.character)==norm(r.character) and (not row.guid or row.guid=="" or row.guid==r.guid) then
           row.status=r.status;row.serverReceipt=clone(r);d.acknowledgements[r.id]=clone(r)
           if OlympusDB and OlympusDB.pendingRoleUpdates and OlympusDB.pendingRoleUpdates[r.id] then OlympusDB.pendingRoleUpdates[r.id].status=r.status end
         end
@@ -322,13 +348,22 @@ local function finishTrade()
 end
 local function mirrorBridge()
   local d=db();if not d then return end
+  local function mirror(row,origin)
+    -- Keep the original body byte-identical across its source and this mirror.
+    -- Taint/provenance belongs outside the canonical entry, never in an added
+    -- source/clientVersion/proof field under the same durable ID.
+    d.bridgeMetadata=d.bridgeMetadata or {}
+    d.bridgeMetadata[row.id]={untrusted=true,origin=origin,capturedAt=time(),automaticAuthority=false}
+    d.entries[row.id]=clone(row);d.entries[row.id].status=row.status or "pending"
+    state.dirty=true
+  end
   if type(OlympusDB)=="table" and type(OlympusDB.pendingRoleUpdates)=="table" then
     for key,row in pairs(OlympusDB.pendingRoleUpdates) do
       if type(row)=="table" and row.status~="done" and row.status~="rejected" and text(row.id,64) and not d.entries[row.id]
         and (row.type=="verify" or row.type=="role" or row.type=="guild" or row.type=="donation") then
         -- Preserve data as an untrusted request. Worker independently resolves
         -- ownership/rank/roles; comm payloads never invoke protected APIs here.
-        local copied=clone(row);copied.source="Olympus-pendingRoleUpdates";copied.bridgeUntrusted=true;V.Queue(copied,"bridge|"..row.id)
+        mirror(row,"Olympus-pendingRoleUpdates")
       end
     end
   end
@@ -336,7 +371,7 @@ local function mirrorBridge()
     d.recordBridge={present=true,capturedAt=time(),api="OlympusRecordDB",automaticAuthority=false}
     for _,row in pairs(type(OlympusRecordDB.pendingRoleUpdates)=="table" and OlympusRecordDB.pendingRoleUpdates or {}) do
       if type(row)=="table" and text(row.id,64) and not d.entries[row.id] and row.status~="done" and row.status~="rejected" then
-        local copied=clone(row);copied.bridgeUntrusted=true;copied.source="OlympusRecordDB-pendingRoleUpdates";V.Queue(copied,"record|"..row.id)
+        mirror(row,"OlympusRecordDB-pendingRoleUpdates")
       end
     end
   end

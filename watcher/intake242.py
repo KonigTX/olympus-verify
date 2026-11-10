@@ -8,6 +8,7 @@ import re
 import codes
 import savedvars
 PATH = "/ingest/intake242"
+SOURCE_VERSION = "0.6.23"
 
 def collect(watcher):
     state = watcher.state.d.get("intake242", {})
@@ -44,6 +45,18 @@ def collect(watcher):
                         state[eid] = {"body":body,"sha256":digest,"state":"pending","attempted":False}
                     elif original.get("sha256") != digest:
                         original["sourceConflict"] = True
+                    # Source taint is custody metadata, not a change to the
+                    # original body or authority to mint/upgrade a native MAC.
+                    # The Worker still validates every original proof itself.
+                    metadata = intake.get("bridgeMetadata") if isinstance(intake, dict) else None
+                    mirrored = metadata.get(eid) if isinstance(metadata, dict) else None
+                    if dbname in ("OlympusDB", "OlympusRecordDB") or isinstance(mirrored, dict) and mirrored.get("untrusted") is True:
+                        record = state[eid]
+                        record["bridgeUntrusted"] = True
+                        origins = record.setdefault("untrustedSources", [])
+                        origin = str(mirrored.get("origin") or dbname) if isinstance(mirrored, dict) else dbname
+                        if origin not in origins:
+                            origins.append(origin)
     if "intake242" in watcher.state.d:
         watcher.state.save()
     return state
@@ -100,6 +113,8 @@ def receipts(watcher):
         if original.get("state") not in ("done", "rejected") or not isinstance(original.get("receipt"), dict):
             continue
         receipt = dict(original["receipt"])
+        if receipt.get("guid") is None:
+            receipt["guid"] = ""
         observed = int(original.get("acknowledgedAt") or 0)
         if observed + 86400 <= at:
             continue
@@ -109,8 +124,34 @@ def receipts(watcher):
         result.append(receipt)
     return result
 
-def handles_verify(watcher, name, code):
-    return any(r.get("body", {}).get("type") == "verify" and codes.normalize_character(str(r["body"].get("character") or r["body"].get("name") or "")) == codes.normalize_character(name) and r["body"].get("code") == code for r in watcher.state.d.get("intake242", {}).values())
+def handles_verify(watcher, name, code, event=None):
+    """Suppress only the same serialized observation, never all uses of a code.
+
+    An old rejected/spent/unknown row remains immutable. A fresh native whisper
+    has its own observation ID and original proof; this does not reset a claim.
+    Older addon rows may match only their exact GUID/proof/time observation.
+    """
+    if not isinstance(event, dict):
+        return False
+    observed_name = event.get("target") or name
+    for original in watcher.state.d.get("intake242", {}).values():
+        body = original.get("body", {})
+        if (body.get("type") != "verify" or body.get("source") != event.get("type")
+                or codes.normalize_character(str(body.get("character") or body.get("name") or "")) != codes.normalize_character(observed_name)
+                or body.get("code") != code):
+            continue
+        observation = event.get("observationId")
+        if observation is not None:
+            if isinstance(observation, str) and re.fullmatch(r"[0-9a-f]{32}", observation) and body.get("observationId") == observation:
+                return True
+            continue
+        # Equality can identify the same old missing-proof observation too; it
+        # never turns an absent/invalid proof into membership authority.
+        if (not body.get("observationId") and type(event.get("ts")) is int and event["ts"] > 0
+                and body.get("guid") == event.get("guid")
+                and body.get("nativeMembership") == event.get("nativeMembership") and body.get("observedAt") == event["ts"]):
+            return True
+    return False
 
 def verification_results(watcher, response):
     rows = response.get("verificationResults") if isinstance(response, dict) else None

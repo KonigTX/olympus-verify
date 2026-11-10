@@ -43,7 +43,7 @@ local function fixture()
   x.event=function(event,...) x.frame:GetScript("OnEvent")(x.frame,event,...) end
   x.rows=function() return e.OlympusVerifyDB.intake242.entries end
   x.ack=function(row,status)
-    local r={id=row.id,character=row.character,guid=row.guid,status=status or "done",observedAt=e.NOW,expiresAt=e.NOW+300}
+    local r={id=row.id,character=row.character,guid=row.guid or "",status=status or "done",observedAt=e.NOW,expiresAt=e.NOW+300}
     local h=e.OlympusHmac
     r.mac=h.hmacSha256hex(e.OlympusVerifyConfig.secret,table.concat({"intake242",r.id,r.status,r.guid or "",h.normalizeCharacter(r.character),"",r.observedAt,r.expiresAt},"|")):sub(1,32)
     e.OlympusQueue={intakeReceipts242={r}};return r
@@ -52,9 +52,10 @@ local function fixture()
 end
 do
   local x=fixture();check("login does not loot or delete mail",x.takes==0 and x.deletes==0)
-  local first=x.v.CaptureVerification("whisper","First Member","ABC123","Player-1-12345678",nil,false)
+  local observation=x.v.NewVerificationObservation("whisper","First Member","Player-1-12345678",100)
+  local first=x.v.CaptureVerification("whisper","First Member","ABC123","Player-1-12345678",nil,false,observation)
   check("native capture gets a stable persistent ID",#first.id==32 and first.status=="pending")
-  check("repeated original capture is idempotent",x.v.CaptureVerification("whisper","First Member","ABC123","Player-1-12345678",nil,false)==first)
+  check("repeated original observation is idempotent",x.v.CaptureVerification("whisper","First Member","ABC123","Player-1-12345678",nil,false,observation)==first)
   for i=1,1200 do x.v.Queue({type="verify",character="Member "..i,code="ABC123"},"bulk|"..i) end
   x.e.NOW=x.e.NOW+100*86400;x.v.Flush("logout")
   local count=0;for _ in pairs(x.rows()) do count=count+1 end
@@ -64,6 +65,41 @@ do
   check("unsigned ACK cannot mark pending done",first.status=="pending")
   x.ack(first);x.v.Flush("sync");check("valid original server ACK marks delivery done",first.status=="done")
   check("delivery ACK alone never claims verified Discord role",not x.v.VerificationReply(first.character,first.guid):find("already verified",1,true))
+end
+do
+  local x=fixture()
+  local observed=x.v.NewVerificationObservation("whisper","Fresh Member","Player-1-12345678",200)
+  local first=x.v.CaptureVerification("whisper","Fresh Member","ABC123","Player-1-12345678",nil,false,observed)
+  first.status="rejected";x.e.NOW=x.e.NOW+601
+  local duplicate=x.v.NewVerificationObservation("whisper","Fresh Member","Player-1-12345678",200)
+  check("same native line keeps original ID and observation time",duplicate.id==observed.id and duplicate.observedAt==observed.observedAt)
+  check("duplicate spent observation never resets its rejected row",x.v.CaptureVerification("whisper","Fresh Member","ABC123","Player-1-12345678",nil,false,duplicate)==first and first.status=="rejected")
+  local fresh=x.v.NewVerificationObservation("whisper","Fresh Member","Player-1-12345678",201)
+  local proof={version=1,member=true,observedAt=x.e.NOW,scopeHash="synthetic",mac="original-native-proof"}
+  local next=x.v.CaptureVerification("whisper","Fresh Member","ABC123","Player-1-12345678",proof,true,fresh)
+  check("fresh real observation has its own pending row and original proof",next.id~=first.id and next.observationId==fresh.id and next.observedAt==x.e.NOW and next.nativeMembership==proof and first.status=="rejected")
+  local a=x.v.NewVerificationObservation("whisper","Fresh Member","Player-1-12345678")
+  local b=x.v.NewVerificationObservation("whisper","Fresh Member","Player-1-12345678")
+  check("missing native line ID uses distinct durable observation sequences",a.id~=b.id)
+end
+do
+  local x=fixture();local row=x.v.Queue({type="donation",character="No Guid Donor",source="mail",donation={copper=500}},"guidless")
+  local receipt=x.ack(row);check("Watcher-compatible donation receipt represents absent GUID as empty",receipt.guid=="")
+  receipt.mac="wrong";x.v.Flush("sync");check("GUID-less receipt still requires the original MAC",row.status=="pending")
+  x.ack(row);x.v.Flush("sync");check("signed empty-GUID donation ACK closes only its original row",row.status=="done" and row.serverReceipt.guid=="")
+  local bound=x.v.Queue({type="verify",character="Bound Member",guid="Player-1-11112222",code="ABC123"},"bound")
+  local r=x.ack(bound);r.guid="";local h=x.e.OlympusHmac
+  r.mac=h.hmacSha256hex(x.e.OlympusVerifyConfig.secret,table.concat({"intake242",r.id,r.status,"",h.normalizeCharacter(r.character),"",r.observedAt,r.expiresAt},"|")):sub(1,32)
+  x.v.Flush("sync");check("GUID-less ACK cannot discharge a GUID-bound original",bound.status=="pending")
+end
+do
+  local x=fixture();local id=string.rep("a",32)
+  local original={id=id,type="donation",character="Record Donor",source="original-record-source",requestedAt=x.e.NOW,donation={copper=123}}
+  x.e.OlympusRecordDB={pendingRoleUpdates={[id]=original}}
+  x.v.Flush("sync");local mirrored=x.rows()[id]
+  check("record mirror preserves canonical source and original body fields",mirrored and mirrored.source==original.source and mirrored.clientVersion==nil and mirrored.requestedBy==nil and mirrored.bridgeUntrusted==nil and mirrored.donation.copper==123)
+  local metadata=x.e.OlympusVerifyDB.intake242.bridgeMetadata[id]
+  check("record mirror keeps explicit UNTRUSTED taint outside canonical body",metadata and metadata.untrusted==true and metadata.automaticAuthority==false)
 end
 do
   local x=fixture();local h=x.e.OlympusHmac

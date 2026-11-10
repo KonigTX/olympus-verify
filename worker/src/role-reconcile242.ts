@@ -7,12 +7,14 @@ import {countStatements} from './roster-effects';
 import {callBudget} from './roles';
 import {errorRef} from './log';
 import {CANONICAL_RANKS233} from './canonical-ranks233';
+import type {NativeSweep249} from './full-release-pass';
 
 export type RoleWorkDefer242=(label:string,work:()=>Promise<unknown>)=>void;
 const ID=/^[1-9][0-9]{16,19}$/;
 const REQUEST='role.request242',FINISHED='role.request242_finished';
 const PATH='/internal/roles242/continue';
 const encoder=new TextEncoder();
+const sweep249=(v:unknown):v is NativeSweep249=>!!v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).sort().join(',')==='id,n'&&typeof (v as NativeSweep249).id==='string'&&/^[a-f0-9]{32}$/.test((v as NativeSweep249).id)&&Number.isSafeInteger((v as NativeSweep249).n)&&(v as NativeSweep249).n>0;
 
 export async function requestRoleReconciliation242(env:Env,subject:string,reason:string):Promise<void>{
  if(!ID.test(subject))throw Error('role242_subject_invalid');
@@ -48,27 +50,28 @@ async function signature242(env:Env,text:string):Promise<string>{
  const key=await crypto.subtle.importKey('raw',encoder.encode(env.VERIFY_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
  return [...new Uint8Array(await crypto.subtle.sign('HMAC',key,encoder.encode('role-continuation242\n'+text)))].map(n=>n.toString(16).padStart(2,'0')).join('');
 }
-export async function kickRoleWork242(env:Env,kind:'requests'|'sweep'):Promise<void>{
+export async function kickRoleWork242(env:Env,kind:'requests'|'sweep',sweep?:NativeSweep249):Promise<void>{
  const base=new URL(env.PUBLIC_BASE_URL);
  if(base.protocol!=='https:'||base.username||base.password||base.pathname!=='/'||base.search||base.hash)throw Error('role242_origin_invalid');
- const text=JSON.stringify({kind,at:now(),nonce:crypto.randomUUID()});
+ if(sweep!==undefined&&(kind!=='sweep'||!sweep249(sweep)))throw Error('role249_sweep_invalid');
+ const text=JSON.stringify({kind,at:now(),nonce:crypto.randomUUID(),...(sweep?{sweep}:{})});
  const response=await fetch(new URL(PATH,base),{method:'POST',headers:{'Content-Type':'application/json','X-Olympus-Role-Continuation':await signature242(env,text)},body:text,redirect:'manual'});
  await response.body?.cancel();
  if(!response.ok)throw Error('role242_continuation_held');
 }
 
-export async function runRoleWork242(env:Env,kind:'requests'|'sweep',defer?:RoleWorkDefer242):Promise<void>{
- let more=false;
+export async function runRoleWork242(env:Env,kind:'requests'|'sweep',defer?:RoleWorkDefer242,sweep?:NativeSweep249):Promise<void>{
+ let more=false,nextSweep:NativeSweep249|undefined;
  try{
   if(kind==='requests')more=await requested242(env);
   else{
    const {nativeAdmission232,runFreshPass}=await import('./full-release-pass');
    const {captureLaneConfig}=await import('./full-release-roles');
    const count={used:0},bounded=countStatements(env,count),calls=callBudget(bounded);
-   const result=await runFreshPass(bounded,{calls,adm:nativeAdmission232(count,850)},'continuation',captureLaneConfig(bounded));
-   more=result.continuation===true;
+   const result=await runFreshPass(bounded,{calls,adm:nativeAdmission232(count,850),sweep},'continuation',captureLaneConfig(bounded));
+   more=result.continuation===true;nextSweep=result.nativeSweep;
   }
-  if(more&&defer)defer('roles242_continue',()=>kickRoleWork242(env,kind));
+  if(more&&defer&&(kind==='requests'||nextSweep))defer('roles242_continue',()=>kickRoleWork242(env,kind,nextSweep));
  }catch(error){console.error('role242_work_held',errorRef(error));}
 }
 
@@ -84,11 +87,11 @@ export async function handleRoleContinuation242(request:Request,env:Env,defer?:R
  const supplied=request.headers.get('X-Olympus-Role-Continuation')??'',expected=await signature242(env,text);
  let diff=supplied.length^expected.length;for(let n=0;n<expected.length;n++)diff|=(supplied.charCodeAt(n)||0)^expected.charCodeAt(n);
  if(diff)return new Response(null,{status:401});
- let body:{kind?:unknown;at?:unknown;nonce?:unknown};try{body=JSON.parse(text);}catch{return new Response(null,{status:400});}
- if(!body||typeof body!=='object'||Object.keys(body).sort().join(',')!=='at,kind,nonce'||!['requests','sweep'].includes(String(body.kind))||!Number.isSafeInteger(body.at)||Math.abs(now()-Number(body.at))>60||typeof body.nonce!=='string'||! /^[0-9a-f-]{36}$/.test(body.nonce))return new Response(null,{status:400});
+ let body:{kind?:unknown;at?:unknown;nonce?:unknown;sweep?:unknown};try{body=JSON.parse(text);}catch{return new Response(null,{status:400});}
+ if(!body||typeof body!=='object'||!['at,kind,nonce','at,kind,nonce,sweep'].includes(Object.keys(body).sort().join(','))||!['requests','sweep'].includes(String(body.kind))||!Number.isSafeInteger(body.at)||Math.abs(now()-Number(body.at))>60||typeof body.nonce!=='string'||! /^[0-9a-f-]{36}$/.test(body.nonce)||body.sweep!==undefined&&(body.kind!=='sweep'||!sweep249(body.sweep)))return new Response(null,{status:400});
  const claim=await env.DB.prepare('INSERT OR IGNORE INTO seen_interactions(id,seen_at) VALUES(?1,?2)').bind('roles242:'+body.nonce,now()).run();
  if(!claim.meta.changes)return new Response(null,{status:409});
- defer('roles242_work',()=>runRoleWork242(env,body.kind as 'requests'|'sweep',defer));
+ defer('roles242_work',()=>runRoleWork242(env,body.kind as 'requests'|'sweep',defer,body.sweep as NativeSweep249|undefined));
  return new Response(null,{status:202});
 }
 

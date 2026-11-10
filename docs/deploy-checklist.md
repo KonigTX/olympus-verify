@@ -7911,3 +7911,14 @@ The current registry is exactly17 families/41 logical reads; account-copy payloa
 
 Successful ingest schedules242 role continuations only for a current members-only scope. Legacy queue replies omit the Native verification cache; its explicit cache-only route stays available. Cache-only reads cannot register the outer queue role sweep. The four current help-copy checks now match approved High Council instructions without changing historicalPINS. Watcher remains0.6.22 and addon0.6.22. Compile/bundle plus a fresh restored443/442 D1 backup precede deployment; remaining focused checks run afterward from a separate frozen checkout so working edits cannot invalidate their source custody.
 
+
+
+## Worker .249 — finite role traversal and durable intake delivery
+
+The original .242 review found an unbounded continuation: the candidate selector rotates settled accounts too, so merely reaching the per-request limit cannot prove more distinct work remains. A signed, fixed-snapshot traversal ID now follows each continuation. The existing attempt audit marks visited subjects; the generation-filtered selector excludes them, and a superseded snapshot or unrecordable privacy-safe progress holds the chain. The token supplies scheduling context only. Native identity, current scope, account standing, unknown-effect custody, statement and HTTP admission remain authoritative. No schema or provider configuration changes.
+
+OlympusVerify and Watcher become0.6.23. Authentic missing-GUID receipts use the same empty MAC field; genuine whisper observations have distinct durable IDs while repeated delivery of one observation stays idempotent. Bridge mirrors retain the original body with untrusted provenance outside it. Signed receipt/cache changes participate in the legacy queue change detector. Rebuild the exact18-file public download, manifest and asset custody pins; preserve Config.lua, generated exchanges, SavedVariables and all Watcher state/locks.
+
+The owner-directed order remains TypeScript/bundle, Lua syntax and fresh restored443/442 D1 backup; protected exact-commit deploy and narrow public-file install; then affected regressions, hosted CI and completed exact-head automated review. A long test must read a frozen checkout. Earlier failed and contaminated attempts remain charged. The exact17 role retirement completed separately under Root custody; the unresolved original272 effect remains held. Approved branch verification stays pending at the owner's direction. In-game acceptance requires a signed-in safely idle client; a disconnected login screen is not acceptance.
+
+Rollback uses a preserved exact deployed commit through the protected deploy entrypoint, with bindings preserved. Do not restore production D1, reset uncertain claims, relink members or recreate removed role IDs as part of rollback.

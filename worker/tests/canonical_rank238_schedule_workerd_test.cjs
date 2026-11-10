@@ -42,7 +42,8 @@ async function run(qualified,label,scenario,source){
     assert.equal(u.href,'https://verify.example/internal/roles242/continue','exact_self_wake_URL');assert.equal(req.method,'POST','only_signed_self_POST');
     assert.equal(req.headers.get('content-type'),'application/json','typed_self_wake');assert.equal(req.headers.get('authorization'),null,'no_Discord_credential_at_self_boundary');
     const text=await req.text();assert(Buffer.byteLength(text)<=256,'bounded_self_wake');const wake=JSON.parse(text);
-    assert(wake&&typeof wake==='object'&&!Array.isArray(wake),'self_wake_object');assert.equal(Object.keys(wake).sort().join(','),'at,kind,nonce','exact_self_wake_keys');
+    assert(wake&&typeof wake==='object'&&!Array.isArray(wake),'self_wake_object');assert(['at,kind,nonce','at,kind,nonce,sweep'].includes(Object.keys(wake).sort().join(',')),'exact_self_wake_keys');
+    if(Object.hasOwn(wake,'sweep')){assert.equal(wake.kind,'sweep','sweep_token_kind');assert(wake.sweep&&typeof wake.sweep==='object'&&!Array.isArray(wake.sweep),'sweep_token_object');assert.equal(Object.keys(wake.sweep).sort().join(','),'id,n','sweep_token_keys');assert.match(wake.sweep.id,/^[a-f0-9]{32}$/,'sweep_token_id');assert(Number.isSafeInteger(wake.sweep.n)&&wake.sweep.n>0,'sweep_token_snapshot');}
     assert(['requests','sweep'].includes(wake.kind),'fixed_self_work_kind');assert(Number.isSafeInteger(wake.at)&&Math.abs(Math.floor(Date.now()/1000)-wake.at)<=60,'fresh_self_wake_TTL');
     assert(typeof wake.nonce==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(wake.nonce),'canonical_self_nonce');assert(!selfNonces.has(wake.nonce),'no_self_nonce_replay');
     const supplied=req.headers.get('X-Olympus-Role-Continuation')||'',expected=crypto.createHmac('sha256',seed.config.VERIFY_SECRET).update('role-continuation242\n'+text).digest('hex');

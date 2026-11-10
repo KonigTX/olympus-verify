@@ -37,7 +37,7 @@ local SECRET = cfg.secret
 -- 0.6.12: the example's placeholder is public, so a Config.lua copied without replacing it must not accept codes made from it.
 if type(SECRET) ~= "string" or SECRET == "" or string.find(SECRET, "^REPLACE_WITH_") then SECRET = nil end
 local secretWarned = false  -- 0.6.12: say once per session, not on every whisper, that codes cannot be checked
-local SOURCE_VERSION = "0.6.22" -- Keep this source fallback and OlympusVerify.toc aligned.
+local SOURCE_VERSION = "0.6.23" -- Keep this source fallback and OlympusVerify.toc aligned.
 local VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version"))
   or (GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version")) or SOURCE_VERSION
 local SET_NOTES = cfg.setNotes == true  -- SetNote is forbidden for addons on the Forever beta; leave false there
@@ -334,19 +334,20 @@ local function VerifyToken(text, anchored)
 end
 
 -- guid: the sender's character ID, from the whisper event itself (arg 12), when the client lets the addon read it
-local function HandleCode(source, sender, text, guid)
+local function HandleCode(source, sender, text, guid, lineId)
   if not SECRET then
     if not secretWarned then secretWarned = true; Print("Config.lua is missing or still has the example secret — codes cannot be checked. Put the shared secret in Config.lua and /reload.") end
     return
   end
   local token = VerifyToken(text, source ~= "mail")
   if not token then return end
+  local observation=source=="whisper" and OlympusVerifyLive242 and OlympusVerifyLive242.NewVerificationObservation(source,sender,guid,lineId) or nil
   local base = BaseName(sender)
   local key = L.normalizeCharacter(base)
   attempts[key] = (attempts[key] or 0) + 1
   if attempts[key] > MAX_ATTEMPTS then
     -- Local reply/crypto throttling must not erase the durable server intake.
-    if OlympusVerifyLive242 then OlympusVerifyLive242.CaptureVerification(source,sender,L.strictCode(token) or token,guid,nil,false) end
+    if OlympusVerifyLive242 then OlympusVerifyLive242.CaptureVerification(source,sender,L.strictCode(token) or token,guid,nil,false,observation) end
     return
   end
   -- A 6-symbol code is bound to this character; a 7-symbol request code (27 Sep) is bound to the Discord request, and
@@ -380,8 +381,9 @@ local function HandleCode(source, sender, text, guid)
   end
   local eventMember = member
   if cfg.membershipOnly == true then eventMember = nativeMembership and nativeMembership.member end
-  Event({ type = source, name = base, target = sender, code = code, ok = ok, inGuild = eventMember, kind = kind, guid = guid, nativeMembership = nativeMembership })
-  if OlympusVerifyLive242 then OlympusVerifyLive242.CaptureVerification(source, sender, code, guid, nativeMembership, ok) end
+  Event({ type = source, name = base, target = sender, code = code, ok = ok, inGuild = eventMember, kind = kind, guid = guid, nativeMembership = nativeMembership,
+    observationId=observation and observation.id or nil,ts=observation and observation.observedAt or nil })
+  if OlympusVerifyLive242 then OlympusVerifyLive242.CaptureVerification(source, sender, code, guid, nativeMembership, ok,observation) end
   if source=="whisper" and nativeMembership and nativeMembership.member==false and OlympusOfficerInvites233 then
     OlympusOfficerInvites233.ObserveWhisper(sender,guid,code,nativeMembership)
   end
@@ -3687,7 +3689,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
     local senderGuid = Presence.Readable((select(12, ...)))
     if Presence.LearnMyName(sender, senderGuid) then Presence.Safely("sending notes that waited for your name", Presence.SendWaiting) end
     NoteContact(sender)  -- before anything else: they have now whispered us, so they may be answered
-    HandleCode("whisper", sender, text, senderGuid)
+    HandleCode("whisper", sender, text, senderGuid,(select(11, ...)))
     Presence.Seen(sender)  -- after HandleCode, which may just have queued them
   elseif event == "CHAT_MSG_GUILD" then
     Presence.Safely("reading Discord identity in guild chat", Diag.OnGuildChat, ...)

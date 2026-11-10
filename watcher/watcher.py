@@ -106,7 +106,7 @@ LINE_TS_RE = re.compile(r"^(?P<mo>\d{1,2})/(?P<d>\d{1,2})\s+(?P<h>\d{1,2}):(?P<m
 CLIENT_IN = "Active Player Created"
 CLIENT_OUT = ("Client Object Manager Destroyed", "Client Destroy")
 
-WATCHER_VERSION = "0.6.22"
+WATCHER_VERSION = "0.6.23"
 STRICT_DISPLAY_PROTOCOL = "launch-roster-display-v1"
 STRICT_DISPLAY_PATH = "/queue/unverified?keyVersion=" + STRICT_DISPLAY_PROTOCOL
 STRICT_DISPLAY_MAX_BYTES = 512 * 1024
@@ -1594,7 +1594,7 @@ class Watcher:
                 key = self.code_key(t, name, strict) if strict else f"{t[0]}:{codes.normalize_character(name)}:{raw}"
                 if not strict:
                     continue
-                if intake242.handles_verify(self, name, strict or raw) or self.state.was_seen(key) or key in batch_keys:
+                if intake242.handles_verify(self, name, strict or raw, e) or self.state.was_seen(key) or key in batch_keys:
                     continue
                 if strict:
                     self.note_ticket_sender(name, strict)
@@ -1839,12 +1839,14 @@ class Watcher:
         if not ok or not res:
             return
         entries = res.get("entries") or []
-        body = self.render_queue(entries, bool(res.get("setGuildNote")), self._unverified, intake242.receipts(self), intake242.verification_results(self, res))
+        receipts = intake242.receipts(self)
+        cached = intake242.verification_results(self, res)
+        body = self.render_queue(entries, bool(res.get("setGuildNote")), self._unverified, receipts, cached)
         # Hash the inputs, not the rendered file: generatedAt changes every second, so hashing the body meant the
         # comparison never matched and the queue file plus the state file were rewritten on every single poll.
         # The unverified list is an input too. Leaving it out would repeat the .24 trap, where new data changed and the
         # gate still said "unchanged", so the file never reached the addon.
-        h = hashlib.sha256(json.dumps({"e": entries, "n": bool(res.get("setGuildNote")), "u": self._unverified}, sort_keys=True).encode("utf-8")).hexdigest()
+        h = hashlib.sha256(json.dumps({"e": entries, "n": bool(res.get("setGuildNote")), "u": self._unverified, "intakeReceipts242": receipts, "verificationResults242": cached}, sort_keys=True).encode("utf-8")).hexdigest()
         if h == self.state.d["queue_hash"] and self.queue_file.exists():
             self.retry_queue_written()
             return

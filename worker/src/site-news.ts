@@ -78,6 +78,11 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".249", date: "2026-11-10", lines: [
+      "Account update batches finish after one complete roster traversal. Fresh verification whispers and donation receipts retain their own delivery records.",
+    ],
+  },
+  {
     build: ".248", date: "2026-11-10", lines: [
       "Status checks do not start account updates. Inactive modes keep their original request behavior.",
     ],

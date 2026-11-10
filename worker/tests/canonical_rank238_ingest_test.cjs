@@ -16,7 +16,7 @@ const body238=String.raw`
  const debtIds238=Array.from({length:206},(_,i)=>(900000000000000000n+BigInt(i)).toString()),guid238=i=>'Player-4613-'+(i+1000).toString(16).padStart(8,'0');
  const letters238=i=>String.fromCharCode(97+Math.floor(i/676)%26,97+Math.floor(i/26)%26,97+i%26);
  function members238(index){const out=[{name:'Fern Melder',guid:'Player-4613-12345678',rank:N.NATIVE_RANK_NAMES232[index],rankIndex:index}];for(let i=0;i<916;i++)out.push({name:(i<206?'Backlog Fixture ':'Unlinked Fixture ')+letters238(i),guid:guid238(i),rank:'Member',rankIndex:8});return out;}
- async function backlog238(){for(let i=0;i<206;i++){const s=debtIds238[i],name='Backlog Fixture '+letters238(i),key=name.toLowerCase();await env.DB.prepare('INSERT INTO members(discord_id)VALUES(?)').bind(s).run();await env.DB.prepare("INSERT INTO characters(name_key,name,discord_id,status,bound_at,verified_at,source,guid)VALUES(?,?,?,'member',?,?,'whisper',?)").bind(key,name,s,T-3600,T-3600,guid238(i)).run();await env.DB.prepare("INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,attempts,native_profile,native_rank,native_rank_name,native_guid,roster_id,created_at,expires_at,checked_at)VALUES(?,?,'canonical_routine233',?,?,1,'settled','canonical233_observed_without_dispatch',0,?,?,?,?,1,?,?,?)").bind('f'.repeat(24)+i.toString(16).padStart(8,'0'),s,G,R,C.CANONICAL_PROFILE233,i<13?null:8,'Member',guid238(i),T-2000,T-1700,T-1999).run();await env.DB.prepare("INSERT INTO audit(ts,actor,action,subject,details)VALUES(?,'system','role.native232_attempt',?,?)").bind(T-1000+i,s,JSON.stringify({n:1,rank:8,result:'source_held'})).run();}}
+ async function backlog238(count238=206){for(let i=0;i<count238;i++){const s=debtIds238[i],name='Backlog Fixture '+letters238(i),key=name.toLowerCase();await env.DB.prepare('INSERT INTO members(discord_id)VALUES(?)').bind(s).run();await env.DB.prepare("INSERT INTO characters(name_key,name,discord_id,status,bound_at,verified_at,source,guid)VALUES(?,?,?,'member',?,?,'whisper',?)").bind(key,name,s,T-3600,T-3600,guid238(i)).run();await env.DB.prepare("INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,attempts,native_profile,native_rank,native_rank_name,native_guid,roster_id,created_at,expires_at,checked_at)VALUES(?,?,'canonical_routine233',?,?,1,'settled','canonical233_observed_without_dispatch',0,?,?,?,?,1,?,?,?)").bind('f'.repeat(24)+i.toString(16).padStart(8,'0'),s,G,R,C.CANONICAL_PROFILE233,i<13?null:8,'Member',guid238(i),T-2000,T-1700,T-1999).run();await env.DB.prepare("INSERT INTO audit(ts,actor,action,subject,details)VALUES(?,'system','role.native232_attempt',?,?)").bind(T-1000+i,s,JSON.stringify({n:1,rank:8,result:'source_held'})).run();}}
  async function arrange238(targetAttempt){for(let i=0;i<206;i++){const at=i<11?targetAttempt-1000+i:i<13?targetAttempt+1:targetAttempt-1000;await env.DB.prepare("DELETE FROM audit WHERE actor='system' AND action='role.native232_attempt' AND subject=?").bind(debtIds238[i]).run();await env.DB.prepare("INSERT INTO audit(ts,actor,action,subject,details)VALUES(?,'system','role.native232_attempt',?,?)").bind(at,debtIds238[i],JSON.stringify({n:2,rank:8,result:'source_held'})).run();}}
  async function upload238(index){const deferred=[];http=[];const response=await ingest.postRoster(env,{exportedAt:T,nativeGuild:scope.guild,nativeRealm:scope.realm,members:members238(index)},(label,work)=>{if(typeof work!=='function')throw Error('unstarted_original_defer_required');deferred.push({label,work});});check('actual postRoster accepts complete917-row Native snapshot',response.status===200&&db.prepare('SELECT member_count,complete,trusted FROM roster_snapshots ORDER BY id DESC LIMIT 1').get().member_count===917);check('original FreshIngest registers exactly one unstarted Native pass',deferred.length===1&&deferred[0].label==='fresh_roles_ingest');const results=[];for(const job of deferred)results.push(await job.work());console.log('canonical238_ingest_metrics',JSON.stringify({rank:index,state:results[0]?.state,reason:results[0]?.reason,counts:results[0]?.counts}));check('deferred original Native pass obeys two-subject/sharedHTTP/physicalSQL bounds',results.length===1&&results[0].state==='done'&&results[0].counts.visits<=10&&results[0].counts.requests<=40&&results[0].counts.statements+5<=388);return{response,pass:results[0]};}
  const identity238=()=>JSON.stringify({g:db.prepare('SELECT generation,state FROM privacy_subjects WHERE subject_id=?').get(A),c:db.prepare('SELECT guid,bound_at,verified_at FROM characters WHERE discord_id=?').all(A),p:db.prepare('SELECT id,created_at,consumed_at,consumed_source FROM pending WHERE discord_id=?').all(A)});
@@ -43,6 +43,58 @@ const body238=String.raw`
  code=await setup233(6);reply=await invoke(code);options.putUnknown=true;T++;await upload238(7);const unknown238=rows().find(r=>r.state==='unknown'&&r.attempts===1),unknownBytes238=JSON.stringify(unknown238);check('genuine lost original PUT stays unknown after one owned removal without compensation guess',!!unknown238&&put()===1&&del()===1);options.putUnknown=false;T++;await upload238(6);check('priority never retries or erases all-generation original unknown custody',put()===0&&del()===0&&JSON.stringify(rows().find(r=>r.id===unknown238?.id))===unknownBytes238);db.close();
  code=await setup233(6);reply=await invoke(code);await env.DB.prepare('UPDATE members SET banned=1 WHERE discord_id=?1').bind(A).run();T++;await upload238(7);check('current restriction gets owned removal and never replacement rank',del()===1&&put()===0&&!present.includes(C.CANONICAL_RANKS233[7].roleId)&&!present.includes(C.CANONICAL_RANKS233[8].roleId));db.close();
  code=await setup233(6);reply=await invoke(code);T+=601;http=[];const counter238={used:0},counted238=E238.countStatements(env,counter238),budget238=load('./roles').callBudget(counted238);F238.forgetFreshPassThrottle();const stale238=await F238.runFreshPass(counted238,{calls:budget238,adm:F238.nativeAdmission232(counter238,700)},'ingest',L238.captureLaneConfig(counted238));check('stale snapshot still holds at original opaque issuer with no priority effect',stale238.counts.held>=1&&put()===0&&del()===0&&present.includes(C.CANONICAL_RANKS233[7].roleId));db.close();
+
+ // .249: exercise actual HMAC receiver + original child pass, not a 202-only wake stub.
+ // The61 inherited backlog fixtures must still hold at the real opaque issuer;
+ // only the original consumed account has genuine grant authority in this test.
+ code=await setup233(6);reply=await invoke(code);await backlog238(61);await stage241(6);
+ const snapshot249=db.prepare('SELECT MAX(id) n FROM roster_snapshots').get().n;
+ const W249=load('./role-reconcile242'),jobs249=[],signals249=[],physical249=[],oldFetch249=globalThis.fetch;
+ const bridge249=async(url,init)=>{
+  const destination249=new URL(String(url));if(destination249.origin!=='https://verify.example'||destination249.pathname!=='/internal/roles242/continue')return oldFetch249(url,init);
+  if(String(url)!=='https://verify.example/internal/roles242/continue'||init.method!=='POST'||init.redirect!=='manual')throw Error('249_fixed_signed_child_destination');
+  const payload=JSON.parse(init.body);signals249.push(payload);
+  const count={used:0},childEnv=E238.countStatements(env,count);
+  const response=await W249.handleRoleContinuation242(new Request(url,{method:init.method,headers:init.headers,body:init.body}),childEnv,(label,work)=>jobs249.push({label,work,count}));
+  if(response.status!==202)throw Error('249_actual_signed_child_refused');return response;
+ };
+ const drain249=async()=>{let steps=0;while(jobs249.length){if(++steps>100)throw Error('249_unbounded_continuation');const job=jobs249.shift();await job.work();physical249.push(job.count.used);}};
+ globalThis.fetch=bridge249;http=[];
+ try{await W249.kickRoleWork242(env,'sweep');await drain249();}finally{globalThis.fetch=oldFetch249;}
+ const walk249=db.prepare("SELECT json_extract(details,'$.walk') walk FROM audit WHERE action='role.native232_attempt' AND json_type(details,'$.walk')='text' ORDER BY id DESC LIMIT 1").get()?.walk;
+ const checked249=db.prepare("SELECT subject,COUNT(*) n FROM audit WHERE actor='system' AND action='role.native232_attempt' AND json_extract(details,'$.walk')=? GROUP BY subject").all(walk249);
+ check('249 actual signed child chain drains62 candidates across the50-row window',signals249.length>=7&&signals249.length<20&&jobs249.length===0&&checked249.length===62&&checked249.every(r=>r.n===1));
+ check('249 every continuation preserves the same fixed snapshot and sweep generation',/^[a-f0-9]{32}$/.test(walk249)&&signals249.slice(1).every(p=>p.sweep?.id===walk249&&p.sweep.n===snapshot249));
+ check('249 each actual child retains850 physical work plus5 nonce admission and40HTTP/max10 fences',physical249.every(n=>n<=855)&&db.prepare("SELECT details FROM audit WHERE action='role.fresh_state' AND json_extract(details,'$.walk')=?").all(walk249).every(r=>{const d=JSON.parse(r.details);return d.visits<=10&&d.attempts<=40;}));
+ check('249 stable already-correct chain performs no role effects',put()===0&&del()===0&&present.includes(C.CANONICAL_RANKS233[7].roleId));
+ const oldSnapshot249=signals249.at(-1).sweep.n,attemptCount249=checked249.reduce((n,r)=>n+r.n,0);T++;const newer249=await stage241(7);http=[];
+ globalThis.fetch=bridge249;const oldSignals249=signals249.length;
+ try{await W249.kickRoleWork242(env,'sweep',{id:walk249,n:oldSnapshot249});await drain249();}finally{globalThis.fetch=oldFetch249;}
+ check('249 superseded snapshot stops one signed child without resetting or replaying its generation',signals249.length===oldSignals249+1&&jobs249.length===0&&put()===0&&del()===0&&db.prepare("SELECT COUNT(*) n FROM audit WHERE action='role.native232_attempt' AND json_extract(details,'$.walk')=?").get(walk249).n===attemptCount249);
+ http=[];const urgent249=await newer249.work();
+ check('249 fresh original ingest still prioritizes the new urgent Raider delta',urgent249.state==='done'&&put()===1&&del()===1&&present.includes(C.CANONICAL_RANKS233[8].roleId)&&!present.includes(C.CANONICAL_RANKS233[7].roleId));db.close();
+
+ // A new scheduling generation cannot replay the original all-generation unknown.
+ code=await setup233(6,{putUnknown:true});reply=await invoke(code);
+ const originalUnknown249=rows().find(r=>r.state==='unknown'&&r.attempts===1),unknownBytes249=JSON.stringify(originalUnknown249);
+ check('249 unknown-chain fixture starts with one actual lost original PUT',!!originalUnknown249&&put()===1);
+ options.putUnknown=false;await backlog238(61);await stage241(6);jobs249.length=0;signals249.length=0;http=[];globalThis.fetch=bridge249;
+ try{await W249.kickRoleWork242(env,'sweep');await drain249();}finally{globalThis.fetch=oldFetch249;}
+ check('249 complete signed continuation chain never replays or alters original unknown custody',jobs249.length===0&&signals249.length<20&&put()===0&&del()===0&&JSON.stringify(rows().find(r=>r.id===originalUnknown249?.id))===unknownBytes249);db.close();
+
+ // Inactive private subjects are excluded; an active generation race may deny
+ // the progress audit and must stop held without forcing private audit bytes.
+ code=await setup233(6);reply=await invoke(code);await backlog238(61);
+ await stage241(6);const inactive249=debtIds238[0];await env.DB.prepare("INSERT INTO privacy_subjects(subject_id,generation,state,revision,created_at,updated_at)VALUES(?1,?2,'retiring',1,?3,?3)").bind(inactive249,'d'.repeat(32),T).run();
+ jobs249.length=0;signals249.length=0;http=[];globalThis.fetch=bridge249;
+ try{await W249.kickRoleWork242(env,'sweep');await drain249();}finally{globalThis.fetch=oldFetch249;}
+ check('249 inactive historical candidate cannot perpetuate a self-wake or receive private visit audit',jobs249.length===0&&signals249.length<20&&db.prepare("SELECT COUNT(*) n FROM audit WHERE action='role.native232_attempt' AND subject=? AND json_type(details,'$.walk')='text'").get(inactive249).n===0);
+ db.close();code=await setup233(6);reply=await invoke(code);await backlog238(61);T++;await stage241(7);
+ let raced249=false;options.onHTTP=async(method)=>{if(!raced249&&method==='GET'){raced249=true;await env.DB.prepare("UPDATE privacy_subjects SET generation=?1,revision=revision+1 WHERE subject_id=?2").bind('e'.repeat(32),A).run();}};
+ jobs249.length=0;signals249.length=0;http=[];globalThis.fetch=bridge249;
+ try{await W249.kickRoleWork242(env,'sweep');await drain249();}finally{globalThis.fetch=oldFetch249;}
+ check('249 changed-G refused visit stamp holds chain without a second self-wake or role replay',raced249&&signals249.length===1&&jobs249.length===0&&put()===0&&del()===0&&db.prepare("SELECT COUNT(*) n FROM audit WHERE action='role.native232_attempt' AND subject=? AND json_type(details,'$.walk')='text'").get(A).n===0);db.close();
+
  console.log(ok+'/'+n+' canonical238 original Native ingest checks passed');process.exitCode=ok===n?0:1;
 `;
 source238=source238.slice(0,source238.indexOf(first238))+body238+source238.slice(source238.indexOf(last238)+last238.length);

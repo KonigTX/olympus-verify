@@ -139,6 +139,19 @@ export const CANONICAL233_WALK_SELECT=`WITH candidates AS (
  ranked AS (SELECT w.*,r.restriction_position,d.native_delta_position FROM work w LEFT JOIN restriction_order r ON r.subject=w.subject LEFT JOIN native_delta_order241 d ON d.subject=w.subject)
  SELECT subject,top_rank,urgent FROM ranked ORDER BY CASE WHEN restriction_position=1 THEN 0 WHEN native_delta_position=1 THEN 1 WHEN NOT restricted AND new_target THEN 2 WHEN NOT restricted AND urgent THEN 3 WHEN restricted AND urgent THEN 4 ELSE 5 END,CASE WHEN urgent THEN last_attempt ELSE CASE WHEN subject>?2 THEN 0 ELSE 1 END END,subject LIMIT ?3`;
 
+// .249: a continuation visits each candidate once in its fixed-snapshot sweep.
+// Keep the original selectors intact for ordinary priority/source consumers.
+function finiteSweep249(sql:string):string{
+ const boundary='FROM candidates)';
+ if(sql.split(boundary).length!==2)throw Error('native249_selector_boundary');
+ return sql.replace(boundary,`FROM candidates WHERE typeof(subject)='text' AND length(subject) BETWEEN 17 AND 20 AND subject NOT GLOB '*[^0-9]*'
+ AND NOT EXISTS(SELECT 1 FROM privacy_subjects privacy249 WHERE privacy249.subject_id=candidates.subject AND privacy249.state<>'active')
+ AND NOT EXISTS(SELECT 1 FROM audit checked WHERE checked.actor='system' AND checked.action='role.native232_attempt' AND checked.subject=candidates.subject
+ AND json_extract(CASE WHEN json_valid(checked.details) THEN checked.details ELSE '{}' END,'$.walk')=?5))`);
+}
+export const NATIVE232_SWEEP249_SELECT=finiteSweep249(NATIVE232_WALK_SELECT);
+export const CANONICAL233_SWEEP249_SELECT=finiteSweep249(CANONICAL233_WALK_SELECT);
+
 // --- configuration capture (A1, Q6). Synchronous, descriptor-based: an accessor or inherited key is never invoked.
 export const LANE_CONFIG_KEYS=Object.freeze(['CANONICAL_ENTITLEMENTS233','CANONICAL_RANKS233','FULL_RELEASE_ROLES','STAFF_TEN_RANK_ROLES','LINKS_NOT_BEFORE','LINKS_NOT_BEFORE_CLOCK_GATED','ROSTER_MIN_MEMBERS','ROSTER_MAX_SHRINK_PCT',
  'ROLE_CALL_BUDGET','GUILD_ID','DISCORD_APP_ID','DISCORD_BOT_TOKEN','ROLE_GUILD_MEMBER','ROLE_OFFICER','ROLE_MODERATOR','ROLE_GUILD_LEADER',

@@ -52,7 +52,7 @@ const check = (name, cond) => { n++; if (cond) ok++; console.log((cond ? "PASS "
 
   console.log("\n== the button: a code and the whole line to paste, nothing typed ==");
   const first = await content(await handleInteraction(env, button(A)));
-  check(".230 the actual request-code reply names OLYMPUS PRIME rather than the ambiguous main guild", first.includes("**OLYMPUS PRIME**") && !first.includes("main Olympus guild"));
+  check(".242 the actual request-code reply requires server-recorded Olympus identity rather than a typed guild claim", first.includes("Your guild must have an approved server-recorded Olympus identity. A typed guild name or a roster name alone never links an account.") && !first.includes("main Olympus guild"));
   check(".230 the actual request-code reply offers progress and current instructions without an automatic role promise", first.includes("**My status**") && first.includes("current instructions") && first.includes("ask High Council") && !first.includes("follows automatically") && !first.includes("roles follow automatically"));
   const code = (first.match(/Your code: `([A-Z2-9]{7})`/) || [])[1];
   check("the button answers with a 7-symbol request code", !!code);
@@ -88,7 +88,7 @@ const check = (name, cond) => { n++; if (cond) ok++; console.log((cond ? "PASS "
   check("/verify with nothing typed behaves like the button", bare.includes(code2));
   const named = await content(await handleInteraction(env, slash(A, "Thrall")));
   check("/verify Thrall gives a 6-symbol code bound to Thrall", /Your code for \*\*Thrall\*\*: `[A-Z2-9]{6}`/.test(named) && named.includes("logged in as **Thrall**"));
-  check(".230 the actual named-character reply uses the same flagship and truthful access instructions", named.includes("**OLYMPUS PRIME**") && named.includes("current instructions") && named.includes("ask High Council") && !named.includes("follows automatically") && !named.includes("main Olympus guild"));
+  check(".242 the actual named-character reply uses the same server-recorded identity and truthful access instructions", named.includes("Your guild must have an approved server-recorded Olympus identity. A typed guild name or a roster name alone never links an account.") && named.includes("current instructions") && named.includes("ask High Council") && !named.includes("follows automatically") && !named.includes("main Olympus guild"));
 
   console.log("\n== a verification ban closes the account's open codes ==");
   const OFFICER = "1549581384035893328";

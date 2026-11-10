@@ -83,6 +83,45 @@ class DurableIntake242Tests(unittest.TestCase):
             sibling.write_text('OlympusDB = { pendingRoleUpdates = { ["a"] = { id="a", type="donation", character="Different", requestedAt=1, }, }, }',encoding="utf-8")
             intake242.collect(w)
             self.assertTrue(w.state.d["intake242"]["a"]["sourceConflict"])
+    def test_bridge_metadata_preserves_original_body_and_does_not_hide_body_drift(self):
+        with TemporaryDirectory() as directory:
+            path=Path(directory)/"OlympusVerify.lua"
+            entry='{ id="a", type="donation", source="original-record", character="First Last", requestedAt=1, }'
+            path.write_text('OlympusVerifyDB = { intake242 = { entries = { ["a"] = '+entry+' }, bridgeMetadata = { ["a"] = { untrusted=true, origin="OlympusRecordDB-pendingRoleUpdates", automaticAuthority=false, }, }, }, }',encoding="utf-8")
+            sibling=path.with_name("OlympusRecord.lua")
+            sibling.write_text('OlympusRecordDB = { pendingRoleUpdates = { ["a"] = '+entry+' }, }',encoding="utf-8")
+            w=self.watcher({},[]);w.sv_file=path
+            intake242.collect(w);row=w.state.d["intake242"]["a"]
+            self.assertFalse(row.get("sourceConflict",False));self.assertTrue(row["bridgeUntrusted"])
+            self.assertEqual(row["body"]["source"],"original-record");self.assertNotIn("bridgeUntrusted",row["body"])
+            row.update(state="outcome_unknown",attempted=True);original_sha=row["sha256"]
+            intake242.collect(w)
+            self.assertEqual((row["state"],row["attempted"],row["sha256"]),("outcome_unknown",True,original_sha))
+            sibling.write_text('OlympusRecordDB = { pendingRoleUpdates = { ["a"] = '+entry.replace('First Last','Changed Name')+' }, }',encoding="utf-8")
+            intake242.collect(w)
+            self.assertTrue(row["sourceConflict"]);self.assertEqual(row["sha256"],original_sha)
+    def test_exact_observation_only_suppresses_its_own_saved_event(self):
+        row=original();row["body"].update(source="whisper",guid="Player-1-ABCD",observationId="a"*32,observedAt=100)
+        row.update(state="outcome_unknown",attempted=True)
+        w=self.watcher({"a":row},[])
+        same={"type":"whisper","guid":"Player-1-ABCD","observationId":"a"*32,"ts":100}
+        self.assertTrue(intake242.handles_verify(w,"First Last","ABCDEF",same))
+        self.assertFalse(intake242.handles_verify(w,"First Last","ABCDEF",{**same,"observationId":"b"*32,"ts":701}))
+        self.assertFalse(intake242.handles_verify(w,"First Last","ABCDEF",None))
+        self.assertEqual((row["state"],row["attempted"]),("outcome_unknown",True))
+    def test_legacy_observation_matches_exact_missing_proof_time_not_all_uses_of_code(self):
+        row=original();row["body"].update(source="whisper",observedAt=100)
+        row.update(state="rejected",attempted=True);w=self.watcher({"a":row},[])
+        self.assertTrue(intake242.handles_verify(w,"First Last","ABCDEF",{"type":"whisper","ts":100}))
+        self.assertFalse(intake242.handles_verify(w,"First Last","ABCDEF",{"type":"whisper","ts":701}))
+        self.assertFalse(intake242.handles_verify(w,"First Last","ABCDEF",{"type":"whisper","ts":100,"guid":"Player-1-ABCD"}))
+        self.assertEqual(row["state"],"rejected")
+    def test_receipt_none_guid_is_signed_as_empty_without_changing_original_receipt(self):
+        row=original(kind="donation");row.update(state="done",acknowledgedAt=100,receipt={"id":"a","status":"done","character":"First Last","guid":None,"discordRole":""})
+        w=self.watcher({"a":row},[])
+        with patch.object(intake242.time,"time",return_value=101):r=intake242.receipts(w)[0]
+        self.assertEqual(r["guid"],"");self.assertIsNone(row["receipt"]["guid"])
+        self.assertEqual(r["mac"],hmac.new(b"test-key",b"intake242|a|done||first last||100|86500",hashlib.sha256).hexdigest()[:32])
 
 if __name__ == "__main__":
     unittest.main()

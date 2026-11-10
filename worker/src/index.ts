@@ -369,7 +369,7 @@ async function runSourceCanonicalRankScheduledBody(env:Env,ctx:ExecutionContext,
   const result=await pass.runFreshPass(counted,{calls,adm:pass.nativeAdmission232(count,CANONICAL_RANK_CHILD_STATEMENTS)},'scheduled',lane);check();
   // A signed new request owns its own statement/subrequest budget.
   await kickRoleWork242(env,'requests');
-  if(result.continuation)await kickRoleWork242(env,'sweep');check();
+   if(result.continuation&&result.nativeSweep)await kickRoleWork242(env,'sweep',result.nativeSweep);check();
  });
 }
 
@@ -741,7 +741,7 @@ async function freshRegistrationRefused(env: Env, trigger: string): Promise<void
 }
 
 /** Bumped with every change that needs a redeploy, so GET /health shows which build is live. */
-const BUILD = "2026-11-10.248 Current-scope relay boundaries";
+const BUILD = "2026-11-10.249 Finite role sweeps and durable intake";
 
 /**
  * Presence of each secret (never the value) and a D1 round trip — enough to tell a missing `wrangler secret put` from a
