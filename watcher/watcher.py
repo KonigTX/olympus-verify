@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import errno
 import hashlib
+import hmac
 import http.client
 import json
 import math
@@ -35,6 +36,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from enum import Enum
@@ -106,7 +108,7 @@ LINE_TS_RE = re.compile(r"^(?P<mo>\d{1,2})/(?P<d>\d{1,2})\s+(?P<h>\d{1,2}):(?P<m
 CLIENT_IN = "Active Player Created"
 CLIENT_OUT = ("Client Object Manager Destroyed", "Client Destroy")
 
-WATCHER_VERSION = "0.6.26"
+WATCHER_VERSION = "0.6.27"
 STRICT_DISPLAY_PROTOCOL = "launch-roster-display-v1"
 STRICT_DISPLAY_PATH = "/queue/unverified?keyVersion=" + STRICT_DISPLAY_PROTOCOL
 STRICT_DISPLAY_MAX_BYTES = 512 * 1024
@@ -244,6 +246,7 @@ class Worker:
         if not isinstance(token, str) or not token or any(ord(c) <= 32 or ord(c) == 127 for c in token):
             raise ValueError("watcher_token is empty or contains spaces or line breaks; paste the Worker secret WATCHER_TOKEN again")
         self.token = token
+        self._wake_binding264 = hashlib.sha256(json.dumps([self.base, self.token]).encode("utf-8")).hexdigest()
         self.opener = urllib.request.build_opener(NoRedirect())
         self.pause_state: State | None = None  # set by Watcher, so the pause lives in the state file
         self._pause: dict[str, Any] = {"worker_retry_at": 0, "worker_retry_status": None}
@@ -385,6 +388,49 @@ class Worker:
             time.sleep(delay)
             delay *= 2
         return False, "unreachable"
+
+    def _wake_pause264(self, status: int, headers: Any) -> None:
+        if 300 <= status < 400:
+            self._pause_for(status, self.PAUSE_REDIRECT, "worker optional sweep redirect refused; all requests paused")
+        elif status in (401, 403, 429):
+            seconds = max(self.PAUSE_AUTH if status in (401, 403) else self.PAUSE_RATE, self._retry_after(headers)) + random.uniform(0, 1)
+            self._pause_for(status, seconds, f"worker optional sweep -> {status}; all requests paused")
+
+    def wake_sweep264(self, secret: str) -> bool:
+        """One fresh scheduling hint, never a customer original, role receipt or retry."""
+        if (getattr(self, 'membership_only', False) is not True or self.paused()
+                or not isinstance(secret, str) or not secret
+                or hashlib.sha256(json.dumps([self.base, self.token]).encode("utf-8")).hexdigest() != self._wake_binding264):
+            return False
+        at = int(time.time())
+        if at <= 0:
+            return False
+        body = json.dumps({"kind": "sweep", "at": at, "nonce": str(uuid.uuid4()), "independent": True}, separators=(",", ":"), allow_nan=False).encode("utf-8")
+        signature = hmac.new(secret.encode("utf-8"), b"role-continuation242\n" + body, hashlib.sha256).hexdigest()
+        url = self.base + "/internal/roles242/continue"
+        req = urllib.request.Request(url, data=body, method="POST")
+        req.add_header("Authorization", f"Bearer {self.token}")
+        req.add_header("Content-Type", "application/json")
+        req.add_header("User-Agent", f"olympus-verify-watcher/{WATCHER_VERSION}")
+        req.add_header("X-Olympus-Role-Continuation", signature)
+        try:
+            with self.opener.open(req, timeout=20) as response:
+                status = response.status
+                headers = response.headers
+                # No redirects, unbounded reads or JSON/customer ACK adoption.
+                acknowledged = status == 202 and response.geturl() == url and response.read(1) == b""
+        except urllib.error.HTTPError as error:
+            try:
+                self._wake_pause264(error.code, error.headers)
+            finally:
+                error.close()
+        except (urllib.error.URLError, TimeoutError, OSError, http.client.HTTPException):
+            pass  # An unknown scheduling outcome is never resent with this nonce.
+        else:
+            if status != 202:
+                self._wake_pause264(status, headers)
+            return acknowledged
+        return False
 
 
 class NoCustody(RuntimeError):
@@ -531,6 +577,8 @@ class Watcher:
         self.poll = max(1.0, _seconds(cfg, "poll_seconds", 2))
         self.queue_poll = max(5.0, _seconds(cfg, "queue_poll_seconds", 30))
         self._last_queue_pull = 0.0
+        self._last_role_wake264: float | None = None
+        self._role_wake_startup264: str | None = None
         # Who is in the guild but not verified. Slow on purpose: the addon reads the queue file only at login or
         # /reload, so fetching this more often than a person reloads buys nothing and costs D1 reads (the free tier
         # ran out of writes once already, on 18 Sep). A roster upload forces the next fetch, since that is when it moves.
@@ -1902,6 +1950,8 @@ class Watcher:
                 body = self.render_queue([], False, intake_receipts=receipts, verification_results=cached)
                 self.queue_file.parent.mkdir(parents=True, exist_ok=True)
                 atomic_local_text(self.queue_file, body)
+            if cache_okay:
+                self._optional_role_wake264(cache_response)
             return
         if self.state.d.get("queue_written_pending") or self.state.d.get("queue_written_original"):
             self.retry_queue_written()
@@ -2246,13 +2296,35 @@ class Watcher:
                 log("request codes: " + ("on — Get my code hands them out" if rel.get("requestCodes") else "waiting — the button asks for a character name until an addon 0.6.0+ has checked in"))
         return 0 if ok else 1
 
+    def _optional_role_wake264(self, cache: Any) -> None:
+        if (not self.membership_only or getattr(self.worker, 'membership_only', False) is not True
+                or self._custody_halted or self.worker.paused()
+                or self._role_wake_startup264 != self._delivery_binding()
+                or not isinstance(cache, dict) or cache.get("presenceOnly") is not True
+                or cache.get("independentRoleWake264") is not True):
+            return
+        at = time.monotonic()
+        if not math.isfinite(at) or self._last_role_wake264 is not None and at - self._last_role_wake264 < 30:
+            return
+        self._last_role_wake264 = at  # one attempt, including an unknown/refused result; no immediate retry
+        try:
+            if self.worker.wake_sweep264(self.secret):
+                log("role sweep wake: scheduling acknowledged; no role outcome observed")
+        except OSError as error:
+            self._custody_halted = True
+            self._state_write_failed("optional-sweep-pause", error)
+
     def require_launch_worker(self) -> None:
+        self._role_wake_startup264 = None
         if not self.membership_only:
             return
         okay, response = self.worker.call("GET", "/health", retries=1)
         state = response.get("verification") if okay and isinstance(response, dict) and response.get("ok") is True else None
         if not isinstance(state, dict) or state.get("mode") != "members-only" or state.get("nativeScopePinned") is not True or type(state.get("nativeMembershipProofVersion")) is not int or state["nativeMembershipProofVersion"] != 1:
             raise LaunchNotReady("launch verification Worker/profile is not ready; ingestion was not started")
+        build = re.fullmatch(r"\d{4}-\d{2}-\d{2}\.(\d{1,6})(?: .*)?", response.get("build", "")) if isinstance(response.get("build"), str) else None
+        if build is not None and int(build[1]) >= 264:
+            self._role_wake_startup264 = self._delivery_binding()
 
     def run(self) -> None:
         self.require_launch_worker()

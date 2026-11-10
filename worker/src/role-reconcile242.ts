@@ -90,11 +90,14 @@ export async function handleRoleContinuation242(request:Request,env:Env,defer?:R
  const supplied=request.headers.get('X-Olympus-Role-Continuation')??'',expected=await signature242(env,text);
  let diff=supplied.length^expected.length;for(let n=0;n<expected.length;n++)diff|=(supplied.charCodeAt(n)||0)^expected.charCodeAt(n);
  if(diff)return new Response(null,{status:401});
- let body:{kind?:unknown;at?:unknown;nonce?:unknown;sweep?:unknown};try{body=JSON.parse(text);}catch{return new Response(null,{status:400});}
- if(!body||typeof body!=='object'||!['at,kind,nonce','at,kind,nonce,sweep'].includes(Object.keys(body).sort().join(','))||!['requests','sweep'].includes(String(body.kind))||!Number.isSafeInteger(body.at)||Math.abs(now()-Number(body.at))>60||typeof body.nonce!=='string'||! /^[0-9a-f-]{36}$/.test(body.nonce)||body.sweep!==undefined&&(body.kind!=='sweep'||!sweep249(body.sweep)))return new Response(null,{status:400});
+ let body:{kind?:unknown;at?:unknown;nonce?:unknown;sweep?:unknown;independent?:unknown};try{body=JSON.parse(text);}catch{return new Response(null,{status:400});}
+ if(!body||typeof body!=='object'||!['at,kind,nonce','at,kind,nonce,sweep','at,independent,kind,nonce'].includes(Object.keys(body).sort().join(','))||!['requests','sweep'].includes(String(body.kind))||!Number.isSafeInteger(body.at)||Math.abs(now()-Number(body.at))>60||typeof body.nonce!=='string'||! /^[0-9a-f-]{36}$/.test(body.nonce)||body.sweep!==undefined&&(body.kind!=='sweep'||!sweep249(body.sweep))||'independent'in body&&(body.independent!==true||body.kind!=='sweep'||'sweep'in body))return new Response(null,{status:400});
  const claim=await env.DB.prepare('INSERT OR IGNORE INTO seen_interactions(id,seen_at) VALUES(?1,?2)').bind('roles242:'+body.nonce,now()).run();
  if(!claim.meta.changes)return new Response(null,{status:409});
- defer('roles242_work',()=>runRoleWork242(env,body.kind as 'requests'|'sweep',defer,body.sweep as NativeSweep249|undefined));
+ // An externally originated, signed root is scheduling only. Its one original
+ // pass resumes confirmed current state without recursively inheriting a chain.
+ if(body.independent===true)defer('roles242_work',()=>runRoleWork242(env,'sweep'));
+ else defer('roles242_work',()=>runRoleWork242(env,body.kind as 'requests'|'sweep',defer,body.sweep as NativeSweep249|undefined));
  return new Response(null,{status:202});
 }
 

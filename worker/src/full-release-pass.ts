@@ -197,6 +197,21 @@ function pendingNativeSweep262(details:string|null|undefined,snapshot:number):Na
     &&Number.isSafeInteger(row.n)&&typeof row.walk==='string'&&/^[a-f0-9]{32}$/.test(row.walk))return Object.freeze({id:row.walk,n:snapshot});
  }catch{/* Missing, malformed or unconfirmed state cannot resume a walk. */}
 }
+/** Lease cleanup diagnostics only: fixed source/provider markers become a closed
+ * label, never message/name/digest output. D1's Debug D1 error list is the source
+ * for overload/queue/resource markers; unknown errors never authorize retry. */
+function nativeLeaseFailure264(error:unknown):'query_limit'|'overloaded'|'queue_timeout'|'cpu_or_memory'|'sql_compile'|'admission_guard'|'other_d1'{
+ const messages:string[]=[];let current=error;
+ for(let depth=0;depth<2&&current instanceof Error;depth++){if(typeof current.message==='string')messages.push(current.message.slice(0,2048));current=current.cause;}
+ const text=messages.map(s=>s.replace(/^D1_(?:ERROR|EXEC_ERROR):\s*/,'')),starts=(marker:string)=>text.some(s=>s.startsWith(marker));
+ if(messages.some(s=>s.startsWith('privacy_write_admission_held:')||['privacy_write_catalogue_or_control_refused','privacy_terminal_write_control_refused','privacy_site_request_refused','privacy_bot_request_refused'].some(marker=>s.includes(marker))))return 'admission_guard';
+ if(starts('Too many API requests by single Worker invocation')||starts('Too many SQL queries'))return 'query_limit';
+ if(starts("D1 DB's isolate exceeded its memory limit and was reset.")||starts('D1 DB exceeded its CPU time limit and was reset.')||starts('D1 DB is overloaded. Too many resources consumed within a 10 second window'))return 'cpu_or_memory';
+ if(starts('D1 DB is overloaded. Requests queued for too long.'))return 'queue_timeout';
+ if(starts('D1 DB is overloaded. Too many requests queued.')||starts('database is locked')||starts('database is busy')||text.some(s=>s==='SQLITE_BUSY'||s.endsWith(': SQLITE_BUSY')))return 'overloaded';
+ if(messages.some(s=>/^D1_(?:EXEC_ERROR|TYPE_ERROR|COLUMN_NOTFOUND)\b/.test(s))||text.some(s=>/^no such (?:table|column):/.test(s)||/^near .{1,200}: syntax error/.test(s)))return 'sql_compile';
+ return 'other_d1';
+}
 function remember(x:Ctx,row:WalkRow){
  if(!row.discord_id||x.refs.has(row.discord_id)||x.refs.size>=FRESH_STATE_REFERENCES)return;
  try{x.refs.set(row.discord_id,{subject:row.discord_id,capture:privacyCaptureFromColumns(row.discord_id,row)});}catch{/* never reference a non-active subject */}
@@ -607,12 +622,25 @@ async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admis
   }
   counts.statements=adm?adm.count.used-startUsed:local.used;return done('done',stop||'native232_pass_complete');
  }catch(error){try{await audit(env,'system',L.FRESH_AUDIT.failed,trigger,{reason:'native232_pass_failed',error:redact(error)});}catch{}return done('failed','native232_pass_failed');}
- finally{if(lease)try{
-  const released=await env.DB.prepare(L.FRESH_LEASE_RELEASE).bind(lease).run(),changes=released.meta?.changes;
-  if(released.success!==true||changes!==0&&changes!==1)console.error('native232_lease_release_held',errorRef(Error('native232_lease_release_unconfirmed')));
-  else if(!leaseAcknowledged&&changes===1)console.log('native232_lease_unconfirmed_acquisition_cleaned');
-  // Zero changes is a legitimate foreign/newer value; the exact CAS must not clear it.
- }catch(error){console.error('native232_lease_release_held',errorRef(error));/* Original300s expiry remains the fallback. */}}
+ finally{if(lease){const candidate=lease;
+  for(let attempt=0;attempt<2;attempt++)try{
+   const released=await env.DB.prepare(L.FRESH_LEASE_RELEASE).bind(candidate).run(),changes=released.meta?.changes;
+   if(released.success!==true||changes!==0&&changes!==1)console.error('native232_lease_release_held',errorRef(Error('native232_lease_release_unconfirmed')),'other_d1');
+   else{
+    if(!leaseAcknowledged&&changes===1)console.log('native232_lease_unconfirmed_acquisition_cleaned');
+    if(attempt===1)console.log('native232_lease_cleanup_retry_returned',changes===1?'cleared':'foreign_or_absent');
+   }
+   break; // Zero is a legitimate foreign/newer value; never clear or adopt it.
+  }catch(error){
+   const reason=nativeLeaseFailure264(error);console.error('native232_lease_release_held',errorRef(error),reason);
+   // Retry only this idempotent exact-value CAS, with measured physical room.
+   // The original close reserve/cap and300s expiry remain; no uncounted retry.
+   if(attempt!==0||reason!=='overloaded'&&reason!=='queue_timeout'||!adm||room(adm,0)<5||Date.now()-began>=24000)break;
+   await new Promise<void>(resolve=>setTimeout(resolve,250));
+   if(room(adm,0)<5||Date.now()-began>=25000)break;
+   console.log('native232_lease_cleanup_retry',reason);
+  }
+ }}
 }
 
 export type FreshBanResult=Readonly<{state:Settlement['state'];reason:string;removed:number;unknown:number;attempts:number}>;

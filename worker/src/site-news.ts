@@ -78,6 +78,11 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".264", date: "2026-11-10", lines: [
+      "The Watcher can resume pending role checks independently while guarded lease cleanup reports bounded provider failures.",
+    ],
+  },
+  {
     build: ".263", date: "2026-11-10", lines: [
       "Role sweeps retain their own lease cleanup attempt when acquisition acknowledgement is unconfirmed.",
     ],
