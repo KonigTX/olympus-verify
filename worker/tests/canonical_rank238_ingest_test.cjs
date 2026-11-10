@@ -272,7 +272,7 @@ const body238=String.raw`
  try{
   code=await setup233(6);reply=await invoke(code);if(!reply.body.roleGranted)throw Error('264_original_consumed_ACK_required');
   await backlog238(11);T++;await stage241(6);http=[];
-  const original264=identity238(),ackBytes264=JSON.stringify(rows()),snapshot264=db.prepare('SELECT MAX(id) n FROM roster_snapshots').get().n,jobs264=[],roots264=[],oldFetch264=globalThis.fetch;
+  const original264=identity238(),originalRows264=rows(),originalIds264=new Set(originalRows264.map(row=>row.id)),ackBytes264=JSON.stringify(originalRows264),snapshot264=db.prepare('SELECT MAX(id) n FROM roster_snapshots').get().n,jobs264=[],roots264=[],oldFetch264=globalThis.fetch;
   let selfFetch264=0;globalThis.fetch=async()=>{selfFetch264++;throw Error('264_independent_root_must_not_self_fetch');};
   const signedRoot264=body=>{const text=JSON.stringify(body),signature=require('node:crypto').createHmac('sha256',env.VERIFY_SECRET).update('role-continuation242\n'+text).digest('hex');return new Request('https://verify.example/internal/roles242/continue',{method:'POST',headers:{'X-Olympus-Role-Continuation':signature},body:text});};
   try{
@@ -285,7 +285,15 @@ const body238=String.raw`
   }finally{globalThis.fetch=oldFetch264;}
   const visited264=db.prepare("SELECT subject,COUNT(*) n FROM audit WHERE action='role.native232_attempt' AND json_extract(details,'$.walk')=? GROUP BY subject").all(roots264[0].walk);
   check('264 independent root resumes only the exact pending current generation across separate signals',roots264[0].continuation===true&&roots264[0].visits===10&&roots264[1].walk===roots264[0].walk&&roots264[1].n===roots264[0].n&&roots264[1].continuation===false&&visited264.length===12&&visited264.every(row=>row.n===1));
-  check('264 independent scheduling creates no new trust or role effect and preserves original ACK/G/GUID',put()===0&&del()===0&&JSON.stringify(rows())===ackBytes264&&identity238()===original264);
+  // A genuine already-correct visit records a new unclaimed observation. It
+  // cannot become an ACK or ownership; every preexisting row remains exact.
+  const after264=rows(),appended264=after264.filter(row=>!originalIds264.has(row.id)),role264=C.CANONICAL_RANKS233[7].roleId;
+  const expected264={subject:A,purpose:'canonical_routine233',proof_id:null,guild_id:G,role_id:role264,desired:1,state:'settled',reason:'canonical233_observed_without_dispatch',claim_nonce:null,subject_generation:G238,
+   request_digest:h(JSON.stringify(N.historicalNativeRankPolicy232())+'|'+A+'|'+G238+'|'+snapshot264+'|'+role264+'|1|'+env.CANONICAL_RANKS233),roster_id:snapshot264,native_guid:'Player-4613-12345678',native_profile:C.CANONICAL_PROFILE233,native_rank:6,native_rank_name:N.NATIVE_RANK_NAMES232[6],attempts:0,created_at:T,expires_at:T+300,checked_at:T};
+  const originalRowsUnchanged264=JSON.stringify(after264.filter(row=>originalIds264.has(row.id)))===ackBytes264,appendColumns264=['id',...Object.keys(expected264)].sort().join(',');
+  console.log('INDEPENDENT264_NATIVE_CUSTODY_WITNESS',JSON.stringify({put:put(),delete:del(),originalRows:originalRows264.length,originalRowsUnchanged:originalRowsUnchanged264,identityUnchanged:identity238()===original264,appended:appended264,expectedObservation:expected264}));
+  check('264 independent scheduling creates no new trust or role effect and preserves original ACK/G/GUID',put()===0&&del()===0&&originalRowsUnchanged264&&identity238()===original264);
+  check('264 genuine stable visit appends exactly one complete unclaimed observation and no new ACK',appended264.length===1&&appended264.every(row=>/^[a-f0-9]{32}$/.test(row.id)&&Object.keys(row).sort().join(',')===appendColumns264&&Object.entries(expected264).every(([key,value])=>row[key]===value)));
  }finally{d1=previousD1264;if(db?.isOpen)db.close();}
 
  globalThis.fetch=originalFetch257;

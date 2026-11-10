@@ -4,7 +4,7 @@ import {postVerify} from '../src/ingest.ts';
 import {codeFor,dayBucket} from '../src/codes.ts';
 import {createPrivacyWriteAdmissionDatabase} from '../src/privacy-write-admission.ts';
 import {runNativeSubject232,runFreshPass,nativeAdmission232} from '../src/full-release-pass.ts';
-import {captureLaneConfig,FRESH_LEASE_KEY,FRESH_LEASE_ACQUIRE,FRESH_LEASE_RELEASE,FRESH_LEASE_SECONDS,freshLeaseValue} from '../src/full-release-roles.ts';
+import {captureLaneConfig,FRESH_LEASE_KEY,FRESH_LEASE_ACQUIRE,FRESH_LEASE_RELEASE,FRESH_LEASE_SECONDS,freshLeaseValue,CANONICAL233_SWEEP249_SELECT} from '../src/full-release-roles.ts';
 import {countStatements} from '../src/roster-effects.ts';
 import {callBudget} from '../src/roles.ts';
 import {handleRoleContinuation242} from '../src/role-reconcile242.ts';
@@ -35,8 +35,11 @@ export function fixture238(seed){const spent=new Set(),saved=new Map();let callb
   const end=s.wires.length,wire=s.wires.slice(start,end);
   const stateRow=await s.db.prepare("SELECT details FROM audit WHERE actor='system' AND action='role.fresh_state' ORDER BY id DESC LIMIT 1").first(),state=stateRow?JSON.parse(stateRow.details):null;
   const visits=state?(await s.db.prepare("SELECT subject,COUNT(*) n FROM audit WHERE action='role.native232_attempt' AND json_extract(details,'$.walk')=?1 GROUP BY subject").bind(state.walk).all()).results:[];
+  const sourceHeld=state?(await s.db.prepare("SELECT COUNT(*) n FROM audit WHERE actor='system' AND action='role.native232_attempt' AND json_extract(details,'$.walk')=?1 AND json_extract(details,'$.result')='source_held'").bind(state.walk).first()).n:0;
+  const hintRows=(await s.db.prepare('SELECT * FROM role_settlements WHERE id IN(SELECT value FROM json_each(?1)) ORDER BY id').bind(JSON.stringify(s.independentHintIds264??[])).all()).results;
+  const originalAfter=(await s.db.prepare('SELECT * FROM role_settlements WHERE id IN(SELECT value FROM json_each(?1)) ORDER BY id').bind(JSON.stringify(s.originalACKs.map(row=>row.id))).all()).results;
   const nonceAfter=(await s.db.prepare('SELECT COUNT(*) n FROM seen_interactions').first()).n;
-  return Response.json({status:response.status,registered,pendingJobs:jobs.length,state,visits,statements:count.used,wires:wire,nonceDelta:nonceAfter-nonceBefore,actualLocalWorkerdD1:true,actualSignedHandler:true,clockOverride:false,issuerOverride:false,providerCalls:0},{status:response.status});
+  return Response.json({status:response.status,registered,pendingJobs:jobs.length,state,visits,sourceHeld,hintsUnchanged:JSON.stringify(hintRows)===JSON.stringify(s.independentHintRows264??[]),originalACKsUnchanged:JSON.stringify(originalAfter)===JSON.stringify(s.originalACKs),statements:count.used,wires:wire,nonceDelta:nonceAfter-nonceBefore,actualLocalWorkerdD1:true,actualSignedHandler:true,clockOverride:false,issuerOverride:false,providerCalls:0},{status:response.status});
  }
  if(route==='/lease-ack263'){
   const s=saved.get('veteran'),mode=new URL(request.url).searchParams.get('mode');
@@ -104,13 +107,19 @@ export function fixture238(seed){const spent=new Set(),saved=new Map();let callb
   if(scenario==='stale')await env.DB.prepare("UPDATE roster_snapshots SET exported_at=CAST(strftime('%s','now')AS INTEGER)-601 WHERE id=2").run();
   if(scenario==='interval')await env.DB.prepare("INSERT INTO audit(ts,actor,action,subject,details)VALUES(CAST(strftime('%s','now')AS INTEGER),'system','role.fresh_state','ingest',?1)").bind(JSON.stringify({n:2,g:''})).run();
   if(scenario==='unknown')await env.DB.prepare("INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,attempts,subject_generation,created_at,expires_at,native_profile)VALUES(?1,?2,'canonical_routine233',?3,?4,1,'unknown','synthetic_unresolved',0,?5,1,2,?6)").bind('e'.repeat(32),s.subject,env.GUILD_ID,CANONICAL_RANKS233[8].roleId,'a'.repeat(32),CANONICAL_PROFILE233).run();
-  if(scenario==='independent264')for(let i=0;i<11;i++){
+  if(scenario==='independent264'){s.independentHintIds264=[];for(let i=0;i<11;i++){
    const id=(900000000000000000n+BigInt(i)).toString(),name='Synthetic '+i;
-   await env.DB.batch([env.DB.prepare('INSERT INTO members(discord_id)VALUES(?1)').bind(id),env.DB.prepare("INSERT INTO characters(name_key,name,discord_id,status,bound_at,verified_at,source,guid)VALUES(?1,?2,?3,'member',?4,?4,'whisper',?5)").bind(name.toLowerCase(),name,id,at-3600,'Player-4613-'+(0x10000000+i).toString(16).toUpperCase())]);
+   const hint='f'.repeat(24)+i.toString(16).padStart(8,'0'),guid='Player-4613-'+(0x10000000+i).toString(16).toUpperCase();s.independentHintIds264.push(hint);
+   // Selection debt only: expired HELD, never settled, claimed or an identity
+   // anchor. Bare links alone are correctly absent from the canonical selector.
+   await env.DB.batch([env.DB.prepare('INSERT INTO members(discord_id)VALUES(?1)').bind(id),env.DB.prepare("INSERT INTO characters(name_key,name,discord_id,status,bound_at,verified_at,source,guid)VALUES(?1,?2,?3,'member',?4,?4,'whisper',?5)").bind(name.toLowerCase(),name,id,at-3600,guid),env.DB.prepare("INSERT INTO role_settlements(id,subject,purpose,guild_id,role_id,desired,state,reason,attempts,native_profile,native_guid,roster_id,created_at,expires_at)VALUES(?1,?2,'canonical_routine233',?3,?4,1,'held','synthetic_unproved_backlog264',0,?5,?6,2,?7,?8)").bind(hint,id,env.GUILD_ID,CANONICAL_RANKS233[9].roleId,CANONICAL_PROFILE233,guid,at-2000,at-1700)]);
+  }
+   s.independentHintRows264=(await db.prepare('SELECT * FROM role_settlements WHERE id IN(SELECT value FROM json_each(?1)) ORDER BY id').bind(JSON.stringify(s.independentHintIds264)).all()).results;
+   s.independentCandidates264=(await env.DB.prepare(CANONICAL233_SWEEP249_SELECT).bind(env.GUILD_ID,'',50,0,'0'.repeat(32)).all()).results;
   }
   s.originalACKs=(await db.prepare("SELECT * FROM role_settlements WHERE desired=1 AND attempts=1 AND state='settled' ORDER BY id").all()).results;
   s.beforeControl=await db.prepare("SELECT epoch,mode,active,nonce,purpose FROM privacy_write_admission").first();
-  s.start=s.wires.length;return Response.json({prepared:true,scenario});
+  s.start=s.wires.length;return Response.json({prepared:true,scenario,...(scenario==='independent264'?{independentCandidates:s.independentCandidates264,selectionHints:s.independentHintRows264}:{})});
  }
  if(route==='/observe'){
   const s=saved.get('veteran');let observation=null,cost=null,observationError=false;
