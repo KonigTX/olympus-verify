@@ -34,8 +34,13 @@ async function fixture() {
   [ADMIN, HOLDER, SECOND, VIEWER, STRANGER] = [71n, 72n, 73n, 74n, 75n].map(n => String(300000000000000000n + offset196 + n));
   const db = new DatabaseSync(':memory:'); db.exec('PRAGMA foreign_keys=ON'); db.function('strftime', (format, input) => { if (format !== '%s' || input !== 'now') throw Error('unexpected fixture clock'); return String(T); }); entry.installCurrentEntryEpoch(db, { now: T });
   let before = null, beforeSave = null, beforeAccounts = null;
+  const beforeWitness = [];
   const raw = entry.originalNativePort(db, { beforeBatch: async plan => {
-    if (before && plan.some(p => p.statement.includes('AS appointment') || p.statement.includes('FROM audit WHERE'))) { const f = before; before = null; await f(); }
+    if (before && plan.some(p => p.statement.includes('AS appointment') || p.statement.includes('FROM audit WHERE') || p.statement.includes('FROM audit INDEXED BY audit_actor_action WHERE'))) {
+      const f = before; before = null;
+      beforeWitness.push(Object.freeze({ schemaProof: plan.some(p => p.statement.includes('FROM audit WHERE') || p.statement.includes('FROM audit INDEXED BY audit_actor_action WHERE')), appointmentPayload: plan.some(p => p.statement.includes('AS appointment')) }));
+      await f();
+    }
     if (beforeSave && plan.some(p => p.statement.includes('WITH admission AS MATERIALIZED') && p.statement.includes('INSERT INTO site_settings'))) { const f = beforeSave; beforeSave = null; await f(); }
     if (beforeAccounts && plan.some(p => p.statement.includes('FROM json_each(?1) wanted'))) { const f = beforeAccounts; beforeAccounts = null; await f(); }
   } });
@@ -66,7 +71,7 @@ async function fixture() {
     if (r.status !== 200) throw Error('explicit publication setup refused: ' + JSON.stringify(r));
     return JSON.parse(db.prepare("SELECT value FROM site_settings WHERE key='appointed'").get().value);
   };
-  return { db, env, raw, DB, write, setting, call, page, publish, cookies, before(fn) { before = fn; }, beforeSave(fn) { beforeSave = fn; }, beforeAccounts(fn) { beforeAccounts = fn; }, close() { db.close(); } };
+  return { db, env, raw, DB, write, setting, call, page, publish, cookies, before(fn) { before = fn; }, beforeWitness() { return beforeWitness.slice(); }, beforeSave(fn) { beforeSave = fn; }, beforeAccounts(fn) { beforeAccounts = fn; }, close() { db.close(); } };
 }
 (async () => {
   check('only exact canonical Discord pointers opt in', identities.appointmentAccountId('<@' + HOLDER + '>') === HOLDER && [HOLDER, '<@!' + HOLDER + '>', '@holder-one', 'holder-one', '<@' + HOLDER + '> extra', 'Name withheld', '<@1>'].every(v => identities.appointmentAccountId(v) === null));
@@ -399,6 +404,9 @@ async function fixture() {
       }
     });
     const r = await f.call('GET', '/api/appointed-identities', VIEWER);
+    const witness = f.beforeWitness();
+    console.log('APPOINTMENT_BOUNDARY265_SYNTHETIC_WITNESS', JSON.stringify({ kind, witness, status: r.status }));
+    check(kind + ' original boundary hook fires once at the schema proof before appointment payload', witness.length === 1 && witness[0].schemaProof === true && witness[0].appointmentPayload === false);
     check(kind + ' at the actual payload boundary cannot leak the prior association', ['retiring', 'pointer-replaced', 'holder-replacement-birth'].includes(kind) ? r.status === 200 && r.body.identities.length === 0 : r.status !== 200 && !('identities' in r.body)); f.close();
   }
   {
