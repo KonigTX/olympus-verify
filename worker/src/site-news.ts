@@ -78,6 +78,12 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    build: ".244", date: "2026-11-10", lines: [
+      "Verification, access checks and donation pages preserve the core service's startup order.",
+      "Donation privacy handling remains available independently of opening the ledger.",
+    ],
+  },
+  {
     build: ".243", date: "2026-11-10", lines: [
       "Queued verification proofs keep their original ownership and receive explicit server outcomes.",
       "Watcher 0.6.21 improves mixed old-and-new verification batches without discarding pending evidence.",

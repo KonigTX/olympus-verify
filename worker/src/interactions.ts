@@ -27,7 +27,8 @@ import { openRenameHold, reapplyText } from "./rename-review";
 import { captureLaneConfig, FRESH_AUDIT, laneClock, LEGACY_BAN_ALLOWANCE, type LaneCapture } from "./full-release-roles";
 import { appendLinkBlock } from "./link"; // .186: the Olympus Link code, last in the two code replies; off, the very same string
 import { isNicknameInteraction233,handleNicknameInteraction233 } from './member-nickname233';
-import {requestRoleReconciliation242,kickRoleWork242} from './role-reconcile242';
+async function requestRoleReconciliation242(...args:Parameters<typeof import('./role-reconcile242').requestRoleReconciliation242>){return (await import('./role-reconcile242')).requestRoleReconciliation242(...args);}
+async function kickRoleWork242(...args:Parameters<typeof import('./role-reconcile242').kickRoleWork242>){return (await import('./role-reconcile242')).kickRoleWork242(...args);}
 import {captureLaunchVerification} from './launch-verification227';
 
 /** Revision 4: registers deferred work past the reply (index.ts deferOriginalServing). Absent in tests and direct callers. */

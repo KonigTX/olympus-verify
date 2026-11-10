@@ -7886,3 +7886,8 @@ Rollback uses the archived .241 exact commit and preserved bindings; database re
 ## Worker .243 — follow-up repairs from .242 post-deploy checks
 
 Keeps Native role modules lazy, corrects four High Council contact strings, and ships Watcher0.6.21 with original claim ownership/unique seen-claim custody and explicit authenticated server-expiry outcomes. Malformed SavedVariables does not create empty intake state. Updated addon fixtures retain negative combat/security/identity/freshness/spent checks while matching the approved hardware/remote behavior. Addon stays0.6.22; its public/installed bytes are unchanged. Preserve all .242 failed post-deploy receipts. Compile/bundle and fresh443/442 D1 backup precede this owner-directed live-first repair; rerun affected suites only after serving and installing it. No schema, secret, optional-feature activation or production restore.
+
+
+## Worker .244 — lazy feature boundaries, eager privacy registration
+
+Moves the optional .242 handlers behind their route/call boundaries so the original Core/QR initialization graph stays intact. Donation data erasure/export registration lives in an eager pure registry module; no private-data lifecycle registration is lost. Authentication, Native issuers, request/effect guards and persistence predicates are unchanged. Watcher remains0.6.21 and addon0.6.22. Preserve both prior failed regression sets; affected cases run only after this live-first repair serves.

@@ -120,6 +120,10 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .244 reverses only the exact owner-directed live-first release note.
+  const release244 = "export const RELEASE_NOTES: readonly ReleaseNote[] = [\n  {\n    build: \".244\", date: \"2026-11-10\", lines: [\n      \"Verification, access checks and donation pages preserve the core service's startup order.\",\n      \"Donation privacy handling remains available independently of opening the ledger.\",\n    ],\n  },\n";
+  check('Guild News exact authorized .244 prepend occurs once', originalNews.split(release244).length === 2);
+  originalNews = originalNews.replace(release244, "export const RELEASE_NOTES: readonly ReleaseNote[] = [\n");
   // .243 reverses only the exact owner-directed live-first release note.
   const release243 = "export const RELEASE_NOTES: readonly ReleaseNote[] = [\n  {\n    build: \".243\", date: \"2026-11-10\", lines: [\n      \"Queued verification proofs keep their original ownership and receive explicit server outcomes.\",\n      \"Watcher 0.6.21 improves mixed old-and-new verification batches without discarding pending evidence.\",\n      \"Access diagnostics and role refreshes load the existing verification checks when needed.\",\n    ],\n  },\n";
   check('Guild News exact authorized .243 prepend occurs once', originalNews.split(release243).length === 2);

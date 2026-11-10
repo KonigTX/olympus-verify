@@ -4,7 +4,7 @@ import {now,likeArg,audit} from './db';
 import {json} from './discord';
 import {postVerify} from './ingest';
 import {normalizeCharacter} from './codes';
-import {registerCommunityData} from './community-data-registry';
+import './treasury-data242';
 import {communityContext,admittedRead,FENCE_REFUSED} from './community-context';
 import {apiJson} from './site-core';
 import {errorRef} from './log';
@@ -122,8 +122,3 @@ export async function treasuryLedger242(request:Request,env:Env):Promise<Respons
  const rows=results[0]!.results as {id:number;ts:number;details:string}[];
  return apiJson({classification:'unclassified_receipts',rows:rows.slice(0,100).map(r=>{const d=JSON.parse(r.details);return {id:r.id,source:d.source||'addon242',donor:d.character,donorGuid:d.guid,copper:d.copper,items:d.items.map((x:{itemId?:string;name:string;count:number})=>({id:x.itemId??'',name:x.name,count:x.count})),note:d.note,at:d.observedAt,status:d.classification,evidence:d.evidence};}),nextCursor:rows.length>100?String(rows[99]!.id):null});
 }
-// Names/GUIDs are removed with the same account while its original characters still identify the records.
-const own="action='treasury.receipt242' AND (json_extract(details,'$.guid') IN(SELECT guid FROM characters WHERE discord_id=?1) OR json_extract(details,'$.characterKey') IN(SELECT name_key FROM characters WHERE discord_id=?1))";
-registerCommunityData('treasury242',
- (env,id)=>[env.DB.prepare('DELETE FROM audit WHERE '+own).bind(id)],
- (env,id)=>({statements:[env.DB.prepare('SELECT ts,details FROM audit WHERE '+own+' ORDER BY id LIMIT 1001').bind(id)],shape:results=>({receipts:results[0]!.results})}));

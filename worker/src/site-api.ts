@@ -58,7 +58,7 @@ import {
 import { releaseReserved } from "./site-queue";
 import { handleAttendedBetaWindow } from "./site-beta-window";
 import { handleAdmin } from "./site-admin";
-import { handleSiteVerification242 } from "./verification242";
+async function handleSiteVerification242(...args:Parameters<typeof import('./verification242').handleSiteVerification242>){return (await import('./verification242')).handleSiteVerification242(...args);}
 import {membershipDecisionOrigin,authenticateMembershipDecision,assertMembershipDecisionOrigin,MembershipDecisionHeld} from "./privacy-rejection-decision";
 import { handleCommunity } from "./community-routes";
 import { exportMyData } from "./site-export";

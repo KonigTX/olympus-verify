@@ -1,6 +1,8 @@
-import {isAccessCheck242,handleAccessCheck242} from './access-check242';
-import {handleRoleContinuation242,kickRoleWork242} from './role-reconcile242';
-import {postIntake242} from './intake242';
+// Optional .242 features are lazy boundaries: preserve the original Core/QR initialization order.
+async function handleRoleContinuation242(...args:Parameters<typeof import('./role-reconcile242').handleRoleContinuation242>){return (await import('./role-reconcile242')).handleRoleContinuation242(...args);}
+async function kickRoleWork242(...args:Parameters<typeof import('./role-reconcile242').kickRoleWork242>){return (await import('./role-reconcile242')).kickRoleWork242(...args);}
+async function postIntake242(...args:Parameters<typeof import('./intake242').postIntake242>){return (await import('./intake242')).postIntake242(...args);}
+import './treasury-data242';
 import { isGuildCommand219, guildCommandReadOnly219, handleGuildCommand219 } from './guild-commands219';
 /**
  * olympus-verify Worker — routes
@@ -583,7 +585,8 @@ async function route(request: Request, env: Env, path: string, schemaReady = tru
         try{const r=await createInteractionRequest(env,request,body);return reply(`Whisper !olympus ${r.code} to an online qualified High Councillor. This code expires in ten minutes. You need no AddOn or website account.`);}
         catch(e){return reply(e instanceof QrHeld?`Councillor verification is held: ${e.code}.`:'Councillor verification is currently held.');}
       }
-      if(isAccessCheck242(i))return handleAccessCheck242(env,i,Number(request.headers.get('X-Signature-Timestamp')),ctx?(label,work)=>deferOriginalServing(ctx,label,work):undefined);
+      const accessCheck242=await import('./access-check242');
+      if(accessCheck242.isAccessCheck242(i))return accessCheck242.handleAccessCheck242(env,i,Number(request.headers.get('X-Signature-Timestamp')),ctx?(label,work)=>deferOriginalServing(ctx,label,work):undefined);
       if(isGuildCommand219(i))return handleGuildCommand219(env,i,Number(request.headers.get("X-Signature-Timestamp")),ctx?work=>deferOriginalServing(ctx,"interaction_guild219",work):undefined);
       return await handleInteraction(env, i, ctx ? (label, work) => deferOriginalServing(ctx, label, work) : undefined,roleDispatch);
     };
@@ -733,7 +736,7 @@ async function freshRegistrationRefused(env: Env, trigger: string): Promise<void
 }
 
 /** Bumped with every change that needs a redeploy, so GET /health shows which build is live. */
-const BUILD = "2026-11-10.243 Guarded verification and sync repairs";
+const BUILD = "2026-11-10.244 Lazy verification route boundaries";
 
 /**
  * Presence of each secret (never the value) and a D1 round trip — enough to tell a missing `wrangler secret put` from a

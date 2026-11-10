@@ -45,7 +45,7 @@ import { bnetLoginState, setBnetSwitch } from "./bnet-switch";
 import { loadLeadershipAdmin, NAME_WITHHELD, saveLeadership } from "./site-leadership";
 import { closeRenameHold, listRenames, markForcedRename } from "./rename-review";
 import { handleNewsAdmin } from "./site-news";
-import { treasuryLedger242 } from './intake242';
+async function treasuryLedger242(...args:Parameters<typeof import('./intake242').treasuryLedger242>){return (await import('./intake242')).treasuryLedger242(...args);}
 import { handleTreasuryCosmeticAdmin } from "./treasury-cosmetic";
 import { discordDirectoryAttendedVisibility } from "./community-discord-directory";
 import { handleRulesetPublication } from './ruleset-publication';
