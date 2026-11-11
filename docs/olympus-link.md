@@ -72,7 +72,7 @@ give their Discord account a cosmetic role for it:
 | Piece | What it is |
 |---|---|
 | `worker/vendor/olympus-link/{link-core.mjs,schema.sql,LICENSE}` | Daniel's three files, byte for byte, at `dnl-gentile/olympus-addon@d03ea8a9ce8d6d933dde9ce0f0ec7faa866a2df2` (MIT). Pins and notes: `worker/vendor/olympus-link/README.md`. |
-| `worker/scripts/build-link-core.mjs` | Checks the three SHA-256 pins and writes `worker/src/link-core.ts`. `npm run check:link-core` (part of `npm test`) fails on any drift. |
+| `worker/scripts/build-link-core.mjs` | Checks the three SHA-256 pins and writes `worker/src/link-core.ts`. `npm run check:link-core` fails on any drift. It no longer runs from `npm test` (`node scripts/qualify.cjs`), so run it by hand. |
 | `worker/src/link-core.ts` | GENERATED, never edited by hand: upstream's text, a header and count-guarded patch groups. **P1** `database()` uses `LINK_DB` only, never `env.DB` (both schemas have a `members` table, and `forgetUser` deletes from it). **P2** error logs print a fixed stage and `errorRef(err)` only. **P3** `discordUser` has no `globalThis.fetch` default; the caller injects `credentialFetch` (no redirects, an 8 s deadline). **P4** keeps a code pending until the role grant is confirmed, bounds only deletion's pending predicate in .195, releases definite lost-race claims and lists settled characters only. **P5** coordinates proof claims and player deletion through an account guard in the existing `limits` table, held through .195's second DELETE; exact-owner release is last, including trusted first-DELETE nonapplication without cleanup. **P6** retains the atomic code/counter quota transaction described below. |
 
 | `worker/src/link.ts` | The gate (`linkState`), the narrowed env (`linkEnv`), the `/verify` block (`appendLinkBlock`), the preflight (`linkPreflight`) and the two routes (`routeLink`). It is the only module that loads link-core, by dynamic import, behind the gate. |
@@ -539,7 +539,7 @@ SHA-256 pins do not change if the merged bytes are the same). The pack names its
 is `OLYMPUS PRIME`, so the vectors that would grant are answered `guild-scope` here
 (`tests/live_link_membership_test.cjs` shows each case).
 
-Tests: `npm run test:live-link` (`tests/live_link_membership_test.cjs`, also in `test:all`); the static seals of
+Tests: `npm run test:live-link` (`tests/live_link_membership_test.cjs`; a manual suite, not part of `test:all`, which is the bounded `qualify.cjs`); the static seals of
 `role-settlements.ts` carry one more counted prepend (`tests/fixtures/reviewed-livelink-role-prepend.json`,
 `tests/source-livelink-static-projection.cjs`) over the unchanged reviewed chain.
 

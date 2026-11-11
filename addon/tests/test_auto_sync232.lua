@@ -1,4 +1,6 @@
--- .233 replacement of timer reloads: actual module, hardware-only dispatch, synthetic native UI.
+-- .242 explicit hardware sync: actual module, no timer dispatch, synthetic native UI.
+-- Deliberate hardware bypasses idle/UI-context checks; native combat, preview,
+-- unsupported APIs and an unconfirmed prior request still hold this button/keybind.
 local passed,failed=0,0
 local function check(name,yes) if yes then passed=passed+1;print("PASS "..name) else failed=failed+1;print("FAIL "..name) end end
 local function fixture(saved)
@@ -30,8 +32,10 @@ do
   f.a.Request("whisper");f.a.Tick();check("duplicate pending events do not multiply chimes or reloads",f.chimes==1 and f.reloads==0)
   f.a.button:GetScript("OnClick")(f.a.button,"RightButton");check("right click does not sync",f.reloads==0)
   f.e.IsMouseButtonDown=function() return true end
-  f.a.button:GetScript("OnClick")(f.a.button,"LeftButton")
-  check("left hardware click invokes exactly one normal Sync",f.reloads==1 and f.a.Status().requested)
+  f.a.button:GetScript("OnClick")(f.a.button,"LeftButton",true)
+  check("AnyDown does not duplicate a physical click",f.reloads==0 and not f.a.Status().requested)
+  f.a.button:GetScript("OnClick")(f.a.button,"LeftButton",false)
+  check("AnyUp hardware click invokes exactly one normal Sync",f.reloads==1 and f.a.Status().requested)
   f.a.Tick();f.advance(10000);f.a.Tick();f.e.OlympusVerify_Sync()
   check("unconfirmed request has no timer or blind hardware retry",f.reloads==1)
 end
@@ -50,26 +54,32 @@ do
   check("periodic native refresh only signals pending hardware work",f.a.Status().pending and f.reloads==0)
 end
 for _,event in ipairs({"TRADE_SHOW","MAIL_SHOW","BANKFRAME_OPENED","GUILDBANKFRAME_OPENED","AUCTION_HOUSE_SHOW","MERCHANT_SHOW","CINEMATIC_START","LOADING_SCREEN_ENABLED"}) do
-  local f=fixture();f.a.Request("whisper");f.event(event);f.a.HardwareSync();f.a.Tick()
-  check(event.." holds hardware reload and never retries",f.reloads==0 and f.a.Status().pending)
+  local f=fixture();f.a.Request("whisper");f.event(event);f.a.Tick()
+  check(event.." never dispatches a timer/event reload",f.reloads==0)
+  f.a.HardwareSync();f.a.Tick()
+  check(event.." does not veto deliberate hardware or cause a retry",f.reloads==1 and f.a.Status().requested)
 end
 for _,name in ipairs({"InCombatLockdown","UnitAffectingCombat","UnitIsDeadOrGhost","UnitOnTaxi","IsFalling","IsFlying","CursorHasItem","SpellIsTargeting"}) do
   local f=fixture();f.a.Request("whisper");f.e[name]=function() return true end;f.e.OlympusVerify_Sync()
-  check(name.." holds sync keybind",f.reloads==0)
+  if name=="InCombatLockdown" then
+    check("native InCombatLockdown holds sync keybind",f.reloads==0 and not f.a.Status().requested)
+  else
+    check(name.." alone does not veto explicit non-lockdown sync",f.reloads==1 and f.a.Status().requested)
+  end
 end
 do
   local f=fixture();f.a.Request("whisper");f.e.InCombatLockdown=nil
   check("unknown combat capability holds",not f.a.HardwareSync() and f.reloads==0)
   f=fixture();f.a.Request("whisper");f.e.GetCurrentKeyBoardFocus=function() return {} end
-  check("typing holds explicit sync to preserve draft",not f.a.HardwareSync() and f.reloads==0)
+  check("typing does not veto deliberate hardware sync",f.a.HardwareSync() and f.reloads==1)
   f=fixture();f.a.Request("whisper");f.e.GetUnitSpeed=function() return 2 end
-  check("moving holds explicit sync",not f.a.HardwareSync() and f.reloads==0)
+  check("moving does not veto deliberate hardware sync",f.a.HardwareSync() and f.reloads==1)
   f=fixture();f.a.Request("whisper");f.e.OlympusVerifyUI={preview={}}
   check("preview cannot dispatch reload",not f.a.HardwareSync() and f.reloads==0)
 end
 for _,name in ipairs({"TradeFrame","MailFrame","BankFrame","GuildBankFrame","AuctionHouseFrame","MerchantFrame","LootFrame","StaticPopup1","GameMenuFrame"}) do
-  local f=fixture();f.a.Request("whisper");f.e[name]={IsShown=function() return true end};f.a.HardwareSync()
-  check(name.." native context holds hardware",f.reloads==0)
+  local f=fixture();f.a.Request("whisper");f.e[name]={IsShown=function() return true end};f.a.HardwareSync();f.a.Tick()
+  check(name.." does not veto one explicit hardware sync or cause a retry",f.reloads==1 and f.a.Status().requested)
 end
 do
   local f=fixture();f.a.Request("whisper");f.refuse=true;f.a.HardwareSync();f.advance(1000);f.a.Tick()

@@ -16,6 +16,7 @@ import type { CallBudget } from './roles';
 import type { PrivacyReference } from './db';
 import { audit, now } from './db';
 import { logLine } from './discord';
+import { errorRef } from './log';
 import { identifyNativeProfile } from './native-rank-adapter';
 import { privacyCaptureFromColumns,privacyGenerationExpressionFenceSql,readPrivacySubject } from './privacy-serving-authority';
 import { DB_NOW,randomGeneration } from './account-generation-contracts';
@@ -28,7 +29,7 @@ import type { LaneCapture } from './full-release-roles';
 import * as R from './role-settlements';
 import type { LaneObservation,LaneQueueResult,LaneRemovalGroup,LaneRemovalOutcome,LaneSpentOutcome,Settlement } from './role-settlements';
 
-export type FreshTrigger='watcher'|'ingest'|'scheduled';
+export type FreshTrigger='watcher'|'ingest'|'scheduled'|'continuation';
 const ID=/^\d{17,20}$/;
 const quoted=(values:readonly string[])=>values.map(v=>`'${v}'`).join(',');
 
@@ -67,7 +68,7 @@ export function freshAdmission(count:StatementCount,limit:number):Admission{
  * live physical counter without the historical logical x5 conversion. An
  * unsupported counter is zero capacity, never an uncounted fallback. */
 export function nativeAdmission232(count:StatementCount,limit:number):Admission{
- const qualified=count.protocol===true&&count.factor===1&&Number.isSafeInteger(count.used)&&count.used>=0&&Number.isSafeInteger(limit)&&limit>=0&&limit<=700;
+ const qualified=count.protocol===true&&count.factor===1&&Number.isSafeInteger(count.used)&&count.used>=0&&Number.isSafeInteger(limit)&&limit>=0&&limit<=900;
  return Object.freeze({count:Object.freeze({get used(){return count.used;},factor:1}),limit:qualified?limit:0});
 }
 /** settleLaneBan: privacy, ban and custody reads, the spent count and reader, and one removal of 11 fresh + 3 staff roles. */
@@ -126,8 +127,10 @@ type WalkRow={discord_id:string|null;privacy_generation:string|null;privacy_stat
 type Visit='done'|'budget'|'statements';
 type FreshState={r:string;d:string;g:string;s:string;p:string;k:0|1;h:number|null};
 export type FreshPassCounts={visits:number;removed:number;settled:number;confirmed:number;unknown:number;held:number;failed:number;linkMissing:number;requests:number;statements:number};
-export type FreshPassResult=Readonly<{state:'skipped'|'held'|'done'|'failed';reason:string;counts:Readonly<FreshPassCounts>}>;
+export type NativeSweep249=Readonly<{id:string;n:number}>;
+export type FreshPassResult=Readonly<{state:'skipped'|'held'|'done'|'failed';reason:string;counts:Readonly<FreshPassCounts>;continuation?:boolean;nativeSweep?:NativeSweep249}>;
 export const NATIVE_SUBJECT232_STATEMENTS=180;
+export const NATIVE_SWEEP249_PROGRESS_STATEMENTS=2; // One physical progress read plus its Native read admission.
 export const NATIVE_OPEN232_STATEMENTS=13; // four protocol reads (2 each) plus one lease write (5).
 export const NATIVE_CLOSE232_STATEMENTS=15; // state audit, refused-state fallback audit, owned lease release: 5 each.
 export type NativeSubject232Result=Readonly<{state:Settlement['state'];reason:string;requests:number;base:Settlement|null;rank:Readonly<{state:Settlement['state'];reason:string;outcomes:readonly Settlement[]}>|null}>;
@@ -183,6 +186,32 @@ function parseState(details:string|null|undefined):FreshState{
  let o:Record<string,unknown>={};try{const v=details?JSON.parse(details):null;if(v&&typeof v==='object'&&!Array.isArray(v))o=v as Record<string,unknown>;}catch{/* a malformed row starts over */}
  const c=(v:unknown)=>typeof v==='string'&&(v===''||ID.test(v))?v:'';
  return {r:c(o.r),d:c(o.d),g:c(o.g),s:c(o.s),p:c(o.p),k:o.k===1?1:0,h:typeof o.h==='number'&&Number.isSafeInteger(o.h)&&o.h>=0?o.h:null};
+}
+/** .262: a lost/depth-limited self-wake must not reset durable visit exclusion.
+ * This is only a scheduling hint; every resumed visit captures fresh Native authority. */
+function pendingNativeSweep262(details:string|null|undefined,snapshot:number):NativeSweep249|undefined{
+ try{const value:unknown=details?JSON.parse(details):null;
+  if(!value||typeof value!=='object'||Array.isArray(value))return;
+  const row=value as Record<string,unknown>;
+  if(row.profile==='olympus-prime-live-20261105-v1'&&row.continuation===true&&row.n===snapshot
+    &&Number.isSafeInteger(row.n)&&typeof row.walk==='string'&&/^[a-f0-9]{32}$/.test(row.walk))return Object.freeze({id:row.walk,n:snapshot});
+ }catch{/* Missing, malformed or unconfirmed state cannot resume a walk. */}
+}
+/** Lease cleanup diagnostics only: fixed source/provider markers become a closed
+ * label, never message/name/digest output. D1's Debug D1 error list is the source
+ * for overload/queue/resource markers; unknown errors never authorize retry. */
+function nativeLeaseFailure264(error:unknown):'query_limit'|'overloaded'|'queue_timeout'|'resource_window'|'cpu_or_memory'|'sql_compile'|'admission_guard'|'other_d1'{
+ const messages:string[]=[];let current=error;
+ for(let depth=0;depth<2&&current instanceof Error;depth++){if(typeof current.message==='string')messages.push(current.message.slice(0,2048));current=current.cause;}
+ const text=messages.map(s=>s.replace(/^D1_(?:ERROR|EXEC_ERROR):\s*/,'')),starts=(marker:string)=>text.some(s=>s.startsWith(marker));
+ if(messages.some(s=>s.startsWith('privacy_write_admission_held:')||['privacy_write_catalogue_or_control_refused','privacy_terminal_write_control_refused','privacy_site_request_refused','privacy_bot_request_refused'].some(marker=>s.includes(marker))))return 'admission_guard';
+ if(starts('Too many API requests by single Worker invocation')||starts('Too many SQL queries'))return 'query_limit';
+ if(starts('D1 DB is overloaded. Too many resources consumed within a 10 second window'))return 'resource_window';
+ if(starts("D1 DB's isolate exceeded its memory limit and was reset.")||starts('D1 DB exceeded its CPU time limit and was reset.'))return 'cpu_or_memory';
+ if(starts('D1 DB is overloaded. Requests queued for too long.'))return 'queue_timeout';
+ if(starts('D1 DB is overloaded. Too many requests queued.')||starts('database is locked')||starts('database is busy')||text.some(s=>s==='SQLITE_BUSY'||s.endsWith(': SQLITE_BUSY')))return 'overloaded';
+ if(messages.some(s=>/^D1_(?:EXEC_ERROR|TYPE_ERROR|COLUMN_NOTFOUND)\b/.test(s))||text.some(s=>/^no such (?:table|column):/.test(s)||/^near .{1,200}: syntax error/.test(s)))return 'sql_compile';
+ return 'other_d1';
 }
 function remember(x:Ctx,row:WalkRow){
  if(!row.discord_id||x.refs.has(row.discord_id)||x.refs.size>=FRESH_STATE_REFERENCES)return;
@@ -444,7 +473,7 @@ async function presenceStep(x:Ctx,st:FreshState){
  * shared allowance (the /queue parent after the legacy sweep, or the export's own). adm: the caller's statement admission
  * (countStatements); without it each bound is reserved against FRESH_SWEEP_STATEMENTS less reserve (what the caller already
  * ran in this invocation, e.g. the /queue route). cap: captured before any await. */
-export async function runFreshPass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admission;reserve?:number}>,trigger:FreshTrigger,cap:LaneCapture):Promise<FreshPassResult>{
+export async function runFreshPass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admission;reserve?:number;sweep?:NativeSweep249}>,trigger:FreshTrigger,cap:LaneCapture):Promise<FreshPassResult>{
  if(cap?.native232?.present)return runNative232Pass(env,io,trigger,cap);
  const counts=emptyCounts(),t=now(),done=(state:FreshPassResult['state'],reason:string):FreshPassResult=>Object.freeze({state,reason,counts:Object.freeze({...counts})});
  if(!cap||!cap.configured||!io||!io.calls||trigger!=='watcher'&&trigger!=='ingest')return done('skipped','not_configured');
@@ -510,46 +539,68 @@ export async function runFreshPass(env:Env,io:Readonly<{calls:CallBudget;adm?:Ad
 /** The current named-profile branch reuses this lane's lease, cursors, statement
  * admission and shared request budget. It never feeds new rows to old ten-rank
  * consumers, nor treats an old unknown as a completed transition. */
-async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admission;reserve?:number}>,trigger:FreshTrigger,cap:LaneCapture):Promise<FreshPassResult>{
- const counts=emptyCounts(),t=now(),done=(state:FreshPassResult['state'],reason:string):FreshPassResult=>Object.freeze({state,reason,counts:Object.freeze({...counts})}),selected=cap.native232;
+async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admission;reserve?:number;sweep?:NativeSweep249}>,trigger:FreshTrigger,cap:LaneCapture):Promise<FreshPassResult>{
+ const began=Date.now();
+  let workRemaining=false,nativeSweep:NativeSweep249|undefined;
+  const counts=emptyCounts(),t=now(),done=(state:FreshPassResult['state'],reason:string):FreshPassResult=>Object.freeze({state,reason,counts:Object.freeze({...counts}),continuation:state==='done'&&workRemaining,...(state==='done'&&workRemaining&&nativeSweep?{nativeSweep}:{})}),selected=cap.native232;
  if(!selected||selected.mode!=='enabled'||!selected.policy||!cap.current())return done('held','native232_configuration_held');
- if(!io?.calls||trigger!=='watcher'&&trigger!=='ingest'&&trigger!=='scheduled')return done('held','invalid_operation');
+ if(!io?.calls||trigger!=='watcher'&&trigger!=='ingest'&&trigger!=='scheduled'&&trigger!=='continuation')return done('held','invalid_operation');
  if(trigger==='scheduled'){const canonical=captureCanonicalRankConfig233(env);if(canonical.mode!=='enabled'||!canonical.current())return done('held','canonical238_schedule_configuration_held');}
- if((trigger==='watcher'||trigger==='scheduled')&&t-lastFreshLocal<L.FRESH_INTERVAL_SECONDS)return done('skipped','throttled');
+ if((trigger==='watcher'||trigger==='scheduled')&&t-lastFreshLocal<30)return done('skipped','throttled');
  const adm=io.adm??null,local={used:0},startUsed=adm?adm.count.used:0,limit=FRESH_SWEEP_STATEMENTS-Math.max(0,Math.min(FRESH_SWEEP_STATEMENTS,io.reserve??0));
  // The Native issuer and up to base + two rank visits include original-result
  // reads, every final admission and one owned compensation. Measured fixtures
  // must stay within this conservative physical-statement reservation.
- const subjectBound=NATIVE_SUBJECT232_STATEMENTS,admit=(n:number)=>{if(adm)return room(adm,NATIVE_CLOSE232_STATEMENTS)>=n;if(local.used+n+NATIVE_CLOSE232_STATEMENTS>limit)return false;local.used+=n;return true;};
- let lease:string|null=null;
+  const subjectBound=NATIVE_SUBJECT232_STATEMENTS+NATIVE_SWEEP249_PROGRESS_STATEMENTS,admit=(n:number)=>{if(adm)return room(adm,NATIVE_CLOSE232_STATEMENTS)>=n;if(local.used+n+NATIVE_CLOSE232_STATEMENTS>limit)return false;local.used+=n;return true;};
+ let lease:string|null=null,leaseAcknowledged=false;
  try{
   if(!admit(NATIVE_OPEN232_STATEMENTS))return done('held','statement_budget');
   const recent=await env.DB.prepare(L.FRESH_INTERVAL_SELECT).first<{ts:number;action:string;snapshot_id:number|null}>(),snapshot=(await env.DB.prepare(L.NEWEST_SNAPSHOT_SELECT).first<{id:number|null}>())?.id??null;
-  if(recent&&(trigger==='watcher'||trigger==='scheduled'||recent.snapshot_id===snapshot))return done('skipped','interval');
+   if(!Number.isSafeInteger(snapshot)||snapshot===null||snapshot<1)return done('held','native249_snapshot_required');
+   if(io.sweep&&(!/^[a-f0-9]{32}$/.test(io.sweep.id)||!Number.isSafeInteger(io.sweep.n)||io.sweep.n<1))return done('held','native249_sweep_invalid');
+   if(io.sweep&&io.sweep.n!==snapshot)return done('skipped','native249_sweep_superseded');
+  if(recent&&trigger==='watcher'&&t-recent.ts<30)return done('skipped','interval');
   if(!cap.current())return done('held','lane_configuration_changed');lastFreshLocal=t;
-  lease=L.freshLeaseValue(t+L.FRESH_LEASE_SECONDS,randomGeneration());if(!await env.DB.prepare(L.FRESH_LEASE_ACQUIRE).bind(lease).first()){lease=null;return done('skipped','lease_held');}
-  const st=parseState((await env.DB.prepare(L.FRESH_STATE_SELECT).first<{details:string|null}>())?.details),M=await import('./routine-membership-authority232'),V=await import('./shared-membership-cutover230');
+  // Keep the exact candidate even if its committed acquisition reply is lost.
+  // Only the original acknowledgement admits work; finally may clear only this value.
+  lease=L.freshLeaseValue(t+L.FRESH_LEASE_SECONDS,randomGeneration());
+  const acquired=await env.DB.prepare(L.FRESH_LEASE_ACQUIRE).bind(lease).first<{key:string}>();
+  if(acquired?.key!==L.FRESH_LEASE_KEY)return done('skipped','lease_held');
+  leaseAcknowledged=true;
+  const saved=await env.DB.prepare(L.FRESH_STATE_SELECT).first<{action:string;details:string|null}>(),st=parseState(saved?.details),M=await import('./routine-membership-authority232'),V=await import('./shared-membership-cutover230');
+   nativeSweep=io.sweep??(saved?.action===L.FRESH_AUDIT.state?pendingNativeSweep262(saved.details,snapshot):undefined)??Object.freeze({id:randomGeneration(),n:snapshot});
+   const walkId=nativeSweep.id;
+   const recordVisit=async(writer:Env,subject:string,reference:PrivacyReference,details:{n:number|null;rank:number|null;result:string}):Promise<boolean>=>{
+    await audit(writer,'system','role.native232_attempt',subject,{...details,walk:walkId},reference);
+    // A privacy generation/state race may legitimately refuse the audit. Never
+    // force that private write or self-wake a sweep without durable progress.
+    return !!await writer.DB.prepare("SELECT 1 AS recorded FROM audit WHERE actor='system' AND action='role.native232_attempt' AND subject=?1 AND json_extract(CASE WHEN json_valid(details) THEN details ELSE '{}' END,'$.walk')=?2 LIMIT 1").bind(subject,walkId).first();
+   };
   const canonical=captureCanonicalRankConfig233(env);
-  const window=(await env.DB.prepare(canonical.present?L.CANONICAL233_WALK_SELECT:L.NATIVE232_WALK_SELECT).bind(cap.guild,st.g,L.FRESH_WALK_WINDOW,canonical.present?0:selected.policy.privileged?1:0).all<{subject:string;top_rank:number|null;urgent:number}>()).results;
-  const refs:PrivacyReference[]=[];let visited=0,stop='';
+   const window=(await env.DB.prepare(canonical.present?L.CANONICAL233_SWEEP249_SELECT:L.NATIVE232_SWEEP249_SELECT).bind(cap.guild,st.g,L.FRESH_WALK_WINDOW,canonical.present?0:selected.policy.privileged?1:0,nativeSweep.id).all<{subject:string;top_rank:number|null;urgent:number}>()).results;
+   const refs:PrivacyReference[]=[];let visited=0,stop='',progressHeld=false;
+  // Each subject is admitted against physical SQL and HTTP room, rather than a fixed two-account quota.
+  const subjectLimit=10; // Re-evaluate live SQL/HTTP room before each visit; a cheap held account must not consume a worst-case slot.
   for(const row of window){
-   if(visited>=L.FRESH_GRANT_SUBJECTS_PER_PASS)break;
+   // Finish the current account and leave time for durable progress, lease release and the signed next invocation.
+   if(visited>0&&Date.now()-began>=12000){stop='wall_clock_budget';workRemaining=true;break;}
+   if(visited>=subjectLimit){workRemaining=true;break;}
    if(!ID.test(row.subject)){st.g=row.subject;continue;}
    if(!cap.current()){stop='lane_configuration_changed';break;}
-   if(laneRoom(io.calls)<8){stop='role_request_budget';break;}if(!admit(subjectBound)){stop='statement_budget';break;}
+   if(laneRoom(io.calls)<8){stop='role_request_budget';workRemaining=true;break;}if(!admit(subjectBound)){stop='statement_budget';workRemaining=true;break;}
    const start=io.calls.attempts;visited++;counts.visits++;
    const privacy=await readPrivacySubject(env,row.subject),reference={subject:row.subject,capture:privacy};
    const authority=await M.captureRoutineMembership232(env,row.subject);
-   if(!authority){counts.held++;st.g=row.subject;await audit(env,'system','role.native232_attempt',row.subject,{n:snapshot,rank:row.top_rank,result:'source_held'},reference);continue;}
+    if(!authority){counts.held++;st.g=row.subject;if(!await recordVisit(env,row.subject,reference,{n:snapshot,rank:row.top_rank,result:'source_held'})){progressHeld=true;break;}continue;}
    try{
    const f=M.routineMembership232Facts(authority),effect=M.routineMembership232Environment(env,authority),selectedVenue=await V.captureRuntimeVenue230(env);
-   if(selectedVenue.mode!=='enabled'){counts.held++;st.g=row.subject;continue;}
+    if(selectedVenue.mode!=='enabled'){counts.held++;st.g=row.subject;if(!await recordVisit(env,row.subject,reference,{n:snapshot,rank:row.top_rank,result:'source_held'})){progressHeld=true;break;}continue;}
    M.assertRoutineMembership232(effect,authority);refs.push(reference);
    const child=laneChildBudget(io.calls,FRESH_GRANT_CHILD_CAP);
    if(captureCanonicalRankConfig233(effect).present){
     const rank=await R.reconcileCanonicalRanks233(effect,authority,selectedVenue.venue,child);
     for(const outcome of rank.outcomes){if(outcome.state==='settled'){counts.settled++;if(outcome.reason==='canonical233_delete_acknowledged_and_confirmed')counts.removed++;}else if(outcome.state==='unknown')counts.unknown++;else counts.held++;}
-    counts.requests+=io.calls.attempts-start;st.g=row.subject;await audit(effect,'system','role.native232_attempt',row.subject,{n:f.snapshotId,rank:f.primary?.index??null,result:rank.state},reference);continue;
+     counts.requests+=io.calls.attempts-start;st.g=row.subject;if(!await recordVisit(effect,row.subject,reference,{n:f.snapshotId,rank:f.primary?.index??null,result:rank.state})){progressHeld=true;break;}continue;
    }
    const base=await R.queueAndSettleRoutineMembership232(effect,authority,selectedVenue.venue,child);
    if(base.state==='settled')counts.settled++;else if(base.state==='unknown')counts.unknown++;else counts.held++;
@@ -559,16 +610,40 @@ async function runNative232Pass(env:Env,io:Readonly<{calls:CallBudget;adm?:Admis
     const rank=await R.reconcileNativeRanks232(effect,authority,selectedVenue.venue,child);
     for(const outcome of rank.outcomes){if(outcome.state==='settled'){counts.settled++;if(outcome.reason==='native232_delete_acknowledged_and_confirmed')counts.removed++;}else if(outcome.state==='unknown')counts.unknown++;else counts.held++;}
    }
-   counts.requests+=io.calls.attempts-start;st.g=row.subject;await audit(effect,'system','role.native232_attempt',row.subject,{n:snapshot,rank:f.primary?.index??null,result:base.state},reference);
+    counts.requests+=io.calls.attempts-start;st.g=row.subject;if(!await recordVisit(effect,row.subject,reference,{n:snapshot,rank:f.primary?.index??null,result:base.state})){progressHeld=true;break;}
    }finally{M.closeRoutineMembership232(authority);}
   }
-  if(!window.length||window.length<L.FRESH_WALK_WINDOW&&visited>=window.length)st.g='';
-  const details={r:st.r,d:st.d,g:st.g,s:st.s,p:st.p,k:st.k,h:st.h,n:snapshot,profile:'olympus-prime-live-20261105-v1',stop:stop||null,visits:counts.visits,settled:counts.settled,unknown:counts.unknown,held:counts.held,attempts:counts.requests};
+   if(progressHeld){counts.statements=adm?adm.count.used-startUsed:local.used;return done('held','native249_progress_unconfirmed');}
+   if(!window.length||window.length<L.FRESH_WALK_WINDOW&&visited>=window.length)st.g='';
+   const details={r:st.r,d:st.d,g:st.g,s:st.s,p:st.p,k:st.k,h:st.h,n:snapshot,walk:nativeSweep.id,continuation:workRemaining,profile:'olympus-prime-live-20261105-v1',stop:stop||null,visits:counts.visits,settled:counts.settled,unknown:counts.unknown,held:counts.held,attempts:counts.requests};
   const stored=await env.DB.prepare(STATE_AUDIT).bind(now(),L.FRESH_AUDIT.state,trigger,JSON.stringify(refs.length?{...details,_privacySubjectIds:refs.map(r=>r.subject)}:details),JSON.stringify(refs.map(r=>({id:r.subject,g:r.capture?.subjectGeneration??null})))).run();
-  if(!Number(stored?.meta?.changes??0))await audit(env,'system',L.FRESH_AUDIT.tick,trigger,{n:snapshot,profile:'olympus-prime-live-20261105-v1',stop:stop||null});
+  if(!Number(stored?.meta?.changes??0)){
+   await audit(env,'system',L.FRESH_AUDIT.tick,trigger,{n:snapshot,profile:'olympus-prime-live-20261105-v1',stop:stop||null,continuation:false});
+   counts.statements=adm?adm.count.used-startUsed:local.used;return done('held','native249_progress_unconfirmed');
+  }
   counts.statements=adm?adm.count.used-startUsed:local.used;return done('done',stop||'native232_pass_complete');
- }catch{return done('failed','native232_pass_failed');}
- finally{if(lease)try{await env.DB.prepare(L.FRESH_LEASE_RELEASE).bind(lease).run();}catch{/* Original lease expires; no fallback parallel producer. */}}
+ }catch(error){try{await audit(env,'system',L.FRESH_AUDIT.failed,trigger,{reason:'native232_pass_failed',error:redact(error)});}catch{}return done('failed','native232_pass_failed');}
+ finally{if(lease){const candidate=lease;
+  for(let attempt=0;attempt<2;attempt++)try{
+   const released=await env.DB.prepare(L.FRESH_LEASE_RELEASE).bind(candidate).run(),changes=released.meta?.changes;
+   if(released.success!==true||changes!==0&&changes!==1)console.error('native232_lease_release_held',errorRef(Error('native232_lease_release_unconfirmed')),'other_d1');
+   else{
+    if(!leaseAcknowledged&&changes===1)console.log('native232_lease_unconfirmed_acquisition_cleaned');
+    if(attempt===1)console.log('native232_lease_cleanup_retry_returned',changes===1?'cleared':'foreign_or_absent');
+   }
+   break; // Zero is a legitimate foreign/newer value; never clear or adopt it.
+  }catch(error){
+   const reason=nativeLeaseFailure264(error);console.error('native232_lease_release_held',errorRef(error),reason);
+   // Retry only this idempotent exact-value CAS, with measured physical room.
+   // The original close reserve/cap and300s expiry remain; no uncounted retry.
+   if(attempt!==0||reason!=='overloaded'&&reason!=='queue_timeout'&&reason!=='resource_window'||!adm||room(adm,0)<5||Date.now()-began>=24000)break;
+   // A resource-window refusal is distinct from a CPU/memory reset. Only this
+   // exact owned-value, counted CAS may retry once; no role effect is replayed.
+   await new Promise<void>(resolve=>setTimeout(resolve,reason==='resource_window'?1000:250));
+   if(room(adm,0)<5||Date.now()-began>=25000)break;
+   console.log('native232_lease_cleanup_retry',reason);
+  }
+ }}
 }
 
 export type FreshBanResult=Readonly<{state:Settlement['state'];reason:string;removed:number;unknown:number;attempts:number}>;

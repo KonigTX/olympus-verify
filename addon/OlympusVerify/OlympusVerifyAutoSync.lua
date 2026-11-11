@@ -100,6 +100,8 @@ local function UpdateAlert()
   if not A.button then
     local b = CreateFrame("Button", "OlympusPendingSync233", UIParent, "UIPanelButtonTemplate")
     b:SetSize(320, 46); b:SetMovable(true); b:EnableMouse(true); b:SetClampedToScreen(true)
+    b:SetFrameStrata("FULLSCREEN_DIALOG"); b:SetToplevel(true)
+    b:RegisterForClicks("AnyDown", "AnyUp")
     b:RegisterForDrag("RightButton")
     b:SetScript("OnDragStart", function(self) self:StartMoving() end)
     b:SetScript("OnDragStop", function(self)
@@ -111,7 +113,7 @@ local function UpdateAlert()
         p.position = { point=point, relative=relative, x=x, y=y }
       end
     end)
-    b:SetScript("OnClick", function(_, mouse) if mouse == "LeftButton" then A.HardwareSync() end end)
+    b:SetScript("OnClick", function(_, mouse, down) if mouse == "LeftButton" and not down then A.HardwareSync() end end)
     local p = pref(false); local pos = p and p.position
     local allowed = { TOP=true, BOTTOM=true, LEFT=true, RIGHT=true, CENTER=true, TOPLEFT=true, TOPRIGHT=true, BOTTOMLEFT=true, BOTTOMRIGHT=true }
     if type(pos)=="table" and allowed[pos.point] and allowed[pos.relative] and type(pos.x)=="number" and type(pos.y)=="number" and pos.x==pos.x and pos.y==pos.y and math.abs(pos.x)<10000 and math.abs(pos.y)<10000 then
@@ -172,7 +174,9 @@ end
 -- Timer and event callbacks below only export/read/update the alert.
 function A.HardwareSync()
   if OlympusVerifyUI and OlympusVerifyUI.preview then return false end
-  local held=contextHeld(true)
+  -- The officer's explicit click/slash is the hardware event. Idle/movement,
+  -- keyboard focus and a mailbox window do not veto a deliberate sync.
+  local held=boolean("InCombatLockdown", true) ~= false and "combat or combat status unavailable" or nil
   if held then state.held=held; UpdateAlert(); return false end
   if state.requested then state.held="request unconfirmed; use the normal /reload command if needed"; UpdateAlert(); return false end
   if type(API.Sync)~="function" or not ((C_UI and type(C_UI.Reload)=="function") or type(ReloadUI)=="function") then

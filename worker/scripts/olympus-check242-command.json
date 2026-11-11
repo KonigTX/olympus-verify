@@ -1,0 +1,25 @@
+{
+  "type": 1,
+  "name": "olympus",
+  "description": "Open your private Olympus hub or check current guild access",
+  "options": [
+    {
+      "type": 1,
+      "name": "hub",
+      "description": "Open your private guild hub"
+    },
+    {
+      "type": 1,
+      "name": "check",
+      "description": "Check current verification and guild access",
+      "options": [
+        {
+          "type": 6,
+          "name": "member",
+          "description": "High Council: check a server member",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

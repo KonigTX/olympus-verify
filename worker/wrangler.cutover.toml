@@ -15,7 +15,7 @@
 name = "olympus-verify"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
-compatibility_flags = ["nodejs_compat"]
+compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
 # Build .41: the guild site gets its own custom domain, and the workers.dev address stays on: Discord's interactions
 # endpoint, the linked-role and Battle.net callbacks and the watcher all use it. workers_dev is written out because
 # adding a route must not switch it off.

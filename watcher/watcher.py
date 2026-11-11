@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import errno
 import hashlib
+import hmac
 import http.client
 import json
 import math
@@ -35,6 +36,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from enum import Enum
@@ -43,6 +45,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import codes  # noqa: E402
+import intake242
 import savedvars  # noqa: E402
 from custody_recovery import StateLease  # noqa: E402
 from treasury_receipts227 import TreasuryJournal, normalize_name as treasury_name, parse_note as treasury_note  # noqa: E402
@@ -105,7 +108,7 @@ LINE_TS_RE = re.compile(r"^(?P<mo>\d{1,2})/(?P<d>\d{1,2})\s+(?P<h>\d{1,2}):(?P<m
 CLIENT_IN = "Active Player Created"
 CLIENT_OUT = ("Client Object Manager Destroyed", "Client Destroy")
 
-WATCHER_VERSION = "0.6.19"
+WATCHER_VERSION = "0.6.27"
 STRICT_DISPLAY_PROTOCOL = "launch-roster-display-v1"
 STRICT_DISPLAY_PATH = "/queue/unverified?keyVersion=" + STRICT_DISPLAY_PROTOCOL
 STRICT_DISPLAY_MAX_BYTES = 512 * 1024
@@ -225,7 +228,7 @@ class Worker:
     PAUSE_REDIRECT = 900
     # 0.6.6: the only words of a successful answer that reach the log (Codex's review of 0.6.5, 1 Oct 03:07 UTC: no
     # arbitrary response fields). Anything else is summarized as "delivered".
-    KNOWN_RESULTS = frozenset({"verified", "resumed", "no_pending", "bound_elsewhere", "member", "banned", "invalid"})  # exactly ingest.ts's words
+    KNOWN_RESULTS = frozenset({"verified", "resumed", "no_pending", "bound_elsewhere", "member", "banned", "invalid", "source_expired"})  # exactly ingest.ts's words
 
     def __init__(self, base: str, token: str):
         try:
@@ -243,6 +246,7 @@ class Worker:
         if not isinstance(token, str) or not token or any(ord(c) <= 32 or ord(c) == 127 for c in token):
             raise ValueError("watcher_token is empty or contains spaces or line breaks; paste the Worker secret WATCHER_TOKEN again")
         self.token = token
+        self._wake_binding264 = hashlib.sha256(json.dumps([self.base, self.token]).encode("utf-8")).hexdigest()
         self.opener = urllib.request.build_opener(NoRedirect())
         self.pause_state: State | None = None  # set by Watcher, so the pause lives in the state file
         self._pause: dict[str, Any] = {"worker_retry_at": 0, "worker_retry_status": None}
@@ -317,7 +321,7 @@ class Worker:
         log_path = path.split("?", 1)[0]  # Opaque launch cursors must never enter logs.
         data = None if body is None else json.dumps(body).encode("utf-8")
         wire_path = path
-        if getattr(self, 'membership_only', False) and ((method == 'GET' and path.split('?', 1)[0] == '/queue') or (method == 'POST' and path in ('/ingest/verify', '/ingest/roster', '/ingest/events'))):
+        if getattr(self, 'membership_only', False) and ((method == 'GET' and path.split('?', 1)[0] == '/queue') or (method == 'POST' and path in ('/ingest/verify', '/ingest/roster', '/ingest/events', '/ingest/intake242'))):
             # A pre-launch Worker refuses keyVersion before touching the queue
             # or ingestion. This also fences a binary rollback after startup's
             # health check; an ignored proof can never become a legacy grant.
@@ -384,6 +388,49 @@ class Worker:
             time.sleep(delay)
             delay *= 2
         return False, "unreachable"
+
+    def _wake_pause264(self, status: int, headers: Any) -> None:
+        if 300 <= status < 400:
+            self._pause_for(status, self.PAUSE_REDIRECT, "worker optional sweep redirect refused; all requests paused")
+        elif status in (401, 403, 429):
+            seconds = max(self.PAUSE_AUTH if status in (401, 403) else self.PAUSE_RATE, self._retry_after(headers)) + random.uniform(0, 1)
+            self._pause_for(status, seconds, f"worker optional sweep -> {status}; all requests paused")
+
+    def wake_sweep264(self, secret: str) -> bool:
+        """One fresh scheduling hint, never a customer original, role receipt or retry."""
+        if (getattr(self, 'membership_only', False) is not True or self.paused()
+                or not isinstance(secret, str) or not secret
+                or hashlib.sha256(json.dumps([self.base, self.token]).encode("utf-8")).hexdigest() != self._wake_binding264):
+            return False
+        at = int(time.time())
+        if at <= 0:
+            return False
+        body = json.dumps({"kind": "sweep", "at": at, "nonce": str(uuid.uuid4()), "independent": True}, separators=(",", ":"), allow_nan=False).encode("utf-8")
+        signature = hmac.new(secret.encode("utf-8"), b"role-continuation242\n" + body, hashlib.sha256).hexdigest()
+        url = self.base + "/internal/roles242/continue"
+        req = urllib.request.Request(url, data=body, method="POST")
+        req.add_header("Authorization", f"Bearer {self.token}")
+        req.add_header("Content-Type", "application/json")
+        req.add_header("User-Agent", f"olympus-verify-watcher/{WATCHER_VERSION}")
+        req.add_header("X-Olympus-Role-Continuation", signature)
+        try:
+            with self.opener.open(req, timeout=20) as response:
+                status = response.status
+                headers = response.headers
+                # No redirects, unbounded reads or JSON/customer ACK adoption.
+                acknowledged = status == 202 and response.geturl() == url and response.read(1) == b""
+        except urllib.error.HTTPError as error:
+            try:
+                self._wake_pause264(error.code, error.headers)
+            finally:
+                error.close()
+        except (urllib.error.URLError, TimeoutError, OSError, http.client.HTTPException):
+            pass  # An unknown scheduling outcome is never resent with this nonce.
+        else:
+            if status != 202:
+                self._wake_pause264(status, headers)
+            return acknowledged
+        return False
 
 
 class NoCustody(RuntimeError):
@@ -530,6 +577,8 @@ class Watcher:
         self.poll = max(1.0, _seconds(cfg, "poll_seconds", 2))
         self.queue_poll = max(5.0, _seconds(cfg, "queue_poll_seconds", 30))
         self._last_queue_pull = 0.0
+        self._last_role_wake264: float | None = None
+        self._role_wake_startup264: str | None = None
         # Who is in the guild but not verified. Slow on purpose: the addon reads the queue file only at login or
         # /reload, so fetching this more often than a person reloads buys nothing and costs D1 reads (the free tier
         # ran out of writes once already, on 18 Sep). A roster upload forces the next fetch, since that is when it moves.
@@ -544,6 +593,9 @@ class Watcher:
         self._verification_roster_originals: dict[int, dict[str, Any]] = {}
         self._verification_originals: dict[int, dict[str, Any]] = {}
         self._verification_seen_claims: dict[str, dict[str, Any]] = {}
+        # Current-process originals only. Persisted/reloaded queue rows never
+        # acquire this independent scheduling or non-head ACK custody.
+        self._independent_originals: dict[int, dict[str, Any]] = {}
         self._verification_waiting = None
         self._verification_sv_stamp = None
         self._unverified: dict[str, Any] | None = None
@@ -664,7 +716,8 @@ class Watcher:
                 and witness["guidCounts"].get(valid["guid"], 0) == 0)
 
     def forward_officer_invite(self, body: Any) -> None:
-        valid = officer_invites233.validate(self.secret, body, int(time.time()))
+        observed = body.get("nativeInvite", {}).get("observedAt") if isinstance(body, dict) and isinstance(body.get("nativeInvite"), dict) else None
+        valid = officer_invites233.validate(self.secret, body, observed if type(observed) is int and observed < int(time.time()) else int(time.time()))
         if valid is None:
             return
         key = "officer-invite233:" + valid["nativeInvite"]["proofId"]
@@ -691,17 +744,60 @@ class Watcher:
         self._verification_waiting = None
         log("verification roster ACK: complete native source accepted; pending fresh proofs may now be relayed")
 
+    def _outbox_original_index(self, item: dict[str, Any]) -> int | None:
+        matches = [i for i, original in enumerate(self.state.d["outbox"]) if original is item]
+        return matches[0] if len(matches) == 1 else None
+
+    def _independent_original_current(self, item: dict[str, Any], *, receipt: bool = False) -> bool:
+        original = self._independent_originals.get(id(item))
+        if original is None or original.get("original") is not item or not self._retained_original(item):
+            return False
+        expected = original.get("receipt") if receipt else original.get("snapshot")
+        try:
+            return isinstance(expected, str) and expected == json.dumps(item, sort_keys=True, allow_nan=False)
+        except (TypeError, ValueError, OverflowError):
+            return False
+
+    def _independent_original_ready(self, item: dict[str, Any]) -> bool:
+        if (not self.membership_only or self._outbox_original_index(item) is None
+                or not self._independent_original_current(item)):
+            return False
+        original = self._independent_originals[id(item)]
+        if original["attempted"] is not False or item.get("acknowledged") is True or item.get("refusal_status") is not None:
+            return False
+        if item.get("path") == "/ingest/roster":
+            source = self._verification_roster_originals.get(id(item))
+            return source is not None and source.get("original") is item and item.get("body") == source.get("body")
+        if item.get("path") in ("/ingest/verify", officer_invites233.PATH):
+            source = self._verification_originals.get(id(item))
+            return (source is not None and source["attempted"] is False
+                    and self._verification_original_current(item, source) and self._verification_claims_owned(item, source))
+        return False
+
     def _settle_original(self, item: dict[str, Any]) -> Delivery:
         box = self.state.d["outbox"]
-        if not box or box[0] is not item:
+        index = self._outbox_original_index(item)
+        independent = self._independent_originals.get(id(item))
+        if (index is None or item.get("acknowledged") is not True
+                or (index > 0 or independent is not None) and not self._independent_original_current(item, receipt=True)):
             self._custody_halted = True
-            self._warn_custody("original queue order changed; no delivery was adopted")
+            self._warn_custody("original queue identity or receipt custody changed; no delivery was adopted")
             return Delivery.HELD
-        box.pop(0)
+        seen_before = None
+        if item.get("server_expired") is True:
+            original = self._verification_originals.get(id(item))
+            if not self._verification_claims_owned(item, original):
+                self._warn_custody("server expiry settlement lacks exact original claim ownership")
+                return Delivery.HELD
+            seen_before = list(self.state.d["seen"])
+            self.state.d["seen"] = [claim for claim in seen_before if claim not in original["claims"]]
+        box.pop(index)
         try:
             self.state.save()
         except OSError as error:
-            box.insert(0, item)
+            box.insert(index, item)
+            if seen_before is not None:
+                self.state.d["seen"] = seen_before
             self._custody_halted = True
             self._ack_settlement_pending = ("outbox", item) if item.get("acknowledged") is True else None
             self._state_write_failed("outbox-settlement", error)
@@ -712,6 +808,7 @@ class Watcher:
         return Delivery.DELIVERED
 
     def _forget_verification_original(self, item: dict[str, Any]) -> None:
+        self._independent_originals.pop(id(item), None)
         original = self._verification_originals.pop(id(item), None)
         if original is not None:
             for claim in original["claims"]:
@@ -725,64 +822,72 @@ class Watcher:
         except (KeyError, TypeError, ValueError, OverflowError):
             return False
 
-    def _expire_unattempted_verification(self, item: dict[str, Any], original: dict[str, Any]) -> Delivery | None:
-        """Local source expiry is not delivery/ACK. Never infer this right from saved JSON."""
-        if (original.get("attempted") is not False or not self._verification_original_current(item, original)
-                or not original["claims"] or not self.state.d["outbox"] or self.state.d["outbox"][0] is not item):
-            return None
-        body = item.get("body")
-        invite = item.get("path") == officer_invites233.PATH
-        proof = body.get("nativeInvite" if invite else "nativeMembership") if isinstance(body, dict) else None
+    def _verification_claims_owned(self, item: dict[str, Any], original: dict[str, Any] | None) -> bool:
+        if original is None or original.get("original") is not item:
+            return False
+        claims = original.get("claims")
+        return (isinstance(claims, tuple) and bool(claims) and len(set(claims)) == len(claims)
+                and all(self._verification_seen_claims.get(claim) is original
+                        and self.state.d["seen"].count(claim) == 1 for claim in claims))
+
+    def _captured_verification_expired(self, path: str, body: Any) -> bool:
+        if not isinstance(body, dict) or body.get("source") != "whisper":
+            return False
+        invite = path == officer_invites233.PATH
+        proof = body.get("nativeInvite" if invite else "nativeMembership")
         observed = proof.get("observedAt") if isinstance(proof, dict) else None
         lifetime = officer_invites233.TTL if invite else 600
-        if type(observed) is not int or observed <= 0 or observed > int(time.time()) - lifetime or body.get("source") != "whisper":
-            return None
-        authenticated = (officer_invites233.validate(self.secret, body, observed) if invite else
-                         validate_membership(self.secret, body.get("character", ""), body.get("guid"), body.get("code", ""), proof, observed))
-        if authenticated is None:
-            return None
-        claims = original["claims"]
-        if any(self._verification_seen_claims.get(claim) is not original or self.state.d["seen"].count(claim) != 1 for claim in claims):
-            return None
-        box, seen = self.state.d["outbox"], self.state.d["seen"]
-        box.pop(0)
-        self.state.d["seen"] = [claim for claim in seen if claim not in claims]
-        try:
-            self.state.save()
-        except OSError as error:
-            box.insert(0, item)
-            self.state.d["seen"] = seen
-            self._custody_halted = True
-            self._state_write_failed("unattempted-source-expiry", error)
-            self._warn_custody("local source expiry could not be persisted; original retained and dispatch stopped")
-            return Delivery.HELD
-        self._forget_verification_original(item)
-        log("verification source expired before any request; retired locally without server ACK; a fresh genuine whisper is required")
-        return Delivery.EXPIRED_LOCAL
+        if type(observed) is not int or observed <= 0 or observed > int(time.time()) - lifetime:
+            return False
+        # Authenticate the original captured bytes at their actual captured time;
+        # this grants only one server request, never renewed source authority.
+        return (officer_invites233.validate(self.secret, body, observed) is not None if invite else
+                validate_membership(self.secret, body.get("character", ""), body.get("guid"),
+                                    body.get("code", ""), proof, observed) is not None)
+
+    @staticmethod
+    def _server_expiry_receipt(path: str, body: dict[str, Any], result: dict[str, Any]) -> bool:
+        if path == officer_invites233.PATH:
+            return (officer_invites233.receipt(body, result) and result.get("result") == "held"
+                    and result.get("reason") == "native-source-expired")
+        return (path == "/ingest/verify" and result.get("result") == "source_expired"
+                and all(result.get(k) is False for k in ("pendingConsumed", "roleGranted", "inviteQueued")))
 
     def _dispatch_original(self, item: dict[str, Any], retries: int, settle: Any = None) -> Delivery:
         if self._custody_halted or not self._retained_original(item):
             self._warn_custody("legacy, changed or different-owner original requires attended recovery")
+            return Delivery.HELD
+        if settle is None and self._outbox_original_index(item) is None:
+            self._warn_custody("original is missing or duplicated in durable custody; no request was made")
             return Delivery.HELD
         if item.get("acknowledged") is True:
             return (settle or self._settle_original)(item)  # a persisted receipt never causes another HTTP request
         if item.get("refusal_status") is not None:
             self._warn_custody("explicitly refused original retained for attended review")
             return Delivery.HELD
+        independent = self._independent_originals.get(id(item))
+        if independent is not None and not self._independent_original_current(item):
+            self._warn_custody("fresh independent original changed; no request was made")
+            return Delivery.HELD
+        if independent is not None and self.worker.paused():
+            self._warn_custody("worker transport paused; fresh original retained without a request attempt")
+            return Delivery.HELD
+        expired = False
         if self.membership_only and item.get("path") in ("/ingest/verify", officer_invites233.PATH):
             original = self._verification_originals.get(id(item))
             if (original is None or not self._verification_original_current(item, original)
                     or original["attempted"] is not False):
                 self._warn_custody("verification original already attempted or from an earlier process; no automatic resend")
                 return Delivery.HELD
-            expired = self._expire_unattempted_verification(item, original)
-            if expired is not None:
-                return expired
+            if not self._verification_claims_owned(item, original):
+                self._warn_custody("verification seen claims are missing, duplicated or owned elsewhere; original retained")
+                return Delivery.HELD
+            expired = self._captured_verification_expired(item["path"], item.get("body"))
             if item["path"] == "/ingest/verify" and item.get("body", {}).get("nativeMembership", {}).get("member") is False:
                 self._warn_custody("unattempted nonmember verification held for explicit officer evidence; original was not relabelled")
                 return Delivery.HELD
             ready = (self.officer_invite_roster_ready(item.get("body")) if item["path"] == officer_invites233.PATH else self.verification_roster_ready(item.get("body")))
-            if not ready:
+            if not ready and not expired:
                 self._wait_for_verification_roster()
                 return Delivery.HELD
             if self.worker.paused():
@@ -791,6 +896,8 @@ class Watcher:
             original["attempted"] = True  # before transport; unknown outcomes cannot acquire a second attempt
             retries = 1
         self.worker.last_refusal = None
+        if independent is not None:
+            independent["attempted"] = True
         try:
             # A transport stub or caller cannot mutate the original body held in state.
             body = json.loads(json.dumps(item["body"], allow_nan=False))
@@ -799,6 +906,18 @@ class Watcher:
             self._warn_custody("transport outcome unknown; exact original remains held")
             return Delivery.HELD
         if ok and isinstance(res, dict):
+            if independent is not None and not self._independent_original_current(item):
+                self._warn_custody("fresh original changed during transport; response was not adopted")
+                return Delivery.HELD
+            expiry_receipt = self._server_expiry_receipt(item["path"], item.get("body", {}), res)
+            if expired and not expiry_receipt:
+                self._warn_custody("expired original lacks an exact server no-effect expiry receipt; original retained")
+                return Delivery.HELD
+            if expiry_receipt:
+                if not self._verification_claims_owned(item, self._verification_originals.get(id(item))):
+                    self._warn_custody("server expiry receipt cannot release another or duplicate seen claim")
+                    return Delivery.HELD
+                item["server_expired"] = True
             if item["path"] == officer_invites233.PATH and not officer_invites233.receipt(item["body"], res):
                 self._warn_custody("officer invite application receipt unknown; exact original retained without retry")
                 return Delivery.HELD
@@ -808,6 +927,8 @@ class Watcher:
             source = self._verification_roster_originals.get(id(item))
             if source is not None and source["original"] is item:
                 source["receipt"] = json.loads(json.dumps(res))
+            if independent is not None:
+                independent["receipt"] = json.dumps(item, sort_keys=True, allow_nan=False)
             result = (settle or self._settle_original)(item)
             if result is Delivery.DELIVERED:
                 self.note_launch_roster_receipt(item, res)
@@ -853,12 +974,22 @@ class Watcher:
             self._state_write_failed("reservation", error)
             self._warn_custody("custody persistence failed; dispatch stopped and source remains unconsumed")
             return Delivery.NO_CUSTODY
+        if self.membership_only:
+            roster = self._verification_roster_originals.get(id(item))
+            verification = self._verification_originals.get(id(item))
+            if ((path == "/ingest/roster" and roster is not None and roster.get("original") is item
+                 and item.get("body") == roster.get("body"))
+                    or (path in ("/ingest/verify", officer_invites233.PATH) and verification is not None
+                        and self._verification_original_current(item, verification) and self._verification_claims_owned(item, verification))):
+                self._independent_originals[id(item)] = {"original": item, "snapshot": json.dumps(item, sort_keys=True, allow_nan=False),
+                                                        "attempted": False, "receipt": None}
         if box[0] is not item:
-            return Delivery.HELD  # no newer work overtakes an older original
+            if not self._independent_original_ready(item):
+                return Delivery.HELD  # legacy/old originals retain FIFO; none is relabelled or removed
         return self._dispatch_original(item, retries=3)
 
     def _post_claimed(self, path: str, body: Any, label: str, keys: list[str]) -> Delivery:
-        if self.membership_only and path in ("/ingest/verify", officer_invites233.PATH) and not (
+        if self.membership_only and path in ("/ingest/verify", officer_invites233.PATH) and not self._captured_verification_expired(path, body) and not (
                 self.officer_invite_roster_ready(body) if path == officer_invites233.PATH else self.verification_roster_ready(body)):
             self._wait_for_verification_roster()
             raise VerificationDeferred()
@@ -884,7 +1015,7 @@ class Watcher:
             return False
         if lane == "outbox":
             box = self.state.d["outbox"]
-            if not box or box[0] is not original:
+            if self._outbox_original_index(original) is None:
                 return False
             result = self._settle_original(original)
         elif lane == "queue-written":
@@ -907,7 +1038,7 @@ class Watcher:
         return True
 
     def flush_outbox(self) -> None:
-        """Retry buffered posts oldest first, stopping at the first failure so ordering is preserved."""
+        """Keep legacy FIFO; fresh owned Native originals have independent first-attempt custody."""
         box = self.state.d["outbox"]
         if not box:
             return
@@ -922,6 +1053,16 @@ class Watcher:
             if result is not Delivery.DELIVERED:
                 break
             sent += 1
+        # A spent/unknown original does not authorize its own retry or block an
+        # unrelated freshly captured original. Never adopt a reloaded row here.
+        for item in list(box)[:max(0, self.max_outbox)]:
+            if self._custody_halted:
+                break
+            if box and item is box[0]:
+                continue  # the head already had its ordinary turn in this flush
+            if self._independent_original_ready(item):
+                if self._dispatch_original(item, retries=1) is Delivery.DELIVERED:
+                    sent += 1
         if sent:
             log(f"outbox: delivered {sent} buffered post(s), {len(box)} left")
 
@@ -1507,12 +1648,14 @@ class Watcher:
     # ---------- 2. SavedVariables ----------
     def check_savedvars(self) -> None:
         self.purge_treasury_receipts()
+        intake242.collect(self)
         if not self.sv_file.exists():
             self._verification_roster = None
             return
         initial = self.sv_file.stat()
         mtime = initial.st_mtime
         if mtime <= self.state.d["sv_mtime"]:
+            intake242.drain(self, collect_inputs=False)
             return
         time.sleep(1.0)  # WoW writes the file in one go, but give it a moment
         try:
@@ -1545,6 +1688,7 @@ class Watcher:
             self.forward_roster(db.get("roster") or {}, begin_launch_scan=True)
         else:
             self.forward_roster(db.get("roster") or {})
+        intake242.drain(self, collect_inputs=False)
         if self.membership_only:
             try:
                 self.forward_events(db.get("events") or [])
@@ -1570,15 +1714,15 @@ class Watcher:
                 strict = codes.strict_code(raw)
                 # the same key the chat-log path used for this whisper, so it is relayed once whichever route is first
                 key = self.code_key(t, name, strict) if strict else f"{t[0]}:{codes.normalize_character(name)}:{raw}"
-                if not codes.code_kind(self.secret, name, raw):
+                if not strict:
                     continue
-                if self.state.was_seen(key) or key in batch_keys:
+                if (self.membership_only and intake242.handles_verify(self, name, strict or raw, e)) or self.state.was_seen(key) or key in batch_keys:
                     continue
                 if strict:
                     self.note_ticket_sender(name, strict)
                 body = {"character": name, "code": strict or raw, "source": t, "ts": ts, "officer": self.officer}
                 if self.membership_only:
-                    proof = validate_membership(self.secret, name, e.get("guid"), strict or raw, e.get("nativeMembership"), int(time.time()))
+                    proof = validate_membership(self.secret, name, e.get("guid"), strict or raw, e.get("nativeMembership"), int((e.get("nativeMembership") or {}).get("observedAt") or time.time()))
                     if proof is None:
                         continue
                     if proof["member"] is False:
@@ -1798,6 +1942,16 @@ class Watcher:
                 log("launch presence poll not confirmed; legacy invitation data remains untouched")
                 return
             self.pull_strict_display()
+            receipts = intake242.receipts(self)
+            # Presence stays zero-D1. This exact cache intent remains fenced by launch-membership-v1; members-only never claims invite rows.
+            cache_okay, cache_response = self.worker.call("GET", "/queue?cacheOnly242=1", retries=1)
+            cached = intake242.verification_results(self, cache_response) if cache_okay else []
+            if receipts or cached:
+                body = self.render_queue([], False, intake_receipts=receipts, verification_results=cached)
+                self.queue_file.parent.mkdir(parents=True, exist_ok=True)
+                atomic_local_text(self.queue_file, body)
+            if cache_okay:
+                self._optional_role_wake264(cache_response)
             return
         if self.state.d.get("queue_written_pending") or self.state.d.get("queue_written_original"):
             self.retry_queue_written()
@@ -1809,12 +1963,14 @@ class Watcher:
         if not ok or not res:
             return
         entries = res.get("entries") or []
-        body = self.render_queue(entries, bool(res.get("setGuildNote")), self._unverified)
+        receipts = intake242.receipts(self)
+        cached = intake242.verification_results(self, res)
+        body = self.render_queue(entries, bool(res.get("setGuildNote")), self._unverified, receipts, cached)
         # Hash the inputs, not the rendered file: generatedAt changes every second, so hashing the body meant the
         # comparison never matched and the queue file plus the state file were rewritten on every single poll.
         # The unverified list is an input too. Leaving it out would repeat the .24 trap, where new data changed and the
         # gate still said "unchanged", so the file never reached the addon.
-        h = hashlib.sha256(json.dumps({"e": entries, "n": bool(res.get("setGuildNote")), "u": self._unverified}, sort_keys=True).encode("utf-8")).hexdigest()
+        h = hashlib.sha256(json.dumps({"e": entries, "n": bool(res.get("setGuildNote")), "u": self._unverified, "intakeReceipts242": receipts, "verificationResults242": cached}, sort_keys=True).encode("utf-8")).hexdigest()
         if h == self.state.d["queue_hash"] and self.queue_file.exists():
             self.retry_queue_written()
             return
@@ -1989,7 +2145,7 @@ class Watcher:
         return Delivery.DELIVERED
 
     @staticmethod
-    def render_queue(entries: list[dict[str, Any]], set_note: bool, unverified: dict[str, Any] | None = None) -> str:
+    def render_queue(entries: list[dict[str, Any]], set_note: bool, unverified: dict[str, Any] | None = None, intake_receipts: list[dict[str, Any]] | None = None, verification_results: list[dict[str, Any]] | None = None) -> str:
         def q(s: Any) -> str:
             # Lua short strings cannot contain a raw newline OR carriage return; an unescaped \r made the whole
             # generated file a syntax error, which silently stopped every Discord approval from reaching the addon.
@@ -2070,6 +2226,16 @@ class Watcher:
                         f"discordId = {q(m.get('discordId') or '')}, username = {q(m.get('username') or '')}, displayName = {q(m.get('displayName') or '')} }},"
                     )
                 lines += ["    },", "  },"]
+        lines += ["  intakeReceipts242 = {"]
+        for r in intake_receipts or []:
+            fields = ", ".join(k + " = " + (str(r[k]) if k in ("observedAt", "expiresAt") else q(r.get(k) or "")) for k in ("id", "status", "guid", "character", "discordRole", "observedAt", "expiresAt", "mac"))
+            lines.append("    { " + fields + " },")
+        lines.append("  },")
+        lines += ["  verificationResults242 = {"]
+        for r in verification_results or []:
+            fields = ", ".join(k + " = " + (str(r[k]) if k in ("observedAt", "expiresAt") else q(r.get(k) or "")) for k in ("guid", "character", "status", "discordRole", "observedAt", "expiresAt", "mac"))
+            lines.append("    { " + fields + " },")
+        lines.append("  },")
         lines += ["}", ""]
         return "\n".join(lines)
 
@@ -2130,13 +2296,35 @@ class Watcher:
                 log("request codes: " + ("on — Get my code hands them out" if rel.get("requestCodes") else "waiting — the button asks for a character name until an addon 0.6.0+ has checked in"))
         return 0 if ok else 1
 
+    def _optional_role_wake264(self, cache: Any) -> None:
+        if (not self.membership_only or getattr(self.worker, 'membership_only', False) is not True
+                or self._custody_halted or self.worker.paused()
+                or self._role_wake_startup264 != self._delivery_binding()
+                or not isinstance(cache, dict) or cache.get("presenceOnly") is not True
+                or cache.get("independentRoleWake264") is not True):
+            return
+        at = time.monotonic()
+        if not math.isfinite(at) or self._last_role_wake264 is not None and at - self._last_role_wake264 < 30:
+            return
+        self._last_role_wake264 = at  # one attempt, including an unknown/refused result; no immediate retry
+        try:
+            if self.worker.wake_sweep264(self.secret):
+                log("role sweep wake: scheduling acknowledged; no role outcome observed")
+        except OSError as error:
+            self._custody_halted = True
+            self._state_write_failed("optional-sweep-pause", error)
+
     def require_launch_worker(self) -> None:
+        self._role_wake_startup264 = None
         if not self.membership_only:
             return
         okay, response = self.worker.call("GET", "/health", retries=1)
         state = response.get("verification") if okay and isinstance(response, dict) and response.get("ok") is True else None
         if not isinstance(state, dict) or state.get("mode") != "members-only" or state.get("nativeScopePinned") is not True or type(state.get("nativeMembershipProofVersion")) is not int or state["nativeMembershipProofVersion"] != 1:
             raise LaunchNotReady("launch verification Worker/profile is not ready; ingestion was not started")
+        build = re.fullmatch(r"\d{4}-\d{2}-\d{2}\.(\d{1,6})(?: .*)?", response.get("build", "")) if isinstance(response.get("build"), str) else None
+        if build is not None and int(build[1]) >= 264:
+            self._role_wake_startup264 = self._delivery_binding()
 
     def run(self) -> None:
         self.require_launch_worker()

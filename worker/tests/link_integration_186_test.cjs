@@ -27,6 +27,9 @@ if(sha(fs.readFileSync(path.join(__dirname,'source230-membership-static-projecti
 const source230=require('./source230-membership-static-projection.cjs');
 if(sha(fs.readFileSync(path.join(__dirname,'source239-migration-static-projection.cjs')))!=='39f12bb39335e0234d7e43daa6ae2bc4c8e1aaf58b9dc65507012aac069594eb')throw Error('reviewed239 static role helper differs');
 const source239=require('./source-livelink-static-projection.cjs'); // Live Link counted prepend over the byte-pinned reviewed239 chain
+// Finite guarded Native242/privacy247 HISTORICAL STATIC adapter, never a loader override.
+if(sha(fs.readFileSync(path.join(__dirname,'source247-native-historical-static-adapter.cjs')))!=='c84c96a4494b8f9f2e586fb9efce3ba47a048f5b8a3a2c3fc1c5f4cfadc05019'||sha(fs.readFileSync(path.join(__dirname,'fixtures/reviewed247-native-historical-static-contexts.json')))!=='fea6e5400a2faa7fc7f2dd984dc90d2008e3ba182f9f75d01d95b35667408397')throw Error('reviewed247 historical static adapter differs');
+const source247=source239.over247(require('./source247-native-historical-static-adapter.cjs')); // withStaticView first reverts the Live Link prepend; every other member is Fern's adapter unchanged
 // Upstream's web/test/fixtures/vectors.json at d03ea8a9 with every seed* field and the two derivable backend "token"
 // fields removed (its own "about" says so); pinned, so a changed fixture is a reviewed change. Each token is rebuilt here
 // exactly as upstream defines it: payload + "." + signature_b64url.
@@ -490,10 +493,12 @@ async function councillorLink(core, token, requester, issued, c) {
   const IMPORT = 'import { appendLinkBlock } from "./link"; // .186: the Olympus Link code, last in the two code replies; off, the very same string\n';
   const OPEN = "return reply(await appendLinkBlock(env, user,\n", CLOSE = '].join("\\n")),\n  );';
   const baselineSource = current.split(IMPORT).join("").split(OPEN).join("return reply(\n").split(CLOSE).join('].join("\\n"),\n  );');
+  for(const[name,ok]of Object.entries(source247.checks(path.join(root,'src'))))check('.247 historical-only finite static adapter '+name,ok);
+  for(const row of source247.controls(path.join(root,'src')))check('.247 historical-only static refuses '+row.source+' '+row.name,row.refused);
   for(const[name,ok]of Object.entries(source239.checks(path.join(root,'src'))))check('.239 finite static role prepend '+name,ok);
   for(const row of source239.controls(path.join(root,'src')))check('.239 static role refuses '+row.name,row.refused);
-  source239.withStaticView(path.join(root,'src'),static239=>{for(const[name,ok]of Object.entries(source230.checks(static239)))check('.230 exact source static inverse '+name,ok);});
-  const current229=source230.inverse('interactions',current);
+  source247.withStaticView(path.join(root,'src'),static239=>{for(const[name,ok]of Object.entries(source230.checks(static239)))check('.230 exact source static inverse '+name,ok);});
+  const current229=source230.inverse('interactions',source247.originalSource('interactions',current));
   const compatibility210=require('./reviewed_source_compat210.cjs'),historical210=compatibility210.originalLinkInteractions(current229);
   const historical185=historical210===null?null:historical210.split(IMPORT).join("").split(OPEN).join("return reply(\n").split(CLOSE).join('].join("\\n"),\n  );');
   check("reviewed current interactions reconstruct exact historical185 through finite contexts; Link still has one import and two wrappers",

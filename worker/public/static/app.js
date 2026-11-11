@@ -1566,7 +1566,7 @@
   // Titles identify the section, never a private account, event or case from an address.
   function routeTitle(route) {
     const [head, sub, detail, action] = route.split("/");
-    const staff = { "": "Overview", applications: detail ? "Application details" : "Applications", votes: "Votes", names: "Reserved names", "launch-operations": "Launch operations & MOTD", friends: "Friends", lookup: "Lookup", settings: "Settings", ranks: "Rank planner", treasury: "Treasury", "approved-guilds": "Signed guild list", renames: "Renames", news: "News", audit: "Audit log", "ruleset-publication": "Ruleset publication", "directory-visibility": "Discord member list preferences", community: "Community" };
+    const staff = { "": "Overview", applications: detail ? "Application details" : "Applications", votes: "Votes", names: "Reserved names", "launch-operations": "Launch operations & MOTD", friends: "Friends", lookup: "Lookup", settings: "Settings", ranks: "Rank planner", treasury: "Treasury", "donation-ledger": "Donation ledger", "approved-guilds": "Signed guild list", renames: "Renames", news: "News", audit: "Audit log", "ruleset-publication": "Ruleset publication", "directory-visibility": "Discord member list preferences", community: "Community" };
     const staffCommunity = { trials: "Trials", departures: "Departures", cases: "Restriction cases", ledger: "Contribution ledger", inbox: "Private requests", claims: "Character claims" };
     if (head === "admin") return `Admin · ${sub === "community" && own(staffCommunity, detail) ? staffCommunity[detail] : own(staff, sub || "") ? staff[sub || ""] : "Overview"}`;
     if (head === "community") {
@@ -1583,7 +1583,7 @@
     if (head === "legal") return sub === "privacy" ? "Privacy Policy" : sub === "terms" ? "Terms of Service" : "Legal";
     if (head === "news") return communitySection("news").label;
     if (head === "army") return sub === "report" ? "Army reporter" : communitySection("army").label;
-    return ({ "": "Home", apply: "Apply", vote: "Vote", roles: "Roles", governance: "Governance", organization: "Organization", "treasury-plan": "Treasury plan", addons: "Addons", updates: "Game updates", data: "Account data", request: "Private request" })[head] || "Home";
+    return ({ "": "Home", apply: "Apply", vote: "Vote", roles: "Roles", governance: "Governance", organization: "Organization", "treasury-plan": "Treasury plan", addons: "Addons", verify: "Verify my character", updates: "Game updates", data: "Account data", request: "Private request" })[head] || "Home";
   }
   let lastHash = location.hash;
   let ignoreHash = false;
@@ -4182,7 +4182,7 @@
     const groups = [
       ["Applications & Roster", [["", "Overview"], ["applications", "Applications"], ["votes", "Votes"], ["names", "Reserved names"], ["launch-operations", "Launch operations & MOTD"], ["friends", "Friends"], ["lookup", "Lookup"], ["renames", "Renames"], ["directory-visibility", "Discord member list preferences"]]],
       ["Governance, Ranks & Appointments", [["ranks", "Rank planner"], ["approved-guilds", "Signed guild list"]]],
-      ["Imperial Treasury & Stockades", [["treasury", "Treasury"]]],
+      ["Imperial Treasury & Stockades", [["treasury", "Treasury"], ["donation-ledger", "Donation ledger"]]],
       ["News, Calendar & Operations", [["news", "News"], ...(anyCommunity() ? [["community", "Community"]] : [])]],
       ["System Settings & Compliance", [["settings", "Settings"], ["audit", "Audit log"], ["ruleset-publication", "Ruleset publication"]]]
     ];
@@ -4216,6 +4216,7 @@
       lookup: (b) => adminLookup(b, dec(parts[1] || "")),
       settings: adminSettings,
       treasury: adminTreasury,
+      "donation-ledger": adminDonationLedger242,
       "directory-visibility": adminDirectoryVisibility,
       'approved-guilds': adminApprovedGuilds,
       ranks: adminRankPlanner,
@@ -5072,6 +5073,44 @@
     }
   }
 
+  async function adminDonationLedger242(body) {
+    const owner = S.user, route = currentRoute();
+    const search = h("input", {type:"search",maxlength:"120",placeholder:"Donor, GUID, item or note","aria-label":"Search donations"});
+    const button = h("button", {type:"submit",class:"btn small",text:"Search"});
+    const status = h("p", {role:"status","aria-live":"polite"});
+    const rows = h("div", {class:"stack"});
+    const more = h("button", {type:"button",class:"btn small",text:"Load more",hidden:true});
+    const form = h("form", {class:"btn-row"},search,button);
+    const panel = h("div", {class:"stack"},h("h2", {text:"Donation observations"}),
+      h("p", {class:"small muted",text:"Trade and mail receipts show observed transfers. A resource or coin whisper is an unconfirmed report. These records do not automatically award tithe credit."}),form,status,rows,more);
+    clear(body); add(body,panel);
+    const live = () => S.user === owner && owner?.isAdmin && S.signedIn && !S.denied && currentRoute() === route && app.contains(panel);
+    let cursor = "", busy = false, revision = 0;
+    const load = async append => {
+      if (!live() || busy) return;
+      busy = true; button.disabled = more.disabled = true;
+      const version = ++revision;
+      if (!append) { cursor = ""; clear(rows); }
+      status.textContent = "Loading donation records…";
+      try {
+        const data = await api("GET", "/api/admin/treasury/ledger?" + qs({q:search.value.trim(),cursor}));
+        if (!live() || version !== revision) return;
+        if (!Array.isArray(data.rows)) throw Error("Donation records are unavailable.");
+        for (const row of data.rows) add(rows,h("div", {class:"card"},
+          h("h3", {text:row.donor || "Unknown donor"}),
+          h("p", {class:"small muted",text:[row.source,row.status,row.at ? fmtDateTime(row.at) : "",row.donorGuid].filter(Boolean).join(" · ")}),
+          h("p", {text:`${Number(row.copper || 0) / 10000}g${Array.isArray(row.items) && row.items.length ? " · " + row.items.map(item => `${item.count} × ${item.name || item.id}`).join(", ") : ""}`}),
+          row.note ? h("p", {text:row.note}) : null));
+        cursor = typeof data.nextCursor === "string" ? data.nextCursor : "";
+        more.hidden = !cursor;
+        status.textContent = data.rows.length ? "Donation records loaded." : "No matching donation records.";
+      } catch (error) { if (live()) status.textContent = explain(error,"Donation records could not be loaded."); }
+      finally { busy = false; if (live()) button.disabled = more.disabled = false; }
+    };
+    form.addEventListener("submit",event => {event.preventDefault(); load(false);});
+    more.addEventListener("click",() => load(true));
+    await load(false);
+  }
   async function adminTreasury(body) {
     const owner = S.user, path = "/api/admin/treasury/", markerKey = "olympus.treasuryAttempt";
     let target = "", targetLabel = "", targetGeneration = 0, busy = false, preview = null, spent = null, storageHeld = false;
@@ -6323,11 +6362,43 @@
         h("ol", null,
           h("li", { text: "In Discord, open #⚡olympus-verify and choose Get my code, or use /verify. Follow the bot's current instructions." }),
           h("li", { text: "Send the displayed verification line from the character you want linked. The officer's checked addon verifies that character; the current roster export must then confirm its guild membership." }),
-          h("li", { text: "Use My status or /verify-status in the bot to check progress. If the character is already verified but these pages remain locked, ask an Olympus officer to check the current roster record. Keep the code private." })),
+          h("li", { text: "Use My status or /verify-status in the bot to check progress. High Council can use /olympus check to inspect a blocker and refresh the verified rank. Keep the code private." })),
+        h("a", { class: "btn small", href: "#/verify", text: "Verify my character" }),
         h("a", { href: "#/guide/member", text: "Read the member guide" })),
       h("p", { class: "muted small", text: "Until access is confirmed the community pages show nothing of other members, and nothing you enter here is listed." }));
   }
   const memberActionNotice = () => noticeBox("info", "icon-shield", h("p", { text: "You can view the Community. Updating a member profile, responding to an event or using the Census preview still requires a verified character on the current guild roster." }), h("a", { href: "#/guide/member", text: "Read the member guide" }));
+  // Owner's .242 request: the same private First Last verification entry on the site.
+  ROUTES.verify = async function verifyCharacter242(main) {
+    if (!S.signedIn || S.denied || !can("applicantWrite")) { add(main, standingNotice()); return; }
+    const owner = S.user, route = currentRoute();
+    const name = h("input", {type:"text",maxlength:"40",placeholder:"First Last",autocomplete:"off",spellcheck:"false"});
+    const result = h("div", {role:"status","aria-live":"polite"});
+    const submit = h("button", {class:"btn",type:"submit",text:"Get my code / refresh my verified role"});
+    const form = h("form", {class:"stack"}, fieldBox("verify-character242", "Character name", name,
+      {required:true,hint:"Use your character's first and last name, for example Fern Melder."}), submit, result);
+    const host = frame("Verify my character", null,
+      h("p", {text:"An existing verified character can refresh its role from a fresh trusted roster immediately. A new character must first prove ownership with the displayed private code."}), form);
+    add(main, host);
+    const live = () => S.user === owner && S.signedIn && !S.denied && currentRoute() === route && app.contains(host);
+    form.addEventListener("submit", async event => {
+      event.preventDefault(); if (!live() || submit.disabled) return;
+      clear(result);
+      const character = name.value.trim().replace(/\s+/g," ");
+      if (character.split(" ").length < 2) {
+        add(result, h("p", {class:"err",text:"Enter both your character's first and last name, for example Fern Melder."})); name.focus(); return;
+      }
+      submit.disabled = true;
+      try {
+        const data = await api("POST", "/api/me/verification", {character});
+        if (!live()) return;
+        add(result, h("pre", {class:"small",text:data.message || data.content || "Your verification request was received."}));
+        if (typeof data.code === "string") add(result, h("p", {class:"small",text:"Whisper this private code from that character to Fern Melder:"}), h("code", {text:data.code}));
+      } catch (error) {
+        if (live()) add(result, h("p", {class:"err",text:explain(error,"Verification could not be refreshed. Try again or ask High Council to use /olympus check.")}));
+      } finally { if (live()) submit.disabled = false; }
+    });
+  };
   ROUTES.army = async function army(main, parts) {
     if (!can("armyRead") || !S.signedIn || S.denied) { add(main, standingNotice()); return; }
     if (!parts.length) return communityArmyReview(main);

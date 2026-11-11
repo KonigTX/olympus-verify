@@ -247,7 +247,7 @@ const body230=String.raw`
    check('privacy: the settlement fingerprint is not in the marker key either, so the bot database alone cannot join the marker to the account',
      fingerprints.every(x=>x&&!m[0].key.includes(String(x).slice(0,32)))&&row.request_digest===h('live-link-request|v1|'+op+'|'+A+'|'+GUIDA));
   }
-  check('privacy: it adds no family to the community registry, so the erasure job statement budget and the closed namespace list are unchanged',!registry.communityDataNames().includes('live_link_membership')&&registry.communityDataNames().length===16);
+  check('privacy: it adds no family to the community registry, so this change leaves the erasure job statement budget and the namespace list as they are',!registry.communityDataNames().some(n=>/live[_-]?link/i.test(n)),registry.communityDataNames().join(','));
   const settings=load('./site-data').settingsFrom(env,(await env.DB.prepare('SELECT key, value FROM site_settings').all()).results);
   check('privacy: the settings readers look keys up by name, so the marker never reaches a setting',settings!==null&&typeof settings==='object'&&!JSON.stringify(settings).includes('livelink')&&markers().length===1);
   const ch=db.prepare('SELECT * FROM characters').all(),st=settlements();

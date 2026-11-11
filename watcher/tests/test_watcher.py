@@ -403,6 +403,37 @@ class ResilienceTests(unittest.TestCase):
         self.assertEqual([p for p, _ in sent], ["/ingest/verify"], "buffered work is delivered after a restart")
         self.assertEqual(w2.state.d["outbox"], [], "the outbox drains once the Worker answers")
 
+    def test_legacy_saved_verification_keeps_original_route_despite_intake_copy(self):
+        name = "Legacy Member"
+        code = codes.code_for("olympus-test-secret", name, codes.day_bucket(datetime.now(timezone.utc)))
+        at = int(time.time());observation = "a"*32
+        body = {"id": "legacy-intake", "type": "verify", "source": "whisper", "character": name, "code": code, "observationId": observation, "observedAt": at}
+        row = {"body": body, "state": "rejected", "attempted": True, "lastOutcome": "membership-proof-required"}
+        self.w.state.d["intake242"] = {"legacy-intake": row}
+        event = {"type": "whisper", "name": name, "target": name, "code": code, "ok": True, "ts": at, "observationId": observation}
+        self.assertFalse(self.w.membership_only)
+        self.w.forward_events([event])
+        self.assertEqual([(method,path) for method,path,_ in self.calls], [("POST","/ingest/verify")])
+        self.assertEqual(self.calls[0][2]["character"], name)
+        self.assertEqual(self.calls[0][2]["code"], code)
+        self.assertEqual((row["state"], row["attempted"]), ("rejected", True))
+        self.w.forward_events([event])
+        self.assertEqual(len(self.calls), 1, "the unchanged legacy seen/claim guard still prevents duplicate delivery")
+
+    def test_native_saved_verification_same_observation_keeps_unknown_intake_suppression(self):
+        self.w.membership_only = True
+        name = "Native Member"
+        code = codes.code_for("olympus-test-secret", name, codes.day_bucket(datetime.now(timezone.utc)))
+        at = int(time.time());observation = "b"*32
+        row = {"body": {"id": "native-intake", "type": "verify", "source": "whisper", "character": name, "code": code, "guid": "Player-1-ABCD", "observationId": observation, "observedAt": at}, "state": "outcome_unknown", "attempted": True}
+        self.w.state.d["intake242"] = {"native-intake": row}
+        event = {"type": "whisper", "name": name, "target": name, "code": code, "guid": "Player-1-ABCD", "ok": True, "ts": at, "observationId": observation}
+        self.w.forward_events([event])
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.w.state.d["outbox"], [])
+        self.assertFalse(self.w.state.was_seen(self.w.code_key("whisper", name, code)))
+        self.assertEqual((row["state"], row["attempted"]), ("outcome_unknown", True))
+
     def test_zero_byte_log_does_not_swallow_the_next_lines(self):
         code = codes.code_for("olympus-test-secret", "Thrall", codes.day_bucket(datetime.now(timezone.utc)))
         self.log.write_text("", encoding="utf-8")
@@ -436,6 +467,70 @@ class ResilienceTests(unittest.TestCase):
         time.sleep(1.1)
         self.w.pull_queue()
         self.assertEqual(first, self.w.state.d["queue_hash"], "generatedAt must not be part of the dedupe hash")
+
+    def test_queue_hash_delivers_receipt_only_change_and_expiry(self):
+        at = 2_000_000_000
+        self.w.pull_unverified = lambda: None
+        response = {"entries": [], "setGuildNote": False, "verificationResults": [{"guid": "Player-1-ABCD", "character": "First Last", "status": "verified", "discordRole": "Veteran", "observedAt": at, "expiresAt": at+300}]}
+        calls = []
+        def queue_response(m, p, b=None, retries=3):
+            calls.append((m, p, b))
+            return True, response
+        self.w.worker.call = queue_response
+        with patch.object(watcher.time, "time", return_value=at), patch.object(watcher, "atomic_local_text", wraps=watcher.atomic_local_text) as write:
+            self.w.pull_queue();before = self.w.state.d["queue_hash"]
+            self.w.state.d["intake242"] = {"a": {"state": "done", "acknowledgedAt": at, "receipt": {"id": "a", "status": "done", "guid": "", "character": "First Last", "discordRole": ""}}}
+            self.w._last_queue_pull = 0;self.w.pull_queue()
+            self.assertEqual(sum(call.args[0] == self.w.queue_file for call in write.call_args_list), 2)
+            self.assertNotEqual(before, self.w.state.d["queue_hash"])
+            self.assertIn('id = "a"', self.w.queue_file.read_text(encoding="utf-8"))
+            self.assertIn('status = "verified"', self.w.queue_file.read_text(encoding="utf-8"))
+            original_ack = json.dumps(self.w.state.d["intake242"]["a"], sort_keys=True)
+            original_hash = self.w.state.d["queue_hash"]
+        with patch.object(watcher.time, "time", return_value=at+86400), patch.object(watcher, "atomic_local_text", wraps=watcher.atomic_local_text) as write:
+            self.w._last_queue_pull = 0;self.w.pull_queue()
+            self.assertEqual(sum(call.args[0] == self.w.queue_file for call in write.call_args_list), 1)
+            queue = savedvars.parse_file(str(self.w.queue_file))["OlympusQueue"]
+            receipt = queue["intakeReceipts242"][0]
+            self.assertEqual((receipt["id"], receipt["status"], receipt["observedAt"]), ("a", "done", at))
+            self.assertEqual(receipt["expiresAt"], at+86340+86400)
+            self.assertTrue(at+86400 < receipt["expiresAt"] <= at+2*86400)
+            self.assertFalse(queue["verificationResults242"], "terminal ACK delivery must not renew current verification")
+            self.assertNotEqual(original_hash, self.w.state.d["queue_hash"])
+            self.assertEqual(self.w.state.d["intake242"]["a"]["acknowledgedAt"], at)
+            self.assertEqual(json.dumps(self.w.state.d["intake242"]["a"], sort_keys=True), original_ack)
+            self.assertEqual([method for method, _, _ in calls], ["GET", "GET", "GET"], "renewal never POSTs or retries the original intake")
+
+    def test_queue_hash_includes_cache_role_and_signed_freshness(self):
+        at = 2_000_000_000
+        self.w.pull_unverified = lambda: None
+        response = {"entries": [], "verificationResults": [{"guid": "Player-1-ABCD", "character": "First Last", "status": "verified", "discordRole": "Veteran", "observedAt": at, "expiresAt": at+300}]}
+        self.w.worker.call = lambda m, p, b=None, retries=3: (True, response)
+        with patch.object(watcher.time, "time", return_value=at), patch.object(watcher, "atomic_local_text", wraps=watcher.atomic_local_text) as write:
+            self.w.pull_queue();initial = self.w.state.d["queue_hash"]
+            response["verificationResults"][0]["discordRole"] = "Raider"
+            self.w._last_queue_pull = 0;self.w.pull_queue();role_hash = self.w.state.d["queue_hash"]
+            self.assertNotEqual(initial, role_hash)
+            response["verificationResults"][0].update(observedAt=at+1, expiresAt=at+301)
+            self.w._last_queue_pull = 0;self.w.pull_queue()
+            self.assertNotEqual(role_hash, self.w.state.d["queue_hash"])
+            self.assertEqual(sum(call.args[0] == self.w.queue_file for call in write.call_args_list), 3)
+
+    def test_unchanged_signed_queue_inputs_do_not_rewrite_for_generated_time(self):
+        at = 2_000_000_000
+        self.w.pull_unverified = lambda: None
+        response = {"entries": [], "verificationResults": [{"guid": "Player-1-ABCD", "character": "First Last", "status": "pending-role", "discordRole": "", "observedAt": at, "expiresAt": at+300}]}
+        self.w.worker.call = lambda m, p, b=None, retries=3: (True, response)
+        with patch.object(watcher, "atomic_local_text", wraps=watcher.atomic_local_text) as write:
+            with patch.object(watcher.time, "time", return_value=at):self.w.pull_queue()
+            before = self.w.state.d["queue_hash"]
+            with patch.object(watcher.time, "time", return_value=at+1):
+                self.w._last_queue_pull = 0;self.w.pull_queue()
+            self.assertEqual(before, self.w.state.d["queue_hash"])
+            self.assertEqual(sum(call.args[0] == self.w.queue_file for call in write.call_args_list), 1)
+            with patch.object(watcher.time, "time", return_value=at+301):
+                self.w._last_queue_pull = 0;self.w.pull_queue()
+            self.assertEqual(sum(call.args[0] == self.w.queue_file for call in write.call_args_list), 2)
 
     def test_queue_local_retry_does_not_repeat_worker_or_advance_before_replace(self):
         entries = [{"id": 7, "character": "Synthetic Queue", "discordId": "1", "status": "queued"}]

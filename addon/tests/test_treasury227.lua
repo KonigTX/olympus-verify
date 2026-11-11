@@ -257,14 +257,37 @@ later(4); later(31)
 local keptFirst = receipts()[1].id
 for i = #receipts() + 1, 1000 do receipts()[i] = { ts = NOW, id = "synthetic-cap-" .. i } end
 startTrade(10000); finishTrade()
-check("full bounded ledger never overwrites an unexpired receipt", receipts()[1].id, keptFirst)
-check("full bounded ledger never expands past its limit", #receipts(), 1000)
-check("full ledger reports the refused capture", OlympusVerifyDB.treasury.overflows, 1)
+check("large pending ledger never overwrites an unexpired receipt", receipts()[1].id, keptFirst)
+check("pending receipt1001 is retained rather than dropped at an upload batch limit", #receipts(), 1001)
+check("durable pending capture is not falsely reported as an overflow", OlympusVerifyDB.treasury.overflows, 0)
 later(10)
 later(30 * 86400 + 100)
 frames.OlympusVerifyTreasuryFrame.onUpdate(frames.OlympusVerifyTreasuryFrame, 60)
-check("periodic idle retention purges old named receipts", #OlympusVerifyDB.treasury.receipts, 0)
+check("periodic retention preserves every old unacknowledged receipt", #OlympusVerifyDB.treasury.receipts, 1001)
 check("periodic idle retention also purges old named observations", #OlympusVerifyDB.treasury.observations, 0)
-check("expired receipts remain disclosed as an aggregate count", OlympusVerifyDB.treasury.expiredReceipts, 1000)
+check("unacknowledged pending receipts are not falsely counted as expired", OlympusVerifyDB.treasury.expiredReceipts or 0, 0)
+-- This component consumes the intake's already-authenticated ACK cache. Actual
+-- signature refusal is exercised by live242; no ACK is minted by Treasury.
+OlympusVerifyDB.intake242={acknowledgements={}}
+local acks=OlympusVerifyDB.intake242.acknowledgements
+acks["unrelated-id"]={status="done"}
+acks[keptFirst]={status="rejected"}
+frames.OlympusVerifyTreasuryFrame.onUpdate(frames.OlympusVerifyTreasuryFrame,60)
+check("unrelated or rejected ACKs cannot purge old pending value",#receipts(),1001)
+acks[keptFirst]={status="done"}
+frames.OlympusVerifyTreasuryFrame.onUpdate(frames.OlympusVerifyTreasuryFrame,60)
+check("durably ACKed redundant old receipt may be pruned",#receipts(),1000)
+check("ACKed receipt pruning keeps the exact expired aggregate",OlympusVerifyDB.treasury.expiredReceipts,1)
+local fresh={id="synthetic-recent-acked",ts=NOW}
+table.insert(receipts(),fresh);acks[fresh.id]={status="done"}
+frames.OlympusVerifyTreasuryFrame.onUpdate(frames.OlympusVerifyTreasuryFrame,60)
+check("ACK alone does not shorten the30day local copy retention",#receipts(),1001)
+for _,row in ipairs(receipts()) do if row~=fresh then acks[row.id]={status="done"} end end
+frames.OlympusVerifyTreasuryFrame.onUpdate(frames.OlympusVerifyTreasuryFrame,60)
+check("only old ACKed copies are pruned while the recent copy survives",#receipts()==1 and receipts()[1]==fresh,true)
+check("all1001 old receipts remain disclosed after durable pruning",OlympusVerifyDB.treasury.expiredReceipts,1001)
+later(30*86400+1);frames.OlympusVerifyTreasuryFrame.onUpdate(frames.OlympusVerifyTreasuryFrame,60)
+check("recent ACKed copy is pruned only after its own30day window",#receipts(),0)
+check("final pruning aggregate counts each original receipt once",OlympusVerifyDB.treasury.expiredReceipts,1002)
 print(string.format("%d checks, %d failed", total, failed))
 if failed > 0 then os.exit(1) end

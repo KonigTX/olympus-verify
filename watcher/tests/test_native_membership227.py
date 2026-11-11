@@ -348,7 +348,7 @@ class NativeMembershipTests(unittest.TestCase):
             self.w.worker.call = call
             with patch.object(watcher.time, 'time', return_value=self.at):
                 self.w.pull_queue()
-            self.assertEqual(len(calls), 2 if response is presence else 1)
+            self.assertEqual(len(calls), 3 if response is presence else 1)
             method, path, body, retries = calls[0]
             self.assertEqual(method, 'GET')
             self.assertIn('presenceOnly=1', path)
@@ -356,6 +356,7 @@ class NativeMembershipTests(unittest.TestCase):
             self.assertEqual(retries, 1)
             if response is presence:
                 self.assertEqual(calls[1], ('GET', watcher.STRICT_DISPLAY_PATH, None, 1))
+                self.assertEqual(calls[2], ('GET', '/queue?cacheOnly242=1', None, 1))
             self.assertEqual(self.w.queue_file.read_bytes(), original_file)
             self.assertEqual(self.w.state.d, original_state)
             lists = self.w.strict_display_file.read_bytes()

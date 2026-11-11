@@ -27,6 +27,9 @@ if(crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'sourc
 const source238=require('./source238-canonical-minute-static-projection.cjs');
 if(crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source239-migration-static-projection.cjs'))).digest('hex')!=='39f12bb39335e0234d7e43daa6ae2bc4c8e1aaf58b9dc65507012aac069594eb')throw Error('reviewed239 static role helper differs');
 const source239=require('./source-livelink-static-projection.cjs'); // Live Link counted prepend over the byte-pinned reviewed239 chain
+// Historical static checks only: runtime lane/child-budget evaluation stays current.
+if(crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source247-native-historical-static-adapter.cjs'))).digest('hex')!=='c84c96a4494b8f9f2e586fb9efce3ba47a048f5b8a3a2c3fc1c5f4cfadc05019'||crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'fixtures/reviewed247-native-historical-static-contexts.json'))).digest('hex')!=='fea6e5400a2faa7fc7f2dd984dc90d2008e3ba182f9f75d01d95b35667408397')throw Error('reviewed247 historical static adapter differs');
+const source247=source239.over247(require('./source247-native-historical-static-adapter.cjs')); // withStaticView first reverts the Live Link prepend; every other member is Fern's adapter unchanged
 const state=(b,p)=>JSON.stringify({limit:b.limit,attempts:b.attempts,calls:b.calls,retries:b.retries,exhausted:b.exhausted,parent:p});
 function apply(b,op){try{op(b);return 'ok';}catch(e){return 'throw:'+e.message;}}
 (async()=>{
@@ -79,9 +82,11 @@ function apply(b,op){try{op(b);return 'ok';}catch(e){return 'throw:'+e.message;}
  // roles bae0474c4c2ab9f3d8441b23cd6b89b3c4d41355d9850b860f1a7c745ff4fb15;
  // original796settlementlines bad16c4d3c773be54b76e85b8f3f8f871269e5cd9f3f1a0be6242be5e9caa37c.
  check('role-rank-continuation.ts is byte-identical to the reviewed .163 integrated source',sha(src('role-rank-continuation.ts'))==='bf4a2926770bf44af674e7a2ddc6f9b5c029960aaeca66a30947730d9d296561');
+ for(const[name,ok]of Object.entries(source247.checks(path.join(root,'src'))))check('.247 historical-only finite static adapter '+name,ok);
+ for(const row of source247.controls(path.join(root,'src')))check('.247 historical-only static refuses '+row.source+' '+row.name,row.refused);
  for(const[name,ok]of Object.entries(source239.checks(path.join(root,'src'))))check('.239 finite static role prepend '+name,ok);
  for(const row of source239.controls(path.join(root,'src')))check('.239 static role refuses '+row.name,row.refused);
- source239.withStaticView(path.join(root,'src'),source239View=>{
+ source247.withStaticView(path.join(root,'src'),source239View=>{
  for(const[name,ok]of Object.entries(source238.checks(source239View)))check('.238 exact static origin '+name,ok);
  for(const row of source238.controls(source239View))check('.238 static origin refuses '+row.name,row.refused);
  for(const[name,ok]of Object.entries(source230.checks(source239View)))check('.230 closed current→a984 static guard '+name,ok);

@@ -1,5 +1,6 @@
 import './privacy-access-data';
 import './ruleset-publication-data';
+import {TREASURY_RECEIPT_OWN_SQL242} from './treasury-data242';
 import {nicknameUnresolvedSql233} from './member-nickname-data233';
 /** Serving-account completion; independent provider messages/recovery copies retain truthful custody.
  * Dormant .129 completion and restore authority are not enabled by this module.
@@ -18,7 +19,7 @@ import {staffAccessDetails,type StaffAccessDetails} from './privacy-erasure-staf
 import {originalPrivacyStatementGroupProjection} from './privacy-serving-authority';
 import './community-routes';
 import {qrErasureCustodyClearSql} from './qr-phase1-data';
-import { communityDataNames,communityEraseStatements } from './community-context';
+import { communityDataNames } from './community-context';
 import { nicknameErasureAssertion233 } from './member-nickname-data233';
 import {communityScopedEraseStatements} from './community-data-registry';
 import { mentionDeletes, mentionExactReferenceSql } from './site-admin';
@@ -280,13 +281,14 @@ function fixedAccountCleanupStatements(env:Env,p:Readonly<{subject:string;subjec
  env.DB.prepare(`UPDATE community_privacy_cases SET subject_hint=CASE WHEN subject_hint=?1 THEN NULL ELSE subject_hint END,
  character_hint=CASE WHEN character_hint IN(SELECT name FROM characters WHERE discord_id=?1) OR character_hint IN(SELECT name_key FROM characters WHERE discord_id=?1) THEN NULL ELSE character_hint END
  WHERE subject_hint=?1 OR character_hint IN(SELECT name FROM characters WHERE discord_id=?1) OR character_hint IN(SELECT name_key FROM characters WHERE discord_id=?1)`).bind(p.subject),
+ // .247 folds only treasury242 into the existing audit DELETE below, before character ownership disappears.
  ...mentionDeletes(env,p.subject), ...(nativeNicknameRedacted
   // Only completeServingAccount's private Native path reaches this branch,
   // after the same original job's guarded pre-ambiguity nickname redaction.
   // Late nickname receipts use the original raw-value CAS, so redaction also
   // invalidates their write. Still reject any unexpected value in this batch.
-  ? [...communityScopedEraseStatements(env,p.subject,communityDataNames().filter(name=>name!=='member_nickname')),nicknameErasureAssertion233(env,p.subject)]
-  : communityEraseStatements(env,p.subject)),
+  ? [...communityScopedEraseStatements(env,p.subject,communityDataNames().filter(name=>name!=='member_nickname'&&name!=='treasury242')),nicknameErasureAssertion233(env,p.subject)]
+  : communityScopedEraseStatements(env,p.subject,communityDataNames().filter(name=>name!=='treasury242'))),
  // Structured cleanup can leave malformed arrays, duplicate keys or free text. Never silently
  // erase another owner's text, or commit our terminal receipt while this attributable ID remains.
  env.DB.prepare(`SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM site_applications
@@ -302,11 +304,12 @@ function fixedAccountCleanupStatements(env:Env,p:Readonly<{subject:string;subjec
  AND CASE WHEN ${groupedShape('audit')} THEN EXISTS(SELECT 1 FROM json_each(audit.details,'$.names') n
  JOIN characters c ON c.discord_id=?1 AND audit.ts>=c.bound_at
  WHERE n.value=c.name COLLATE NOCASE OR n.value=c.name_key COLLATE NOCASE) ELSE 0 END`).bind(p.subject),
- env.DB.prepare(`DELETE FROM audit WHERE actor=?1 OR subject=?1 OR instr(COALESCE(details,''),?1)>0
+ // Evaluate the original receipt predicate first: malformed receipt JSON still refuses the whole transaction.
+ env.DB.prepare(`DELETE FROM audit WHERE CASE WHEN (${TREASURY_RECEIPT_OWN_SQL242}) THEN 1 ELSE (actor=?1 OR subject=?1 OR instr(COALESCE(details,''),?1)>0
  OR EXISTS(SELECT 1 FROM characters c WHERE c.discord_id=?1 AND audit.ts>=c.bound_at AND
  (audit.subject=c.name COLLATE NOCASE OR audit.subject=c.name_key COLLATE NOCASE) AND
  ((audit.actor='watcher' AND audit.action IN('note.set','note.failed','invite.failed','invite.fired','invite.joined','verify.roster_not_current','verify.guid_pinned','roster.remove_failed','roster.removed_unlinked'))
- OR (audit.actor='system' AND audit.action IN('invite.declined','invite.expired','role.remove_held','role.remove_failed','nick.failed'))))`).bind(p.subject),
+ OR (audit.actor='system' AND audit.action IN('invite.declined','invite.expired','role.remove_held','role.remove_failed','nick.failed'))))) END`).bind(p.subject),
  ...['pending','invite_queue','bnet_characters','rename_holds','characters'].map(table=>env.DB.prepare(`DELETE FROM ${table} WHERE discord_id=${target}`).bind(p.subject)),
  env.DB.prepare('DELETE FROM site_board_votes WHERE voter_id=?1 OR candidate_id=?1').bind(p.subject),
  env.DB.prepare('DELETE FROM site_votes WHERE voter_id=?1').bind(p.subject),
@@ -332,7 +335,7 @@ function fixedAccountCleanupStatements(env:Env,p:Readonly<{subject:string;subjec
 /** The collector has no Native execute/read methods and accepts no caller adapter. Its only inputs are
  * the exact original Native+independent selection issued by the private recovery source. */
 export function originalClosedRecoveryCleanupPlans(env:Env,selection:OriginalClosedRecoveryReplaySelection):readonly OriginalClosedCleanupStep[]{
- const facts=originalClosedRecoveryCleanupAccount(selection,env);facts.check();const namespaces=communityDataNames().slice().sort();if(namespaces.length!==16||JSON.stringify(namespaces)!=="[\"contributions\",\"councillor_verification\",\"departures\",\"directory\",\"discord_directory_visibility\",\"event_delivery\",\"event_reminders\",\"events\",\"member_nickname\",\"news\",\"news_webhook\",\"privacy_access\",\"refs\",\"restrictions\",\"ruleset_publication\",\"trials\"]")throw Error('closed_recovery_cleanup_namespace_incomplete');const registered=new WeakMap<object,OriginalClosedCleanupStep>();
+ const facts=originalClosedRecoveryCleanupAccount(selection,env);facts.check();const namespaces=communityDataNames().slice().sort();if(namespaces.length!==17||JSON.stringify(namespaces)!=="[\"contributions\",\"councillor_verification\",\"departures\",\"directory\",\"discord_directory_visibility\",\"event_delivery\",\"event_reminders\",\"events\",\"member_nickname\",\"news\",\"news_webhook\",\"privacy_access\",\"refs\",\"restrictions\",\"ruleset_publication\",\"treasury242\",\"trials\"]")throw Error('closed_recovery_cleanup_namespace_incomplete');const registered=new WeakMap<object,OriginalClosedCleanupStep>();
  const prepare=(sql:string):D1PreparedStatement=>{if(typeof sql!=='string'||sql.length>100000)throw Error('closed_recovery_source_statement');
   const bound=(values:readonly unknown[]):D1PreparedStatement=>{if(values.length>100||values.some(v=>typeof v!=='string'&&(typeof v!=='number'||!Number.isFinite(v))))throw Error('closed_recovery_source_binds');
    const step=Object.freeze({sql,values:Object.freeze(values.slice() as (string|number)[])}),handle=Object.freeze({bind:(...input:unknown[])=>bound(input)});registered.set(handle,step);return handle as unknown as D1PreparedStatement;};return bound([]);};

@@ -59,13 +59,41 @@ async function refused(name,fn){let error;try{await fn();}catch(e){error=e;}chec
   await a.assertAdmissionCurrentSchema(protectedDb);const result=await protectedDb.prepare(audit).run();
   const admit=plans.at(-1)[1],current=prepared.find(sql=>sql.endsWith('THEN 1 ELSE 0 END AS current')),schemaProof=a.PRIVACY_ADMISSION_SCHEMA_PROOF_SQL;
   check(layout+' generated ADMIT matches reviewed four-edit SQL',cryptoNode.createHash('sha256').update(admit).digest('hex')==='863e2b7e00c7c2d618dd4b91910343b1e494d93a82d12121243117f8496a7384');
-  check(layout+' generated CURRENT_SCHEMA matches reviewed four-edit SQL',cryptoNode.createHash('sha256').update(schemaProof).digest('hex')==='13727700584b154fcaa3b39b4bf5555b5fc4d97ceb0a464628d509d49ca0eeda'&&prepared.includes(schemaProof));
+  check(layout+' generated CURRENT_SCHEMA matches reviewed four-edit SQL',cryptoNode.createHash('sha256').update(schemaProof).digest('hex')==='1eb1ac8a411546ce206a0e7922bb1dd1bcb1784e25ab7354251cc44501dcba57'&&prepared.includes(schemaProof));
   check(layout+' boolean CURRENT uses the same factored catalogue CTE',typeof current==='string'&&current.split(' SELECT CASE WHEN ')[0]===schemaProof.split(' SELECT CASE WHEN ')[0]);
   check(layout+' factored writer preserves native ACK and neutral control',result.success===true&&result.meta.changes===1&&db.prepare('SELECT COUNT(*)n FROM audit').get().n===1&&neutral());
   db.exec('DROP TRIGGER privacy_admit_audit_insert');check(layout+' factored catalogue refuses missing exact trigger',!(await a.admissionCatalogueCurrent(protectedDb)));
   await refused(layout+' factored schema proof refuses missing exact trigger',()=>a.assertAdmissionCurrentSchema(protectedDb));
   await refused(layout+' factored writer refuses missing exact trigger',()=>protectedDb.prepare(audit).run());
   check(layout+' missing trigger refusal preserves payload and neutral control',db.prepare('SELECT COUNT(*)n FROM audit').get().n===1&&neutral());db.close();
+ }
+ // .265: the full original proof is retained. Only the existing index choice
+ // differs; compare actual SQLite outcomes for every actor/data shape below.
+ const proof265=a.PRIVACY_ADMISSION_SCHEMA_PROOF_SQL,indexed265="FROM audit INDEXED BY audit_actor_action WHERE action='site.settings'",historical265=proof265.replace(indexed265,"FROM audit WHERE action='site.settings'");
+ check('265 exactly one indexed audit window reverses to the complete historical proof',proof265.split(indexed265).length===2&&cryptoNode.createHash('sha256').update(historical265).digest('hex')==='13727700584b154fcaa3b39b4bf5555b5fc4d97ceb0a464628d509d49ca0eeda');
+ const outcomes265=(sql,profile)=>{try{return{current:db.prepare(sql).get('','',profile,EPOCH).current};}catch(error){return{refused:true,code:error.code};}};
+ const auditCases265=[
+  ['system empty','system','site.settings','{}',true],['foreign actor empty','other-actor','site.settings','{}',true],
+  ['watcher numeric notice','watcher','site.settings','{"notice":7}',true],['account null notice','100000000000000001','site.settings','{"notice":null}',true],
+  ['other action malformed','system','role.native232_attempt','not-json',true],['case-distinct action','system','SITE.SETTINGS','not-json',true],
+  ['foreign actor appointed','other-actor','site.settings','{"appointed":{}}',false],['account null appointed','100000000000000001','site.settings','{"appointed":null}',false],
+  ['watcher text notice','watcher','site.settings','{"notice":"synthetic private notice"}',false],['system malformed','system','site.settings','not-json',false],
+  ['foreign actor SQL NULL','other-actor','site.settings',null,false]
+ ];
+ for(const layout of['canonical','recorded-live-20261010']){
+  const profile=layout==='canonical'?m.ADMISSION_EXPECTED_JSON:m.ADMISSION_PHYSICAL_EXPECTED_JSON;
+  for(const[label,actor,action,details,allowed]of auditCases265){
+   fresh(layout);await protectedDb.prepare('INSERT INTO audit(ts,actor,action,subject,details)VALUES(1,?1,?2,NULL,?3)').bind(actor,action,details).run();
+   const before=JSON.stringify(db.prepare('SELECT * FROM audit ORDER BY id').all()),old=outcomes265(historical265,profile),current=outcomes265(proof265,profile);
+   check(layout+'265 '+label+' indexed and historical full proofs have identical outcomes',JSON.stringify(current)===JSON.stringify(old)&&(allowed?current.current===1:current.refused===true));
+   if(allowed)await a.assertAdmissionCurrentSchema(protectedDb);else await refused(layout+'265 '+label+' retains runtime current-schema refusal',()=>a.assertAdmissionCurrentSchema(protectedDb));
+   check(layout+'265 '+label+' proof is read-only and keeps neutral controls',JSON.stringify(db.prepare('SELECT * FROM audit ORDER BY id').all())===before&&neutral());db.close();
+  }
+  fresh(layout);db.exec('DROP INDEX audit_actor_action');
+  const old=outcomes265(historical265,profile),current=outcomes265(proof265,profile),held=await refused(layout+'265 missing named index remains fail-closed',()=>a.assertAdmissionCurrentSchema(protectedDb));
+  check(layout+'265 removed index refuses both original and indexed proof without fallback',old.refused===true&&current.refused===true&&old.code==='ERR_SQLITE_ERROR'&&current.code==='ERR_SQLITE_ERROR'&&held?.code==='ERR_SQLITE_ERROR'&&String(held.message).includes('no such index: audit_actor_action')&&prepared.includes(proof265)&&plans.length===0&&neutral());
+  await refused(layout+'265 missing index still forbids the original writer',()=>protectedDb.prepare(audit).run());
+  check(layout+'265 missing index performs no business write or repair',db.prepare('SELECT COUNT(*)n FROM audit').get().n===0&&!db.prepare("SELECT 1 FROM sqlite_master WHERE type='index' AND name='audit_actor_action'").get()&&neutral());db.close();
  }
  for(const[file,pin]of pins)check('source pin stable '+path.basename(file),cryptoNode.createHash('sha256').update(fs.readFileSync(file)).digest('hex')===pin);
  console.log(`${passed}/${checks} dormant write-admission native source checks passed`);if(passed!==checks)process.exitCode=1;

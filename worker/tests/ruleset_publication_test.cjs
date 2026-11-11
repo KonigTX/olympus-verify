@@ -195,7 +195,7 @@ async function fixture(generation=null,over={}){
   VERIFY_NATIVE_SCOPE:JSON.stringify({version:1,guild:'Olympus',realm:'Fixture Live Realm'})});
  const strictCopy=payload=>{
   const text=payload?.embeds?.[0]?.description??'';
-  return text.includes('Ask an OLYMPUS PRIME officer for an in-game invite')&&text.includes('The website invite queue is paused')
+  return text.includes('Ask OLYMPUS PRIME High Council for an in-game invite')&&text.includes('The website invite queue is paused')
    &&text.includes('Once your character is in OLYMPUS PRIME')&&text.includes('Get my code')&&text.includes('paste the shown line')
    &&text.includes('current instructions')&&!text.includes('can restore a missing role')
    &&!text.includes('enters the queue')&&payload.components[0].components.some(button=>button.custom_id==='guide:verify');
@@ -205,14 +205,14 @@ async function fixture(generation=null,over={}){
  const strictInfo=infoDescription(strictGuide);
  check('managed intro changes only the invite instruction in strict mode, preserving legacy and the code flow',
   legacyInfo.includes('You can request a guild invite this way before joining.')
-  &&strictInfo===legacyInfo.replace('You can request a guild invite this way before joining.','Ask an OLYMPUS PRIME officer for an in-game invite first. The website invite queue is paused.')
+  &&strictInfo===legacyInfo.replace('You can request a guild invite this way before joining.','Ask OLYMPUS PRIME High Council for an in-game invite first. The website invite queue is paused.')
   &&strictInfo.includes('get a code and send the shown line from your character in game')&&strictGuide.effects===0,strictInfo);
  check('strict managed guide freezes in-game invite and real verification instructions before any effect',
   strictSelection.status===200&&strictCopy(frozenGuide)&&strictGuide.effects===0,frozenGuide?.embeds?.[0]?.description);
  const guideChannel=CH['olympus-info'];
  const runGuide=(name,id,roles=[OTHER])=>strictGuide.signed({id,type:2,channel_id:guideChannel,member:{user:{id:ADMIN,username:'synthetic-staff'},roles},data:{type:1,name:'olympus-admin',options:[{type:1,name}]}},guideKeys.privateKey);
  const blockedGuide=await runGuide('post-guide','700000000000000901',[]);
- check('signed nonofficer guide request keeps its original refusal and causes no effect',blockedGuide.status===200&&/officer/i.test(blockedGuide.data.data?.content??'')&&strictGuide.effects===0,blockedGuide);
+ check('signed nonofficer guide request keeps its original refusal and causes no effect',blockedGuide.status===200&&blockedGuide.data.data?.content==='High Council only.'&&strictGuide.effects===0,blockedGuide);
  const postedGuide=await runGuide('post-guide','700000000000000902');
  const guideMessage=[...strictGuide.messages.values()][0];
  check('signed strict post-guide publishes the same member instructions through synthetic transport',

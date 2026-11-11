@@ -120,6 +120,300 @@ const noPayload = body => !Object.prototype.hasOwnProperty.call(body, 'sources')
   // reader/annotation deltas; writes, lifetimes, private fields and clocks still
   // have to match the original source bytes. This is not an arbitrary new pin.
   let originalNews = fs.readFileSync(path.join(root, 'src/site-news.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // .265 reverses only the exact owner-directed bounded-audit release note.
+  const release265 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".265\", date: \"2026-11-10\", lines: [",
+    "      \"Background guild rank checks now use narrower audit lookups while retaining the same eligibility and safety checks.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .265 prepend occurs once', originalNews.split(release265).length === 2);
+  originalNews = originalNews.replace(release265, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .264 reverses only the exact owner-directed independent-wakeup release note.
+  const release264 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".264\", date: \"2026-11-10\", lines: [",
+    "      \"The Watcher can resume pending role checks independently while guarded lease cleanup reports bounded provider failures.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .264 prepend occurs once', originalNews.split(release264).length === 2);
+  originalNews = originalNews.replace(release264, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .263 reverses only the exact owner-directed lease-cleanup release note.
+  const release263 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".263\", date: \"2026-11-10\", lines: [",
+    "      \"Role sweeps retain their own lease cleanup attempt when acquisition acknowledgement is unconfirmed.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .263 prepend occurs once', originalNews.split(release263).length === 2);
+  originalNews = originalNews.replace(release263, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .262 reverses only the exact owner-directed bridge-delivery release note.
+  const release262 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".262\", date: \"2026-11-10\", lines: [",
+    "      \"Independent sync work and saved transfer observations recover without replaying unresolved originals.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .262 prepend occurs once', originalNews.split(release262).length === 2);
+  originalNews = originalNews.replace(release262, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .261 reverses only the exact owner-directed bridge-delivery release note.
+  const release261 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".261\", date: \"2026-11-10\", lines: [",
+    "      \"Addon bridge requests now receive bounded delivery receipts from their configured guild collector.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .261 prepend occurs once', originalNews.split(release261).length === 2);
+  originalNews = originalNews.replace(release261, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .260 reverses only the exact owner-directed diagnostic release note.
+  const release260 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".260\", date: \"2026-11-10\", lines: [",
+    "      \"Guild rank updates now continue through the public Worker route across queued batches.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .260 prepend occurs once', originalNews.split(release260).length === 2);
+  originalNews = originalNews.replace(release260, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .259 reverses only the exact owner-directed diagnostic release note.
+  const release259 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".259\", date: \"2026-11-10\", lines: [",
+    "      \"Guild rank handoff diagnostics now remain visible across deferred callbacks.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .259 prepend occurs once', originalNews.split(release259).length === 2);
+  originalNews = originalNews.replace(release259, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .258 reverses only the exact owner-directed diagnostic release note.
+  const release258 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".258\", date: \"2026-11-10\", lines: [",
+    "      \"Guild rank reconciliation now reports bounded handoff failures for reliable operator follow-up.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .258 prepend occurs once', originalNews.split(release258).length === 2);
+  originalNews = originalNews.replace(release258, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .257 reverses only the exact owner-directed live-first release note.
+  const release257 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".257\", date: \"2026-11-10\", lines: [",
+    "      \"Guild rank updates continue reliably across bounded sync batches.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .257 prepend occurs once', originalNews.split(release257).length === 2);
+  originalNews = originalNews.replace(release257, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .256 reverses only the exact owner-directed live-first release note.
+  const release256 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".256\", date: \"2026-11-10\", lines: [",
+    "      \"Guild rank changes are reconciled after each roster sync.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .256 prepend occurs once', originalNews.split(release256).length === 2);
+  originalNews = originalNews.replace(release256, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .255 reverses only the exact owner-directed live-first release note.
+  const release255 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".255\", date: \"2026-11-10\", lines: [",
+    "      \"Guild rank changes are processed across the full roster after syncing.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .255 prepend occurs once', originalNews.split(release255).length === 2);
+  originalNews = originalNews.replace(release255, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .254 reverses only the exact owner-directed live-first release note.
+  const release254 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".254\", date: \"2026-11-10\", lines: [",
+    "      \"Guild rank updates continue across the full roster after syncing.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .254 prepend occurs once', originalNews.split(release254).length === 2);
+  originalNews = originalNews.replace(release254, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .253 reverses only the exact owner-directed live-first release note.
+  const release253 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".253\", date: \"2026-11-10\", lines: [",
+    "      \"Guild rank updates continue through bounded production batches after a roster sync.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .253 prepend occurs once', originalNews.split(release253).length === 2);
+  originalNews = originalNews.replace(release253, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .252 reverses only the exact owner-directed live-first release note.
+  const release252 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".252\", date: \"2026-11-10\", lines: [",
+    "      \"Verification delivery resumes after time away. Account updates keep moving when an older request is held.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .252 prepend occurs once', originalNews.split(release252).length === 2);
+  originalNews = originalNews.replace(release252, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .251 reverses only the exact owner-directed live-first release note.
+  const release251 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".251\", date: \"2026-11-10\", lines: [",
+    "      \"Verification mail keeps separate delivery records. Donation records expire from their original observation date.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .251 prepend occurs once', originalNews.split(release251).length === 2);
+  originalNews = originalNews.replace(release251, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .250 reverses only the exact owner-directed live-first release note.
+  const release250 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".250\", date: \"2026-11-10\", lines: [",
+    "      \"Legacy Watcher installations retain their existing verification forwarding. Membership-only verification keeps its original native-evidence checks.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .250 prepend occurs once', originalNews.split(release250).length === 2);
+  originalNews = originalNews.replace(release250, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .249 reverses only the exact owner-directed live-first release note.
+  const release249 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".249\", date: \"2026-11-10\", lines: [",
+    "      \"Account update batches finish after one complete roster traversal. Fresh verification whispers and donation receipts retain their own delivery records.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .249 prepend occurs once', originalNews.split(release249).length === 2);
+  originalNews = originalNews.replace(release249, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .248 reverses only the exact owner-directed live-first release note.
+  const release248 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".248\", date: \"2026-11-10\", lines: [",
+    "      \"Status checks do not start account updates. Inactive modes keep their original request behavior.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .248 prepend occurs once', originalNews.split(release248).length === 2);
+  originalNews = originalNews.replace(release248, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .247 reverses only the exact owner-directed live-first release note.
+  const release247 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".247\", date: \"2026-11-10\", lines: [",
+    "      \"Donation observations are included in account-copy accounting and cleanup. Sync status keeps its lightweight request path.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .247 prepend occurs once', originalNews.split(release247).length === 2);
+  originalNews = originalNews.replace(release247, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .246 reverses only the exact owner-directed live-first release note.
+  const release246 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".246\", date: \"2026-11-10\", lines: [",
+    "      \"Rank-update continuations now use the supported request mode and refuse redirects.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .246 prepend occurs once', originalNews.split(release246).length === 2);
+  originalNews = originalNews.replace(release246, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .245 reverses only the exact owner-directed live-first release note.
+  const release245 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".245\", date: \"2026-11-10\", lines: [",
+    "      \"Rank updates continue while the current request has room, with the same per-account identity and request-budget checks.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .245 prepend occurs once', originalNews.split(release245).length === 2);
+  originalNews = originalNews.replace(release245, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .244 reverses only the exact owner-directed live-first release note.
+  const release244 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".244\", date: \"2026-11-10\", lines: [",
+    "      \"Verification, access checks and donation pages preserve the core service's startup order.\",",
+    "      \"Donation privacy handling remains available independently of opening the ledger.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .244 prepend occurs once', originalNews.split(release244).length === 2);
+  originalNews = originalNews.replace(release244, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .243 reverses only the exact owner-directed live-first release note.
+  const release243 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".243\", date: \"2026-11-10\", lines: [",
+    "      \"Queued verification proofs keep their original ownership and receive explicit server outcomes.\",",
+    "      \"Watcher 0.6.21 improves mixed old-and-new verification batches without discarding pending evidence.\",",
+    "      \"Access diagnostics and role refreshes load the existing verification checks when needed.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .243 prepend occurs once', originalNews.split(release243).length === 2);
+  originalNews = originalNews.replace(release243, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
+  // .242 reverses only the exact owner-directed live-first release note.
+  const release242 = [
+    "export const RELEASE_NOTES: readonly ReleaseNote[] = [",
+    "  {",
+    "    build: \".242\", date: \"2026-11-10\", lines: [",
+    "      \"Verified character ranks refresh through continuing batches after a roster sync.\",",
+    "      \"OlympusVerify 0.6.22 adds persistent verification intake, mail handling and donation observations with Watcher 0.6.20.\",",
+    "      \"Use Verify my character on the site, or ask High Council to use /olympus check for access diagnostics.\",",
+    "      \"Character nicknames use <Guild Name>; the previous nickname can still be restored.\",",
+    "    ],",
+    "  },",
+    ""
+  ].join('\n');
+  check('Guild News exact authorized .242 prepend occurs once', originalNews.split(release242).length === 2);
+  originalNews = originalNews.replace(release242, 'export const RELEASE_NOTES: readonly ReleaseNote[] = [\n');
   // .241 reverses only the exact recent-rank-priority member release note.
   const release241 = [
     "export const RELEASE_NOTES: readonly ReleaseNote[] = [",

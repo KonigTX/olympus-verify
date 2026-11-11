@@ -223,6 +223,37 @@ function projectApprovedManifest(value){
  const projected=JSON.stringify({...data,triggers:data.triggers.filter(t=>!SEAL_TRIGGER_NAMES.includes(t.name))});
  projectedManifests.set(value,projected);return projected;
 }
+// .265 historical comparison only. The complete current read proof has one
+// approved index hint; no raw trace, Native execution or historical pin changes.
+const READ_PROOF265=Object.freeze({currentBytes:4690,currentSHA256:'1eb1ac8a411546ce206a0e7922bb1dd1bcb1784e25ab7354251cc44501dcba57',historicalBytes:4660,historicalSHA256:'13727700584b154fcaa3b39b4bf5555b5fc4d97ceb0a464628d509d49ca0eeda',
+ currentWindow:"FROM audit INDEXED BY audit_actor_action WHERE action='site.settings'",historicalWindow:"FROM audit WHERE action='site.settings'"});
+let readProofControls265Done=false;
+function comparisonReadProof265(input,requiredCount=null){
+ if(!Array.isArray(input)||requiredCount!==null&&(!Number.isSafeInteger(requiredCount)||requiredCount<1))throw Error('identity265_read_proof_trace');
+ let count=0,first=null;const output=input.map(frame=>{
+  if(!frame||frame.k!=='sql'||frame.tag!=='legacy'||typeof frame.sql!=='string'||Buffer.byteLength(frame.sql)!==READ_PROOF265.currentBytes||sha(frame.sql)!==READ_PROOF265.currentSHA256)return frame;
+  if(Object.keys(frame).join(',')!=='k,tag,sql,params'||!Array.isArray(frame.params)||Object.keys(frame.params).join(',')!=='0,1,2,3'||frame.params.length!==4||frame.params[0]!==''||frame.params[1]!==''||typeof frame.params[2]!=='string'||sha(frame.params[2])!==COMPOSED_MANIFEST_SHA||frame.params[3]!=='a'.repeat(32))throw Error('identity265_read_proof_tuple');
+  if(frame.sql.split(READ_PROOF265.currentWindow).length!==2)throw Error('identity265_read_proof_window');
+  const historical=frame.sql.replace(READ_PROOF265.currentWindow,READ_PROOF265.historicalWindow);
+  if(Buffer.byteLength(historical)!==READ_PROOF265.historicalBytes||sha(historical)!==READ_PROOF265.historicalSHA256)throw Error('identity265_read_proof_inverse');
+  count++;first??=frame;return {...frame,sql:historical};
+ });
+ if(count<1||requiredCount!==null&&count!==requiredCount)throw Error('identity265_read_proof_count');
+ return {trace:output,count,first};
+}
+function comparisonReadProofControls265(frame){
+ const immutable=Object.freeze({...frame,params:Object.freeze(frame.params.slice())}),single=Object.freeze([immutable]),originalSQL=immutable.sql;
+ const copied=comparisonReadProof265(single,1);
+ check('.265 exact actual read-proof copy preserves raw tuple, keys and binds',single[0]===immutable&&immutable.sql===originalSQL&&sha(immutable.sql)===READ_PROOF265.currentSHA256&&copied.trace.length===1&&Object.keys(copied.trace[0]).join(',')===Object.keys(immutable).join(',')&&copied.trace[0].params===immutable.params&&sha(copied.trace[0].sql)===READ_PROOF265.historicalSHA256);
+ const badBinds=[['first bind',['x',...immutable.params.slice(1)]],['second bind',['','x',...immutable.params.slice(2)]],['manifest',[...immutable.params.slice(0,2),immutable.params[2]+' ',immutable.params[3]]],['epoch',[...immutable.params.slice(0,3),'b'.repeat(32)]],['bind order',[immutable.params[2],immutable.params[1],immutable.params[0],immutable.params[3]]],['extra bind',[...immutable.params,1]]];
+ const probes=[['missing',[]],['duplicate',[immutable,immutable]],['SQL prefix',[{...immutable,sql:' '+immutable.sql}]],['SQL suffix',[{...immutable,sql:immutable.sql+' '}]],['SQL line endings',[{...immutable,sql:immutable.sql.replaceAll('\n','\r\n')}]],['changed index',[{...immutable,sql:immutable.sql.replace('audit_actor_action WHERE','audit_ts WHERE')}]],['wrong context',[{...immutable,tag:'lane'}]],['wrong kind',[{...immutable,k:'http'}]],['extra key',[{...immutable,extra:true}]],['key order',[{tag:immutable.tag,k:immutable.k,sql:immutable.sql,params:immutable.params}]],...badBinds.map(([name,params])=>[name,[{...immutable,params}]])];
+ for(const[name,input]of probes){let refused=false;try{comparisonReadProof265(input,1);}catch{refused=true;}check('.265 exact read-proof comparison refuses '+name,refused);}
+ const other=Object.freeze({k:'sql',tag:'legacy',sql:'SELECT 1 AS untouched265',params:Object.freeze([1])}),batch=Object.freeze({k:'batch',tag:'legacy',n:2}),http=Object.freeze({k:'http',tag:'legacy',method:'GET',path:'/synthetic265',body:null,reason:null}),lane=Object.freeze({...immutable,tag:'lane'});
+ const mixed=Object.freeze([batch,immutable,other,http,lane]),mixedCopy=comparisonReadProof265(mixed,1);
+ check('.265 comparison retains every other statement/bind/batch/HTTP/context frame by identity and order',mixedCopy.trace.length===mixed.length&&mixed.every((value,index)=>index===1?mixedCopy.trace[index]!==value&&mixedCopy.trace[index].params===value.params:mixedCopy.trace[index]===value));
+ const doubled=comparisonReadProof265([immutable,immutable]);
+ check('.265 duplicate proof is never collapsed or hidden from historical trace/count oracle',doubled.trace.length===2&&doubled.count===2&&sha(doubled.trace)!==sha(copied.trace)&&doubled.trace.every(value=>value.params===immutable.params));
+}
 // A paired original guide raw dump proved identical30events/SQL/binds/batches/HTTPmetadata/response/twelve
 // except this first line. Raw r.trace remains untouched; only historical comparison is projected.
 const PUBLIC_GUIDE_FIRST_LINE = "Olympus guild direction: **World of Warcraft: Forever · PVE - Alliance · public guild direction · Realmless (ruleset-based)**.";
@@ -252,9 +283,55 @@ const A6 = [
   [/The guild roles are removed automatically if no other character of this account is still in the guild\./g, 'The Guild Member role is left as it is; remove it in Discord by hand if they should lose it.'],
 ];
 const mask = (text) => A6.reduce((t, [re, to]) => t.replace(re, to), text);
+// The finite successor helpers also pin whole physical traces. Supply only the
+// same closed read-proof inverse as a comparison copy; retain their raw guards.
+function successorReadProofComparison265(trace,banLiveConfiguredLane=false){
+  const rawCurrentTraceSHA256=sha(trace),comparison=comparisonReadProof265(trace),lane=banLiveConfiguredLane?successorLaneReadProof265(comparison.trace):null,copy=lane?.trace??comparison.trace;
+  if(lane&&!successorLaneControls265Done){successorLaneReadProofControls265(comparison.first,lane.first);successorLaneControls265Done=true;}
+  const retained=trace.every((frame,index)=>copy[index]===frame||frame.k==='sql'&&(frame.tag==='legacy'||banLiveConfiguredLane&&frame.tag==='lane')&&frame.params===copy[index].params&&sha(frame.sql)===READ_PROOF265.currentSHA256&&sha(copy[index].sql)===READ_PROOF265.historicalSHA256);
+  if(rawCurrentTraceSHA256!==sha(trace)||!retained||copy.length!==trace.length)throw Error('identity265_successor_trace_drift');
+  const historicalProof=copy[trace.indexOf(comparison.first)],historicalLane=lane?copy[trace.indexOf(lane.first)]:null;
+  return {trace:copy,witness:{kind:'strict_readproof_projection_copy_for_historical_successor_comparison',legacyFrames:comparison.count,laneFrames:lane?.count??0,currentProofBytes:Buffer.byteLength(comparison.first.sql),currentProofSHA256:sha(comparison.first.sql),historicalProofBytes:Buffer.byteLength(historicalProof.sql),historicalProofSHA256:sha(historicalProof.sql),manifestSHA256:sha(comparison.first.params[2]),canonicalBindCount:comparison.first.params.length,laneCurrentProofSHA256:lane?sha(lane.first.sql):null,laneHistoricalProofSHA256:historicalLane?sha(historicalLane.sql):null,laneCanonicalBindCount:lane?lane.first.params.length:null,rawCurrentTraceSHA256,projectionCopyTraceSHA256:sha(copy),rawCurrentTraceRetained:true,allOtherFramesRetained:retained,traceLengthUnchanged:true}};
+}
+// Only the live configured ban's whole-trace successor includes admitted lane
+// reads. Keep the original legacy inverse and its default/controls unchanged.
+let successorLaneControls265Done=false;
+function successorLaneReadProof265(input,requiredCount=null){
+  if(!Array.isArray(input)||requiredCount!==null&&(!Number.isSafeInteger(requiredCount)||requiredCount<1))throw Error('identity265_lane_read_proof_trace');
+  let count=0,first=null;
+  const trace=input.map(frame=>{
+    if(!frame||frame.k!=='sql'||frame.tag!=='lane'||typeof frame.sql!=='string'||Buffer.byteLength(frame.sql)!==READ_PROOF265.currentBytes||sha(frame.sql)!==READ_PROOF265.currentSHA256)return frame;
+    if(Object.keys(frame).join(',')!=='k,tag,sql,params'||!Array.isArray(frame.params)||Object.keys(frame.params).join(',')!=='0,1,2,3'||frame.params.length!==4||frame.params[0]!==''||frame.params[1]!==''||typeof frame.params[2]!=='string'||sha(frame.params[2])!==COMPOSED_MANIFEST_SHA||frame.params[3]!=='a'.repeat(32))throw Error('identity265_lane_read_proof_tuple');
+    if(frame.sql.split(READ_PROOF265.currentWindow).length!==2)throw Error('identity265_lane_read_proof_window');
+    const historical=frame.sql.replace(READ_PROOF265.currentWindow,READ_PROOF265.historicalWindow);
+    if(Buffer.byteLength(historical)!==READ_PROOF265.historicalBytes||sha(historical)!==READ_PROOF265.historicalSHA256)throw Error('identity265_lane_read_proof_inverse');
+    count++;first??=frame;return {...frame,sql:historical};
+  });
+  if(count<1||requiredCount!==null&&count!==requiredCount)throw Error('identity265_lane_read_proof_count');
+  return {trace,count,first};
+}
+function successorLaneReadProofControls265(legacyFrame,frame){
+  const immutable=Object.freeze({...frame,params:Object.freeze(frame.params.slice())}),single=Object.freeze([immutable]),copied=successorLaneReadProof265(single,1);
+  check('.265 ban lane comparison preserves original raw tuple and canonical binds',single[0]===immutable&&sha(immutable.sql)===READ_PROOF265.currentSHA256&&sha(copied.trace[0].sql)===READ_PROOF265.historicalSHA256&&copied.trace[0].params===immutable.params);
+  const binds=[['first bind',['x',...immutable.params.slice(1)]],['second bind',['','x',...immutable.params.slice(2)]],['manifest',[...immutable.params.slice(0,2),immutable.params[2]+' ',immutable.params[3]]],['epoch',[...immutable.params.slice(0,3),'b'.repeat(32)]],['bind order',[immutable.params[2],immutable.params[1],immutable.params[0],immutable.params[3]]],['extra bind',[...immutable.params,1]]];
+  const probes=[['missing',[],'count'],['duplicate',[immutable,immutable],'count'],['SQL prefix',[{...immutable,sql:' '+immutable.sql}],'count'],['SQL suffix',[{...immutable,sql:immutable.sql+' '}],'count'],['SQL line endings',[{...immutable,sql:immutable.sql.replaceAll('\n','\r\n')}],'count'],['changed index',[{...immutable,sql:immutable.sql.replace('audit_actor_action WHERE','audit_ts WHERE')}],'count'],['legacy context',[{...immutable,tag:'legacy'}],'count'],['foreign context',[{...immutable,tag:'foreign'}],'count'],['wrong kind',[{...immutable,k:'http'}],'count'],['extra key',[{...immutable,extra:true}],'tuple'],['key order',[{tag:immutable.tag,k:immutable.k,sql:immutable.sql,params:immutable.params}],'tuple'],...binds.map(([name,params])=>[name,[{...immutable,params}],'tuple'])];
+  for(const[name,input,reason]of probes){let refused=false;try{successorLaneReadProof265(input,1);}catch(error){if(!(error instanceof Error)||error.message!=='identity265_lane_read_proof_'+reason)throw error;refused=true;}check('.265 exact ban lane comparison refuses '+name,refused);}
+  const defaultCopy=successorReadProofComparison265([legacyFrame,immutable]);
+  check('.265 default successor comparison leaves lane proof untouched outside live configured ban',defaultCopy.trace[1]===immutable&&defaultCopy.witness.laneFrames===0);
+}
 const digestOf = (r, masked = false) => {
   // Exact paired public-copy comparison only; raw r.trace/r.response remain current.
-  if(!RECORD&&!DUMP)r={...r,trace:source230.copyTrace(r.trace,masked,{guide:r.comparisonScenario==='guide'?1:0,cache:r.comparisonScenario==='button'?1:0}),response:source230.copyResponse(r.response,masked,r.comparisonScenario==='button')};
+  if(!RECORD&&!DUMP){
+    const required={guide:r.comparisonScenario==='guide'?1:0,cache:r.comparisonScenario==='button'?1:0};
+    const comparison247={trace:source247.comparisonTrace(r.trace,masked,required),response:source247.comparisonResponse(r.response,masked,r.comparisonScenario==='button')};
+    r={...r,trace:source230.copyTrace(comparison247.trace,masked,required),response:source230.copyResponse(comparison247.response,masked,r.comparisonScenario==='button')};
+    const current=r.trace,comparison265=comparisonReadProof265(current);
+    if(!readProofControls265Done){comparisonReadProofControls265(comparison265.first);readProofControls265Done=true;}
+    const retained=current.every((frame,index)=>comparison265.trace[index]===frame||frame.k==='sql'&&frame.tag==='legacy'&&frame.params===comparison265.trace[index].params&&sha(frame.sql)===READ_PROOF265.currentSHA256&&sha(comparison265.trace[index].sql)===READ_PROOF265.historicalSHA256);
+    if(!retained||comparison265.trace.length!==current.length)throw Error('identity265_other_trace_drift');
+    console.log('IDENTITY265_READ_PROOF_COMPARISON_WITNESS',JSON.stringify({scenario:r.comparisonScenario,frames:comparison265.count,currentBytes:READ_PROOF265.currentBytes,currentSHA256:READ_PROOF265.currentSHA256,historicalBytes:READ_PROOF265.historicalBytes,historicalSHA256:READ_PROOF265.historicalSHA256,manifestSHA256:sha(comparison265.first.params[2]),canonicalBindCount:comparison265.first.params.length,rawSQLRetained:sha(comparison265.first.sql)===READ_PROOF265.currentSHA256,allOtherFramesRetained:retained,traceLengthUnchanged:true}));
+    r={...r,trace:comparison265.trace};
+  }
   const legacy = JSON.stringify(legacyOf(r)), response = JSON.stringify(r.response);
   return { trace: sha(masked ? mask(legacy) : legacy), response: sha(masked ? mask(response) : response), twelve: sha(r.twelve), statements: legacyOf(r).filter((e) => e.k === 'sql').length, requests: legacyOf(r).filter((e) => e.k === 'http').length };
 };
@@ -363,12 +440,17 @@ const source238=require('./source238-canonical-minute-static-projection.cjs');
 // .239 exact Role prepend is static-only. Never pass reconstructed source to load().
 if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source239-migration-static-projection.cjs'))).digest('hex')!=='39f12bb39335e0234d7e43daa6ae2bc4c8e1aaf58b9dc65507012aac069594eb')throw Error('reviewed239 static role helper differs');
 const source239=require('./source-livelink-static-projection.cjs'); // Live Link counted prepend over the byte-pinned reviewed239 chain
+// .247 reverses finite guarded Native242/privacy247 additions for STATIC checks
+// only. Actual load()/runOnce() and raw traces above always use current SRC.
+if(nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'source247-native-historical-static-adapter.cjs'))).digest('hex')!=='c84c96a4494b8f9f2e586fb9efce3ba47a048f5b8a3a2c3fc1c5f4cfadc05019'||nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'fixtures/reviewed247-native-historical-static-contexts.json'))).digest('hex')!=='fea6e5400a2faa7fc7f2dd984dc90d2008e3ba182f9f75d01d95b35667408397')throw Error('reviewed247 historical static adapter differs');
+const source247=source239.over247(require('./source247-native-historical-static-adapter.cjs')); // withStaticView first reverts the Live Link prepend; every other member is Fern's adapter unchanged
 // .228 C09 reverses only two exact current sources for the original static seals.
 if (nodeCrypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'source228-privacy-historical-projection.cjs'))).digest('hex') !== '1314b9a32a95348ae6092bcc5963cb16526ad8eecbc8bf1dcd7414dbff84324c') throw Error('reviewed228 C09 identity helper differs');
 const source228Privacy = require('./source228-privacy-historical-projection.cjs');
 function sourceDigest(name) {
   const raw=fs.readFileSync(path.join(SRC, name + '.ts'), 'utf8');
-  const before230=['discord','role-settlements','roles','roster','interactions'].includes(name)?source230.inverse(name,name==='role-settlements'&&!RECORD?source239.inverse(raw):raw):name==='privacy-serving-erase'?source230.before233(name,raw):source238.originalSource(name,raw);
+  const current247=RECORD?raw:source247.originalSource(name,raw);
+  const before230=['discord','role-settlements','roles','roster','interactions'].includes(name)?source230.inverse(name,name==='role-settlements'&&!RECORD?source239.inverse(current247):current247):name==='privacy-serving-erase'?source230.before233(name,current247):source238.originalSource(name,current247);
   const original=RECORD?raw:source228Privacy.originalSource(name,source227.originalSource(name,before230));
   return original===null?null:source211.source211HistoricalDigest(name,original);
 }
@@ -420,9 +502,12 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
     return;
   }
   if (!PINS) throw Error('PINS not recorded');
+  for(const[name,ok]of Object.entries(source247.checks(SRC)))check('.247 historical-only finite static adapter '+name,ok);
+  for(const row of source247.controls(SRC))check('.247 historical-only static refuses '+row.source+' '+row.name,row.refused);
+  for(const[name,ok]of Object.entries(source247.comparisonControls()))check('.247 exact whole comparison pair '+name,ok);
   for(const[name,ok]of Object.entries(source239.checks(SRC)))check('.239 exact static Role prepend '+name,ok);
   for(const row of source239.controls(SRC))check('.239 static Role refuses '+row.name,row.refused);
-  source239.withStaticView(SRC,static239=>{
+  source247.withStaticView(SRC,static239=>{
   for(const[name,ok]of Object.entries(source238.checks(static239)))check('.238 exact static origin '+name,ok);
   for(const row of source238.controls(static239))check('.238 static origin refuses '+row.name,row.refused);
   for(const[name,ok]of Object.entries(source230.checks(static239)))check('.230 current→a984 exact static guard '+name,ok);
@@ -450,7 +535,7 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
 
   // --- static: whole reviewed .164 integrated sources; the lane modules are never part of a module-load cycle
   for (const name of PROTECTED) check(['role-settlements', 'privacy-global-serving-origin'].includes(name) ? `${name}.ts reconstructs accepted H16 through exact .211 contexts before unchanged historical whole seals` : SOURCE196_COMPAT[name] ? `${name}.ts reconstructs the reviewed .164 whole source through exact pinned .196 contextual reversals only` : `${name}.ts is byte-identical to the reviewed .164 integrated source`, sourceDigest(name) === PINS.files[name]);
-  const erase228Raw = source230.before233('privacy-serving-erase',fs.readFileSync(path.join(SRC, 'privacy-serving-erase.ts'), 'utf8'));
+  const erase228Raw = source230.before233('privacy-serving-erase',source247.originalSource('privacy-serving-erase',fs.readFileSync(path.join(SRC, 'privacy-serving-erase.ts'), 'utf8')));
   const jobs228Raw = fs.readFileSync(path.join(SRC, 'privacy-serving-jobs.ts'), 'utf8');
   for (const [name, raw] of [['privacy-serving-erase', erase228Raw], ['privacy-serving-jobs', jobs228Raw]]) {
     for (const {label, refused} of source228Privacy.controls(name, raw)) check('.228 C09 ' + name + ' refuses ' + label, refused);
@@ -527,14 +612,19 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
           for(const control of source227.traceControls(r.trace))check('.227 trace inverse refuses '+control.name,control.refused);
           const at=r.trace.findIndex(e=>e.tag==='legacy'&&e.k==='sql'),next=r.trace.findIndex((e,i)=>i>at&&e.tag==='legacy'&&JSON.stringify(e)!==JSON.stringify(r.trace[at]));
           const changedBind=r.trace.map((e,i)=>i===at?{...e,params:[...e.params,'unrelated227']}:e),reordered=r.trace.slice();[reordered[at],reordered[next]]=[reordered[next],reordered[at]];
-          for(const[name,trace]of[['unrelated bind',changedBind],['unrelated event order',reordered],['additional SQL',[...r.trace,{k:'sql',tag:'legacy',sql:'SELECT 1 AS unrelated227',params:[]}]]])check('.227 whole historical oracle refuses '+name,!same(digestOf({...r,trace}),pin));
+          for(const[name,trace]of[['unrelated bind',changedBind],['unrelated event order',reordered],['additional SQL',[...r.trace,{k:'sql',tag:'legacy',sql:'SELECT 1 AS unrelated227',params:[]}]]]){
+            let refused;
+            try{refused=!same(digestOf({...r,trace}),pin);}
+            catch(error){if(name!=='unrelated bind'||!(error instanceof Error)||error.message!=='identity265_read_proof_tuple')throw error;refused=true;}
+            check('.227 whole historical oracle refuses '+name,refused);
+          }
         }
       }else if(phase==='pre'&&profile==='plain'&&variant==='absent'&&scenario==='queue')check('.227 query inverse leaves non-ingest traces untouched',source227.traceInverse(r.trace)===r.trace);
       check(`${where}: no deferred work threw`, r.errors.length === 0, r.errors);
-      const banContext={phase,profile,variant,pin,mask,digestOf};
+      const banContext={phase,profile,variant,pin,mask,digestOf,readProofComparison265:trace=>successorReadProofComparison265(trace,phase==='live'&&variant==='configured')};
       const banResult=scenario==='ban'?ban210.inspect(r,banContext):null;
       const heldScope=phase==='pre'&&profile==='settlement'&&scenario==='verify';
-      const heldContext={variant,pin,digestOf},heldResult=heldScope?held210.inspect(r,heldContext):null;
+      const heldContext={variant,pin,digestOf,readProofComparison265:successorReadProofComparison265},heldResult=heldScope?held210.inspect(r,heldContext):null;
       const recoveryContext={pin,digestOf,masked:variant==='configured'&&phase==='live'},recoveryResult=scenario==='unbind'?recovery217.inspect(r,recoveryContext):null;
       if(scenario==='ban'&&phase==='pre'&&variant==='absent'){
         for(const mutation of ban210.negativeMutations(r,banContext))check(`ban210 ${profile} successor refuses ${mutation.name} through its specific ${mutation.key} oracle`,mutation.refused);
@@ -574,7 +664,7 @@ const NEW_TEXT = { ban: 'New guild roles: removal runs right after this reply (o
           && !lane.some((e) => e.k === 'http' && [OFF, GL, RL].some((x) => e.path.includes('/roles/' + x))), lane.filter((e) => e.k === 'sql' && e.params.includes('role.fresh_config_held')));
       if (NEW_TEXT[scenario] && variant === 'configured') {
         const shown = JSON.stringify(r.trace) + JSON.stringify(r.response);
-        if(scenario==='button')check(`${where}: current progress and held-access instructions replace the automatic-role promise`, r.response.body.includes('Use **My status** to check your verification progress. Follow the current instructions, or ask an officer if access is on hold.')&&r.response.body.includes('**OLYMPUS PRIME**')&&!/follow(?:s)? automatically/.test(r.response.body));
+        if(scenario==='button')check(`${where}: current progress and held-access instructions replace the automatic-role promise`, r.response.body.includes('Use **My status** to check your verification progress. Follow the current instructions, or ask High Council if access is on hold.')&&r.response.body.includes('Your guild must have an approved server-recorded Olympus identity. A typed guild name or a roster name alone never links an account.')&&!/follow(?:s)? automatically/.test(r.response.body));
         else check(`${where}: the A6 text is ${open ? 'shown' : 'not shown before epochStart'}`, shown.includes(NEW_TEXT[scenario]) === open);
       }
     }

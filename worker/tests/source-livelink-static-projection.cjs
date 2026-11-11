@@ -41,4 +41,6 @@ function controls(sourceRoot){
   return [...withV240Root(sourceRoot,root=>base.controls(root)),...own];
 }
 function withStaticView(sourceRoot,inspect){return withV240Root(sourceRoot,root=>base.withStaticView(root,inspect));}
-module.exports=Object.freeze({inverse,checks,controls,withStaticView,metadata:Object.freeze({current:live.currentSHA256,v240:base.metadata.current,staticOnly:true,runtimeSubstitutionAuthorized:false})});
+/** Fern's .247 historical adapter reads role-settlements.ts as the reviewed .240 text: hand it the reconstructed one and keep every other member as it is. */
+function over247(adapter){return Object.freeze({...adapter,withStaticView(sourceRoot,inspect){return withV240Root(sourceRoot,root=>adapter.withStaticView(root,inspect));}});}
+module.exports=Object.freeze({inverse,checks,controls,withStaticView,over247,metadata:Object.freeze({current:live.currentSHA256,v240:base.metadata.current,staticOnly:true,runtimeSubstitutionAuthorized:false})});

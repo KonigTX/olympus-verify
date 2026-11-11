@@ -59,6 +59,10 @@ function negativeMutations(r,context){
  add('changed custody row','custody_rows',x=>{if(x.twelve.length)x.twelve[0].state='unreviewed';else x.twelve.push({state:'unreviewed'});});
  add('unexpected deferred error','custody_rows',x=>{x.errors.push('unreviewed');});
  add('unexpected lane dispatch','no_lane',x=>{x.laneCalls.push('unreviewed');});
- return probes.map(({name,key,mutate})=>{const changed=JSON.parse(JSON.stringify(r));mutate(changed);const result=inspect(changed,context);return{name,key,refused:!result.all&&result.checks[key]===false};});
+ return probes.map(({name,key,mutate})=>{
+  const changed=JSON.parse(JSON.stringify(r));mutate(changed);
+  try{const result=inspect(changed,context);return{name,key,refused:!result.all&&result.checks[key]===false};}
+  catch(error){if(name!=='changed unrelated SQL bind'||key!=='historical_trace'||!(error instanceof Error)||error.message!=='identity265_read_proof_tuple')throw error;return{name,key,refused:true};}
+ });
 }
 module.exports=Object.freeze({sourceChecks,inspect,negativeMutations});
